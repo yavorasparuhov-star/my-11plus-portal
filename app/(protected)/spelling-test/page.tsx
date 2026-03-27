@@ -1,19 +1,20 @@
 "use client"
 
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from "../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Header from "../../components/Header"
 
 export default function SpellingPage() {
   const [user, setUser] = useState<any>(null)
   const [words, setWords] = useState<any[]>([])
+  const [showHint, setShowHint] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [options, setOptions] = useState<string[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState("")
   const [score, setScore] = useState(0)
   const [hintUsed, setHintUsed] = useState(false)
+  const [progressSaved, setProgressSaved] = useState(false)
 
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
@@ -21,11 +22,6 @@ export default function SpellingPage() {
 
   const router = useRouter()
   const TOTAL_QUESTIONS = 10
-
-  useEffect(() => {
-    checkUser()
-    fetchWords()
-  }, [])
 
   async function checkUser() {
     const { data } = await supabase.auth.getUser()
@@ -49,40 +45,83 @@ export default function SpellingPage() {
     setWords(shuffled.slice(0, TOTAL_QUESTIONS))
   }
 
+  async function saveSpellingProgress(finalScore: number) {
+    if (!user) return
+
+    const successRate = Math.round((finalScore / TOTAL_QUESTIONS) * 100)
+
+    const { error } = await supabase.from("spelling_progress").insert([
+      {
+        user_id: user.id,
+        total_words_practiced: TOTAL_QUESTIONS,
+        correct_answers: finalScore,
+        success_rate: successRate,
+      },
+    ])
+
+    if (error) {
+      console.error("Error saving spelling progress:", error)
+    } else {
+      setProgressSaved(true)
+    }
+  }
+
+  async function saveWrongSpellingReview(wordItem: any) {
+    if (!user) return
+
+    const { error } = await supabase.from("spelling_review").insert([
+      {
+        user_id: user.id,
+        word_id: wordItem.id,
+        word: wordItem.word,
+        knew_it: false,
+        difficulty: null,
+      },
+    ])
+
+    if (error) {
+      console.error("Error saving spelling review:", error)
+    }
+  }
+
+  useEffect(() => {
+    checkUser()
+    fetchWords()
+  }, [])
+
   useEffect(() => {
     if (words.length > 0 && words[currentIndex]) {
       generateOptions(words[currentIndex])
+    }
+  }, [words, currentIndex])
 
-      if (voiceEnabled) {
-        speakWord(words[currentIndex].word)
-      }
+  useEffect(() => {
+    if (words.length > 0 && words[currentIndex] && voiceEnabled) {
+      speakWord(words[currentIndex].word)
     }
   }, [words, currentIndex, voiceEnabled])
-useEffect(() => {
-  checkUser()
-  fetchWords()
-}, [])
 
-useEffect(() => {
-  const savedTimer = localStorage.getItem("spelling_timer_enabled")
-  const savedVoice = localStorage.getItem("spelling_voice_enabled")
+  useEffect(() => {
+    const savedTimer = localStorage.getItem("spelling_timer_enabled")
+    const savedVoice = localStorage.getItem("spelling_voice_enabled")
 
-  if (savedTimer !== null) {
-    setTimerEnabled(savedTimer === "true")
-  }
+    if (savedTimer !== null) {
+      setTimerEnabled(savedTimer === "true")
+    }
 
-  if (savedVoice !== null) {
-    setVoiceEnabled(savedVoice === "true")
-  }
-}, [])
+    if (savedVoice !== null) {
+      setVoiceEnabled(savedVoice === "true")
+    }
+  }, [])
 
-useEffect(() => {
-  localStorage.setItem("spelling_timer_enabled", String(timerEnabled))
-}, [timerEnabled])
+  useEffect(() => {
+    localStorage.setItem("spelling_timer_enabled", String(timerEnabled))
+  }, [timerEnabled])
 
-useEffect(() => {
-  localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
-}, [voiceEnabled])
+  useEffect(() => {
+    localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
+  }, [voiceEnabled])
+
   useEffect(() => {
     if (!timerEnabled) {
       setTimeLeft(15)
@@ -107,6 +146,17 @@ useEffect(() => {
 
     return () => clearInterval(timer)
   }, [currentIndex, timerEnabled, selected, words])
+
+  useEffect(() => {
+    if (
+      user &&
+      words.length > 0 &&
+      currentIndex >= words.length &&
+      !progressSaved
+    ) {
+      saveSpellingProgress(score)
+    }
+  }, [currentIndex, words.length, progressSaved, score, user])
 
   function shuffle(array: string[]) {
     return [...array].sort(() => Math.random() - 0.5)
@@ -138,25 +188,20 @@ useEffect(() => {
     setSelected(null)
     setFeedback("")
     setHintUsed(false)
+    setShowHint(false)
   }
 
   function handleHint() {
     if (hintUsed || selected) return
-
-    const correct = words[currentIndex].word
-    const wrong = options.filter((o) => o !== correct)
-
-    if (wrong.length === 0) return
-
-    const randomWrong = wrong[Math.floor(Math.random() * wrong.length)]
-    setOptions(shuffle([correct, randomWrong]))
+    setShowHint(true)
     setHintUsed(true)
   }
 
-  function handleAnswer(option: string) {
+  async function handleAnswer(option: string) {
     if (selected) return
 
-    const correct = words[currentIndex].word
+    const currentWordItem = words[currentIndex]
+    const correct = currentWordItem.word
     setSelected(option)
 
     if (option === correct) {
@@ -164,15 +209,19 @@ useEffect(() => {
       setScore((prev) => prev + 1)
     } else {
       setFeedback(`Incorrect ❌ (Correct: ${correct})`)
+      await saveWrongSpellingReview(currentWordItem)
     }
   }
 
-  function handleTimeout() {
+  async function handleTimeout() {
     if (selected || !words[currentIndex]) return
 
-    const correct = words[currentIndex].word
+    const currentWordItem = words[currentIndex]
+    const correct = currentWordItem.word
     setSelected("TIMEOUT")
     setFeedback(`⏰ Time's up! Correct: ${correct}`)
+
+    await saveWrongSpellingReview(currentWordItem)
   }
 
   function nextQuestion() {
@@ -191,6 +240,7 @@ useEffect(() => {
     setOptions([])
     setHintUsed(false)
     setTimeLeft(15)
+    setProgressSaved(false)
     fetchWords()
   }
 
@@ -212,7 +262,6 @@ useEffect(() => {
   if (!currentWord) {
     return (
       <div>
-        <Header user={user} onLogout={handleLogout} />
 
         <div style={styles.center}>
           <div style={styles.card}>
@@ -235,8 +284,7 @@ useEffect(() => {
 
   return (
     <div>
-      <Header user={user} onLogout={handleLogout} />
-
+    
       <div style={styles.center}>
         <div style={styles.card}>
           <h2>
@@ -276,15 +324,28 @@ useEffect(() => {
 
           <button
             onClick={handleHint}
-            disabled={hintUsed || !!selected}
             style={{
-              ...styles.button,
-              background: hintUsed || selected ? "#9ca3af" : "#10b981",
-              marginBottom: "10px",
+              padding: "8px 16px",
+              marginTop: "10px",
+              cursor: "pointer",
             }}
           >
-            Hint (50/50)
+            💡 Hint
           </button>
+
+          {showHint && (
+            <div
+              style={{
+                marginTop: "12px",
+                marginBottom: "12px",
+                padding: "10px",
+                backgroundColor: "#f3f4f6",
+                borderRadius: "8px",
+              }}
+            >
+              <strong>Definition:</strong> {currentWord.definition}
+            </div>
+          )}
 
           <div>
             {options.map((opt, i) => {

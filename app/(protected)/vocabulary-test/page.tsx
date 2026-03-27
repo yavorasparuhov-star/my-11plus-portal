@@ -1,10 +1,9 @@
 "use client"
 
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from "../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import Header from "../../components/Header"
 
 export default function Home() {
   const router = useRouter()
@@ -24,7 +23,7 @@ export default function Home() {
   const [testStarted, setTestStarted] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [progressSaved, setProgressSaved] = useState(false)
-
+const [isAnswerLocked, setIsAnswerLocked] = useState(false)
   const [options, setOptions] = useState<any[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<any>(null)
 
@@ -140,23 +139,30 @@ export default function Home() {
 
   // ---------- Handle Answer ----------
   function handleAnswer(option: any) {
-    if (selectedAnswer) return
+  if (isAnswerLocked) return
+  if (selectedAnswer !== null) return
+  if (!currentWord) return
+  if (currentIndex >= testWords.length) return
 
-    const correct = option.id === currentWord.id
+  setIsAnswerLocked(true)
 
-    setSelectedAnswer(option.id)
-    setIsTimerActive(false)
+  const correct = option.id === currentWord.id
 
-    setTimeout(() => {
-      handleNext(correct)
-      setSelectedAnswer(null)
-      setIsTimerActive(true)
-    }, 2500)
-  }
+  setSelectedAnswer(option.id)
+  setIsTimerActive(false)
+
+  setTimeout(() => {
+    handleNext(correct)
+    setSelectedAnswer(null)
+  }, 2500)
+}
 
   // ---------- Next ----------
- const handleNext = async (knewIt: boolean | null = null) => {
-  if (!user || !currentWord) return
+const handleNext = async (knewIt: boolean | null = null) => {
+  if (!user || !currentWord) {
+    setIsAnswerLocked(false)
+    return
+  }
 
   let updatedResults = practiceResults
 
@@ -200,11 +206,16 @@ export default function Home() {
 
     setTestCompleted(true)
     setIsTimerActive(false)
+    setIsAnswerLocked(true)
     return
   }
 
   setCurrentIndex((prev) => prev + 1)
   setTimer(15)
+  setSelectedAnswer(null)
+  setShowHint(false)
+  setIsAnswerLocked(false)
+  setIsTimerActive(true)
 }
 
   // ---------- Restart ----------
@@ -219,7 +230,7 @@ export default function Home() {
     setIsTimerActive(false)
     setSelectedAnswer(null)
     setShowHint(false)
-    
+    setIsAnswerLocked(false)
 
     setTimeout(() => {
       setTestStarted(true)
@@ -242,7 +253,6 @@ const speakWord = (text: string) => {
   if (!testStarted) {
     return (
       <div style={{ padding: "20px", maxWidth: "600px", margin: "auto", textAlign: "center" }}>
-        <Header user={user} onLogout={handleLogout} />
 
         <h1>11+ Vocabulary Trainer</h1>
 
@@ -283,12 +293,11 @@ const speakWord = (text: string) => {
   // ---------- Test UI ----------
   return (
     <>
-      <Header user={user} onLogout={handleLogout} />
 
       <div style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
         <h1>Vocabulary Test</h1>
 
-        <p>Question {currentIndex + 1} / {testWords.length}</p>
+        <p>Question {Math.min(currentIndex + 1, testWords.length)} / {testWords.length}</p>
         <p>Word Timer: {timer}s | Total: {totalTimer}s</p>
 
         {!testCompleted && currentWord && (
@@ -397,10 +406,7 @@ const speakWord = (text: string) => {
               </button>
 
               <button
-                onClick={() => {
-                  setTestStarted(false)
-                  setTestCompleted(false)
-                }}
+onClick={() => router.push("/home")}
                 style={{
                   padding: "10px 20px",
                   backgroundColor: "#0070f3",

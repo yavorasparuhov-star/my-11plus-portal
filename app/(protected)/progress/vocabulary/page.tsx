@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from "../../../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
-import Header from "../../components/Header"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -104,7 +103,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Header user={user} onLogout={handleLogout} />
+      
 
       <div style={{ padding: "40px", maxWidth: "700px", margin: "0 auto" }}>
         <h1>📊 Student Dashboard</h1>

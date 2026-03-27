@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../lib/supabaseClient"
-import Header from "../../components/Header"
+import { supabase } from "../../../lib/supabaseClient"
 
 export default function HomePage() {
   const router = useRouter()
@@ -33,7 +32,6 @@ export default function HomePage() {
 
   return (
     <>
-      <Header user={user} onLogout={handleLogout} />
 
       <div style={{
         padding: "40px",
@@ -62,7 +60,7 @@ export default function HomePage() {
         </button>
 
         <button
-          onClick={() => router.push("/spelling")}
+          onClick={() => router.push("/spelling-test")}
           style={{
             display: "block",
             width: "100%",

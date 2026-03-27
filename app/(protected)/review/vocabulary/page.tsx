@@ -1,9 +1,8 @@
 "use client"
 
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from "../../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Header from "../../components/Header"
 
 export default function RevisionPage() {
   const router = useRouter()
@@ -81,7 +80,6 @@ export default function RevisionPage() {
 
   return (
     <>
-      <Header user={user} onLogout={handleLogout} />
 
       <div style={{ maxWidth: "600px", margin: "auto", padding: "20px" }}>
         <h1>Revision Words</h1>
