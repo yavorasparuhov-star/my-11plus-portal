@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
+import { useEffect, useState } from "react"
 
-type VocabularyProgressRow = {
+type SpellingProgressRow = {
   id: string
   user_id: string
   total_words_practiced: number
@@ -12,8 +12,8 @@ type VocabularyProgressRow = {
   created_at: string
 }
 
-export default function VocabularyProgressPage() {
-  const [progress, setProgress] = useState<VocabularyProgressRow[]>([])
+export default function SpellingProgressPage() {
+  const [progress, setProgress] = useState<SpellingProgressRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,18 +33,18 @@ export default function VocabularyProgressPage() {
     }
 
     const { data, error } = await supabase
-      .from("vocabulary_progress")
+      .from("spelling_progress")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error loading vocabulary progress:", error)
+      console.error("Error loading spelling progress:", error)
       setLoading(false)
       return
     }
 
-    setProgress((data || []) as VocabularyProgressRow[])
+    setProgress(data || [])
     setLoading(false)
   }
 
@@ -72,18 +72,15 @@ export default function VocabularyProgressPage() {
       ? Math.max(...progress.map((row) => Math.round(row.success_rate)))
       : 0
 
-  const latestScore =
-    totalTests > 0 ? Math.round(progress[0].success_rate) : 0
-
   if (loading) {
-    return <p style={styles.message}>Loading vocabulary progress...</p>
+    return <p style={styles.message}>Loading spelling progress...</p>
   }
 
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        <h1 style={styles.title}>📚 Vocabulary Progress</h1>
-        <p style={styles.subtitle}>Track vocabulary test performance over time.</p>
+        <h1 style={styles.title}>✍️ Spelling Progress</h1>
+        <p style={styles.subtitle}>Track spelling test performance over time.</p>
 
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
@@ -105,17 +102,12 @@ export default function VocabularyProgressPage() {
             <h3 style={styles.statLabel}>Best Score</h3>
             <p style={styles.statValue}>{bestScore}%</p>
           </div>
-
-          <div style={styles.statCard}>
-            <h3 style={styles.statLabel}>Latest Score</h3>
-            <p style={styles.statValue}>{latestScore}%</p>
-          </div>
         </div>
 
         {progress.length === 0 ? (
           <div style={styles.emptyCard}>
-            <h2>No vocabulary progress yet</h2>
-            <p>Complete a vocabulary test and your results will appear here.</p>
+            <h2>No spelling progress yet</h2>
+            <p>Complete a spelling test and your results will appear here.</p>
           </div>
         ) : (
           <div style={styles.historyCard}>
@@ -187,9 +179,9 @@ export default function VocabularyProgressPage() {
         <div style={styles.summaryCard}>
           <h2 style={styles.sectionTitle}>Overall Summary</h2>
           <p>
-            You answered <strong>{totalCorrectAnswers}</strong> vocabulary
-            questions correctly across <strong>{totalTests}</strong> completed
-            test{totalTests === 1 ? "" : "s"}.
+            You answered <strong>{totalCorrectAnswers}</strong> spelling words
+            correctly across <strong>{totalTests}</strong> completed test
+            {totalTests === 1 ? "" : "s"}.
           </p>
         </div>
       </div>
