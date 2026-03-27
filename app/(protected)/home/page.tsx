@@ -29,7 +29,19 @@ export default function HomePage() {
 
   if (loading) return <p>Loading...</p>
   if (!user) return null
-
+const styles = {
+  button: {
+    display: "block",
+    width: "100%",
+    padding: "15px",
+    marginBottom: "15px",
+    fontSize: "18px",
+    borderRadius: "10px",
+    border: "none",
+    background: "#f3f4f6",
+    cursor: "pointer",
+  } as React.CSSProperties,
+}
   return (
     <>
 
@@ -45,32 +57,26 @@ export default function HomePage() {
           Choose your training mode:
         </p>
 
-        <button
-          onClick={() => router.push("/vocabulary-test")}
-          style={{
-            display: "block",
-            width: "100%",
-            padding: "15px",
-            marginBottom: "15px",
-            fontSize: "18px",
-            borderRadius: "8px",
-          }}
-        >
-          📘 Vocabulary
-        </button>
+       <button
+  onClick={() => router.push("/vocabulary-test")}
+  style={styles.button}
+>
+  📘 Vocabulary
+</button>
 
-        <button
-          onClick={() => router.push("/spelling-test")}
-          style={{
-            display: "block",
-            width: "100%",
-            padding: "15px",
-            fontSize: "18px",
-            borderRadius: "8px",
-          }}
-        >
-          ✏️ Spelling
-        </button>
+<button
+  onClick={() => router.push("/spelling-test")}
+  style={styles.button}
+>
+  ✏️ Spelling
+</button>
+
+<button
+  onClick={() => router.push("/comprehension-test")}
+  style={styles.button}
+>
+  📖 Comprehension
+</button>
       </div>
     </>
   )
