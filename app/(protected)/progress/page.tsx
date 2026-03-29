@@ -6,18 +6,22 @@ export default function ProgressPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1>📊 Progress</h1>
-        <p>Select what you want to view:</p>
+        <h1>📊 Your Progress</h1>
+        <p>Choose a category to track your performance:</p>
 
         <div style={styles.buttons}>
-          <Link href="/progress/vocabulary" style={styles.button}>
-            Vocabulary Progress →
-          </Link>
+  <Link href="/progress/vocabulary" style={styles.button}>
+    📘 Vocabulary Progress →
+  </Link>
 
-          <Link href="/progress/spelling" style={styles.button}>
-            Spelling Progress →
-          </Link>
-        </div>
+  <Link href="/progress/spelling" style={styles.button}>
+    ✍️ Spelling Progress →
+  </Link>
+
+  <Link href="/progress/comprehension" style={styles.button}>
+    📖 Comprehension Progress →
+  </Link>
+</div>
       </div>
     </div>
   )

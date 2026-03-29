@@ -6,16 +6,20 @@ export default function ReviewPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1>📚 Review</h1>
-        <p>Select what you want to review:</p>
+        <h1>📚 Your Review</h1>
+        <p>Choose a category to review your mistakes:</p>
 
         <div style={styles.buttons}>
           <Link href="/review/vocabulary" style={styles.button}>
-            Vocabulary Review →
+            📘 Vocabulary Review →
           </Link>
 
           <Link href="/review/spelling" style={styles.button}>
-            Spelling Review →
+            ✍️ Spelling Review →
+          </Link>
+
+          <Link href="/review/comprehension" style={styles.button}>
+            📖 Comprehension Review →
           </Link>
         </div>
       </div>
