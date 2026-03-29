@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type VocabularyReviewRow = {
@@ -22,7 +23,8 @@ type WordRow = {
 }
 
 export default function VocabularyReviewPage() {
-const [reviewWords, setReviewWords] = useState<VocabularyReviewRow[]>([])
+const router = useRouter()
+  const [reviewWords, setReviewWords] = useState<VocabularyReviewRow[]>([])
 const [loading, setLoading] = useState(true)
 const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
 
@@ -95,7 +97,16 @@ const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all
     setReviewWords(mergedData)
     setLoading(false)
   }
+function retryFilteredWords() {
+  const reviewWordIds = filteredWords
+    .map((row) => row.word_id)
+    .filter((id): id is number => id !== null)
 
+  if (reviewWordIds.length === 0) return
+
+  localStorage.setItem("vocabulary_review_word_ids", JSON.stringify(reviewWordIds))
+  router.push("/vocabulary-test?mode=review")
+}
   async function removeWord(id: string) {
     const { error } = await supabase.from("vocabulary_review").delete().eq("id", id)
 
@@ -175,6 +186,13 @@ if (loading) {
     Hard ({hardCount})
   </button>
 </div>
+{filteredWords.length > 0 && (
+  <div style={styles.retryRow}>
+    <button onClick={retryFilteredWords} style={styles.actionButton}>
+      Retry filtered words
+    </button>
+  </div>
+)}
         </div>
 
         {uniqueWords.length === 0 ? (
@@ -341,4 +359,16 @@ filterButton: {
     textAlign: "center",
     marginTop: "40px",
   },
+  retryRow: {
+  marginTop: "18px",
+},
+actionButton: {
+  padding: "10px 16px",
+  borderRadius: "10px",
+  border: "none",
+  background: "#e5e7eb",
+  color: "#111827",
+  cursor: "pointer",
+  fontWeight: 600,
+},
 }

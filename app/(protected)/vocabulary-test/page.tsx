@@ -2,10 +2,12 @@
 
 import { supabase } from "../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function Home() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const reviewMode = searchParams.get("mode") === "review"
 
   // ---------- State ----------
   const [user, setUser] = useState<any>(null)
@@ -67,12 +69,22 @@ const [isAnswerLocked, setIsAnswerLocked] = useState(false)
     fetchWords()
   }, [])
 
-  // ---------- Prepare Test ----------
+   // ---------- Prepare Test ----------
   useEffect(() => {
     if (!user || !testStarted) return
 
-    const filtered = words.filter((w) => w.difficulty === difficulty)
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5).slice(0, 10)
+    let selectedWords: any[] = []
+
+    if (reviewMode) {
+      const saved = localStorage.getItem("vocabulary_review_word_ids")
+      const reviewIds: number[] = saved ? JSON.parse(saved) : []
+
+      selectedWords = words.filter((w) => reviewIds.includes(w.id))
+    } else {
+      selectedWords = words.filter((w) => w.difficulty === difficulty)
+    }
+
+    const shuffled = [...selectedWords].sort(() => Math.random() - 0.5).slice(0, 10)
 
     setTestWords(shuffled)
     setCurrentIndex(0)
@@ -82,7 +94,7 @@ const [isAnswerLocked, setIsAnswerLocked] = useState(false)
     setTimer(15)
     setTotalTimer(90)
     setIsTimerActive(shuffled.length > 0)
-  }, [difficulty, words, user, testStarted])
+  }, [difficulty, words, user, testStarted, reviewMode])
 
   // ---------- Generate Options ----------
   function generateOptions(correctWord: any, allWords: any[]) {
@@ -155,7 +167,19 @@ const [isAnswerLocked, setIsAnswerLocked] = useState(false)
     setSelectedAnswer(null)
   }, 2500)
 }
+async function removeWordFromReview(wordId: number) {
+  if (!user) return
 
+  const { error } = await supabase
+    .from("vocabulary_review")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("word_id", wordId)
+
+  if (error) {
+    console.error("Error removing vocabulary review word:", error)
+  }
+}
   // ---------- Next ----------
 const handleNext = async (knewIt: boolean | null = null) => {
   if (!user || !currentWord) {
@@ -170,16 +194,25 @@ const handleNext = async (knewIt: boolean | null = null) => {
     updatedResults = [...practiceResults, newResult]
     setPracticeResults(updatedResults)
 
-    const { error } = await supabase.from("vocabulary_review").insert([
-      {
-        user_id: user.id,
-        word_id: currentWord.id,
-        word: currentWord.word,
-        knew_it: knewIt,
-        difficulty: currentWord.difficulty,
-      },
-    ])
-    if (error) console.error(error)
+    if (reviewMode) {
+      if (knewIt) {
+        await removeWordFromReview(currentWord.id)
+      }
+    } else {
+      const { error } = await supabase.from("vocabulary_review").insert([
+        {
+          user_id: user.id,
+          word_id: currentWord.id,
+          word: currentWord.word,
+          knew_it: knewIt,
+          difficulty: currentWord.difficulty,
+        },
+      ])
+
+      if (error) {
+        console.error("Error saving vocabulary review:", error)
+      }
+    }
   }
 
   if (currentIndex + 1 >= testWords.length) {
@@ -201,6 +234,10 @@ const handleNext = async (knewIt: boolean | null = null) => {
       console.error("Error saving vocabulary progress:", error)
     } else {
       setProgressSaved(true)
+    }
+
+    if (reviewMode) {
+      localStorage.removeItem("vocabulary_review_word_ids")
     }
 
     setTestCompleted(true)
@@ -253,32 +290,38 @@ const speakWord = (text: string) => {
     return (
       <div style={styles.center}>
         <div style={styles.card}>
-          <h1 style={{ marginBottom: "10px" }}>11+ Vocabulary Test</h1>
+         <h1 style={{ marginBottom: "10px" }}>
+  {reviewMode ? "📚 Vocabulary Review Retry" : "11+ Vocabulary Test"}
+</h1>
 
-          <p style={{ marginBottom: "18px", fontSize: "18px" }}>
-            Select difficulty:
-          </p>
+<p style={{ marginBottom: "18px", fontSize: "18px" }}>
+  {reviewMode ? "Practice your saved review words:" : "Select difficulty:"}
+</p>
 
-          <div style={styles.difficultyRow}>
-            {[1, 2, 3].map((level) => (
-              <button
-                key={level}
-                onClick={() => setDifficulty(level)}
-                style={{
-                  ...styles.smallButton,
-                  backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
-                  color: "black",
-                  fontWeight: difficulty === level ? "bold" : "normal",
-                }}
-              >
-                {["Easy", "Medium", "Hard"][level - 1]}
-              </button>
-            ))}
-          </div>
+{!reviewMode && (
+  <div style={styles.difficultyRow}>
+    {[1, 2, 3].map((level) => (
+      <button
+        key={level}
+        onClick={() => setDifficulty(level)}
+        style={{
+          ...styles.smallButton,
+          backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
+          color: "black",
+          fontWeight: difficulty === level ? "bold" : "normal",
+        }}
+      >
+        {["Easy", "Medium", "Hard"][level - 1]}
+      </button>
+    ))}
+  </div>
+)}
 
-          <button onClick={() => setTestStarted(true)} style={styles.button}>
-            Start Test ({["Easy", "Medium", "Hard"][difficulty - 1]})
-          </button>
+<button onClick={() => setTestStarted(true)} style={styles.button}>
+  {reviewMode
+    ? "Start Review Retry"
+    : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
+</button>
         </div>
       </div>
     )
