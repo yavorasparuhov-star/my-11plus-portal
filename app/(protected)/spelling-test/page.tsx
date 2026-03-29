@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation"
 
 export default function SpellingPage() {
   const [user, setUser] = useState<any>(null)
+  const [loadingUser, setLoadingUser] = useState(true)
+
+  const [allWords, setAllWords] = useState<any[]>([])
   const [words, setWords] = useState<any[]>([])
+
+  const [difficulty, setDifficulty] = useState(1)
+  const [testStarted, setTestStarted] = useState(false)
+
   const [showHint, setShowHint] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [options, setOptions] = useState<string[]>([])
@@ -23,84 +30,65 @@ export default function SpellingPage() {
   const router = useRouter()
   const TOTAL_QUESTIONS = 10
 
-  async function checkUser() {
-    const { data } = await supabase.auth.getUser()
-
-    if (!data.user) {
-      router.push("/")
-    } else {
-      setUser(data.user)
-    }
-  }
-
-  async function fetchWords() {
-    const { data, error } = await supabase.from("words").select("*")
-
-    if (error) {
-      console.error(error)
-      return
-    }
-
-    const shuffled = [...(data || [])].sort(() => Math.random() - 0.5)
-    setWords(shuffled.slice(0, TOTAL_QUESTIONS))
-  }
-
-  async function saveSpellingProgress(finalScore: number) {
-    if (!user) return
-
-    const successRate = Math.round((finalScore / TOTAL_QUESTIONS) * 100)
-
-    const { error } = await supabase.from("spelling_progress").insert([
-      {
-        user_id: user.id,
-        total_words_practiced: TOTAL_QUESTIONS,
-        correct_answers: finalScore,
-        success_rate: successRate,
-      },
-    ])
-
-    if (error) {
-      console.error("Error saving spelling progress:", error)
-    } else {
-      setProgressSaved(true)
-    }
-  }
-
-  async function saveWrongSpellingReview(wordItem: any) {
-    if (!user) return
-
-    const { error } = await supabase.from("spelling_review").insert([
-      {
-        user_id: user.id,
-        word_id: wordItem.id,
-        word: wordItem.word,
-        knew_it: false,
-        difficulty: null,
-      },
-    ])
-
-    if (error) {
-      console.error("Error saving spelling review:", error)
-    }
-  }
-
+  // ---------- Auth ----------
   useEffect(() => {
-    checkUser()
-    fetchWords()
+    let subscription: any = null
+
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      setLoadingUser(false)
+    })
+
+    subscription = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      if (subscription) subscription?.unsubscribe?.()
+    }
   }, [])
 
   useEffect(() => {
-    if (words.length > 0 && words[currentIndex]) {
-      generateOptions(words[currentIndex])
+    if (!loadingUser && !user) {
+      router.push("/login")
     }
-  }, [words, currentIndex])
+  }, [loadingUser, user, router])
 
+  // ---------- Fetch all words ----------
   useEffect(() => {
-    if (words.length > 0 && words[currentIndex] && voiceEnabled) {
-      speakWord(words[currentIndex].word)
-    }
-  }, [words, currentIndex, voiceEnabled])
+    async function fetchWords() {
+      const { data, error } = await supabase.from("words").select("*")
 
+      if (error) {
+        console.error(error)
+        return
+      }
+
+      setAllWords(data || [])
+    }
+
+    fetchWords()
+  }, [])
+
+  // ---------- Prepare spelling test when started ----------
+  useEffect(() => {
+    if (!testStarted || !user || allWords.length === 0) return
+
+    const filtered = allWords.filter((w) => w.difficulty === difficulty)
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+
+    setWords(shuffled.slice(0, TOTAL_QUESTIONS))
+    setCurrentIndex(0)
+    setSelected(null)
+    setFeedback("")
+    setScore(0)
+    setHintUsed(false)
+    setShowHint(false)
+    setTimeLeft(15)
+    setProgressSaved(false)
+  }, [testStarted, difficulty, allWords, user])
+
+  // ---------- Local storage ----------
   useEffect(() => {
     const savedTimer = localStorage.getItem("spelling_timer_enabled")
     const savedVoice = localStorage.getItem("spelling_voice_enabled")
@@ -122,6 +110,21 @@ export default function SpellingPage() {
     localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
   }, [voiceEnabled])
 
+  // ---------- Generate options ----------
+  useEffect(() => {
+    if (words.length > 0 && words[currentIndex]) {
+      generateOptions(words[currentIndex])
+    }
+  }, [words, currentIndex])
+
+  // ---------- Speak current word ----------
+  useEffect(() => {
+    if (words.length > 0 && words[currentIndex] && voiceEnabled) {
+      speakWord(words[currentIndex].word)
+    }
+  }, [words, currentIndex, voiceEnabled])
+
+  // ---------- Timer ----------
   useEffect(() => {
     if (!timerEnabled) {
       setTimeLeft(15)
@@ -147,6 +150,7 @@ export default function SpellingPage() {
     return () => clearInterval(timer)
   }, [currentIndex, timerEnabled, selected, words])
 
+  // ---------- Save progress once test completes ----------
   useEffect(() => {
     if (
       user &&
@@ -191,6 +195,58 @@ export default function SpellingPage() {
     setShowHint(false)
   }
 
+  async function saveSpellingProgress(finalScore: number) {
+    if (!user) return
+
+    const successRate = Math.round((finalScore / TOTAL_QUESTIONS) * 100)
+
+    const { error } = await supabase.from("spelling_progress").insert([
+      {
+        user_id: user.id,
+        total_words_practiced: TOTAL_QUESTIONS,
+        correct_answers: finalScore,
+        success_rate: successRate,
+      },
+    ])
+
+    if (error) {
+      console.error("Error saving spelling progress:", error)
+    } else {
+      setProgressSaved(true)
+    }
+  }
+async function saveWrongSpellingReview(wordItem: any) {
+  if (!user) return
+
+  const cleanedWord = wordItem.word.trim().toLowerCase()
+
+  const { error } = await supabase
+    .from("spelling_review")
+    .upsert(
+      [
+        {
+          user_id: user.id,
+          word_id: wordItem.id,
+          word: cleanedWord,
+          knew_it: false,
+          difficulty: wordItem.difficulty,
+        },
+      ],
+      {
+        onConflict: "user_id,word",
+      }
+    )
+
+  if (error) {
+    console.error("Error saving spelling review:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    })
+  }
+}
+
   function handleHint() {
     if (hintUsed || selected) return
     setShowHint(true)
@@ -233,15 +289,17 @@ export default function SpellingPage() {
   }
 
   function restartTest() {
+    setTestStarted(false)
     setScore(0)
     setCurrentIndex(0)
     setSelected(null)
     setFeedback("")
     setOptions([])
     setHintUsed(false)
+    setShowHint(false)
     setTimeLeft(15)
     setProgressSaved(false)
-    fetchWords()
+    setWords([])
   }
 
   async function handleLogout() {
@@ -250,30 +308,70 @@ export default function SpellingPage() {
     }
 
     await supabase.auth.signOut()
-    router.push("/")
+    router.push("/login")
+  }
+
+  // ---------- Loading ----------
+  if (loadingUser) {
+    return <div>Checking login...</div>
+  }
+
+  if (!user) {
+    return null
+  }
+
+  // ---------- Start screen ----------
+  if (!testStarted) {
+    return (
+      <div style={styles.center}>
+        <div style={styles.card}>
+          <h1>11+ Spelling Test</h1>
+
+          <p>Select difficulty:</p>
+
+          {[1, 2, 3].map((level) => (
+            <button
+              key={level}
+              onClick={() => setDifficulty(level)}
+              style={{
+                ...styles.smallButton,
+                margin: "5px",
+                background: difficulty === level ? "#c7d2fe" : "#e5e7eb",
+              }}
+            >
+              {["Easy", "Medium", "Hard"][level - 1]}
+            </button>
+          ))}
+
+          <div style={{ marginTop: "20px" }}>
+            <button onClick={() => setTestStarted(true)} style={styles.button}>
+              Start Test ({["Easy", "Medium", "Hard"][difficulty - 1]})
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (words.length === 0) {
-    return <div>Loading...</div>
+    return <div style={styles.center}>Preparing test...</div>
   }
 
   const currentWord = words[currentIndex]
 
   if (!currentWord) {
     return (
-      <div>
+      <div style={styles.center}>
+        <div style={styles.card}>
+          <h1>🎉 Test Complete!</h1>
+          <h2>
+            Your Score: {score} / {TOTAL_QUESTIONS}
+          </h2>
+          <p>Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}</p>
 
-        <div style={styles.center}>
-          <div style={styles.card}>
-            <h1>🎉 Test Complete!</h1>
-            <h2>
-              Your Score: {score} / {TOTAL_QUESTIONS}
-            </h2>
-
-            <button onClick={restartTest} style={styles.button}>
-              Restart
-            </button>
-          </div>
+          <button onClick={restartTest} style={styles.button}>
+            Restart
+          </button>
         </div>
       </div>
     )
@@ -283,106 +381,105 @@ export default function SpellingPage() {
   const progress = ((currentIndex + 1) / TOTAL_QUESTIONS) * 100
 
   return (
-    <div>
-    
-      <div style={styles.center}>
-        <div style={styles.card}>
-          <h2>
-            Question {currentIndex + 1} / {TOTAL_QUESTIONS}
-          </h2>
+    <div style={styles.center}>
+      <div style={styles.card}>
+        <h2>
+          Question {currentIndex + 1} / {TOTAL_QUESTIONS}
+        </h2>
 
-          <div style={styles.progressBar}>
-            <div style={{ ...styles.progressFill, width: `${progress}%` }} />
-          </div>
+        <p>Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}</p>
 
-          <div style={styles.toggleRow}>
-            <button
-              onClick={() => setTimerEnabled((prev) => !prev)}
-              style={styles.smallButton}
-            >
-              Timer: {timerEnabled ? "ON" : "OFF"}
-            </button>
+        <div style={styles.progressBar}>
+          <div style={{ ...styles.progressFill, width: `${progress}%` }} />
+        </div>
 
-            <button
-              onClick={() => setVoiceEnabled((prev) => !prev)}
-              style={styles.smallButton}
-            >
-              Voice: {voiceEnabled ? "ON" : "OFF"}
-            </button>
-
-            <button
-              onClick={() => speakWord(correctAnswer)}
-              style={styles.smallButton}
-            >
-              🔊 Repeat
-            </button>
-          </div>
-
-          {timerEnabled && <p>⏳ Time left: {timeLeft}s</p>}
-
-          <h3>Choose the correct spelling:</h3>
-
+        <div style={styles.toggleRow}>
           <button
-            onClick={handleHint}
-            style={{
-              padding: "8px 16px",
-              marginTop: "10px",
-              cursor: "pointer",
-            }}
+            onClick={() => setTimerEnabled((prev) => !prev)}
+            style={styles.smallButton}
           >
-            💡 Hint
+            Timer: {timerEnabled ? "ON" : "OFF"}
           </button>
 
-          {showHint && (
-            <div
-              style={{
-                marginTop: "12px",
-                marginBottom: "12px",
-                padding: "10px",
-                backgroundColor: "#f3f4f6",
-                borderRadius: "8px",
-              }}
-            >
-              <strong>Definition:</strong> {currentWord.definition}
-            </div>
-          )}
+          <button
+            onClick={() => setVoiceEnabled((prev) => !prev)}
+            style={styles.smallButton}
+          >
+            Voice: {voiceEnabled ? "ON" : "OFF"}
+          </button>
 
-          <div>
-            {options.map((opt, i) => {
-              let bg = "#f3f4f6"
-
-              if (selected) {
-                if (opt === correctAnswer) bg = "#b9fbc0"
-                else if (opt === selected) bg = "#ffadad"
-              }
-
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleAnswer(opt)}
-                  disabled={!!selected}
-                  style={{
-                    ...styles.option,
-                    backgroundColor: bg,
-                    cursor: selected ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {opt}
-                </button>
-              )
-            })}
-          </div>
-
-          {feedback && <p style={{ marginTop: 10 }}>{feedback}</p>}
-
-          {feedback && (
-            <button onClick={nextQuestion} style={styles.button}>
-              Next →
-            </button>
-          )}
-
-          <p style={{ marginTop: 15 }}>Score: {score}</p>
+          <button
+            onClick={() => speakWord(correctAnswer)}
+            style={styles.smallButton}
+          >
+            🔊 Repeat
+          </button>
         </div>
+
+        {timerEnabled && <p>⏳ Time left: {timeLeft}s</p>}
+
+        <h3>Choose the correct spelling:</h3>
+
+        <button
+          onClick={handleHint}
+          style={{
+            padding: "8px 16px",
+            marginTop: "10px",
+            cursor: "pointer",
+          }}
+        >
+          💡 Hint
+        </button>
+
+        {showHint && (
+          <div
+            style={{
+              marginTop: "12px",
+              marginBottom: "12px",
+              padding: "10px",
+              backgroundColor: "#f3f4f6",
+              borderRadius: "8px",
+            }}
+          >
+            <strong>Definition:</strong> {currentWord.definition}
+          </div>
+        )}
+
+        <div>
+          {options.map((opt, i) => {
+            let bg = "#f3f4f6"
+
+            if (selected) {
+              if (opt === correctAnswer) bg = "#b9fbc0"
+              else if (opt === selected) bg = "#ffadad"
+            }
+
+            return (
+              <button
+                key={i}
+                onClick={() => handleAnswer(opt)}
+                disabled={!!selected}
+                style={{
+                  ...styles.option,
+                  backgroundColor: bg,
+                  cursor: selected ? "not-allowed" : "pointer",
+                }}
+              >
+                {opt}
+              </button>
+            )
+          })}
+        </div>
+
+        {feedback && <p style={{ marginTop: 10 }}>{feedback}</p>}
+
+        {feedback && (
+          <button onClick={nextQuestion} style={styles.button}>
+            Next →
+          </button>
+        )}
+
+        <p style={{ marginTop: 15 }}>Score: {score}</p>
       </div>
     </div>
   )

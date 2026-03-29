@@ -3,7 +3,6 @@
 import { supabase } from "../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 
 export default function Home() {
   const router = useRouter()
@@ -249,41 +248,38 @@ const speakWord = (text: string) => {
   if (loadingUser) return <p>Checking login...</p>
   if (!user) return null
 
-  // ---------- Start Screen ----------
+    // ---------- Start Screen ----------
   if (!testStarted) {
     return (
-      <div style={{ padding: "20px", maxWidth: "600px", margin: "auto", textAlign: "center" }}>
+      <div style={styles.center}>
+        <div style={styles.card}>
+          <h1 style={{ marginBottom: "10px" }}>11+ Vocabulary Test</h1>
 
-        <h1>11+ Vocabulary Trainer</h1>
+          <p style={{ marginBottom: "18px", fontSize: "18px" }}>
+            Select difficulty:
+          </p>
 
-        <p>Select difficulty:</p>
+          <div style={styles.difficultyRow}>
+            {[1, 2, 3].map((level) => (
+              <button
+                key={level}
+                onClick={() => setDifficulty(level)}
+                style={{
+                  ...styles.smallButton,
+                  backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
+                  color: "black",
+                  fontWeight: difficulty === level ? "bold" : "normal",
+                }}
+              >
+                {["Easy", "Medium", "Hard"][level - 1]}
+              </button>
+            ))}
+          </div>
 
-        {[1, 2, 3].map((level) => (
-          <button
-            key={level}
-            onClick={() => setDifficulty(level)}
-            style={{ margin: "5px", padding: "10px 20px" }}
-          >
-            {["Easy", "Medium", "Hard"][level - 1]}
+          <button onClick={() => setTestStarted(true)} style={styles.button}>
+            Start Test ({["Easy", "Medium", "Hard"][difficulty - 1]})
           </button>
-        ))}
-
-        <br /><br />
-
-        <button
-          onClick={() => setTestStarted(true)}
-          style={{
-            padding: "10px 20px",
-            fontSize: "16px",
-            cursor: "pointer",
-            borderRadius: "4px",
-            backgroundColor: "#0070f3",
-            color: "white",
-            border: "none",
-          }}
-        >
-          Start Test ({["Easy", "Medium", "Hard"][difficulty - 1]})
-        </button>
+        </div>
       </div>
     )
   }
@@ -423,4 +419,47 @@ onClick={() => router.push("/home")}
       </div>
     </>
   )
+}
+const styles: any = {
+  center: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "80vh",
+    padding: "20px",
+  },
+  card: {
+    width: "100%",
+    maxWidth: "550px",
+    background: "white",
+    padding: "30px",
+    borderRadius: "16px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+    textAlign: "center",
+  },
+  difficultyRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "24px",
+  },
+  button: {
+    marginTop: "10px",
+    padding: "10px 20px",
+    borderRadius: "10px",
+    border: "none",
+    background: "#4f46e5",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  smallButton: {
+    padding: "10px 18px",
+    borderRadius: "10px",
+    border: "none",
+    background: "#e5e7eb",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
 }

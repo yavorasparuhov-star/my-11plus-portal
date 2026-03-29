@@ -46,11 +46,14 @@ export default function SpellingReviewPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error loading spelling review:", error)
-      setLoading(false)
-      return
-    }
+if (error) {
+  console.error("Error saving spelling review:", {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  })
+}
 
     const reviewData = (data || []) as SpellingReviewRow[]
 
@@ -88,16 +91,28 @@ export default function SpellingReviewPage() {
     setLoading(false)
   }
 
-  async function removeWord(id: string) {
-    const { error } = await supabase.from("spelling_review").delete().eq("id", id)
+async function removeWord(word: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-    if (error) {
-      console.error("Error deleting spelling review word:", error)
-      return
-    }
+  if (!user) return
 
-    setReviewWords((prev) => prev.filter((row) => row.id !== id))
+  const { error } = await supabase
+    .from("spelling_review")
+    .delete()
+    .eq("user_id", user.id)
+    .ilike("word", word)
+
+  if (error) {
+    console.error("Error deleting spelling review word:", error)
+    return
   }
+
+  setReviewWords((prev) =>
+    prev.filter((row) => row.word.toLowerCase() !== word.toLowerCase())
+  )
+}
 
   const uniqueWords = Array.from(
     new Map(reviewWords.map((item) => [item.word.toLowerCase(), item])).values()
@@ -221,12 +236,12 @@ export default function SpellingReviewPage() {
                     : "Not set"}
                 </p>
 
-                <button
-                  onClick={() => removeWord(row.id)}
-                  style={styles.button}
-                >
-                  Remove from review
-                </button>
+<button
+  onClick={() => removeWord(row.word)}
+  style={styles.button}
+>
+  Remove from review
+</button>
               </div>
             ))}
           </div>
