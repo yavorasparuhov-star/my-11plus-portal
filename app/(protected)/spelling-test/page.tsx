@@ -2,15 +2,13 @@
 
 import { supabase } from "../../../lib/supabaseClient"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function SpellingPage() {
   const [user, setUser] = useState<any>(null)
   const [loadingUser, setLoadingUser] = useState(true)
 
-  const [allWords, setAllWords] = useState<any[]>([])
-  const [words, setWords] = useState<any[]>([])
-
+ const [words, setWords] = useState<any[]>([])
   const [difficulty, setDifficulty] = useState(1)
   const [testStarted, setTestStarted] = useState(false)
 
@@ -27,8 +25,11 @@ export default function SpellingPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [timeLeft, setTimeLeft] = useState(15)
 
-  const router = useRouter()
-  const TOTAL_QUESTIONS = 10
+const router = useRouter()
+const searchParams = useSearchParams()
+const reviewMode = searchParams.get("mode") === "review"
+const TOTAL_QUESTIONS = 10
+const totalQuestions = words.length > 0 ? words.length : TOTAL_QUESTIONS
 
   // ---------- Auth ----------
   useEffect(() => {
@@ -54,28 +55,27 @@ export default function SpellingPage() {
     }
   }, [loadingUser, user, router])
 
-  // ---------- Fetch all words ----------
-  useEffect(() => {
-    async function fetchWords() {
-      const { data, error } = await supabase.from("words").select("*")
+   async function fetchWords() {
+    const { data, error } = await supabase.from("words").select("*")
 
-      if (error) {
-        console.error(error)
-        return
-      }
-
-      setAllWords(data || [])
+    if (error) {
+      console.error(error)
+      return
     }
 
-    fetchWords()
-  }, [])
+    const allWords = data || []
 
-  // ---------- Prepare spelling test when started ----------
-  useEffect(() => {
-    if (!testStarted || !user || allWords.length === 0) return
+    let selectedWords: any[] = []
 
-    const filtered = allWords.filter((w) => w.difficulty === difficulty)
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5)
+    if (reviewMode) {
+      const saved = localStorage.getItem("spelling_review_word_ids")
+      const reviewIds: number[] = saved ? JSON.parse(saved) : []
+      selectedWords = allWords.filter((w) => reviewIds.includes(w.id))
+    } else {
+      selectedWords = allWords.filter((w) => w.difficulty === difficulty)
+    }
+
+    const shuffled = [...selectedWords].sort(() => Math.random() - 0.5)
 
     setWords(shuffled.slice(0, TOTAL_QUESTIONS))
     setCurrentIndex(0)
@@ -86,8 +86,14 @@ export default function SpellingPage() {
     setShowHint(false)
     setTimeLeft(15)
     setProgressSaved(false)
-  }, [testStarted, difficulty, allWords, user])
+  }
 
+   // ---------- Load words when user/settings change ----------
+  useEffect(() => {
+    if (user) {
+      fetchWords()
+    }
+  }, [user, difficulty, reviewMode])
   // ---------- Local storage ----------
   useEffect(() => {
     const savedTimer = localStorage.getItem("spelling_timer_enabled")
@@ -118,11 +124,14 @@ export default function SpellingPage() {
   }, [words, currentIndex])
 
   // ---------- Speak current word ----------
-  useEffect(() => {
-    if (words.length > 0 && words[currentIndex] && voiceEnabled) {
-      speakWord(words[currentIndex].word)
-    }
-  }, [words, currentIndex, voiceEnabled])
+useEffect(() => {
+  if (!testStarted) return
+  if (!voiceEnabled) return
+  if (words.length === 0) return
+  if (!words[currentIndex]) return
+
+  speakWord(words[currentIndex].word)
+}, [testStarted, words, currentIndex, voiceEnabled])
 
   // ---------- Timer ----------
   useEffect(() => {
@@ -195,19 +204,19 @@ export default function SpellingPage() {
     setShowHint(false)
   }
 
-  async function saveSpellingProgress(finalScore: number) {
-    if (!user) return
+async function saveSpellingProgress(finalScore: number) {
+  if (!user || words.length === 0) return
 
-    const successRate = Math.round((finalScore / TOTAL_QUESTIONS) * 100)
+  const successRate = Math.round((finalScore / words.length) * 100)
 
-    const { error } = await supabase.from("spelling_progress").insert([
-      {
-        user_id: user.id,
-        total_words_practiced: TOTAL_QUESTIONS,
-        correct_answers: finalScore,
-        success_rate: successRate,
-      },
-    ])
+  const { error } = await supabase.from("spelling_progress").insert([
+    {
+      user_id: user.id,
+      total_words_practiced: words.length,
+      correct_answers: finalScore,
+      success_rate: successRate,
+    },
+  ])
 
     if (error) {
       console.error("Error saving spelling progress:", error)
@@ -246,39 +255,68 @@ async function saveWrongSpellingReview(wordItem: any) {
     })
   }
 }
+async function removeWordFromReview(wordId: number) {
+  if (!user) return
 
+  const { error } = await supabase
+    .from("spelling_review")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("word_id", wordId)
+
+  if (error) {
+    console.error("Error removing spelling review word:", error)
+  }
+}
   function handleHint() {
     if (hintUsed || selected) return
     setShowHint(true)
     setHintUsed(true)
   }
 
-  async function handleAnswer(option: string) {
-    if (selected) return
+ async function handleAnswer(option: string) {
+  if (selected) return
 
-    const currentWordItem = words[currentIndex]
-    const correct = currentWordItem.word
-    setSelected(option)
+  const currentWordItem = words[currentIndex]
+  const correct = currentWordItem.word
+  setSelected(option)
 
-    if (option === correct) {
-      setFeedback("Correct ✅")
-      setScore((prev) => prev + 1)
-    } else {
-      setFeedback(`Incorrect ❌ (Correct: ${correct})`)
+  if (option === correct) {
+    setFeedback("Correct ✅")
+    setScore((prev) => prev + 1)
+
+    if (reviewMode) {
+      await removeWordFromReview(currentWordItem.id)
+    }
+  } else {
+    setFeedback(`Incorrect ❌ (Correct: ${correct})`)
+
+    if (!reviewMode) {
       await saveWrongSpellingReview(currentWordItem)
     }
   }
 
+  setTimeout(() => {
+    nextQuestion()
+  }, 1500)
+}
+
   async function handleTimeout() {
-    if (selected || !words[currentIndex]) return
+  if (selected || !words[currentIndex]) return
 
-    const currentWordItem = words[currentIndex]
-    const correct = currentWordItem.word
-    setSelected("TIMEOUT")
-    setFeedback(`⏰ Time's up! Correct: ${correct}`)
+  const currentWordItem = words[currentIndex]
+  const correct = currentWordItem.word
+  setSelected("TIMEOUT")
+  setFeedback(`⏰ Time's up! Correct: ${correct}`)
 
+  if (!reviewMode) {
     await saveWrongSpellingReview(currentWordItem)
   }
+
+  setTimeout(() => {
+    nextQuestion()
+  }, 1500)
+}
 
   function nextQuestion() {
     if (currentIndex < words.length - 1) {
@@ -288,7 +326,11 @@ async function saveWrongSpellingReview(wordItem: any) {
     }
   }
 
-  function restartTest() {
+   function restartTest() {
+    if (reviewMode) {
+      localStorage.removeItem("spelling_review_word_ids")
+    }
+
     setTestStarted(false)
     setScore(0)
     setCurrentIndex(0)
@@ -325,69 +367,84 @@ async function saveWrongSpellingReview(wordItem: any) {
     return (
       <div style={styles.center}>
         <div style={styles.card}>
-          <h1>11+ Spelling Test</h1>
+<h1>{reviewMode ? "📝 Spelling Review Retry" : "11+ Spelling Test"}</h1>
 
-          <p>Select difficulty:</p>
+<p>{reviewMode ? "Practice your saved review words:" : "Select difficulty:"}</p>
 
-          {[1, 2, 3].map((level) => (
-            <button
-              key={level}
-              onClick={() => setDifficulty(level)}
-              style={{
-                ...styles.smallButton,
-                margin: "5px",
-                background: difficulty === level ? "#c7d2fe" : "#e5e7eb",
-              }}
-            >
-              {["Easy", "Medium", "Hard"][level - 1]}
-            </button>
-          ))}
+{!reviewMode &&
+  [1, 2, 3].map((level) => (
+    <button
+      key={level}
+      onClick={() => setDifficulty(level)}
+      style={{
+        ...styles.smallButton,
+        margin: "5px",
+        background: difficulty === level ? "#c7d2fe" : "#e5e7eb",
+      }}
+    >
+      {["Easy", "Medium", "Hard"][level - 1]}
+    </button>
+  ))}
 
           <div style={{ marginTop: "20px" }}>
-            <button onClick={() => setTestStarted(true)} style={styles.button}>
-              Start Test ({["Easy", "Medium", "Hard"][difficulty - 1]})
-            </button>
+<button onClick={() => setTestStarted(true)} style={styles.button}>
+  {reviewMode
+    ? "Start Review Retry"
+    : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
+</button>
           </div>
         </div>
       </div>
     )
   }
 
-  if (words.length === 0) {
-    return <div style={styles.center}>Preparing test...</div>
-  }
+  
+if (words.length === 0) {
+  return <div style={styles.center}>Preparing test...</div>
+}
 
-  const currentWord = words[currentIndex]
+const currentWord = words[currentIndex]
 
-  if (!currentWord) {
-    return (
-      <div style={styles.center}>
-        <div style={styles.card}>
-          <h1>🎉 Test Complete!</h1>
-          <h2>
-            Your Score: {score} / {TOTAL_QUESTIONS}
-          </h2>
-          <p>Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}</p>
+function getDifficultyLabel(value: number | null | undefined) {
+  if (value === 1) return "Easy"
+  if (value === 2) return "Medium"
+  if (value === 3) return "Hard"
+  return "Not set"
+}
 
-          <button onClick={restartTest} style={styles.button}>
-            Restart
-          </button>
-        </div>
+const displayedDifficulty = reviewMode
+  ? currentWord?.difficulty ?? words[0]?.difficulty ?? null
+  : difficulty
+
+if (!currentWord) {
+  return (
+    <div style={styles.center}>
+      <div style={styles.card}>
+        <h1>🎉 Test Complete!</h1>
+        <h2>
+          Your Score: {score} / {totalQuestions}
+        </h2>
+        <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
+
+        <button onClick={restartTest} style={styles.button}>
+          Restart
+        </button>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  const correctAnswer = currentWord.word
-  const progress = ((currentIndex + 1) / TOTAL_QUESTIONS) * 100
+const correctAnswer = currentWord.word
+const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
 
   return (
     <div style={styles.center}>
       <div style={styles.card}>
-        <h2>
-          Question {currentIndex + 1} / {TOTAL_QUESTIONS}
-        </h2>
+<h2>
+  Question {currentIndex + 1} / {totalQuestions}
+</h2>
 
-        <p>Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}</p>
+        <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
 
         <div style={styles.progressBar}>
           <div style={{ ...styles.progressFill, width: `${progress}%` }} />
@@ -473,12 +530,7 @@ async function saveWrongSpellingReview(wordItem: any) {
 
         {feedback && <p style={{ marginTop: 10 }}>{feedback}</p>}
 
-        {feedback && (
-          <button onClick={nextQuestion} style={styles.button}>
-            Next →
-          </button>
-        )}
-
+      
         <p style={{ marginTop: 15 }}>Score: {score}</p>
       </div>
     </div>

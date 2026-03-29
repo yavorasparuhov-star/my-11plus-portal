@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type SpellingReviewRow = {
@@ -20,6 +21,7 @@ type WordRow = {
 }
 
 export default function SpellingReviewPage() {
+  const router = useRouter()
   const [reviewWords, setReviewWords] = useState<SpellingReviewRow[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
@@ -113,7 +115,16 @@ async function removeWord(word: string) {
     prev.filter((row) => row.word.toLowerCase() !== word.toLowerCase())
   )
 }
+function retryFilteredWords() {
+  const reviewWordIds = filteredWords
+    .map((row) => row.word_id)
+    .filter((id): id is number => id !== null)
 
+  if (reviewWordIds.length === 0) return
+
+  localStorage.setItem("spelling_review_word_ids", JSON.stringify(reviewWordIds))
+  router.push("/spelling-test?mode=review")
+}
   const uniqueWords = Array.from(
     new Map(reviewWords.map((item) => [item.word.toLowerCase(), item])).values()
   )
@@ -184,7 +195,14 @@ async function removeWord(word: string) {
             >
               Hard ({hardCount})
             </button>
-          </div>
+</div>
+           {filteredWords.length > 0 && (
+    <div style={styles.retryRow}>
+      <button onClick={retryFilteredWords} style={styles.actionButton}>
+        Retry filtered words
+      </button>
+    </div>
+  )}
         </div>
 
         {uniqueWords.length === 0 ? (
@@ -329,6 +347,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: "bold",
   },
+  retryRow: {
+  marginTop: "18px",
+},
+actionButton: {
+  padding: "10px 16px",
+  borderRadius: "10px",
+  border: "none",
+  background: "#e5e7eb",
+  color: "#111827",
+  cursor: "pointer",
+  fontWeight: 600,
+},
   message: {
     textAlign: "center",
     marginTop: "40px",
