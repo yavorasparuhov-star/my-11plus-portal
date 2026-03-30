@@ -98,6 +98,7 @@ export default function Header({ user, onLogout }: any) {
           <Link href="/review" style={linkStyle("/review")}>
             📚 Review
           </Link>
+          
         </div>
 
         {/* Desktop Right Side */}
@@ -111,51 +112,65 @@ export default function Header({ user, onLogout }: any) {
             zIndex: 2,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              background: "rgba(255,255,255,0.65)",
-              border: "1px solid rgba(0,0,0,0.05)",
-              padding: "8px 12px",
-              borderRadius: "999px",
-              maxWidth: "170px",
-            }}
-          >
-            <div
-              style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                background: "#86efac",
-                color: "#065f46",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 700,
-                fontSize: "13px",
-                flexShrink: 0,
-              }}
-            >
-              {user?.email?.[0]?.toUpperCase() || "U"}
-            </div>
-
-            <span
-  title={user?.email}
+          <Link
+  href="/profile"
   style={{
-    fontSize: "13px",
-    color: "#1f2937",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    maxWidth: "110px",
-    display: "inline-block",
+    textDecoration: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: "rgba(255,255,255,0.65)",
+    border: "1px solid rgba(0,0,0,0.05)",
+    padding: "8px 12px",
+    borderRadius: "999px",
+    maxWidth: "190px",
+    transition: "all 0.2s ease",
   }}
 >
-  {user?.email}
-</span>
-          </div>
+  <div
+    style={{
+      width: "30px",
+      height: "30px",
+      borderRadius: "50%",
+      background: "#86efac",
+      color: "#065f46",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 700,
+      fontSize: "13px",
+      flexShrink: 0,
+    }}
+  >
+    {(user?.user_metadata?.nickname?.[0] ||
+      user?.user_metadata?.first_name?.[0] ||
+      user?.email?.[0] ||
+      "U"
+    ).toUpperCase()}
+  </div>
+
+  <span
+    title={
+      user?.user_metadata?.nickname ||
+      user?.user_metadata?.first_name ||
+      user?.email
+    }
+    style={{
+      fontSize: "13px",
+      color: "#1f2937",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      maxWidth: "120px",
+      display: "inline-block",
+      fontWeight: 600,
+    }}
+  >
+    {user?.user_metadata?.nickname ||
+      user?.user_metadata?.first_name ||
+      user?.email}
+  </span>
+</Link>
 
           <button
             onClick={onLogout}
@@ -267,41 +282,44 @@ export default function Header({ user, onLogout }: any) {
                 gap: "12px",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    background: "#86efac",
-                    color: "#065f46",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    fontSize: "13px",
-                    flexShrink: 0,
-                  }}
-                >
-                  {user?.email?.[0]?.toUpperCase() || "U"}
-                </div>
+             <Link
+  href="/profile"
+  onClick={() => setMenuOpen(false)}
+  style={{
+    textDecoration: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  }}
+>
+  <div
+    style={{
+      width: "32px",
+      height: "32px",
+      borderRadius: "50%",
+      background: "#86efac",
+      color: "#065f46",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 700,
+      fontSize: "13px",
+      flexShrink: 0,
+    }}
+  >
+    {user?.email?.[0]?.toUpperCase() || "U"}
+  </div>
 
-                <span
-                  style={{
-                    fontSize: "14px",
-                    color: "#1f2937",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {user?.email}
-                </span>
-              </div>
+  <span
+    style={{
+      fontSize: "14px",
+      color: "#1f2937",
+      wordBreak: "break-all",
+    }}
+  >
+    {user?.email}
+  </span>
+</Link>
 
               <button
                 onClick={onLogout}

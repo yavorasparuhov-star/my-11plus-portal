@@ -9,24 +9,25 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+const [success, setSuccess] = useState<string | null>(null)
 
-  const handleResetPassword = async () => {
-    setLoading(true)
-    setError(null)
-    setMessage(null)
+ const handleResetPassword = async () => {
+  setLoading(true)
+  setError(null)
+  setSuccess(null)
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "http://localhost:3000/reset-password",
-    })
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  redirectTo: "http://localhost:3000/reset-password",
+})
 
-    if (error) {
-      setError(error.message)
-    } else {
-      setMessage("Password reset email sent. Please check your inbox.")
-    }
-
-    setLoading(false)
+  if (error) {
+    setError(error.message)
+  } else {
+    setSuccess("Email sent! Please check your inbox (and spam folder).")
   }
+
+  setLoading(false)
+}
 
   return (
     <div
@@ -124,28 +125,41 @@ export default function ForgotPasswordPage() {
             {message}
           </p>
         )}
-
-        <button
-          onClick={handleResetPassword}
-          disabled={loading}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: "10px",
-            border: "none",
-            background: "#d4f5d0",
-            color: "#065f46",
-            fontSize: "24px",
-            fontWeight: "600",
-            cursor: "pointer",
-            marginBottom: "20px",
-          }}
-        >
-          {loading ? "Sending..." : "Send Reset Link"}
-        </button>
-
+{success && (
+  <p
+    style={{
+      color: "#065f46",
+      background: "#d1fae5",
+      padding: "10px",
+      borderRadius: "8px",
+      marginBottom: "12px",
+      fontSize: "14px",
+    }}
+  >
+    {success}
+  </p>
+)}
+<button
+  onClick={handleResetPassword}
+  disabled={loading}
+  onMouseEnter={(e) => (e.currentTarget.style.background = "#bbf7d0")}
+  onMouseLeave={(e) => (e.currentTarget.style.background = "#d4f5d0")}
+  style={{
+    width: "100%",
+    padding: "14px",
+    borderRadius: "10px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    fontSize: "16px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    marginBottom: "12px",
+  }}
+>
+  {loading ? "Sending..." : "Send Reset Link"}
+</button>
         <div style={{ textAlign: "center" }}>
           <Link
             href="/login"
