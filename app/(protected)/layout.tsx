@@ -16,9 +16,9 @@ export default function ProtectedLayout({
 
   useEffect(() => {
     async function checkUser() {
-      const { data } = await supabase.auth.getUser()
+      const { data, error } = await supabase.auth.getUser()
 
-      if (!data.user) {
+      if (error || !data.user) {
         router.push("/login")
       } else {
         setUser(data.user)
@@ -28,6 +28,20 @@ export default function ProtectedLayout({
     }
 
     checkUser()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        router.push("/login")
+      } else {
+        setUser(session.user)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [router])
 
   async function handleLogout() {
@@ -41,6 +55,10 @@ export default function ProtectedLayout({
 
   if (loading) {
     return <div>Loading...</div>
+  }
+
+  if (!user) {
+    return null
   }
 
   return (

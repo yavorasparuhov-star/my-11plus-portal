@@ -49,12 +49,12 @@ const styles: any = {
     gap: "15px",
     marginTop: "20px",
   },
-  button: {
-    padding: "12px",
-    borderRadius: "10px",
-    background: "#4f46e5",
-    color: "white",
-    textDecoration: "none",
-    fontWeight: "bold",
-  },
+button: {
+  padding: "12px",
+  borderRadius: "10px",
+  background: "#d4f5d0",
+  color: "#065f46",
+  textDecoration: "none",
+  fontWeight: "bold",
+},
 }

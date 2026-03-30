@@ -10,18 +10,18 @@ export default function ProgressPage() {
         <p>Choose a category to track your performance:</p>
 
         <div style={styles.buttons}>
-  <Link href="/progress/vocabulary" style={styles.button}>
-    📘 Vocabulary Progress →
-  </Link>
+          <Link href="/progress/vocabulary" style={styles.button}>
+            📘 Vocabulary Progress →
+          </Link>
 
-  <Link href="/progress/spelling" style={styles.button}>
-    ✍️ Spelling Progress →
-  </Link>
+          <Link href="/progress/spelling" style={styles.button}>
+            ✍️ Spelling Progress →
+          </Link>
 
-  <Link href="/progress/comprehension" style={styles.button}>
-    📖 Comprehension Progress →
-  </Link>
-</div>
+          <Link href="/progress/comprehension" style={styles.button}>
+            📖 Comprehension Progress →
+          </Link>
+        </div>
       </div>
     </div>
   )
@@ -52,8 +52,8 @@ const styles: any = {
   button: {
     padding: "12px",
     borderRadius: "10px",
-    background: "#4f46e5",
-    color: "white",
+    background: "#d4f5d0",
+    color: "#065f46",
     textDecoration: "none",
     fontWeight: "bold",
   },

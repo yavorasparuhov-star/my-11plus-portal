@@ -3,34 +3,29 @@
 import { useState } from "react"
 import Link from "next/link"
 import { supabase } from "../../lib/supabaseClient"
-import { useRouter } from "next/navigation"
 
-export default function SignupPage() {
-  const router = useRouter()
-
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
 
-  const handleSignup = async () => {
+  const handleResetPassword = async () => {
     setLoading(true)
     setError(null)
+    setMessage(null)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "http://localhost:3000/reset-password",
     })
-
-    setLoading(false)
 
     if (error) {
       setError(error.message)
     } else {
-      alert("Account created! You can now log in.")
-      router.push("/login")
+      setMessage("Password reset email sent. Please check your inbox.")
     }
+
+    setLoading(false)
   }
 
   return (
@@ -57,22 +52,22 @@ export default function SignupPage() {
         <div style={{ textAlign: "center", marginBottom: "30px" }}>
           <h1
             style={{
-              fontSize: "42px",
+              fontSize: "40px",
               fontWeight: "700",
               marginBottom: "10px",
               color: "#111827",
             }}
           >
-            Create Account
+            Forgot Password
           </h1>
           <p
             style={{
-              fontSize: "22px",
+              fontSize: "20px",
               color: "#4b5563",
               margin: 0,
             }}
           >
-            Register for your 11+ learning account
+            Enter your email and we will send you a password reset link
           </p>
         </div>
 
@@ -106,57 +101,6 @@ export default function SignupPage() {
           />
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              color: "#374151",
-              fontSize: "16px",
-              fontWeight: "500",
-            }}
-          >
-            Password <span style={{ color: "red" }}>*</span>
-          </label>
-
-          <div style={{ position: "relative" }}>
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Create Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "16px",
-                paddingRight: "52px",
-                borderRadius: "10px",
-                border: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-                fontSize: "18px",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: "absolute",
-                right: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                fontSize: "18px",
-              }}
-            >
-              {showPassword ? "🙈" : "👁️"}
-            </button>
-          </div>
-        </div>
-
         {error && (
           <p
             style={{
@@ -169,41 +113,50 @@ export default function SignupPage() {
           </p>
         )}
 
+        {message && (
+          <p
+            style={{
+              color: "#065f46",
+              marginBottom: "16px",
+              fontSize: "15px",
+            }}
+          >
+            {message}
+          </p>
+        )}
+
         <button
-          onClick={handleSignup}
+          onClick={handleResetPassword}
           disabled={loading}
           onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
           style={{
             width: "100%",
             padding: "16px",
             borderRadius: "10px",
             border: "none",
-        background: "#d4f5d0",
-color: "#065f46",
-            fontSize: "28px",
-            fontWeight: "500",
+            background: "#d4f5d0",
+            color: "#065f46",
+            fontSize: "24px",
+            fontWeight: "600",
             cursor: "pointer",
-            marginBottom: "22px",
+            marginBottom: "20px",
           }}
         >
-          {loading ? "Creating..." : "Register"}
+          {loading ? "Sending..." : "Send Reset Link"}
         </button>
 
         <div style={{ textAlign: "center" }}>
-          <span style={{ color: "#111827", fontSize: "18px" }}>
-            Already have an account?{" "}
-          </span>
           <Link
             href="/login"
             style={{
-              color: "#065f46",
+              color: "#2563eb",
               textDecoration: "none",
               fontWeight: "500",
-              fontSize: "18px",
+              fontSize: "17px",
             }}
           >
-            Login
+            Back to Login
           </Link>
         </div>
       </div>
