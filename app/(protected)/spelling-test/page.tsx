@@ -38,6 +38,27 @@ export default function SpellingPage() {
     getUser()
   }, [])
 
+  useEffect(() => {
+    const savedTimer = localStorage.getItem("spelling_timer_enabled")
+    const savedVoice = localStorage.getItem("spelling_voice_enabled")
+
+    if (savedTimer !== null) {
+      setTimerEnabled(savedTimer === "true")
+    }
+
+    if (savedVoice !== null) {
+      setVoiceEnabled(savedVoice === "true")
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("spelling_timer_enabled", String(timerEnabled))
+  }, [timerEnabled])
+
+  useEffect(() => {
+    localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
+  }, [voiceEnabled])
+
   async function fetchWords() {
     const { data, error } = await supabase.from("words").select("*")
 
@@ -76,27 +97,6 @@ export default function SpellingPage() {
       fetchWords()
     }
   }, [user, difficulty, reviewMode])
-
-  useEffect(() => {
-    const savedTimer = localStorage.getItem("spelling_timer_enabled")
-    const savedVoice = localStorage.getItem("spelling_voice_enabled")
-
-    if (savedTimer !== null) {
-      setTimerEnabled(savedTimer === "true")
-    }
-
-    if (savedVoice !== null) {
-      setVoiceEnabled(savedVoice === "true")
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("spelling_timer_enabled", String(timerEnabled))
-  }, [timerEnabled])
-
-  useEffect(() => {
-    localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
-  }, [voiceEnabled])
 
   useEffect(() => {
     if (words.length > 0 && words[currentIndex]) {
@@ -139,12 +139,7 @@ export default function SpellingPage() {
   }, [currentIndex, timerEnabled, selected, words])
 
   useEffect(() => {
-    if (
-      user &&
-      words.length > 0 &&
-      currentIndex >= words.length &&
-      !progressSaved
-    ) {
+    if (user && words.length > 0 && currentIndex >= words.length && !progressSaved) {
       saveSpellingProgress(score)
     }
   }, [currentIndex, words.length, progressSaved, score, user])
@@ -326,6 +321,13 @@ export default function SpellingPage() {
     setWords([])
   }
 
+  function getDifficultyLabel(value: number | null | undefined) {
+    if (value === 1) return "Easy"
+    if (value === 2) return "Medium"
+    if (value === 3) return "Hard"
+    return "Not set"
+  }
+
   if (!user) {
     return <div>Loading...</div>
   }
@@ -338,28 +340,30 @@ export default function SpellingPage() {
 
           <p>{reviewMode ? "Practice your saved review words:" : "Select difficulty:"}</p>
 
-          {!reviewMode &&
-            [1, 2, 3].map((level) => (
-              <button
-                key={level}
-                onClick={() => setDifficulty(level)}
-                style={{
-                  ...styles.smallButton,
-                  margin: "5px",
-                  background: difficulty === level ? "#c7d2fe" : "#e5e7eb",
-                }}
-              >
-                {["Easy", "Medium", "Hard"][level - 1]}
-              </button>
-            ))}
+          {!reviewMode && (
+            <div style={styles.difficultyRow}>
+              {[1, 2, 3].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setDifficulty(level)}
+                  style={{
+                    ...styles.smallButton,
+                    backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
+                    color: "black",
+                    fontWeight: difficulty === level ? "bold" : "normal",
+                  }}
+                >
+                  {["Easy", "Medium", "Hard"][level - 1]}
+                </button>
+              ))}
+            </div>
+          )}
 
-          <div style={{ marginTop: "20px" }}>
-            <button onClick={() => setTestStarted(true)} style={styles.button}>
-              {reviewMode
-                ? "Start Review Retry"
-                : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
-            </button>
-          </div>
+          <button onClick={() => setTestStarted(true)} style={styles.button}>
+            {reviewMode
+              ? "Start Review Retry"
+              : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
+          </button>
         </div>
       </div>
     )
@@ -371,18 +375,10 @@ export default function SpellingPage() {
 
   const currentWord = words[currentIndex]
 
-  function getDifficultyLabel(value: number | null | undefined) {
-    if (value === 1) return "Easy"
-    if (value === 2) return "Medium"
-    if (value === 3) return "Hard"
-    return "Not set"
-  }
-
-  const displayedDifficulty = reviewMode
-    ? currentWord?.difficulty ?? words[0]?.difficulty ?? null
-    : difficulty
-
   if (!currentWord) {
+    const displayedDifficulty =
+      reviewMode ? words[0]?.difficulty ?? null : difficulty
+
     return (
       <div style={styles.center}>
         <div style={styles.card}>
@@ -392,117 +388,131 @@ export default function SpellingPage() {
           </h2>
           <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
 
-          <button onClick={restartTest} style={styles.button}>
-            Restart
-          </button>
+          <div style={{ marginTop: "20px" }}>
+            <button onClick={restartTest} style={{ ...styles.button, marginRight: "10px" }}>
+              Restart
+            </button>
+
+            <button
+              onClick={() => router.push("/home")}
+              style={{
+                ...styles.button,
+                backgroundColor: "#0070f3",
+              }}
+            >
+              🏠 Back to Home
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   const correctAnswer = currentWord.word
-  const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0
+  const displayedDifficulty =
+    reviewMode ? currentWord?.difficulty ?? words[0]?.difficulty ?? null : difficulty
 
   return (
-    <div style={styles.center}>
-      <div style={styles.card}>
-        <h2>
-          Question {currentIndex + 1} / {totalQuestions}
-        </h2>
-
-        <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
-
-        <div style={styles.progressBar}>
-          <div style={{ ...styles.progressFill, width: `${progress}%` }} />
+    <div style={styles.page}>
+      <div style={styles.headerRow}>
+        <div style={styles.headerLeft}>
+          <h1 style={styles.title}>Spelling Test</h1>
+          <p style={styles.metaText}>
+            Question {currentIndex + 1} / {totalQuestions}
+          </p>
+          <p style={styles.metaText}>
+            Difficulty: {getDifficultyLabel(displayedDifficulty)}
+          </p>
+          {timerEnabled && <p style={styles.metaText}>Word Timer: {timeLeft}s</p>}
         </div>
 
-        <div style={styles.toggleRow}>
-          <button
-            onClick={() => setTimerEnabled((prev) => !prev)}
-            style={styles.smallButton}
-          >
-            Timer: {timerEnabled ? "ON" : "OFF"}
-          </button>
-
+        <div style={styles.headerButtons}>
           <button
             onClick={() => setVoiceEnabled((prev) => !prev)}
-            style={styles.smallButton}
+            style={{
+              ...styles.controlButton,
+              backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
+              color: voiceEnabled ? "white" : "black",
+            }}
           >
-            Voice: {voiceEnabled ? "ON" : "OFF"}
+            🔊 Hear: {voiceEnabled ? "ON" : "OFF"}
           </button>
 
           <button
             onClick={() => speakWord(correctAnswer)}
-            style={styles.smallButton}
+            style={styles.controlButton}
           >
-            🔊 Repeat
+            Repeat
           </button>
-        </div>
 
-        {timerEnabled && <p>⏳ Time left: {timeLeft}s</p>}
+          <button
+            onClick={handleHint}
+            style={styles.controlButton}
+          >
+            💡 Hint
+          </button>
 
-        <h3>Choose the correct spelling:</h3>
-
-        <button
-          onClick={handleHint}
-          style={{
-            padding: "8px 16px",
-            marginTop: "10px",
-            cursor: "pointer",
-          }}
-        >
-          💡 Hint
-        </button>
-
-        {showHint && (
-          <div
+          <button
+            onClick={() => setTimerEnabled((prev) => !prev)}
             style={{
-              marginTop: "12px",
-              marginBottom: "12px",
-              padding: "10px",
-              backgroundColor: "#f3f4f6",
-              borderRadius: "8px",
+              ...styles.controlButton,
+              backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
+              color: timerEnabled ? "white" : "black",
             }}
           >
-            <strong>Definition:</strong> {currentWord.definition}
-          </div>
-        )}
-
-        <div>
-          {options.map((opt, i) => {
-            let bg = "#f3f4f6"
-
-            if (selected) {
-              if (opt === correctAnswer) bg = "#b9fbc0"
-              else if (opt === selected) bg = "#ffadad"
-            }
-
-            return (
-              <button
-                key={i}
-                onClick={() => handleAnswer(opt)}
-                disabled={!!selected}
-                style={{
-                  ...styles.option,
-                  backgroundColor: bg,
-                  cursor: selected ? "not-allowed" : "pointer",
-                }}
-              >
-                {opt}
-              </button>
-            )
-          })}
+            Timer: {timerEnabled ? "ON" : "OFF"}
+          </button>
         </div>
-
-        {feedback && <p style={{ marginTop: 10 }}>{feedback}</p>}
-
-        <p style={{ marginTop: 15 }}>Score: {score}</p>
       </div>
+
+      <div style={styles.wordArea}>
+        <p style={styles.promptText}>Choose the correct spelling:</p>
+      </div>
+
+      {showHint && (
+        <p style={styles.hintText}>
+          <strong>Definition:</strong> {currentWord.definition}
+        </p>
+      )}
+
+      <div style={{ marginTop: "20px" }}>
+        {options.map((opt, i) => {
+          let bg = "#f3f4f6"
+
+          if (selected) {
+            if (opt === correctAnswer) bg = "#22c55e"
+            else if (opt === selected) bg = "#ef4444"
+          }
+
+          return (
+            <button
+              key={i}
+              onClick={() => handleAnswer(opt)}
+              disabled={!!selected}
+              style={{
+                ...styles.answerButton,
+                backgroundColor: bg,
+                color: selected && (opt === correctAnswer || opt === selected) ? "white" : "black",
+                cursor: selected ? "not-allowed" : "pointer",
+              }}
+            >
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+
+      {feedback && <p style={styles.feedbackText}>{feedback}</p>}
     </div>
   )
 }
 
 const styles: any = {
+  page: {
+    padding: "20px",
+    maxWidth: "900px",
+    margin: "0 auto",
+  },
   center: {
     display: "flex",
     justifyContent: "center",
@@ -519,50 +529,103 @@ const styles: any = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
     textAlign: "center",
   },
-  toggleRow: {
+  difficultyRow: {
     display: "flex",
     justifyContent: "center",
-    gap: "10px",
+    gap: "12px",
     flexWrap: "wrap",
-    margin: "15px 0",
-  },
-  option: {
-    display: "block",
-    width: "100%",
-    margin: "10px 0",
-    padding: "12px",
-    borderRadius: "10px",
-    border: "none",
-    fontSize: "16px",
-    transition: "all 0.2s ease",
+    marginBottom: "24px",
   },
   button: {
-    marginTop: "15px",
+    marginTop: "10px",
     padding: "10px 20px",
     borderRadius: "10px",
     border: "none",
     background: "#4f46e5",
     color: "white",
     cursor: "pointer",
+    fontSize: "16px",
   },
   smallButton: {
-    padding: "8px 14px",
+    padding: "10px 18px",
     borderRadius: "10px",
     border: "none",
     background: "#e5e7eb",
     cursor: "pointer",
+    fontSize: "16px",
   },
-  progressBar: {
+  headerRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "20px",
+    marginBottom: "30px",
+    flexWrap: "wrap",
+  },
+  headerLeft: {
+    flex: 1,
+    minWidth: "260px",
+  },
+  title: {
+    margin: "0 0 10px 0",
+    fontSize: "32px",
+  },
+  metaText: {
+    margin: "6px 0",
+    fontSize: "24px",
+  },
+  headerButtons: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 140px)",
+    gap: "10px",
+    justifyContent: "end",
+  },
+  controlButton: {
+    width: "140px",
+    height: "44px",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#374151",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wordArea: {
+    textAlign: "center",
+    marginBottom: "20px",
+  },
+  promptText: {
+    fontSize: "36px",
+    fontWeight: "bold",
+    margin: "10px 0 20px 0",
+  },
+  hintText: {
+    textAlign: "center",
+    fontStyle: "italic",
+    marginBottom: "20px",
+    fontSize: "30px",
+    color: "#066e0b",
+    lineHeight: "1.5",
+    maxWidth: "800px",
+    margin: "0 auto 20px auto",
+  },
+  answerButton: {
+    display: "block",
     width: "100%",
-    height: "10px",
-    background: "#e5e7eb",
-    borderRadius: "5px",
-    margin: "15px 0",
+    marginBottom: "12px",
+    padding: "18px",
+    fontSize: "28px",
+    borderRadius: "12px",
+    border: "none",
+    cursor: "pointer",
   },
-  progressFill: {
-    height: "100%",
-    background: "#4f46e5",
-    borderRadius: "5px",
-    transition: "width 0.3s ease",
+  feedbackText: {
+    marginTop: "18px",
+    textAlign: "center",
+    fontSize: "22px",
+    fontWeight: "bold",
   },
 }

@@ -15,7 +15,7 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState(1)
   const [practiceResults, setPracticeResults] = useState<any[]>([])
   const [timer, setTimer] = useState(15)
-  const [totalTimer, setTotalTimer] = useState(60)
+  const [totalTimer, setTotalTimer] = useState(90)
   const [isTimerActive, setIsTimerActive] = useState(false)
   const [testCompleted, setTestCompleted] = useState(false)
   const [testStarted, setTestStarted] = useState(false)
@@ -25,6 +25,9 @@ export default function Home() {
   const [options, setOptions] = useState<any[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
+
+  const [voiceEnabled, setVoiceEnabled] = useState(true)
+  const [timerEnabled, setTimerEnabled] = useState(true)
 
   const currentWord = testWords[currentIndex] || null
 
@@ -37,6 +40,19 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    const savedVoice = localStorage.getItem("vocabulary_voice_enabled")
+    const savedTimer = localStorage.getItem("vocabulary_timer_enabled")
+
+    if (savedVoice !== null) {
+      setVoiceEnabled(savedVoice === "true")
+    }
+
+    if (savedTimer !== null) {
+      setTimerEnabled(savedTimer === "true")
+    }
+  }, [])
+
+  useEffect(() => {
     async function fetchWords() {
       const { data, error } = await supabase.from("words").select().order("id")
       if (error) console.error(error)
@@ -46,14 +62,13 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    if (!user || !testStarted) return
+    if (!user || !testStarted || words.length === 0) return
 
     let selectedWords: any[] = []
 
     if (reviewMode) {
       const saved = localStorage.getItem("vocabulary_review_word_ids")
       const reviewIds: number[] = saved ? JSON.parse(saved) : []
-
       selectedWords = words.filter((w) => reviewIds.includes(w.id))
     } else {
       selectedWords = words.filter((w) => w.difficulty === difficulty)
@@ -68,8 +83,11 @@ export default function Home() {
     setProgressSaved(false)
     setTimer(15)
     setTotalTimer(90)
-    setIsTimerActive(shuffled.length > 0)
-  }, [difficulty, words, user, testStarted, reviewMode])
+    setIsTimerActive(timerEnabled && shuffled.length > 0)
+    setSelectedAnswer(null)
+    setShowHint(false)
+    setIsAnswerLocked(false)
+  }, [difficulty, words, user, testStarted, reviewMode, timerEnabled])
 
   function generateOptions(correctWord: any, allWords: any[]) {
     const incorrect = allWords
@@ -90,7 +108,24 @@ export default function Home() {
   }, [currentWord, words])
 
   useEffect(() => {
-    if (!isTimerActive) return
+    if (!currentWord || !voiceEnabled || !testStarted || testCompleted) return
+    speakWord(currentWord.word)
+  }, [currentWord, voiceEnabled, testStarted, testCompleted])
+
+  useEffect(() => {
+    if (!timerEnabled) {
+      setIsTimerActive(false)
+      return
+    }
+
+    if (!testStarted || testCompleted || !currentWord) return
+    if (selectedAnswer !== null) return
+
+    setIsTimerActive(true)
+  }, [timerEnabled, testStarted, testCompleted, currentWord, selectedAnswer])
+
+  useEffect(() => {
+    if (!isTimerActive || !timerEnabled) return
 
     if (timer === 0) {
       setIsTimerActive(false)
@@ -103,10 +138,10 @@ export default function Home() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isTimerActive, timer])
+  }, [isTimerActive, timer, timerEnabled])
 
   useEffect(() => {
-    if (!isTimerActive) return
+    if (!isTimerActive || !timerEnabled) return
 
     if (totalTimer === 0) {
       setTestCompleted(true)
@@ -119,7 +154,7 @@ export default function Home() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isTimerActive, totalTimer])
+  }, [isTimerActive, totalTimer, timerEnabled])
 
   function handleAnswer(option: any) {
     if (isAnswerLocked) return
@@ -137,7 +172,7 @@ export default function Home() {
     setTimeout(() => {
       handleNext(correct)
       setSelectedAnswer(null)
-    }, 2500)
+    }, 1800)
   }
 
   async function removeWordFromReview(wordId: number) {
@@ -200,7 +235,7 @@ export default function Home() {
           total_words_practiced: totalWordsPracticed,
           correct_answers: correctAnswers,
           success_rate: successRate,
-           difficulty: difficulty,
+          difficulty: difficulty,
         },
       ])
 
@@ -225,7 +260,7 @@ export default function Home() {
     setSelectedAnswer(null)
     setShowHint(false)
     setIsAnswerLocked(false)
-    setIsTimerActive(true)
+    setIsTimerActive(timerEnabled)
   }
 
   const restartTest = () => {
@@ -250,9 +285,30 @@ export default function Home() {
     if (typeof window === "undefined") return
     if (!("speechSynthesis" in window)) return
 
+    window.speechSynthesis.cancel()
+
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = "en-GB"
-    speechSynthesis.speak(utterance)
+    utterance.rate = 0.95
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const toggleVoice = () => {
+    const newValue = !voiceEnabled
+    setVoiceEnabled(newValue)
+    localStorage.setItem("vocabulary_voice_enabled", String(newValue))
+  }
+
+  const toggleTimer = () => {
+    const newValue = !timerEnabled
+    setTimerEnabled(newValue)
+    localStorage.setItem("vocabulary_timer_enabled", String(newValue))
+
+    if (!newValue) {
+      setIsTimerActive(false)
+    } else if (!testCompleted && testStarted && currentWord && selectedAnswer === null) {
+      setIsTimerActive(true)
+    }
   }
 
   if (!user) return <p>Loading...</p>
@@ -298,69 +354,73 @@ export default function Home() {
     )
   }
 
-  if (!testWords.length) return <p>Preparing test...</p>
+  if (!testWords.length) return <p style={{ padding: "20px" }}>Preparing test...</p>
 
   return (
-    <div style={{ padding: "20px", maxWidth: "600px", margin: "auto" }}>
-      <h1>Vocabulary Test</h1>
-
-      <p>
-        Question {Math.min(currentIndex + 1, testWords.length)} / {testWords.length}
-      </p>
-      <p>
-        Word Timer: {timer}s | Total: {totalTimer}s
-      </p>
-
+    <div style={styles.page}>
       {!testCompleted && currentWord && (
         <>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "15px",
-              marginBottom: "10px",
-            }}
-          >
-            <h2 style={{ fontSize: "48px", margin: 0 }}>{currentWord.word}</h2>
+          <div style={styles.headerRow}>
+            <div style={styles.headerLeft}>
+              <h1 style={styles.title}>Vocabulary Test</h1>
+              <p style={styles.metaText}>
+                Question {Math.min(currentIndex + 1, testWords.length)} / {testWords.length}
+              </p>
+              <p style={styles.metaText}>
+                Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}
+              </p>
+              {timerEnabled && (
+                <p style={styles.metaText}>
+                  Word Timer: {timer}s | Total: {totalTimer}s
+                </p>
+              )}
+            </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div style={styles.headerButtons}>
               <button
-                onClick={() => setShowHint(true)}
+                onClick={toggleVoice}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: "4px",
-                  border: "none",
-                  backgroundColor: "#555",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: "12px",
+                  ...styles.controlButton,
+                  backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
+                  color: voiceEnabled ? "white" : "black",
                 }}
+              >
+                🔊 Hear: {voiceEnabled ? "ON" : "OFF"}
+              </button>
+
+              <button
+                onClick={() => currentWord && speakWord(currentWord.word)}
+                style={styles.controlButton}
+              >
+                Repeat
+              </button>
+
+              <button
+                onClick={() => setShowHint((prev) => !prev)}
+                style={styles.controlButton}
               >
                 💡 Hint
               </button>
 
               <button
-                onClick={() => speakWord(currentWord.word)}
+                onClick={toggleTimer}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: "4px",
-                  border: "none",
-                  backgroundColor: "#333",
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: "12px",
+                  ...styles.controlButton,
+                  backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
+                  color: timerEnabled ? "white" : "black",
                 }}
               >
-                🔊 Hear
+                Timer: {timerEnabled ? "ON" : "OFF"}
               </button>
             </div>
           </div>
 
+          <div style={styles.wordArea}>
+            <h2 style={styles.word}>{currentWord.word}</h2>
+          </div>
+
           {showHint && currentWord?.example_sentence && (
-            <p style={{ textAlign: "center", fontStyle: "italic", marginBottom: "15px" }}>
-              {currentWord.example_sentence}
-            </p>
+            <p style={styles.hintText}>{currentWord.example_sentence}</p>
           )}
 
           <div style={{ marginTop: "20px" }}>
@@ -368,26 +428,22 @@ export default function Home() {
               const isSelected = selectedAnswer === option.id
               const isCorrect = option.id === currentWord.id
 
-              let bg = "#f0f0f0"
+              let bg = "#f3f4f6"
 
-              if (selectedAnswer) {
-                if (isCorrect) bg = "#28a745"
-                else if (isSelected) bg = "#dc3545"
+              if (selectedAnswer !== null) {
+                if (isCorrect) bg = "#22c55e"
+                else if (isSelected) bg = "#ef4444"
               }
 
               return (
                 <button
                   key={option.id}
                   onClick={() => handleAnswer(option)}
-                  disabled={!!selectedAnswer}
+                  disabled={selectedAnswer !== null}
                   style={{
-                    display: "block",
-                    width: "100%",
-                    marginBottom: "10px",
-                    padding: "14px",
-                    fontSize: "18px",
-                    borderRadius: "8px",
+                    ...styles.answerButton,
                     backgroundColor: bg,
+                    color: selectedAnswer !== null && (isCorrect || isSelected) ? "white" : "black",
                   }}
                 >
                   {option.definition}
@@ -406,21 +462,15 @@ export default function Home() {
           <p>Wrong: {practiceResults.filter((r) => !r.knewIt).length}</p>
 
           <div style={{ marginTop: "20px" }}>
-            <button
-              onClick={restartTest}
-              style={{ marginRight: "10px", padding: "10px 20px" }}
-            >
+            <button onClick={restartTest} style={{ ...styles.button, marginRight: "10px" }}>
               🔁 Restart Test
             </button>
 
             <button
               onClick={() => router.push("/home")}
               style={{
-                padding: "10px 20px",
+                ...styles.button,
                 backgroundColor: "#0070f3",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
               }}
             >
               🏠 Back to Home
@@ -433,6 +483,11 @@ export default function Home() {
 }
 
 const styles: any = {
+  page: {
+    padding: "20px",
+    maxWidth: "900px",
+    margin: "0 auto",
+  },
   center: {
     display: "flex",
     justifyContent: "center",
@@ -473,5 +528,73 @@ const styles: any = {
     background: "#e5e7eb",
     cursor: "pointer",
     fontSize: "16px",
+  },
+  headerRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "20px",
+    marginBottom: "30px",
+    flexWrap: "wrap",
+  },
+  headerLeft: {
+    flex: 1,
+    minWidth: "260px",
+  },
+  title: {
+    margin: "0 0 10px 0",
+    fontSize: "32px",
+  },
+  metaText: {
+    margin: "6px 0",
+    fontSize: "24px",
+  },
+ headerButtons: {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, 140px)",
+  gap: "10px",
+  justifyContent: "end",
+},
+
+controlButton: {
+  width: "140px",
+  height: "44px",
+  borderRadius: "6px",
+  border: "none",
+  backgroundColor: "#374151",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "16px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+},
+  wordArea: {
+    textAlign: "center",
+    marginBottom: "20px",
+  },
+  word: {
+    fontSize: "64px",
+    margin: "10px 0 20px 0",
+  },
+  hintText: {
+  textAlign: "center",
+  fontStyle: "italic",
+  marginBottom: "20px",
+  fontSize: "30px",
+  color: "#066e0b",
+  lineHeight: "1.5",
+  maxWidth: "800px",
+  margin: "0 auto 20px auto",
+},
+  answerButton: {
+    display: "block",
+    width: "100%",
+    marginBottom: "12px",
+    padding: "18px",
+    fontSize: "28px",
+    borderRadius: "12px",
+    border: "none",
+    cursor: "pointer",
   },
 }
