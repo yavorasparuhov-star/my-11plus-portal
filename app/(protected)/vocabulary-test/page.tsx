@@ -200,6 +200,7 @@ export default function Home() {
           total_words_practiced: totalWordsPracticed,
           correct_answers: correctAnswers,
           success_rate: successRate,
+           difficulty: difficulty,
         },
       ])
 

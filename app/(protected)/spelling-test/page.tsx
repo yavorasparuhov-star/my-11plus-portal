@@ -193,6 +193,7 @@ export default function SpellingPage() {
         total_words_practiced: words.length,
         correct_answers: finalScore,
         success_rate: successRate,
+        difficulty: difficulty,
       },
     ])
 

@@ -10,6 +10,7 @@ type VocabularyProgressRow = {
   correct_answers: number
   success_rate: number
   created_at: string
+  difficulty?: number | null
 }
 
 export default function VocabularyProgressPage() {
@@ -75,6 +76,12 @@ export default function VocabularyProgressPage() {
   const latestScore =
     totalTests > 0 ? Math.round(progress[0].success_rate) : 0
 
+  function getLevelLabel(level: number | null | undefined) {
+  if (level === 1) return "Easy"
+  if (level === 2) return "Medium"
+  if (level === 3) return "Hard"
+  return "Not set"
+}  
   if (loading) {
     return <p style={styles.message}>Loading vocabulary progress...</p>
   }
@@ -126,6 +133,7 @@ export default function VocabularyProgressPage() {
                 <thead>
                   <tr>
                     <th style={styles.th}>Date</th>
+                    <th style={styles.th}>Level</th>
                     <th style={styles.th}>Correct</th>
                     <th style={styles.th}>Words</th>
                     <th style={styles.th}>Success</th>
@@ -134,21 +142,22 @@ export default function VocabularyProgressPage() {
                 <tbody>
                   {progress.map((row) => (
                     <tr key={row.id}>
-                      <td style={styles.td}>
-                        {new Date(row.created_at).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}{" "}
-                        {new Date(row.created_at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td style={styles.td}>{row.correct_answers}</td>
-                      <td style={styles.td}>{row.total_words_practiced}</td>
-                      <td style={styles.td}>{Math.round(row.success_rate)}%</td>
-                    </tr>
+  <td style={styles.td}>
+    {new Date(row.created_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })}{" "}
+    {new Date(row.created_at).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
+  </td>
+  <td style={styles.td}>{getLevelLabel(row.difficulty)}</td>
+  <td style={styles.td}>{row.correct_answers}</td>
+  <td style={styles.td}>{row.total_words_practiced}</td>
+  <td style={styles.td}>{Math.round(row.success_rate)}%</td>
+</tr>
                   ))}
                 </tbody>
               </table>
@@ -157,28 +166,31 @@ export default function VocabularyProgressPage() {
             <div style={styles.mobileList}>
               {progress.map((row) => (
                 <div key={row.id} style={styles.attemptCard}>
-                  <p>
-                    <strong>Date:</strong>{" "}
-                    {new Date(row.created_at).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}{" "}
-                    {new Date(row.created_at).toLocaleTimeString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <p>
-                    <strong>Correct:</strong> {row.correct_answers}
-                  </p>
-                  <p>
-                    <strong>Total words:</strong> {row.total_words_practiced}
-                  </p>
-                  <p>
-                    <strong>Success:</strong> {Math.round(row.success_rate)}%
-                  </p>
-                </div>
+  <p>
+    <strong>Date:</strong>{" "}
+    {new Date(row.created_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })}{" "}
+    {new Date(row.created_at).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
+  </p>
+  <p>
+    <strong>Level:</strong> {getLevelLabel(row.difficulty)}
+  </p>
+  <p>
+    <strong>Correct:</strong> {row.correct_answers}
+  </p>
+  <p>
+    <strong>Total words:</strong> {row.total_words_practiced}
+  </p>
+  <p>
+    <strong>Success:</strong> {Math.round(row.success_rate)}%
+  </p>
+</div>
               ))}
             </div>
           </div>

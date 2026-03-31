@@ -117,7 +117,7 @@ export default function HomePage() {
   }, [])
 
   function getScoreLabel(score: number | null) {
-    if (score === null) return "No test yet"
+    if (score === null) return "Not tested yet"
     return `${score}%`
   }
 

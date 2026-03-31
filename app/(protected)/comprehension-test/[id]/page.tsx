@@ -161,17 +161,18 @@ export default function ComprehensionTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase
-      .from("comprehension_progress")
-      .insert([
-        {
-          user_id: userId,
-          test_id: test.id,
-          total_questions: totalQuestions,
-          correct_answers: correctAnswers,
-          success_rate: successRate,
-        },
-      ])
+const { error: progressError } = await supabase
+  .from("comprehension_progress")
+  .insert([
+    {
+      user_id: userId,
+      test_id: test.id,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty,
+    },
+  ])
 
     if (progressError) {
       console.error("Error saving comprehension progress:", progressError)
