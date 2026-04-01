@@ -87,7 +87,7 @@ export default function Home() {
     setSelectedAnswer(null)
     setShowHint(false)
     setIsAnswerLocked(false)
-  }, [difficulty, words, user, testStarted, reviewMode, timerEnabled])
+  }, [difficulty, words, user, testStarted, reviewMode])
 
   function generateOptions(correctWord: any, allWords: any[]) {
     const incorrect = allWords
