@@ -46,6 +46,7 @@ export default function ComprehensionTestPage() {
   const [submitted, setSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false)
 
   useEffect(() => {
     async function loadPage() {
@@ -113,6 +114,37 @@ export default function ComprehensionTestPage() {
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
+  const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!shouldWarnBeforeLeaving) return
+
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [shouldWarnBeforeLeaving])
+
+  function confirmLeaveIfNeeded() {
+    if (!shouldWarnBeforeLeaving) return true
+
+    return window.confirm(
+      "Not all questions have been answered. Are you sure you want to leave this test?"
+    )
+  }
+
+  function goHomeSafely() {
+    const confirmed = confirmLeaveIfNeeded()
+    if (!confirmed) return
+    router.push("/home")
+  }
+
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
     if (submitted) return
 
@@ -122,7 +154,7 @@ export default function ComprehensionTestPage() {
     }))
   }
 
-  async function handleSubmit() {
+  async function submitTest() {
     if (!userId || !test) return
     if (questions.length === 0) return
 
@@ -161,18 +193,18 @@ export default function ComprehensionTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-const { error: progressError } = await supabase
-  .from("comprehension_progress")
-  .insert([
-    {
-      user_id: userId,
-      test_id: test.id,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: test.difficulty,
-    },
-  ])
+    const { error: progressError } = await supabase
+      .from("comprehension_progress")
+      .insert([
+        {
+          user_id: userId,
+          test_id: test.id,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          success_rate: successRate,
+          difficulty: test.difficulty,
+        },
+      ])
 
     if (progressError) {
       console.error("Error saving comprehension progress:", progressError)
@@ -191,8 +223,23 @@ const { error: progressError } = await supabase
     setScore(correctAnswers)
     setSubmitted(true)
     setSubmitting(false)
+    setShowIncompleteModal(false)
 
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleSubmit() {
+    if (!userId || !test) return
+    if (questions.length === 0) return
+
+    const unansweredCount = questions.length - answeredCount
+
+    if (unansweredCount > 0) {
+      setShowIncompleteModal(true)
+      return
+    }
+
+    await submitTest()
   }
 
   function getOptionText(question: ComprehensionQuestion, option: "A" | "B" | "C" | "D") {
@@ -206,8 +253,11 @@ const { error: progressError } = await supabase
     setAnswers({})
     setSubmitted(false)
     setScore(0)
+    setShowIncompleteModal(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
+
+  const unansweredCount = questions.length - answeredCount
 
   if (loading) {
     return <p style={styles.message}>Loading comprehension test...</p>
@@ -219,7 +269,7 @@ const { error: progressError } = await supabase
         <div style={styles.centerCard}>
           <h1 style={styles.title}>Could not open test</h1>
           <p>{errorMessage}</p>
-          <button onClick={() => router.push("/home")} style={styles.primaryButton}>
+          <button onClick={goHomeSafely} style={styles.primaryButton}>
             Back to Home
           </button>
         </div>
@@ -232,7 +282,7 @@ const { error: progressError } = await supabase
       <div style={styles.page}>
         <div style={styles.centerCard}>
           <h1 style={styles.title}>Comprehension test not found</h1>
-          <button onClick={() => router.push("/home")} style={styles.primaryButton}>
+          <button onClick={goHomeSafely} style={styles.primaryButton}>
             Back to Home
           </button>
         </div>
@@ -241,184 +291,204 @@ const { error: progressError } = await supabase
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.heroCard}>
-          <div style={styles.heroTop}>
-            <div>
-              <h1 style={styles.title}>📖 {test.title}</h1>
-              <p style={styles.subtitle}>
-                Read the passage carefully, then answer all questions below.
-              </p>
-            </div>
+    <>
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.heroCard}>
+            <div style={styles.heroTop}>
+              <div>
+                <h1 style={styles.title}>📖 {test.title}</h1>
+                <p style={styles.subtitle}>
+                  Read the passage carefully, then answer all questions below.
+                </p>
+              </div>
 
-            <div style={styles.badge}>
-              Difficulty:{" "}
-              {test.difficulty === 1
-                ? "Easy"
-                : test.difficulty === 2
-                ? "Medium"
-                : test.difficulty === 3
-                ? "Hard"
-                : "Not set"}
-            </div>
-          </div>
-
-          {submitted ? (
-            <div style={styles.resultBanner}>
-              <h2 style={{ marginTop: 0 }}>Finished</h2>
-              <p style={styles.resultText}>
-                You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
-              </p>
-              <p style={styles.resultText}>
-                Success rate:{" "}
-                <strong>
-                  {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
-                </strong>
-              </p>
-
-              <div style={styles.resultButtons}>
-                <button onClick={restartSameTest} style={styles.secondaryButton}>
-                  Retry This Test
-                </button>
-                <button
-                  onClick={() => router.push("/home")}
-                  style={styles.primaryButton}
-                >
-                  Back to Home
-                </button>
+              <div style={styles.badge}>
+                Difficulty:{" "}
+                {test.difficulty === 1
+                  ? "Easy"
+                  : test.difficulty === 2
+                  ? "Medium"
+                  : test.difficulty === 3
+                  ? "Hard"
+                  : "Not set"}
               </div>
             </div>
-          ) : (
-            <div style={styles.progressRow}>
+
+            {submitted ? (
+              <div style={styles.resultBanner}>
+                <h2 style={{ marginTop: 0 }}>Finished</h2>
+                <p style={styles.resultText}>
+                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                </p>
+                <p style={styles.resultText}>
+                  Success rate:{" "}
+                  <strong>
+                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                  </strong>
+                </p>
+
+                <div style={styles.resultButtons}>
+                  <button onClick={restartSameTest} style={styles.secondaryButton}>
+                    Retry This Test
+                  </button>
+                  <button onClick={() => router.push("/home")} style={styles.primaryButton}>
+                    Back to Home
+                  </button>
+                </div>
+              </div>
+            ) : (
               <div style={styles.progressInfo}>
                 Answered: <strong>{answeredCount}</strong> / {questions.length}
               </div>
-              <div style={styles.progressBar}>
-                <div
-                  style={{
-                    ...styles.progressFill,
-                    width: `${questions.length > 0 ? (answeredCount / questions.length) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div style={styles.passageCard}>
-          <h2 style={styles.sectionTitle}>Passage</h2>
-          <div style={styles.passageText}>
-            {test.passage.split("\n").map((paragraph, index) => (
-              <p key={index} style={styles.paragraph}>
-                {paragraph}
-              </p>
-            ))}
+          <div style={styles.passageCard}>
+            <h2 style={styles.sectionTitle}>Passage</h2>
+            <div style={styles.passageText}>
+              {test.passage.split("\n").map((paragraph, index) => (
+                <p key={index} style={styles.paragraph}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div style={styles.questionsCard}>
+            <h2 style={styles.sectionTitle}>Questions</h2>
+
+            {questions.map((question, index) => {
+              const selected = answers[question.id]
+              const isCorrect = selected === question.correct_answer
+
+              return (
+                <div key={question.id} style={styles.questionBlock}>
+                  <h3 style={styles.questionTitle}>
+                    {index + 1}. {question.question_text}
+                  </h3>
+
+                  <div style={styles.optionsGrid}>
+                    {(["A", "B", "C", "D"] as const).map((option) => {
+                      const optionText = getOptionText(question, option)
+
+                      let backgroundColor = "#f3f4f6"
+                      let borderColor = "transparent"
+
+                      if (selected === option) {
+                        backgroundColor = "#e0e7ff"
+                        borderColor = "#4f46e5"
+                      }
+
+                      if (submitted) {
+                        if (option === question.correct_answer) {
+                          backgroundColor = "#dcfce7"
+                          borderColor = "#16a34a"
+                        } else if (selected === option && option !== question.correct_answer) {
+                          backgroundColor = "#fee2e2"
+                          borderColor = "#dc2626"
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => handleSelect(question.id, option)}
+                          disabled={submitted}
+                          style={{
+                            ...styles.optionButton,
+                            backgroundColor,
+                            borderColor,
+                            cursor: submitted ? "default" : "pointer",
+                          }}
+                        >
+                          <span style={styles.optionLetter}>{option}</span>
+                          <span>{optionText}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {submitted && (
+                    <div
+                      style={{
+                        ...styles.feedbackBox,
+                        backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                        borderColor: isCorrect ? "#86efac" : "#fecaca",
+                      }}
+                    >
+                      <p style={{ margin: 0 }}>
+                        <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
+                      </p>
+                      {!isCorrect && (
+                        <p style={{ margin: "8px 0 0 0" }}>
+                          Correct answer:{" "}
+                          <strong>
+                            {question.correct_answer} —{" "}
+                            {getOptionText(
+                              question,
+                              question.correct_answer as "A" | "B" | "C" | "D"
+                            )}
+                          </strong>
+                        </p>
+                      )}
+                      {question.explanation && question.explanation.trim() !== "" && (
+                        <p style={{ margin: "8px 0 0 0" }}>
+                          <strong>Explanation:</strong> {question.explanation}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {!submitted && (
+              <div style={styles.submitRow}>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || questions.length === 0}
+                  style={{
+                    ...styles.primaryButton,
+                    opacity: submitting ? 0.7 : 1,
+                  }}
+                >
+                  {submitting ? "Submitting..." : "Submit Answers"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        <div style={styles.questionsCard}>
-          <h2 style={styles.sectionTitle}>Questions</h2>
+      {showIncompleteModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <h2 style={styles.modalTitle}>Incomplete Test</h2>
+            <p style={styles.modalText}>
+              Not all questions have been answered.
+            </p>
+            <p style={styles.modalText}>
+              You still have <strong>{unansweredCount}</strong> unanswered question
+              {unansweredCount === 1 ? "" : "s"}.
+            </p>
+            <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
-          {questions.map((question, index) => {
-            const selected = answers[question.id]
-            const isCorrect = selected === question.correct_answer
-
-            return (
-              <div key={question.id} style={styles.questionBlock}>
-                <h3 style={styles.questionTitle}>
-                  {index + 1}. {question.question_text}
-                </h3>
-
-                <div style={styles.optionsGrid}>
-                  {(["A", "B", "C", "D"] as const).map((option) => {
-                    const optionText = getOptionText(question, option)
-
-                    let backgroundColor = "#f3f4f6"
-                    let borderColor = "transparent"
-
-                    if (selected === option) {
-                      backgroundColor = "#e0e7ff"
-                      borderColor = "#4f46e5"
-                    }
-
-                    if (submitted) {
-                      if (option === question.correct_answer) {
-                        backgroundColor = "#dcfce7"
-                        borderColor = "#16a34a"
-                      } else if (selected === option && option !== question.correct_answer) {
-                        backgroundColor = "#fee2e2"
-                        borderColor = "#dc2626"
-                      }
-                    }
-
-                    return (
-                      <button
-                        key={option}
-                        onClick={() => handleSelect(question.id, option)}
-                        disabled={submitted}
-                        style={{
-                          ...styles.optionButton,
-                          backgroundColor,
-                          borderColor,
-                          cursor: submitted ? "default" : "pointer",
-                        }}
-                      >
-                        <span style={styles.optionLetter}>{option}</span>
-                        <span>{optionText}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {submitted && (
-                  <div
-                    style={{
-                      ...styles.feedbackBox,
-                      backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                      borderColor: isCorrect ? "#86efac" : "#fecaca",
-                    }}
-                  >
-                    <p style={{ margin: 0 }}>
-                      <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
-                    </p>
-                    {!isCorrect && (
-                      <p style={{ margin: "8px 0 0 0" }}>
-                        Correct answer:{" "}
-                        <strong>
-                          {question.correct_answer} —{" "}
-                          {getOptionText(question, question.correct_answer as "A" | "B" | "C" | "D")}
-                        </strong>
-                      </p>
-                    )}
-                    {question.explanation && question.explanation.trim() !== "" && (
-                      <p style={{ margin: "8px 0 0 0" }}>
-                        <strong>Explanation:</strong> {question.explanation}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-
-          {!submitted && (
-            <div style={styles.submitRow}>
+            <div style={styles.modalButtons}>
               <button
-                onClick={handleSubmit}
-                disabled={submitting || questions.length === 0}
-                style={{
-                  ...styles.primaryButton,
-                  opacity: submitting ? 0.7 : 1,
-                }}
+                onClick={() => setShowIncompleteModal(false)}
+                style={styles.secondaryButton}
               >
-                {submitting ? "Submitting..." : "Submit Answers"}
+                Go Back
+              </button>
+              <button onClick={submitTest} style={styles.primaryButton}>
+                Submit Anyway
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   )
 }
 
@@ -461,25 +531,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
-  progressRow: {
-    marginTop: "20px",
-  },
   progressInfo: {
-    marginBottom: "10px",
+    marginTop: "20px",
     color: "#444",
-  },
-  progressBar: {
-    width: "100%",
-    height: "12px",
-    background: "#e5e7eb",
-    borderRadius: "999px",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    background: "#4f46e5",
-    borderRadius: "999px",
-    transition: "width 0.3s ease",
   },
   resultBanner: {
     marginTop: "20px",
@@ -599,5 +653,41 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
+  },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    zIndex: 1000,
+  },
+  modalCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    width: "100%",
+    maxWidth: "480px",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
+  },
+  modalTitle: {
+    marginTop: 0,
+    marginBottom: "14px",
+    fontSize: "28px",
+  },
+  modalText: {
+    margin: "8px 0",
+    color: "#374151",
+    lineHeight: 1.6,
+    fontSize: "16px",
+  },
+  modalButtons: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "22px",
   },
 }

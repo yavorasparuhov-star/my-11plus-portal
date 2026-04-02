@@ -260,7 +260,7 @@ function getScoreIcon(score: number, isCompleted: boolean) {
 
                    <div style={styles.metaRow}>
   <p style={styles.metaHalf}>
-    <strong>Last completed:</strong>{" "}
+    <strong>Completed:</strong>{" "}
     {test.completed_at
       ? new Date(test.completed_at).toLocaleDateString("en-GB", {
           day: "2-digit",
@@ -278,9 +278,12 @@ function getScoreIcon(score: number, isCompleted: boolean) {
 </p>
 </div>
 
-                    <Link href={`/comprehension-test/${test.id}`} style={styles.button}>
-                      {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                    </Link>
+                    <Link
+  href={`/comprehension-test/${test.id}`}
+  style={test.isCompleted ? styles.retryButton : styles.startButton}
+>
+  {test.isCompleted ? "Retry Test →" : "Start Test →"}
+</Link>
                   </div>
                 ))}
               </div>
@@ -403,12 +406,22 @@ metaHalf: {
   color: "#6b7280",
   fontSize: "14px",
 },
-button: {
+startButton: {
   display: "inline-block",
   padding: "12px 18px",
   borderRadius: "12px",
   background: "#d4f5d0",
   color: "#065f46",
+  textDecoration: "none",
+  fontWeight: 600,
+  textAlign: "center",
+},
+retryButton: {
+  display: "inline-block",
+  padding: "12px 18px",
+  borderRadius: "12px",
+  background: "#e5e7eb",
+  color: "#111827",
   textDecoration: "none",
   fontWeight: 600,
   textAlign: "center",
