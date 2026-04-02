@@ -1,12 +1,65 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { supabase } from "../lib/supabaseClient"
 
-export default function Header({ user, onLogout }: any) {
+type HeaderProps = {
+  user?: any
+  onLogout?: () => void
+}
+
+export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
+  const [loadingUser, setLoadingUser] = useState(!propUser)
+
+  useEffect(() => {
+    if (propUser) {
+      setCurrentUser(propUser)
+      setLoadingUser(false)
+      return
+    }
+
+    let mounted = true
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) {
+        setCurrentUser(data.user ?? null)
+        setLoadingUser(false)
+      }
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setCurrentUser(session?.user ?? null)
+        setLoadingUser(false)
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [propUser])
+
+  const handleLogoutClick = async () => {
+    if (onLogout) {
+      onLogout()
+      return
+    }
+
+    await supabase.auth.signOut()
+    setCurrentUser(null)
+    router.push("/login")
+  }
+
+  const activeUser = propUser ?? currentUser
 
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
@@ -18,6 +71,19 @@ export default function Header({ user, onLogout }: any) {
     display: "inline-block",
     transition: "all 0.2s ease",
   })
+
+  const displayName =
+    activeUser?.user_metadata?.nickname ||
+    activeUser?.user_metadata?.first_name ||
+    activeUser?.email ||
+    "User"
+
+  const initial = (
+    activeUser?.user_metadata?.nickname?.[0] ||
+    activeUser?.user_metadata?.first_name?.[0] ||
+    activeUser?.email?.[0] ||
+    "U"
+  ).toUpperCase()
 
   return (
     <div
@@ -43,40 +109,38 @@ export default function Header({ user, onLogout }: any) {
           margin: "0 auto",
         }}
       >
-        {/* Logo */}
-<Link
-  href="/home"
-  style={{
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    zIndex: 2,
-    whiteSpace: "nowrap",
-  }}
->
-  <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-    <span
-      style={{
-        fontSize: "18px",
-        fontWeight: 800,
-        color: "#111827",
-      }}
-    >
-      11+ Trainer
-    </span>
-    <span
-      style={{
-        fontSize: "12px",
-        color: "#4b5563",
-        fontWeight: 500,
-      }}
-    >
-      Learning Portal
-    </span>
-  </div>
-</Link>
+        <Link
+          href="/"
+          style={{
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            zIndex: 2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span
+              style={{
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "#111827",
+              }}
+            >
+              11+ Trainer
+            </span>
+            <span
+              style={{
+                fontSize: "12px",
+                color: "#4b5563",
+                fontWeight: 500,
+              }}
+            >
+              Learning Portal
+            </span>
+          </div>
+        </Link>
 
-        {/* Desktop Nav */}
         <div
           className="desktop-nav"
           style={{
@@ -87,21 +151,33 @@ export default function Header({ user, onLogout }: any) {
             gap: "10px",
             alignItems: "center",
             justifyContent: "center",
+            flexWrap: "wrap",
           }}
         >
-          <Link href="/home" style={linkStyle("/home")}>
+          <Link href="/" style={linkStyle("/")}>
             🏠 Home
           </Link>
-          <Link href="/progress" style={linkStyle("/progress")}>
-            📊 Progress
+
+          <Link href="/english" style={linkStyle("/english")}>
+            📘 English
           </Link>
-          <Link href="/review" style={linkStyle("/review")}>
-            📚 Review
+
+          <Link href="/math" style={linkStyle("/math")}>
+            ➗ Math
           </Link>
-          
+
+          {activeUser && (
+            <>
+              <Link href="/progress" style={linkStyle("/progress")}>
+                📊 Progress
+              </Link>
+              <Link href="/review" style={linkStyle("/review")}>
+                📚 Review
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Desktop Right Side */}
         <div
           className="desktop-user"
           style={{
@@ -112,94 +188,110 @@ export default function Header({ user, onLogout }: any) {
             zIndex: 2,
           }}
         >
-          <Link
-  href="/profile"
-  style={{
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    background: "rgba(255,255,255,0.65)",
-    border: "1px solid rgba(0,0,0,0.05)",
-    padding: "8px 12px",
-    borderRadius: "999px",
-    maxWidth: "190px",
-    transition: "all 0.2s ease",
-  }}
->
-  <div
-    style={{
-      width: "30px",
-      height: "30px",
-      borderRadius: "50%",
-      background: "#86efac",
-      color: "#065f46",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontWeight: 700,
-      fontSize: "13px",
-      flexShrink: 0,
-    }}
-  >
-    {(user?.user_metadata?.nickname?.[0] ||
-      user?.user_metadata?.first_name?.[0] ||
-      user?.email?.[0] ||
-      "U"
-    ).toUpperCase()}
-  </div>
+          {loadingUser ? null : activeUser ? (
+            <>
+              <Link
+                href="/profile"
+                style={{
+                  textDecoration: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  background: "rgba(255,255,255,0.65)",
+                  border: "1px solid rgba(0,0,0,0.05)",
+                  padding: "8px 12px",
+                  borderRadius: "999px",
+                  maxWidth: "190px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    background: "#86efac",
+                    color: "#065f46",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {initial}
+                </div>
 
-  <span
-    title={
-      user?.user_metadata?.nickname ||
-      user?.user_metadata?.first_name ||
-      user?.email
-    }
-    style={{
-      fontSize: "13px",
-      color: "#1f2937",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      maxWidth: "120px",
-      display: "inline-block",
-      fontWeight: 600,
-    }}
-  >
-    {user?.user_metadata?.nickname ||
-      user?.user_metadata?.first_name ||
-      user?.email}
-  </span>
-</Link>
+                <span
+                  title={displayName}
+                  style={{
+                    fontSize: "13px",
+                    color: "#1f2937",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "120px",
+                    display: "inline-block",
+                    fontWeight: 600,
+                  }}
+                >
+                  {displayName}
+                </span>
+              </Link>
 
-          <button
-            onClick={onLogout}
-            style={{
-              padding: "10px 16px",
-              borderRadius: "999px",
-              border: "none",
-              background: "#ef4444",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: 600,
-              boxShadow: "0 6px 14px rgba(239,68,68,0.22)",
-              transition: "all 0.2s ease",
-              whiteSpace: "nowrap",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px)"
-              e.currentTarget.style.boxShadow = "0 10px 18px rgba(239,68,68,0.28)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 6px 14px rgba(239,68,68,0.22)"
-            }}
-          >
-            Logout
-          </button>
+              <button
+                onClick={handleLogoutClick}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "999px",
+                  border: "none",
+                  background: "#ef4444",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  boxShadow: "0 6px 14px rgba(239,68,68,0.22)",
+                  transition: "all 0.2s ease",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                style={{
+                  textDecoration: "none",
+                  color: "#1f2937",
+                  fontWeight: 600,
+                  padding: "8px 14px",
+                  borderRadius: "999px",
+                  display: "inline-block",
+                }}
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/signup"
+                style={{
+                  textDecoration: "none",
+                  color: "#065f46",
+                  fontWeight: 700,
+                  background: "#bbf7d0",
+                  padding: "10px 16px",
+                  borderRadius: "999px",
+                  display: "inline-block",
+                }}
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           className="mobile-menu-button"
           onClick={() => setMenuOpen(!menuOpen)}
@@ -247,96 +339,136 @@ export default function Header({ user, onLogout }: any) {
                 display: "flex",
                 flexDirection: "column",
                 gap: "10px",
-                marginBottom: "14px",
+                marginBottom: activeUser ? "14px" : "0",
               }}
             >
-              <Link
-                href="/home"
-                style={linkStyle("/home")}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href="/" style={linkStyle("/")} onClick={() => setMenuOpen(false)}>
                 🏠 Home
               </Link>
+
               <Link
-                href="/progress"
-                style={linkStyle("/progress")}
+                href="/english"
+                style={linkStyle("/english")}
                 onClick={() => setMenuOpen(false)}
               >
-                📊 Progress
+                📘 English
               </Link>
+
               <Link
-                href="/review"
-                style={linkStyle("/review")}
+                href="/math"
+                style={linkStyle("/math")}
                 onClick={() => setMenuOpen(false)}
               >
-                📚 Review
+                ➗ Math
               </Link>
+
+              {activeUser && (
+                <>
+                  <Link
+                    href="/progress"
+                    style={linkStyle("/progress")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    📊 Progress
+                  </Link>
+
+                  <Link
+                    href="/review"
+                    style={linkStyle("/review")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    📚 Review
+                  </Link>
+                </>
+              )}
+
+              {!loadingUser && !activeUser && (
+                <>
+                  <Link
+                    href="/login"
+                    style={linkStyle("/login")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+
+                  <Link
+                    href="/signup"
+                    style={linkStyle("/signup")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
 
-            <div
-              style={{
-                borderTop: "1px solid rgba(0,0,0,0.07)",
-                paddingTop: "14px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-             <Link
-  href="/profile"
-  onClick={() => setMenuOpen(false)}
-  style={{
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  }}
->
-  <div
-    style={{
-      width: "32px",
-      height: "32px",
-      borderRadius: "50%",
-      background: "#86efac",
-      color: "#065f46",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontWeight: 700,
-      fontSize: "13px",
-      flexShrink: 0,
-    }}
-  >
-    {user?.email?.[0]?.toUpperCase() || "U"}
-  </div>
-
-  <span
-    style={{
-      fontSize: "14px",
-      color: "#1f2937",
-      wordBreak: "break-all",
-    }}
-  >
-    {user?.email}
-  </span>
-</Link>
-
-              <button
-                onClick={onLogout}
+            {activeUser && (
+              <div
                 style={{
-                  padding: "10px 16px",
-                  borderRadius: "999px",
-                  border: "none",
-                  background: "#ef4444",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  width: "fit-content",
+                  borderTop: "1px solid rgba(0,0,0,0.07)",
+                  paddingTop: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
                 }}
               >
-                Logout
-              </button>
-            </div>
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      background: "#86efac",
+                      color: "#065f46",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 700,
+                      fontSize: "13px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {initial}
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      color: "#1f2937",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {displayName}
+                  </span>
+                </Link>
+
+                <button
+                  onClick={handleLogoutClick}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: "999px",
+                    border: "none",
+                    background: "#ef4444",
+                    color: "white",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    width: "fit-content",
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
