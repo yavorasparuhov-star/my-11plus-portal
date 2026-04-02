@@ -12,9 +12,24 @@ type ComprehensionTest = {
   created_at: string
 }
 
+type ComprehensionProgress = {
+  id: string
+  user_id: string
+  test_id: number | null
+  success_rate: number | null
+  created_at: string | null
+}
+
+type TestWithProgress = ComprehensionTest & {
+  score: number
+  completed_at: string | null
+  isCompleted: boolean
+}
+
 export default function ComprehensionTestsPage() {
-  const [tests, setTests] = useState<ComprehensionTest[]>([])
+  const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
+  const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
 
   useEffect(() => {
     fetchTests()
@@ -23,18 +38,85 @@ export default function ComprehensionTestsPage() {
   async function fetchTests() {
     setLoading(true)
 
-    const { data, error } = await supabase
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const { data: testsData, error: testsError } = await supabase
       .from("comprehension_tests")
       .select("*")
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error loading comprehension tests:", error)
+    if (testsError) {
+      console.error("Error loading comprehension tests:", testsError)
       setLoading(false)
       return
     }
 
-    setTests((data || []) as ComprehensionTest[])
+    const allTests = (testsData || []) as ComprehensionTest[]
+
+    if (!user) {
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+const { data: progressData, error: progressError } = await supabase
+  .from("comprehension_progress")
+  .select("id, user_id, test_id, success_rate, created_at")
+  .eq("user_id", user.id)
+
+    if (progressError) {
+      console.error("Error loading comprehension progress:", progressError)
+
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+    const progressRows = (progressData || []) as ComprehensionProgress[]
+
+    const latestProgressMap = new Map<number, ComprehensionProgress>()
+
+    for (const row of progressRows) {
+      if (row.test_id === null) continue
+
+      const existing = latestProgressMap.get(row.test_id)
+
+      const rowDate = new Date(row.created_at || 0).getTime()
+      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+
+      if (!existing || rowDate > existingDate) {
+        latestProgressMap.set(row.test_id, row)
+      }
+    }
+
+    const mergedTests: TestWithProgress[] = allTests.map((test) => {
+      const progress = latestProgressMap.get(test.id)
+
+      return {
+        ...test,
+        score: progress?.success_rate ?? 0,
+        completed_at: progress?.created_at || null,
+        isCompleted: !!progress,
+      }
+    })
+
+    setTests(mergedTests)
     setLoading(false)
   }
 
@@ -49,6 +131,45 @@ export default function ComprehensionTestsPage() {
     if (passage.length <= 180) return passage
     return passage.slice(0, 180).trim() + "..."
   }
+
+  function getCompletedPercentage(items: TestWithProgress[]) {
+    if (items.length === 0) return 0
+    const completedCount = items.filter((item) => item.isCompleted).length
+    return Math.round((completedCount / items.length) * 100)
+  }
+
+function getScorePercentage(score: number, isCompleted: boolean) {
+  if (!isCompleted) return 0
+  return score <= 10 ? score * 10 : score
+}
+
+function getScoreText(test: TestWithProgress) {
+  return `${getScorePercentage(test.score, test.isCompleted)}%`
+}
+
+function getScoreIcon(score: number, isCompleted: boolean) {
+  const percentage = getScorePercentage(score, isCompleted)
+
+  if (!isCompleted) return "⚪"
+  if (percentage >= 90) return "😄"
+  if (percentage >= 70) return "🙂"
+  if (percentage >= 50) return "😐"
+  if (percentage >= 30) return "😕"
+  return "☹️"
+}
+  const easyTests = tests.filter((test) => test.difficulty === 1)
+  const mediumTests = tests.filter((test) => test.difficulty === 2)
+  const hardTests = tests.filter((test) => test.difficulty === 3)
+
+  const allCompletedPercent = getCompletedPercentage(tests)
+  const easyCompletedPercent = getCompletedPercentage(easyTests)
+  const mediumCompletedPercent = getCompletedPercentage(mediumTests)
+  const hardCompletedPercent = getCompletedPercentage(hardTests)
+
+  const filteredTests =
+    difficultyFilter === "all"
+      ? tests
+      : tests.filter((test) => test.difficulty === difficultyFilter)
 
   if (loading) {
     return <p style={styles.message}>Loading comprehension tests...</p>
@@ -70,33 +191,101 @@ export default function ComprehensionTestsPage() {
             <p>Add a test in Supabase and it will appear here.</p>
           </div>
         ) : (
-          <div style={styles.grid}>
-            {tests.map((test) => (
-              <div key={test.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <h2 style={styles.cardTitle}>{test.title}</h2>
-                  <span style={styles.badge}>
-                    {getDifficultyLabel(test.difficulty)}
-                  </span>
-                </div>
+          <>
+            <div style={styles.summaryCard}>
+              <div style={styles.filterRow}>
+                <button
+                  onClick={() => setDifficultyFilter("all")}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === "all" ? "white" : "black",
+                  }}
+                >
+                  All ({allCompletedPercent}% Completed)
+                </button>
 
-                <p style={styles.preview}>{getPreviewText(test.passage)}</p>
+                <button
+                  onClick={() => setDifficultyFilter(1)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 1 ? "white" : "black",
+                  }}
+                >
+                  Easy ({easyCompletedPercent}% Completed)
+                </button>
 
-                <p style={styles.meta}>
-                  Created:{" "}
-                  {new Date(test.created_at).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </p>
+                <button
+                  onClick={() => setDifficultyFilter(2)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 2 ? "white" : "black",
+                  }}
+                >
+                  Medium ({mediumCompletedPercent}% Completed)
+                </button>
 
-                <Link href={`/comprehension-test/${test.id}`} style={styles.button}>
-                  Start Test →
-                </Link>
+                <button
+                  onClick={() => setDifficultyFilter(3)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 3 ? "white" : "black",
+                  }}
+                >
+                  Hard ({hardCompletedPercent}% Completed)
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {filteredTests.length === 0 ? (
+              <div style={styles.emptyCard}>
+                <h2>No tests in this difficulty</h2>
+                <p>Try another filter.</p>
+              </div>
+            ) : (
+              <div style={styles.grid}>
+                {filteredTests.map((test) => (
+                  <div key={test.id} style={styles.card}>
+                    <div style={styles.cardTop}>
+                      <h2 style={styles.cardTitle}>{test.title}</h2>
+                      <span style={styles.badge}>
+                        {getDifficultyLabel(test.difficulty)}
+                      </span>
+                    </div>
+
+                    <p style={styles.preview}>{getPreviewText(test.passage)}</p>
+
+                   <div style={styles.metaRow}>
+  <p style={styles.metaHalf}>
+    <strong>Last completed:</strong>{" "}
+    {test.completed_at
+      ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "Not yet"}
+  </p>
+
+<p style={styles.metaHalf}>
+  <strong>Score:</strong> {getScoreText(test)}{" "}
+  <span style={styles.scoreIcon}>
+    {getScoreIcon(test.score, test.isCompleted)}
+  </span>
+</p>
+</div>
+
+                    <Link href={`/comprehension-test/${test.id}`} style={styles.button}>
+                      {test.isCompleted ? "Retry Test →" : "Start Test →"}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -119,6 +308,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "24px",
     textAlign: "center",
   },
+  scoreIcon: {
+  marginLeft: "6px",
+  fontSize: "16px",
+},
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
@@ -127,6 +320,25 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
+  },
+  summaryCard: {
+    background: "white",
+    borderRadius: "16px",
+    padding: "24px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    marginBottom: "24px",
+  },
+  filterRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  filterButton: {
+    padding: "8px 14px",
+    borderRadius: "10px",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "bold",
   },
   emptyCard: {
     background: "white",
@@ -175,21 +387,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     flexGrow: 1,
   },
-  meta: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-  button: {
-    display: "inline-block",
-    padding: "12px 18px",
-    borderRadius: "12px",
-background: "#d4f5d0",
-color: "#065f46",
-    textDecoration: "none",
-    fontWeight: 600,
-    textAlign: "center",
-  },
+meta: {
+  margin: 0,
+  color: "#6b7280",
+  fontSize: "14px",
+},
+metaRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "16px",
+  flexWrap: "wrap",
+},
+metaHalf: {
+  margin: 0,
+  color: "#6b7280",
+  fontSize: "14px",
+},
+button: {
+  display: "inline-block",
+  padding: "12px 18px",
+  borderRadius: "12px",
+  background: "#d4f5d0",
+  color: "#065f46",
+  textDecoration: "none",
+  fontWeight: 600,
+  textAlign: "center",
+},
   message: {
     textAlign: "center",
     marginTop: "40px",
