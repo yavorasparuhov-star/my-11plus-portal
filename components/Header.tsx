@@ -60,6 +60,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   }
 
   const activeUser = propUser ?? currentUser
+  const homeHref = activeUser ? "/home" : "/"
 
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
@@ -110,7 +111,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         }}
       >
         <Link
-          href="/"
+          href={homeHref}
           style={{
             textDecoration: "none",
             display: "flex",
@@ -154,7 +155,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             flexWrap: "wrap",
           }}
         >
-          <Link href="/" style={linkStyle("/")}>
+          <Link href={homeHref} style={linkStyle(homeHref)}>
             🏠 Home
           </Link>
 
@@ -342,7 +343,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 marginBottom: activeUser ? "14px" : "0",
               }}
             >
-              <Link href="/" style={linkStyle("/")} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={homeHref}
+                style={linkStyle(homeHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 🏠 Home
               </Link>
 

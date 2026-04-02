@@ -1,229 +1,367 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "../../lib/supabaseClient"
 import Header from "../../components/Header"
+
+const hoverCardStyle = {
+  transition: "all 0.25s ease",
+  cursor: "pointer",
+}
+
+type MathStats = {
+  mathScore: number | null
+  mathReviewCount: number
+}
 
 export default function MathPage() {
   const router = useRouter()
+
+  const [stats, setStats] = useState<MathStats>({
+    mathScore: null,
+    mathReviewCount: 0,
+  })
+
+  const [loadingStats, setLoadingStats] = useState(true)
 
   const topics = [
     {
       title: "Number & Place Value",
       path: "/math/number-place-value",
+      icon: "🔢",
+      description:
+        "Build confidence with place value, ordering numbers, rounding, and number patterns.",
+      buttonText: "Start Number & Place Value",
     },
     {
       title: "Four Operations",
       path: "/math/four-operations",
+      icon: "➕",
+      description:
+        "Practise addition, subtraction, multiplication, division, and multi-step calculations.",
+      buttonText: "Start Four Operations",
     },
     {
       title: "Fractions, Decimals & Percentages",
       path: "/math/fractions-decimals-percentages",
+      icon: "🟰",
+      description:
+        "Convert, compare and solve problems with fractions, decimals, and percentages.",
+      buttonText: "Start FDP",
     },
     {
       title: "Shape & Space",
       path: "/math/shape-space",
+      icon: "📐",
+      description:
+        "Explore angles, properties of shapes, symmetry, coordinates, and spatial reasoning.",
+      buttonText: "Start Shape & Space",
     },
     {
       title: "Measurement",
       path: "/math/measurement",
+      icon: "📏",
+      description:
+        "Practise length, mass, capacity, time, area, perimeter, and practical measurement problems.",
+      buttonText: "Start Measurement",
     },
     {
       title: "Data Handling",
       path: "/math/data-handling",
+      icon: "📊",
+      description:
+        "Interpret charts, tables, graphs, and solve problems based on mathematical data.",
+      buttonText: "Start Data Handling",
     },
     {
       title: "Algebra & Reasoning",
       path: "/math/algebra-reasoning",
+      icon: "🧠",
+      description:
+        "Develop algebraic thinking, sequences, formulas, and logical mathematical reasoning.",
+      buttonText: "Start Algebra & Reasoning",
     },
   ]
+
+  useEffect(() => {
+    async function loadMathStats() {
+      setLoadingStats(true)
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setLoadingStats(false)
+        return
+      }
+
+      const [mathProgressRes, mathReviewRes] = await Promise.all([
+        supabase
+          .from("math_progress")
+          .select("success_rate, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1),
+
+        supabase
+          .from("math_review")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+      ])
+
+      setStats({
+        mathScore:
+          mathProgressRes.data && mathProgressRes.data.length > 0
+            ? Math.round(mathProgressRes.data[0].success_rate)
+            : null,
+        mathReviewCount: mathReviewRes.count ?? 0,
+      })
+
+      setLoadingStats(false)
+    }
+
+    loadMathStats()
+  }, [])
+
+  function getScoreLabel(score: number | null) {
+    if (score === null) return "Not tested yet"
+    return `${score}%`
+  }
+
+  function getScoreBadgeStyle(score: number | null): React.CSSProperties {
+    if (score === null) {
+      return {
+        backgroundColor: "#e5e7eb",
+        color: "#374151",
+      }
+    }
+
+    if (score >= 80) {
+      return {
+        backgroundColor: "#d1fae5",
+        color: "#065f46",
+      }
+    }
+
+    if (score >= 50) {
+      return {
+        backgroundColor: "#fef3c7",
+        color: "#92400e",
+      }
+    }
+
+    return {
+      backgroundColor: "#fee2e2",
+      color: "#991b1b",
+    }
+  }
 
   return (
     <>
       <Header />
 
-      <div
-        style={{
-          minHeight: "100vh",
-          backgroundColor: "#f4fbf4",
-          padding: "40px 20px",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "40px" }}>
-            <h1
-              style={{
-                fontSize: "40px",
-                marginBottom: "10px",
-                color: "#1f3b2d",
-              }}
-            >
-              Math
-            </h1>
+      <div style={styles.page}>
+        <div style={styles.hero}>
+          <h1 style={styles.title}>Math</h1>
+          <p style={styles.subtitle}>
+            Choose a Math training activity and keep building confidence across
+            all 11+ topics.
+          </p>
+        </div>
 
-            <p
-              style={{
-                fontSize: "18px",
-                color: "#355244",
-                lineHeight: "1.6",
-                maxWidth: "780px",
-                margin: "0 auto",
-              }}
-            >
-              Strengthen 11+ Math skills through focused topic practice. Free
-              accounts get 2 tests per category. Paid accounts unlock the full
-              Math library.
-            </p>
-          </div>
-
-          <h2 style={sectionTitleStyle}>Math Topics</h2>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "20px",
-              marginBottom: "40px",
-            }}
-          >
-            {topics.map((topic) => (
-              <button
-                key={topic.title}
-                onClick={() => router.push(topic.path)}
-                style={mainCardStyle}
-              >
-                {topic.title}
-              </button>
-            ))}
-          </div>
-
-          <h2 style={sectionTitleStyle}>Saved Areas</h2>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "20px",
-              marginBottom: "40px",
-            }}
-          >
-            <button
-              onClick={() => router.push("/review/math")}
-              style={secondaryCardStyle}
-            >
-              Math Review
-            </button>
-
-            <button
-              onClick={() => router.push("/progress/math")}
-              style={secondaryCardStyle}
-            >
-              Math Progress
-            </button>
-          </div>
-
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "16px",
-              padding: "28px",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-              textAlign: "center",
-            }}
-          >
-            <h2 style={{ color: "#1f3b2d", marginBottom: "12px" }}>
-              Start for free
-            </h2>
-
-            <p
-              style={{
-                color: "#355244",
-                lineHeight: "1.6",
-                marginBottom: "20px",
-              }}
-            >
-              Create a free account to unlock 2 tests per Math category and save
-              your review and progress.
-            </p>
-
+        <div style={styles.grid}>
+          {topics.map((topic) => (
             <div
-              style={{
-                display: "flex",
-                gap: "15px",
-                justifyContent: "center",
-                flexWrap: "wrap",
+              key={topic.title}
+              style={{ ...styles.card, ...hoverCardStyle }}
+              onClick={() => router.push(topic.path)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px)"
+                e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)"
+                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
               }}
             >
-              <button
-                onClick={() => router.push("/signup")}
-                style={primaryButtonStyle}
-              >
-                Create Free Account
-              </button>
+              <div style={styles.icon}>{topic.icon}</div>
+              <h2 style={styles.cardTitle}>{topic.title}</h2>
+              <p style={styles.cardText}>{topic.description}</p>
+
+              <div style={styles.statsBox}>
+                <div style={styles.statRow}>
+                  <span style={styles.statLabel}>Last score:</span>
+                  <span
+                    style={{
+                      ...styles.scoreBadge,
+                      ...getScoreBadgeStyle(loadingStats ? null : stats.mathScore),
+                    }}
+                  >
+                    {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
+                  </span>
+                </div>
+
+                <div style={styles.statRow}>
+                  <span style={styles.statLabel}>Review items:</span>
+                  <span style={styles.reviewCount}>
+                    {loadingStats ? "Loading..." : stats.mathReviewCount}
+                  </span>
+                </div>
+              </div>
 
               <button
-                onClick={() => router.push("/")}
-                style={secondaryButtonStyle}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(topic.path)
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#bbf7d0"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#d4f5d0"
+                }}
+                style={styles.button}
               >
-                Back Home
+                {topic.buttonText}
               </button>
             </div>
-          </div>
+          ))}
+        </div>
+
+        <div style={styles.bottomButtons}>
+          <button
+            onClick={() => router.push("/review/math")}
+            style={styles.secondaryButton}
+          >
+            Math Review
+          </button>
+
+          <button
+            onClick={() => router.push("/progress/math")}
+            style={styles.secondaryButton}
+          >
+            Math Progress
+          </button>
         </div>
       </div>
     </>
   )
 }
 
-const sectionTitleStyle = {
-  fontSize: "24px",
-  color: "#1f3b2d",
-  marginBottom: "18px",
-}
-
-const mainCardStyle = {
-  padding: "28px 20px",
-  fontSize: "20px",
-  borderRadius: "16px",
-  border: "none",
-  cursor: "pointer",
-  backgroundColor: "#90ee90",
-  color: "#1f3b2d",
-  fontWeight: "bold" as const,
-  minHeight: "110px",
-  boxShadow: "0 6px 16px rgba(0,0,0,0.08)",
-}
-
-const secondaryCardStyle = {
-  padding: "24px 20px",
-  fontSize: "20px",
-  borderRadius: "16px",
-  border: "1px solid #b7e4b7",
-  cursor: "pointer",
-  backgroundColor: "white",
-  color: "#1f3b2d",
-  fontWeight: "bold" as const,
-  minHeight: "90px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-}
-
-const primaryButtonStyle = {
-  padding: "14px 28px",
-  fontSize: "16px",
-  borderRadius: "10px",
-  border: "none",
-  cursor: "pointer",
-  backgroundColor: "#90ee90",
-  color: "#1f3b2d",
-  fontWeight: "bold" as const,
-}
-
-const secondaryButtonStyle = {
-  padding: "14px 28px",
-  fontSize: "16px",
-  borderRadius: "10px",
-  border: "1px solid #90ee90",
-  cursor: "pointer",
-  backgroundColor: "white",
-  color: "#1f3b2d",
-  fontWeight: "bold" as const,
+const styles: { [key: string]: React.CSSProperties } = {
+  page: {
+    padding: "32px 20px 50px",
+    maxWidth: "1100px",
+    margin: "0 auto",
+  },
+  hero: {
+    textAlign: "center",
+    marginBottom: "32px",
+  },
+  title: {
+    fontSize: "40px",
+    marginBottom: "10px",
+    color: "#111827",
+  },
+  subtitle: {
+    fontSize: "18px",
+    color: "#4b5563",
+    maxWidth: "700px",
+    margin: "0 auto",
+    lineHeight: 1.6,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "20px",
+  },
+  card: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "26px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  icon: {
+    fontSize: "42px",
+    marginBottom: "12px",
+  },
+  cardTitle: {
+    fontSize: "24px",
+    marginBottom: "10px",
+    color: "#111827",
+  },
+  cardText: {
+    fontSize: "16px",
+    color: "#4b5563",
+    lineHeight: 1.6,
+    marginBottom: "18px",
+    minHeight: "96px",
+  },
+  statsBox: {
+    width: "100%",
+    background: "#f9fafb",
+    borderRadius: "12px",
+    padding: "14px",
+    marginBottom: "18px",
+  },
+  statRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    margin: "8px 0",
+  },
+  statLabel: {
+    color: "#374151",
+    fontSize: "15px",
+    fontWeight: 500,
+  },
+  scoreBadge: {
+    padding: "6px 12px",
+    borderRadius: "999px",
+    fontSize: "14px",
+    fontWeight: 700,
+    minWidth: "92px",
+    textAlign: "center",
+  },
+  reviewCount: {
+    fontSize: "15px",
+    fontWeight: 700,
+    color: "#111827",
+  },
+  button: {
+    padding: "12px 18px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
+    minWidth: "180px",
+  },
+  bottomButtons: {
+    display: "flex",
+    gap: "16px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    marginTop: "30px",
+  },
+  secondaryButton: {
+    padding: "12px 24px",
+    borderRadius: "12px",
+    border: "1px solid #90ee90",
+    background: "white",
+    color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
+    minWidth: "180px",
+  },
 }

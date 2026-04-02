@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { supabase } from "../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
+import Header from "../../components/Header"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -34,101 +35,69 @@ export default function SignupPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f3f4f6",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "20px",
-      }}
-    >
+    <>
+      <Header />
+
       <div
         style={{
-          width: "100%",
-          maxWidth: "720px",
-          backgroundColor: "white",
-          borderRadius: "16px",
-          padding: "40px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          minHeight: "100vh",
+          backgroundColor: "#f3f4f6",
+          padding: "40px 20px",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: "30px" }}>
-          <h1
-            style={{
-              fontSize: "42px",
-              fontWeight: "700",
-              marginBottom: "10px",
-              color: "#111827",
-            }}
-          >
-            Create Account
-          </h1>
-          <p
-            style={{
-              fontSize: "22px",
-              color: "#4b5563",
-              margin: 0,
-            }}
-          >
-            Register for your 11+ learning account
-          </p>
-        </div>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "720px",
+            backgroundColor: "white",
+            borderRadius: "16px",
+            padding: "40px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            margin: "40px auto 0 auto",
+          }}
+        >
+          <div style={{ textAlign: "center", marginBottom: "30px" }}>
+            <h1
+              style={{
+                fontSize: "42px",
+                fontWeight: "700",
+                marginBottom: "10px",
+                color: "#111827",
+              }}
+            >
+              Create Account
+            </h1>
+            <p
+              style={{
+                fontSize: "22px",
+                color: "#4b5563",
+                margin: 0,
+              }}
+            >
+              Register for your 11+ learning account
+            </p>
+          </div>
 
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              color: "#374151",
-              fontSize: "16px",
-              fontWeight: "500",
-            }}
-          >
-            Email <span style={{ color: "red" }}>*</span>
-          </label>
-          <input
-            type="email"
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "16px",
-              borderRadius: "10px",
-              border: "1px solid #e5e7eb",
-              backgroundColor: "#f9fafb",
-              fontSize: "18px",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              color: "#374151",
-              fontSize: "16px",
-              fontWeight: "500",
-            }}
-          >
-            Password <span style={{ color: "red" }}>*</span>
-          </label>
-
-          <div style={{ position: "relative" }}>
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                color: "#374151",
+                fontSize: "16px",
+                fontWeight: "500",
+              }}
+            >
+              Email <span style={{ color: "red" }}>*</span>
+            </label>
             <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Create Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email"
+              placeholder="Enter Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               style={{
                 width: "100%",
                 padding: "16px",
-                paddingRight: "52px",
                 borderRadius: "10px",
                 border: "1px solid #e5e7eb",
                 backgroundColor: "#f9fafb",
@@ -137,76 +106,110 @@ export default function SignupPage() {
                 boxSizing: "border-box",
               }}
             />
+          </div>
 
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
+          <div style={{ marginBottom: "20px" }}>
+            <label
               style={{
-                position: "absolute",
-                right: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
+                display: "block",
+                marginBottom: "8px",
+                color: "#374151",
+                fontSize: "16px",
+                fontWeight: "500",
+              }}
+            >
+              Password <span style={{ color: "red" }}>*</span>
+            </label>
+
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Create Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "16px",
+                  paddingRight: "52px",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "#f9fafb",
+                  fontSize: "18px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                }}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p
+              style={{
+                color: "#dc2626",
+                marginBottom: "16px",
+                fontSize: "15px",
+              }}
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            onClick={handleSignup}
+            disabled={loading}
+            onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
+            onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
+            style={{
+              width: "100%",
+              padding: "16px",
+              borderRadius: "10px",
+              border: "none",
+              background: "#d4f5d0",
+              color: "#065f46",
+              fontSize: "28px",
+              fontWeight: "500",
+              cursor: "pointer",
+              marginBottom: "22px",
+            }}
+          >
+            {loading ? "Creating..." : "Register"}
+          </button>
+
+          <div style={{ textAlign: "center" }}>
+            <span style={{ color: "#111827", fontSize: "18px" }}>
+              Already have an account?{" "}
+            </span>
+            <Link
+              href="/login"
+              style={{
+                color: "#065f46",
+                textDecoration: "none",
+                fontWeight: "500",
                 fontSize: "18px",
               }}
             >
-              {showPassword ? "🙈" : "👁️"}
-            </button>
+              Login
+            </Link>
           </div>
         </div>
-
-        {error && (
-          <p
-            style={{
-              color: "#dc2626",
-              marginBottom: "16px",
-              fontSize: "15px",
-            }}
-          >
-            {error}
-          </p>
-        )}
-
-        <button
-          onClick={handleSignup}
-          disabled={loading}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
-          style={{
-            width: "100%",
-            padding: "16px",
-            borderRadius: "10px",
-            border: "none",
-        background: "#d4f5d0",
-color: "#065f46",
-            fontSize: "28px",
-            fontWeight: "500",
-            cursor: "pointer",
-            marginBottom: "22px",
-          }}
-        >
-          {loading ? "Creating..." : "Register"}
-        </button>
-
-        <div style={{ textAlign: "center" }}>
-          <span style={{ color: "#111827", fontSize: "18px" }}>
-            Already have an account?{" "}
-          </span>
-          <Link
-            href="/login"
-            style={{
-              color: "#065f46",
-              textDecoration: "none",
-              fontWeight: "500",
-              fontSize: "18px",
-            }}
-          >
-            Login
-          </Link>
-        </div>
       </div>
-    </div>
+    </>
   )
 }
