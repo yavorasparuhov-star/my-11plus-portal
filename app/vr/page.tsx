@@ -11,6 +11,10 @@ const hoverCardStyle = {
 export default function VRPage() {
   const router = useRouter()
 
+  function openCategory(path: string) {
+    router.push(path)
+  }
+
   return (
     <>
       <Header />
@@ -27,7 +31,7 @@ export default function VRPage() {
         <div style={styles.grid}>
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => router.push("/vr-test")}
+            onClick={() => openCategory("/vr-test/word-relationships")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -52,14 +56,14 @@ export default function VRPage() {
 
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Coming soon</span>
+                <span style={styles.infoValue}>Ready</span>
               </div>
             </div>
 
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                router.push("/vr-test")
+                openCategory("/vr-test/word-relationships")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -75,7 +79,7 @@ export default function VRPage() {
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => router.push("/vr-test")}
+            onClick={() => openCategory("/vr-test/codes-logic")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -100,14 +104,14 @@ export default function VRPage() {
 
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Coming soon</span>
+                <span style={styles.infoValue}>Ready</span>
               </div>
             </div>
 
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                router.push("/vr-test")
+                openCategory("/vr-test/codes-logic")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -123,7 +127,7 @@ export default function VRPage() {
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => router.push("/vr-test")}
+            onClick={() => openCategory("/vr-test/sequence-patterns")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -148,14 +152,14 @@ export default function VRPage() {
 
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Coming soon</span>
+                <span style={styles.infoValue}>Ready</span>
               </div>
             </div>
 
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                router.push("/vr-test")
+                openCategory("/vr-test/sequence-patterns")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
