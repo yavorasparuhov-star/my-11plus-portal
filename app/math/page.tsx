@@ -47,7 +47,7 @@ export default function MathPage() {
       path: "/math/fractions-decimals-percentages",
       icon: "🟰",
       description:
-        "Convert, compare and solve problems with fractions, decimals, and percentages.",
+        "Convert, compare and solve problems with FDP.",
       buttonText: "Start FDP",
     },
     {
