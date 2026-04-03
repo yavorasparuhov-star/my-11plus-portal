@@ -167,6 +167,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             ➗ Math
           </Link>
 
+          <Link href="/vr" style={linkStyle("/vr")}>
+            🧠 VR
+          </Link>
+
+          <Link href="/nvr" style={linkStyle("/nvr")}>
+            🔷 NVR
+          </Link>
+
           {activeUser && (
             <>
               <Link href="/progress" style={linkStyle("/progress")}>
@@ -365,6 +373,22 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 onClick={() => setMenuOpen(false)}
               >
                 ➗ Math
+              </Link>
+
+              <Link
+                href="/vr"
+                style={linkStyle("/vr")}
+                onClick={() => setMenuOpen(false)}
+              >
+                🧠 VR
+              </Link>
+
+              <Link
+                href="/nvr"
+                style={linkStyle("/nvr")}
+                onClick={() => setMenuOpen(false)}
+              >
+                🔷 NVR
               </Link>
 
               {activeUser && (

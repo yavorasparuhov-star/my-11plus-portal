@@ -21,6 +21,14 @@ export default function ProgressPage() {
           <Link href="/progress/comprehension" style={styles.button}>
             📖 Comprehension Progress →
           </Link>
+
+          <Link href="/progress/vr" style={styles.button}>
+            🧠 Verbal Reasoning Progress →
+          </Link>
+
+          <Link href="/progress/nvr" style={styles.button}>
+            🔷 Non-Verbal Reasoning Progress →
+          </Link>
         </div>
       </div>
     </div>
@@ -33,6 +41,7 @@ const styles: any = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    padding: "24px",
   },
   card: {
     background: "white",
@@ -41,7 +50,7 @@ const styles: any = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
     textAlign: "center",
     width: "100%",
-    maxWidth: "500px",
+    maxWidth: "560px",
   },
   buttons: {
     display: "flex",
