@@ -21,7 +21,9 @@ export default function ReviewPage() {
           <Link href="/review/comprehension" style={styles.button}>
             📖 Comprehension Review →
           </Link>
-
+<Link href="/review/math" style={styles.button}>
+  ➕ Math Review →
+</Link>
           <Link href="/review/vr" style={styles.button}>
             🧠 Verbal Reasoning Review →
           </Link>

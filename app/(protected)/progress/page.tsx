@@ -21,7 +21,9 @@ export default function ProgressPage() {
           <Link href="/progress/comprehension" style={styles.button}>
             📖 Comprehension Progress →
           </Link>
-
+ <Link href="/progress/math" style={styles.button}>
+            ➕ Math Progress →
+          </Link>
           <Link href="/progress/vr" style={styles.button}>
             🧠 Verbal Reasoning Progress →
           </Link>
@@ -29,6 +31,8 @@ export default function ProgressPage() {
           <Link href="/progress/nvr" style={styles.button}>
             🔷 Non-Verbal Reasoning Progress →
           </Link>
+
+         
         </div>
       </div>
     </div>
