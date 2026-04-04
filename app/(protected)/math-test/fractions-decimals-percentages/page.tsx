@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type MathTest = {
@@ -178,138 +177,129 @@ export default function FractionsDecimalsPercentagesPage() {
       : tests.filter((test) => test.difficulty === difficultyFilter)
 
   if (loading) {
-    return (
-      <>
-        <Header />
-        <p style={styles.message}>Loading Fractions, Decimals & Percentages tests...</p>
-      </>
-    )
+    return <p style={styles.message}>Loading Fractions, Decimals & Percentages tests...</p>
   }
 
   return (
-    <>
-      <Header />
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <div style={styles.heroCard}>
+          <h1 style={styles.title}>🟰 Fractions, Decimals & Percentages Tests</h1>
+          <p style={styles.subtitle}>
+            Choose an FDP test and answer 10 multiple-choice questions.
+          </p>
+        </div>
 
-      <div style={styles.page}>
-        <div style={styles.container}>
-          <div style={styles.heroCard}>
-            <h1 style={styles.title}>🟰 Fractions, Decimals & Percentages Tests</h1>
-            <p style={styles.subtitle}>
-              Choose an FDP test and answer 10 multiple-choice questions.
-            </p>
+        {tests.length === 0 ? (
+          <div style={styles.emptyCard}>
+            <h2>No FDP tests yet</h2>
+            <p>Add tests in Supabase and they will appear here.</p>
           </div>
+        ) : (
+          <>
+            <div style={styles.summaryCard}>
+              <div style={styles.filterRow}>
+                <button
+                  onClick={() => setDifficultyFilter("all")}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === "all" ? "white" : "black",
+                  }}
+                >
+                  All ({allCompletedPercent}% Completed)
+                </button>
 
-          {tests.length === 0 ? (
-            <div style={styles.emptyCard}>
-              <h2>No FDP tests yet</h2>
-              <p>Add tests in Supabase and they will appear here.</p>
-            </div>
-          ) : (
-            <>
-              <div style={styles.summaryCard}>
-                <div style={styles.filterRow}>
-                  <button
-                    onClick={() => setDifficultyFilter("all")}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === "all" ? "white" : "black",
-                    }}
-                  >
-                    All ({allCompletedPercent}% Completed)
-                  </button>
+                <button
+                  onClick={() => setDifficultyFilter(1)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 1 ? "white" : "black",
+                  }}
+                >
+                  Easy ({easyCompletedPercent}% Completed)
+                </button>
 
-                  <button
-                    onClick={() => setDifficultyFilter(1)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 1 ? "white" : "black",
-                    }}
-                  >
-                    Easy ({easyCompletedPercent}% Completed)
-                  </button>
+                <button
+                  onClick={() => setDifficultyFilter(2)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 2 ? "white" : "black",
+                  }}
+                >
+                  Medium ({mediumCompletedPercent}% Completed)
+                </button>
 
-                  <button
-                    onClick={() => setDifficultyFilter(2)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 2 ? "white" : "black",
-                    }}
-                  >
-                    Medium ({mediumCompletedPercent}% Completed)
-                  </button>
-
-                  <button
-                    onClick={() => setDifficultyFilter(3)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 3 ? "white" : "black",
-                    }}
-                  >
-                    Hard ({hardCompletedPercent}% Completed)
-                  </button>
-                </div>
+                <button
+                  onClick={() => setDifficultyFilter(3)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 3 ? "white" : "black",
+                  }}
+                >
+                  Hard ({hardCompletedPercent}% Completed)
+                </button>
               </div>
+            </div>
 
-              {filteredTests.length === 0 ? (
-                <div style={styles.emptyCard}>
-                  <h2>No tests in this difficulty</h2>
-                  <p>Try another filter.</p>
-                </div>
-              ) : (
-                <div style={styles.grid}>
-                  {filteredTests.map((test) => (
-                    <div key={test.id} style={styles.card}>
-                      <div style={styles.cardTop}>
-                        <h2 style={styles.cardTitle}>{test.title}</h2>
-                        <span style={styles.badge}>
-                          {getDifficultyLabel(test.difficulty)}
-                        </span>
-                      </div>
+            {filteredTests.length === 0 ? (
+              <div style={styles.emptyCard}>
+                <h2>No tests in this difficulty</h2>
+                <p>Try another filter.</p>
+              </div>
+            ) : (
+              <div style={styles.grid}>
+                {filteredTests.map((test) => (
+                  <div key={test.id} style={styles.card}>
+                    <div style={styles.cardTop}>
+                      <h2 style={styles.cardTitle}>{test.title}</h2>
+                      <span style={styles.badge}>
+                        {getDifficultyLabel(test.difficulty)}
+                      </span>
+                    </div>
 
-                      <p style={styles.preview}>
-                        Practise fractions, decimals, percentages, conversions,
-                        comparisons, and problem solving in this test.
+                    <p style={styles.preview}>
+                      Practise fractions, decimals, percentages, conversions,
+                      comparisons, and problem solving in this test.
+                    </p>
+
+                    <div style={styles.metaRow}>
+                      <p style={styles.metaHalf}>
+                        <strong>Completed:</strong>{" "}
+                        {test.completed_at
+                          ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "Not yet"}
                       </p>
 
-                      <div style={styles.metaRow}>
-                        <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
-                        </p>
-
-                        <p style={styles.metaHalf}>
-                          <strong>Score:</strong> {getScoreText(test)}{" "}
-                          <span style={styles.scoreIcon}>
-                            {getScoreIcon(test.score, test.isCompleted)}
-                          </span>
-                        </p>
-                      </div>
-
-                      <Link
-                        href={`/math/fractions-decimals-percentages/${test.id}`}
-                        style={test.isCompleted ? styles.retryButton : styles.startButton}
-                      >
-                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                      </Link>
+                      <p style={styles.metaHalf}>
+                        <strong>Score:</strong> {getScoreText(test)}{" "}
+                        <span style={styles.scoreIcon}>
+                          {getScoreIcon(test.score, test.isCompleted)}
+                        </span>
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+
+                    <Link
+                      href={`/math-test/fractions-decimals-percentages/${test.id}`}
+                      style={test.isCompleted ? styles.retryButton : styles.startButton}
+                    >
+                      {test.isCompleted ? "Retry Test →" : "Start Test →"}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </>
+    </div>
   )
 }
 

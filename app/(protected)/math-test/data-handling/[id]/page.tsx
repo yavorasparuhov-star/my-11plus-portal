@@ -143,7 +143,7 @@ export default function DataHandlingTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/data-handling")
+    router.push("/math-test/data-handling")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -332,7 +332,7 @@ export default function DataHandlingTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/data-handling")}
+                    onClick={() => router.push("/math-test/data-handling")}
                     style={styles.primaryButton}
                   >
                     Back to Topic

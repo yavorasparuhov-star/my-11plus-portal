@@ -27,7 +27,7 @@ type TestWithProgress = MathTest & {
   isCompleted: boolean
 }
 
-export default function FourOperationsPage() {
+export default function ShapeAndSpacePage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
@@ -46,11 +46,11 @@ export default function FourOperationsPage() {
     const { data: testsData, error: testsError } = await supabase
       .from("math_tests")
       .select("*")
-      .eq("category", "four_operations")
+      .eq("category", "shape_space")
       .order("created_at", { ascending: false })
 
     if (testsError) {
-      console.error("Error loading four operations tests:", testsError)
+      console.error("Error loading shape and space tests:", testsError)
       setLoading(false)
       return
     }
@@ -177,22 +177,22 @@ export default function FourOperationsPage() {
       : tests.filter((test) => test.difficulty === difficultyFilter)
 
   if (loading) {
-    return <p style={styles.message}>Loading Four Operations tests...</p>
+    return <p style={styles.message}>Loading Shape & Space tests...</p>
   }
 
   return (
     <div style={styles.page}>
       <div style={styles.container}>
         <div style={styles.heroCard}>
-          <h1 style={styles.title}>➕ Four Operations Tests</h1>
+          <h1 style={styles.title}>📐 Shape & Space Tests</h1>
           <p style={styles.subtitle}>
-            Choose a Four Operations test and answer 10 multiple-choice questions.
+            Choose a Shape & Space test and answer 10 multiple-choice questions.
           </p>
         </div>
 
         {tests.length === 0 ? (
           <div style={styles.emptyCard}>
-            <h2>No Four Operations tests yet</h2>
+            <h2>No Shape & Space tests yet</h2>
             <p>Add tests in Supabase and they will appear here.</p>
           </div>
         ) : (
@@ -262,8 +262,8 @@ export default function FourOperationsPage() {
                     </div>
 
                     <p style={styles.preview}>
-                      Practise addition, subtraction, multiplication, division,
-                      mental arithmetic, and multi-step calculations in this test.
+                      Practise angles, shapes, symmetry, coordinates, nets,
+                      transformations, and spatial reasoning in this test.
                     </p>
 
                     <div style={styles.metaRow}>
@@ -287,7 +287,7 @@ export default function FourOperationsPage() {
                     </div>
 
                     <Link
-                      href={`/math-test/four-operations/${test.id}`}
+                      href={`/math-test/shape-space/${test.id}`}
                       style={test.isCompleted ? styles.retryButton : styles.startButton}
                     >
                       {test.isCompleted ? "Retry Test →" : "Start Test →"}

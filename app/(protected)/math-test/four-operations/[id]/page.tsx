@@ -143,7 +143,7 @@ export default function FourOperationsTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/four-operations")
+    router.push("/math-test/four-operations")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -332,7 +332,7 @@ export default function FourOperationsTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/four-operations")}
+                    onClick={() => router.push("/math-test/four-operations")}
                     style={styles.primaryButton}
                   >
                     Back to Topic

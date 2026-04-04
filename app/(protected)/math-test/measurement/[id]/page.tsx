@@ -143,7 +143,7 @@ export default function MeasurementTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/measurement")
+    router.push("/math-test/measurement")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -332,7 +332,7 @@ export default function MeasurementTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/measurement")}
+                    onClick={() => router.push("/math-test/measurement")}
                     style={styles.primaryButton}
                   >
                     Back to Topic

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
+import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
 type MathTest = {
@@ -143,7 +143,7 @@ export default function NumberPlaceValueTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/number-place-value")
+    router.push("/math-test/number-place-value")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -332,7 +332,7 @@ export default function NumberPlaceValueTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/number-place-value")}
+                    onClick={() => router.push("/math-test/number-place-value")}
                     style={styles.primaryButton}
                   >
                     Back to Topic
