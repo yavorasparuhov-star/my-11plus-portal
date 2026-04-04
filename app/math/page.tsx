@@ -10,151 +10,93 @@ const hoverCardStyle = {
   cursor: "pointer",
 }
 
-type MathStats = {
-  mathScore: number | null
-  mathReviewCount: number
+type TopicCard = {
+  title: string
+  path: string
+  icon: string
+  description: string
+  buttonText: string
 }
 
 export default function MathPage() {
   const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const [stats, setStats] = useState<MathStats>({
-    mathScore: null,
-    mathReviewCount: 0,
-  })
-
-  const [loadingStats, setLoadingStats] = useState(true)
-
-  const topics = [
+  const topics: TopicCard[] = [
     {
       title: "Number & Place Value",
-      path: "/math/number-place-value",
+      path: "/math-test/number-place-value",
       icon: "🔢",
       description:
         "Build confidence with place value, ordering numbers, rounding, and number patterns.",
-      buttonText: "Start Number & Place Value",
+      buttonText: "Explore Number & Place Value",
     },
     {
       title: "Four Operations",
-      path: "/math/four-operations",
+      path: "/math-test/four-operations",
       icon: "➕",
       description:
         "Practise addition, subtraction, multiplication, division, and multi-step calculations.",
-      buttonText: "Start Four Operations",
+      buttonText: "Explore Four Operations",
     },
     {
       title: "Fractions, Decimals & Percentages",
-      path: "/math/fractions-decimals-percentages",
+      path: "/math-test/fractions-decimals-percentages",
       icon: "🟰",
-      description:
-        "Convert, compare and solve problems with FDP.",
-      buttonText: "Start FDP",
+      description: "Convert, compare and solve problems with FDP.",
+      buttonText: "Explore FDP",
     },
     {
       title: "Shape & Space",
-      path: "/math/shape-space",
+      path: "/math-test/shape-space",
       icon: "📐",
       description:
         "Explore angles, properties of shapes, symmetry, coordinates, and spatial reasoning.",
-      buttonText: "Start Shape & Space",
+      buttonText: "Explore Shape & Space",
     },
     {
       title: "Measurement",
-      path: "/math/measurement",
+      path: "/math-test/measurement",
       icon: "📏",
       description:
         "Practise length, mass, capacity, time, area, perimeter, and practical measurement problems.",
-      buttonText: "Start Measurement",
+      buttonText: "Explore Measurement",
     },
     {
       title: "Data Handling",
-      path: "/math/data-handling",
+      path: "/math-test/data-handling",
       icon: "📊",
       description:
         "Interpret charts, tables, graphs, and solve problems based on mathematical data.",
-      buttonText: "Start Data Handling",
+      buttonText: "Explore Data Handling",
     },
     {
       title: "Algebra & Reasoning",
-      path: "/math/algebra-reasoning",
+      path: "/math-test/algebra-reasoning",
       icon: "🧠",
       description:
         "Develop algebraic thinking, sequences, formulas, and logical mathematical reasoning.",
-      buttonText: "Start Algebra & Reasoning",
+      buttonText: "Explore Algebra & Reasoning",
     },
   ]
 
   useEffect(() => {
-    async function loadMathStats() {
-      setLoadingStats(true)
-
+    async function checkUser() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) {
-        setLoadingStats(false)
-        return
-      }
-
-      const [mathProgressRes, mathReviewRes] = await Promise.all([
-        supabase
-          .from("math_progress")
-          .select("success_rate, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1),
-
-        supabase
-          .from("math_review")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id),
-      ])
-
-      setStats({
-        mathScore:
-          mathProgressRes.data && mathProgressRes.data.length > 0
-            ? Math.round(mathProgressRes.data[0].success_rate)
-            : null,
-        mathReviewCount: mathReviewRes.count ?? 0,
-      })
-
-      setLoadingStats(false)
+      setIsLoggedIn(!!user)
     }
 
-    loadMathStats()
+    checkUser()
   }, [])
 
-  function getScoreLabel(score: number | null) {
-    if (score === null) return "Not tested yet"
-    return `${score}%`
-  }
-
-  function getScoreBadgeStyle(score: number | null): React.CSSProperties {
-    if (score === null) {
-      return {
-        backgroundColor: "#e5e7eb",
-        color: "#374151",
-      }
-    }
-
-    if (score >= 80) {
-      return {
-        backgroundColor: "#d1fae5",
-        color: "#065f46",
-      }
-    }
-
-    if (score >= 50) {
-      return {
-        backgroundColor: "#fef3c7",
-        color: "#92400e",
-      }
-    }
-
-    return {
-      backgroundColor: "#fee2e2",
-      color: "#991b1b",
+  function handleTopicClick(path: string) {
+    if (isLoggedIn) {
+      router.push(path)
+    } else {
+      router.push("/signup")
     }
   }
 
@@ -166,9 +108,33 @@ export default function MathPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>Math</h1>
           <p style={styles.subtitle}>
-            Choose a Math training activity and keep building confidence across
-            all 11+ topics.
+            Discover our 11+ maths practice across number, calculation,
+            measurement, geometry, data handling, and reasoning.
           </p>
+
+          <p style={styles.helperText}>
+            {isLoggedIn
+              ? "You’re signed in. Explore the topics below and continue to Maths Practice."
+              : "Browse the topics below. Create a free account to start practising."}
+          </p>
+
+          <div style={styles.heroButtons}>
+            <button
+              onClick={() => router.push(isLoggedIn ? "/math-test" : "/signup")}
+              style={styles.primaryButton}
+            >
+              {isLoggedIn ? "Go to Maths Practice" : "Create Free Account"}
+            </button>
+
+            {!isLoggedIn && (
+              <button
+                onClick={() => router.push("/login")}
+                style={styles.secondaryButton}
+              >
+                Log In
+              </button>
+            )}
+          </div>
         </div>
 
         <div style={styles.grid}>
@@ -176,7 +142,7 @@ export default function MathPage() {
             <div
               key={topic.title}
               style={{ ...styles.card, ...hoverCardStyle }}
-              onClick={() => router.push(topic.path)}
+              onClick={() => handleTopicClick(topic.path)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-6px)"
                 e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -190,31 +156,10 @@ export default function MathPage() {
               <h2 style={styles.cardTitle}>{topic.title}</h2>
               <p style={styles.cardText}>{topic.description}</p>
 
-              <div style={styles.statsBox}>
-                <div style={styles.statRow}>
-                  <span style={styles.statLabel}>Last score:</span>
-                  <span
-                    style={{
-                      ...styles.scoreBadge,
-                      ...getScoreBadgeStyle(loadingStats ? null : stats.mathScore),
-                    }}
-                  >
-                    {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
-                  </span>
-                </div>
-
-                <div style={styles.statRow}>
-                  <span style={styles.statLabel}>Review items:</span>
-                  <span style={styles.reviewCount}>
-                    {loadingStats ? "Loading..." : stats.mathReviewCount}
-                  </span>
-                </div>
-              </div>
-
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(topic.path)
+                  handleTopicClick(topic.path)
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "#bbf7d0"
@@ -222,28 +167,12 @@ export default function MathPage() {
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "#d4f5d0"
                 }}
-                style={styles.button}
+                style={styles.topicButton}
               >
                 {topic.buttonText}
               </button>
             </div>
           ))}
-        </div>
-
-        <div style={styles.bottomButtons}>
-          <button
-            onClick={() => router.push("/review/math")}
-            style={styles.secondaryButton}
-          >
-            Math Review
-          </button>
-
-          <button
-            onClick={() => router.push("/progress/math")}
-            style={styles.secondaryButton}
-          >
-            Math Progress
-          </button>
         </div>
       </div>
     </>
@@ -271,6 +200,38 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "700px",
     margin: "0 auto",
     lineHeight: 1.6,
+  },
+  helperText: {
+    fontSize: "16px",
+    color: "#6b7280",
+    marginTop: "12px",
+  },
+  heroButtons: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "24px",
+  },
+  primaryButton: {
+    padding: "12px 24px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: "16px",
+  },
+  secondaryButton: {
+    padding: "12px 24px",
+    borderRadius: "12px",
+    border: "1px solid #90ee90",
+    background: "white",
+    color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
   },
   grid: {
     display: "grid",
@@ -303,61 +264,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "18px",
     minHeight: "96px",
   },
-  statsBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  statRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  statLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  scoreBadge: {
-    padding: "6px 12px",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: 700,
-    minWidth: "92px",
-    textAlign: "center",
-  },
-  reviewCount: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
-  },
-  button: {
+  topicButton: {
     padding: "12px 18px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
-  },
-  bottomButtons: {
-    display: "flex",
-    gap: "16px",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    marginTop: "30px",
-  },
-  secondaryButton: {
-    padding: "12px 24px",
-    borderRadius: "12px",
-    border: "1px solid #90ee90",
-    background: "white",
     color: "#065f46",
     cursor: "pointer",
     fontWeight: 600,

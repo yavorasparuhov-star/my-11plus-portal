@@ -62,13 +62,19 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const activeUser = propUser ?? currentUser
   const homeHref = activeUser ? "/home" : "/"
 
+  const englishHref = "/english"
+  const mathHref = activeUser ? "/math-test" : "/math"
+  const vrHref = activeUser ? "/vr-test" : "/vr"
+  const nvrHref = activeUser ? "/nvr-test" : "/nvr"
+
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
+    borderBottom: pathname === path ? "2px solid #065f46" : "2px solid transparent",
     color: pathname === path ? "#065f46" : "#1f2937",
     fontWeight: pathname === path ? 700 : 500,
-    backgroundColor: pathname === path ? "#bbf7d0" : "transparent",
-    padding: "8px 14px",
-    borderRadius: "999px",
+    backgroundColor: "transparent",
+    padding: "8px 6px",
+    borderRadius: "0",
     display: "inline-block",
     transition: "all 0.2s ease",
   })
@@ -159,19 +165,19 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             🏠 Home
           </Link>
 
-          <Link href="/english" style={linkStyle("/english")}>
+          <Link href={englishHref} style={linkStyle(englishHref)}>
             📘 English
           </Link>
 
-          <Link href="/math" style={linkStyle("/math")}>
+          <Link href={mathHref} style={linkStyle(mathHref)}>
             ➗ Math
           </Link>
 
-          <Link href="/vr" style={linkStyle("/vr")}>
+          <Link href={vrHref} style={linkStyle(vrHref)}>
             🧠 VR
           </Link>
 
-          <Link href="/nvr" style={linkStyle("/nvr")}>
+          <Link href={nvrHref} style={linkStyle(nvrHref)}>
             🔷 NVR
           </Link>
 
@@ -360,32 +366,32 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               </Link>
 
               <Link
-                href="/english"
-                style={linkStyle("/english")}
+                href={englishHref}
+                style={linkStyle(englishHref)}
                 onClick={() => setMenuOpen(false)}
               >
                 📘 English
               </Link>
 
               <Link
-                href="/math"
-                style={linkStyle("/math")}
+                href={mathHref}
+                style={linkStyle(mathHref)}
                 onClick={() => setMenuOpen(false)}
               >
                 ➗ Math
               </Link>
 
               <Link
-                href="/vr"
-                style={linkStyle("/vr")}
+                href={vrHref}
+                style={linkStyle(vrHref)}
                 onClick={() => setMenuOpen(false)}
               >
                 🧠 VR
               </Link>
 
               <Link
-                href="/nvr"
-                style={linkStyle("/nvr")}
+                href={nvrHref}
+                style={linkStyle(nvrHref)}
                 onClick={() => setMenuOpen(false)}
               >
                 🔷 NVR

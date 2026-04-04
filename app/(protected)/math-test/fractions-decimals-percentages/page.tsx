@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import Header from "../../../components/Header"
-import { supabase } from "../../../lib/supabaseClient"
+import Header from "../../../../components/Header"
+import { supabase } from "../../../../lib/supabaseClient"
 
 type MathTest = {
   id: number

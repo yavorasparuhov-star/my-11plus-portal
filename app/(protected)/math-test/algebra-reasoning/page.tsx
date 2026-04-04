@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import Header from "../../../components/Header"
-import { supabase } from "../../../lib/supabaseClient"
+import { supabase } from "../../../../lib/supabaseClient"
 
 type MathTest = {
   id: number
@@ -28,7 +27,7 @@ type TestWithProgress = MathTest & {
   isCompleted: boolean
 }
 
-export default function NumberPlaceValuePage() {
+export default function AlgebraReasoningPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
@@ -47,11 +46,11 @@ export default function NumberPlaceValuePage() {
     const { data: testsData, error: testsError } = await supabase
       .from("math_tests")
       .select("*")
-      .eq("category", "number_place_value")
+      .eq("category", "algebra_reasoning")
       .order("created_at", { ascending: false })
 
     if (testsError) {
-      console.error("Error loading number place value tests:", testsError)
+      console.error("Error loading algebra reasoning tests:", testsError)
       setLoading(false)
       return
     }
@@ -178,138 +177,129 @@ export default function NumberPlaceValuePage() {
       : tests.filter((test) => test.difficulty === difficultyFilter)
 
   if (loading) {
-    return (
-      <>
-        <Header />
-        <p style={styles.message}>Loading Number & Place Value tests...</p>
-      </>
-    )
+    return <p style={styles.message}>Loading Algebra & Reasoning tests...</p>
   }
 
   return (
-    <>
-      <Header />
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <div style={styles.heroCard}>
+          <h1 style={styles.title}>🧠 Algebra & Reasoning Tests</h1>
+          <p style={styles.subtitle}>
+            Choose an Algebra & Reasoning test and answer 10 multiple-choice questions.
+          </p>
+        </div>
 
-      <div style={styles.page}>
-        <div style={styles.container}>
-          <div style={styles.heroCard}>
-            <h1 style={styles.title}>🔢 Number &amp; Place Value Tests</h1>
-            <p style={styles.subtitle}>
-              Choose a Number &amp; Place Value test and answer 10 multiple-choice questions.
-            </p>
+        {tests.length === 0 ? (
+          <div style={styles.emptyCard}>
+            <h2>No Algebra & Reasoning tests yet</h2>
+            <p>Add tests in Supabase and they will appear here.</p>
           </div>
+        ) : (
+          <>
+            <div style={styles.summaryCard}>
+              <div style={styles.filterRow}>
+                <button
+                  onClick={() => setDifficultyFilter("all")}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === "all" ? "white" : "black",
+                  }}
+                >
+                  All ({allCompletedPercent}% Completed)
+                </button>
 
-          {tests.length === 0 ? (
-            <div style={styles.emptyCard}>
-              <h2>No Number &amp; Place Value tests yet</h2>
-              <p>Add tests in Supabase and they will appear here.</p>
-            </div>
-          ) : (
-            <>
-              <div style={styles.summaryCard}>
-                <div style={styles.filterRow}>
-                  <button
-                    onClick={() => setDifficultyFilter("all")}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === "all" ? "white" : "black",
-                    }}
-                  >
-                    All ({allCompletedPercent}% Completed)
-                  </button>
+                <button
+                  onClick={() => setDifficultyFilter(1)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 1 ? "white" : "black",
+                  }}
+                >
+                  Easy ({easyCompletedPercent}% Completed)
+                </button>
 
-                  <button
-                    onClick={() => setDifficultyFilter(1)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 1 ? "white" : "black",
-                    }}
-                  >
-                    Easy ({easyCompletedPercent}% Completed)
-                  </button>
+                <button
+                  onClick={() => setDifficultyFilter(2)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 2 ? "white" : "black",
+                  }}
+                >
+                  Medium ({mediumCompletedPercent}% Completed)
+                </button>
 
-                  <button
-                    onClick={() => setDifficultyFilter(2)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 2 ? "white" : "black",
-                    }}
-                  >
-                    Medium ({mediumCompletedPercent}% Completed)
-                  </button>
-
-                  <button
-                    onClick={() => setDifficultyFilter(3)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 3 ? "white" : "black",
-                    }}
-                  >
-                    Hard ({hardCompletedPercent}% Completed)
-                  </button>
-                </div>
+                <button
+                  onClick={() => setDifficultyFilter(3)}
+                  style={{
+                    ...styles.filterButton,
+                    backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                    color: difficultyFilter === 3 ? "white" : "black",
+                  }}
+                >
+                  Hard ({hardCompletedPercent}% Completed)
+                </button>
               </div>
+            </div>
 
-              {filteredTests.length === 0 ? (
-                <div style={styles.emptyCard}>
-                  <h2>No tests in this difficulty</h2>
-                  <p>Try another filter.</p>
-                </div>
-              ) : (
-                <div style={styles.grid}>
-                  {filteredTests.map((test) => (
-                    <div key={test.id} style={styles.card}>
-                      <div style={styles.cardTop}>
-                        <h2 style={styles.cardTitle}>{test.title}</h2>
-                        <span style={styles.badge}>
-                          {getDifficultyLabel(test.difficulty)}
-                        </span>
-                      </div>
+            {filteredTests.length === 0 ? (
+              <div style={styles.emptyCard}>
+                <h2>No tests in this difficulty</h2>
+                <p>Try another filter.</p>
+              </div>
+            ) : (
+              <div style={styles.grid}>
+                {filteredTests.map((test) => (
+                  <div key={test.id} style={styles.card}>
+                    <div style={styles.cardTop}>
+                      <h2 style={styles.cardTitle}>{test.title}</h2>
+                      <span style={styles.badge}>
+                        {getDifficultyLabel(test.difficulty)}
+                      </span>
+                    </div>
 
-                      <p style={styles.preview}>
-                        Practise place value, ordering numbers, rounding, factors,
-                        multiples, negative numbers, and number patterns in this test.
+                    <p style={styles.preview}>
+                      Practise sequences, simple algebra, formulas, and logical
+                      mathematical reasoning in this test.
+                    </p>
+
+                    <div style={styles.metaRow}>
+                      <p style={styles.metaHalf}>
+                        <strong>Completed:</strong>{" "}
+                        {test.completed_at
+                          ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "Not yet"}
                       </p>
 
-                      <div style={styles.metaRow}>
-                        <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
-                        </p>
-
-                        <p style={styles.metaHalf}>
-                          <strong>Score:</strong> {getScoreText(test)}{" "}
-                          <span style={styles.scoreIcon}>
-                            {getScoreIcon(test.score, test.isCompleted)}
-                          </span>
-                        </p>
-                      </div>
-
-                      <Link
-                        href={`/math/number-place-value/${test.id}`}
-                        style={test.isCompleted ? styles.retryButton : styles.startButton}
-                      >
-                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                      </Link>
+                      <p style={styles.metaHalf}>
+                        <strong>Score:</strong> {getScoreText(test)}{" "}
+                        <span style={styles.scoreIcon}>
+                          {getScoreIcon(test.score, test.isCompleted)}
+                        </span>
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+
+                    <Link
+                      href={`/math-test/algebra-reasoning/${test.id}`}
+                      style={test.isCompleted ? styles.retryButton : styles.startButton}
+                    >
+                      {test.isCompleted ? "Retry Test →" : "Start Test →"}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </>
+    </div>
   )
 }
 

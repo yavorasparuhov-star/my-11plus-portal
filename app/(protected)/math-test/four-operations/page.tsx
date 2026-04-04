@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import Header from "../../../components/Header"
-import { supabase } from "../../../lib/supabaseClient"
+import Header from "../../../../components/Header"
+import { supabase } from "../../../../lib/supabaseClient"
 
 type MathTest = {
   id: number
@@ -28,7 +28,7 @@ type TestWithProgress = MathTest & {
   isCompleted: boolean
 }
 
-export default function MeasurementPage() {
+export default function FourOperationsPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
@@ -47,11 +47,11 @@ export default function MeasurementPage() {
     const { data: testsData, error: testsError } = await supabase
       .from("math_tests")
       .select("*")
-      .eq("category", "measurement")
+      .eq("category", "four_operations")
       .order("created_at", { ascending: false })
 
     if (testsError) {
-      console.error("Error loading measurement tests:", testsError)
+      console.error("Error loading four operations tests:", testsError)
       setLoading(false)
       return
     }
@@ -181,7 +181,7 @@ export default function MeasurementPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Measurement tests...</p>
+        <p style={styles.message}>Loading Four Operations tests...</p>
       </>
     )
   }
@@ -193,15 +193,15 @@ export default function MeasurementPage() {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>📏 Measurement Tests</h1>
+            <h1 style={styles.title}>➕ Four Operations Tests</h1>
             <p style={styles.subtitle}>
-              Choose a Measurement test and answer 10 multiple-choice questions.
+              Choose a Four Operations test and answer 10 multiple-choice questions.
             </p>
           </div>
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>No Measurement tests yet</h2>
+              <h2>No Four Operations tests yet</h2>
               <p>Add tests in Supabase and they will appear here.</p>
             </div>
           ) : (
@@ -271,8 +271,8 @@ export default function MeasurementPage() {
                       </div>
 
                       <p style={styles.preview}>
-                        Practise length, mass, capacity, time, area, perimeter,
-                        and practical measurement problems in this test.
+                        Practise addition, subtraction, multiplication, division,
+                        mental arithmetic, and multi-step calculations in this test.
                       </p>
 
                       <div style={styles.metaRow}>
@@ -296,7 +296,7 @@ export default function MeasurementPage() {
                       </div>
 
                       <Link
-                        href={`/math/measurement/${test.id}`}
+                        href={`/math/four-operations/${test.id}`}
                         style={test.isCompleted ? styles.retryButton : styles.startButton}
                       >
                         {test.isCompleted ? "Retry Test →" : "Start Test →"}

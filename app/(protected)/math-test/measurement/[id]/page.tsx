@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
+import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
 type MathTest = {
@@ -31,7 +31,7 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
-export default function FractionsDecimalsPercentagesTestPage() {
+export default function MeasurementTestPage() {
   const params = useParams()
   const router = useRouter()
 
@@ -83,12 +83,12 @@ export default function FractionsDecimalsPercentagesTestPage() {
         .from("math_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", "fractions_decimals_percentages")
+        .eq("category", "measurement")
         .single()
 
       if (testError) {
         console.error("Error loading math test:", testError)
-        setErrorMessage("Could not load this FDP test.")
+        setErrorMessage("Could not load this Measurement test.")
         setLoading(false)
         return
       }
@@ -143,7 +143,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/fractions-decimals-percentages")
+    router.push("/math/measurement")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -259,7 +259,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
   const unansweredCount = questions.length - answeredCount
 
   if (loading) {
-    return <p style={styles.message}>Loading FDP test...</p>
+    return <p style={styles.message}>Loading Measurement test...</p>
   }
 
   if (errorMessage) {
@@ -296,7 +296,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>🟰 {test.title}</h1>
+                <h1 style={styles.title}>📏 {test.title}</h1>
                 <p style={styles.subtitle}>
                   Answer all 10 multiple-choice questions carefully.
                 </p>
@@ -332,7 +332,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/fractions-decimals-percentages")}
+                    onClick={() => router.push("/math/measurement")}
                     style={styles.primaryButton}
                   >
                     Back to Topic

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import Header from "../../../components/Header"
-import { supabase } from "../../../lib/supabaseClient"
+import Header from "../../../../components/Header"
+import { supabase } from "../../../../lib/supabaseClient"
 
 type MathTest = {
   id: number
@@ -28,7 +28,7 @@ type TestWithProgress = MathTest & {
   isCompleted: boolean
 }
 
-export default function DataHandlingPage() {
+export default function NumberPlaceValuePage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
@@ -47,11 +47,11 @@ export default function DataHandlingPage() {
     const { data: testsData, error: testsError } = await supabase
       .from("math_tests")
       .select("*")
-      .eq("category", "data_handling")
+      .eq("category", "number_place_value")
       .order("created_at", { ascending: false })
 
     if (testsError) {
-      console.error("Error loading data handling tests:", testsError)
+      console.error("Error loading number place value tests:", testsError)
       setLoading(false)
       return
     }
@@ -181,7 +181,7 @@ export default function DataHandlingPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Data Handling tests...</p>
+        <p style={styles.message}>Loading Number & Place Value tests...</p>
       </>
     )
   }
@@ -193,15 +193,15 @@ export default function DataHandlingPage() {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>📊 Data Handling Tests</h1>
+            <h1 style={styles.title}>🔢 Number &amp; Place Value Tests</h1>
             <p style={styles.subtitle}>
-              Choose a Data Handling test and answer 10 multiple-choice questions.
+              Choose a Number &amp; Place Value test and answer 10 multiple-choice questions.
             </p>
           </div>
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>No Data Handling tests yet</h2>
+              <h2>No Number &amp; Place Value tests yet</h2>
               <p>Add tests in Supabase and they will appear here.</p>
             </div>
           ) : (
@@ -271,8 +271,8 @@ export default function DataHandlingPage() {
                       </div>
 
                       <p style={styles.preview}>
-                        Practise reading tables, charts, graphs, averages, and
-                        solving problems using mathematical data.
+                        Practise place value, ordering numbers, rounding, factors,
+                        multiples, negative numbers, and number patterns in this test.
                       </p>
 
                       <div style={styles.metaRow}>
@@ -296,7 +296,7 @@ export default function DataHandlingPage() {
                       </div>
 
                       <Link
-                        href={`/math/data-handling/${test.id}`}
+                        href={`/math/number-place-value/${test.id}`}
                         style={test.isCompleted ? styles.retryButton : styles.startButton}
                       >
                         {test.isCompleted ? "Retry Test →" : "Start Test →"}

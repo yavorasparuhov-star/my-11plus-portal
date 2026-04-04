@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
+import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
 type MathTest = {
@@ -31,7 +31,7 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
-export default function DataHandlingTestPage() {
+export default function FourOperationsTestPage() {
   const params = useParams()
   const router = useRouter()
 
@@ -83,12 +83,12 @@ export default function DataHandlingTestPage() {
         .from("math_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", "data_handling")
+        .eq("category", "four_operations")
         .single()
 
       if (testError) {
         console.error("Error loading math test:", testError)
-        setErrorMessage("Could not load this Data Handling test.")
+        setErrorMessage("Could not load this Four Operations test.")
         setLoading(false)
         return
       }
@@ -143,7 +143,7 @@ export default function DataHandlingTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
-    router.push("/math/data-handling")
+    router.push("/math/four-operations")
   }
 
   function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
@@ -259,7 +259,7 @@ export default function DataHandlingTestPage() {
   const unansweredCount = questions.length - answeredCount
 
   if (loading) {
-    return <p style={styles.message}>Loading Data Handling test...</p>
+    return <p style={styles.message}>Loading Four Operations test...</p>
   }
 
   if (errorMessage) {
@@ -296,7 +296,7 @@ export default function DataHandlingTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>📊 {test.title}</h1>
+                <h1 style={styles.title}>➕ {test.title}</h1>
                 <p style={styles.subtitle}>
                   Answer all 10 multiple-choice questions carefully.
                 </p>
@@ -332,7 +332,7 @@ export default function DataHandlingTestPage() {
                     Retry This Test
                   </button>
                   <button
-                    onClick={() => router.push("/math/data-handling")}
+                    onClick={() => router.push("/math/four-operations")}
                     style={styles.primaryButton}
                   >
                     Back to Topic
