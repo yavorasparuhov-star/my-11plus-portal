@@ -10,36 +10,68 @@ type HeaderProps = {
   onLogout?: () => void
 }
 
+type UserPlan = "guest" | "free" | "paid"
+
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
   const [loadingUser, setLoadingUser] = useState(!propUser)
+  const [plan, setPlan] = useState<UserPlan>("guest")
 
   useEffect(() => {
-    if (propUser) {
-      setCurrentUser(propUser)
-      setLoadingUser(false)
-      return
-    }
-
     let mounted = true
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (mounted) {
-        setCurrentUser(data.user ?? null)
+    async function loadUserAndPlan(sessionUser?: any) {
+      if (propUser) {
+        setCurrentUser(propUser)
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", propUser.id)
+          .maybeSingle()
+
+        if (!mounted) return
+
+        setPlan(profile?.plan === "paid" ? "paid" : "free")
         setLoadingUser(false)
+        return
       }
-    })
+
+      const user = sessionUser ?? (await supabase.auth.getUser()).data.user ?? null
+
+      if (!mounted) return
+
+      setCurrentUser(user)
+
+      if (!user) {
+        setPlan("guest")
+        setLoadingUser(false)
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (!mounted) return
+
+      setPlan(profile?.plan === "paid" ? "paid" : "free")
+      setLoadingUser(false)
+    }
+
+    loadUserAndPlan()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setCurrentUser(session?.user ?? null)
-        setLoadingUser(false)
-      }
+      if (!mounted) return
+      loadUserAndPlan(session?.user ?? null)
     })
 
     return () => {
@@ -49,6 +81,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   }, [propUser])
 
   const handleLogoutClick = async () => {
+    setMenuOpen(false)
+
     if (onLogout) {
       onLogout()
       return
@@ -56,22 +90,31 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
     await supabase.auth.signOut()
     setCurrentUser(null)
+    setPlan("guest")
     router.push("/login")
+    router.refresh()
   }
 
   const activeUser = propUser ?? currentUser
-  const homeHref = activeUser ? "/home" : "/"
+  const isGuest = !activeUser || plan === "guest"
 
+  const homeHref = "/"
   const englishHref = "/english"
-  const mathHref = activeUser ? "/math-test" : "/math"
-  const vrHref = activeUser ? "/vr-test" : "/vr"
-  const nvrHref = activeUser ? "/nvr-test" : "/nvr"
+  const mathHref = "/math"
+  const vrHref = "/vr"
+  const nvrHref = "/nvr"
+  const pricingHref = "/pricing"
+
+  const isActivePath = (path: string) => {
+    if (path === "/") return pathname === "/"
+    return pathname === path || pathname.startsWith(path + "/")
+  }
 
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
-    borderBottom: pathname === path ? "2px solid #065f46" : "2px solid transparent",
-    color: pathname === path ? "#065f46" : "#1f2937",
-    fontWeight: pathname === path ? 700 : 500,
+    borderBottom: isActivePath(path) ? "2px solid #065f46" : "2px solid transparent",
+    color: isActivePath(path) ? "#065f46" : "#1f2937",
+    fontWeight: isActivePath(path) ? 700 : 500,
     backgroundColor: "transparent",
     padding: "8px 6px",
     borderRadius: "0",
@@ -181,7 +224,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             🔷 NVR
           </Link>
 
-          {activeUser && (
+          {isGuest && (
+            <Link href={pricingHref} style={linkStyle(pricingHref)}>
+              💎 Pricing
+            </Link>
+          )}
+
+          {!isGuest && (
             <>
               <Link href="/progress" style={linkStyle("/progress")}>
                 📊 Progress
@@ -357,47 +406,33 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 marginBottom: activeUser ? "14px" : "0",
               }}
             >
-              <Link
-                href={homeHref}
-                style={linkStyle(homeHref)}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href={homeHref} style={linkStyle(homeHref)} onClick={() => setMenuOpen(false)}>
                 🏠 Home
               </Link>
 
-              <Link
-                href={englishHref}
-                style={linkStyle(englishHref)}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href={englishHref} style={linkStyle(englishHref)} onClick={() => setMenuOpen(false)}>
                 📘 English
               </Link>
 
-              <Link
-                href={mathHref}
-                style={linkStyle(mathHref)}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href={mathHref} style={linkStyle(mathHref)} onClick={() => setMenuOpen(false)}>
                 ➗ Math
               </Link>
 
-              <Link
-                href={vrHref}
-                style={linkStyle(vrHref)}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href={vrHref} style={linkStyle(vrHref)} onClick={() => setMenuOpen(false)}>
                 🧠 VR
               </Link>
 
-              <Link
-                href={nvrHref}
-                style={linkStyle(nvrHref)}
-                onClick={() => setMenuOpen(false)}
-              >
+              <Link href={nvrHref} style={linkStyle(nvrHref)} onClick={() => setMenuOpen(false)}>
                 🔷 NVR
               </Link>
 
-              {activeUser && (
+              {isGuest && (
+                <Link href={pricingHref} style={linkStyle(pricingHref)} onClick={() => setMenuOpen(false)}>
+                  💎 Pricing
+                </Link>
+              )}
+
+              {!isGuest && (
                 <>
                   <Link
                     href="/progress"
