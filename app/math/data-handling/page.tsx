@@ -5,6 +5,11 @@ import Link from "next/link"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 
+const hoverCardStyle = {
+  transition: "all 0.25s ease",
+  cursor: "pointer",
+}
+
 type MathTest = {
   id: number
   title: string
@@ -261,7 +266,18 @@ export default function DataHandlingPage() {
               ) : (
                 <div style={styles.grid}>
                   {filteredTests.map((test) => (
-                    <div key={test.id} style={styles.card}>
+                    <div
+                      key={test.id}
+                      style={{ ...styles.card, ...hoverCardStyle }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-6px)"
+                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)"
+                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                      }}
+                    >
                       <div style={styles.cardTop}>
                         <h2 style={styles.cardTitle}>{test.title}</h2>
                         <span style={styles.badge}>
@@ -296,7 +312,7 @@ export default function DataHandlingPage() {
 
                       <Link
                         href={`/math/data-handling/${test.id}`}
-                        style={test.isCompleted ? styles.retryButton : styles.startButton}
+                        style={test.isCompleted ? styles.startButton : styles.retryButton}
                       >
                         {test.isCompleted ? "Retry Test →" : "Start Test →"}
                       </Link>

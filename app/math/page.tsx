@@ -1,5 +1,6 @@
 "use client"
 
+import Header from "../../components/Header"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabaseClient"
@@ -14,7 +15,7 @@ type MathStats = {
   mathReviewCount: number
 }
 
-export default function MathTestPage() {
+export default function MathPage() {
   const router = useRouter()
 
   const [stats, setStats] = useState<MathStats>({
@@ -27,58 +28,58 @@ export default function MathTestPage() {
   const topics = [
     {
       title: "Number & Place Value",
-      path: "/math-test/number-place-value",
+      path: "/math/number-place-value",
       icon: "🔢",
       description:
         "Build confidence with place value, ordering numbers, rounding, and number patterns.",
-      buttonText: "Start Number & Place Value",
+      buttonText: "Open Number & Place Value",
     },
     {
       title: "Four Operations",
-      path: "/math-test/four-operations",
+      path: "/math/four-operations",
       icon: "➕",
       description:
         "Practise addition, subtraction, multiplication, division, and multi-step calculations.",
-      buttonText: "Start Four Operations",
+      buttonText: "Open Four Operations",
     },
     {
       title: "Fractions, Decimals & Percentages",
-      path: "/math-test/fractions-decimals-percentages",
+      path: "/math/fractions-decimals-percentages",
       icon: "🟰",
       description: "Convert, compare and solve problems with FDP.",
-      buttonText: "Start FDP",
+      buttonText: "Open FDP",
     },
     {
       title: "Shape & Space",
-      path: "/math-test/shape-space",
+      path: "/math/shape-space",
       icon: "📐",
       description:
         "Explore angles, properties of shapes, symmetry, coordinates, and spatial reasoning.",
-      buttonText: "Start Shape & Space",
+      buttonText: "Open Shape & Space",
     },
     {
       title: "Measurement",
-      path: "/math-test/measurement",
+      path: "/math/measurement",
       icon: "📏",
       description:
         "Practise length, mass, capacity, time, area, perimeter, and practical measurement problems.",
-      buttonText: "Start Measurement",
+      buttonText: "Open Measurement",
     },
     {
       title: "Data Handling",
-      path: "/math-test/data-handling",
+      path: "/math/data-handling",
       icon: "📊",
       description:
         "Interpret charts, tables, graphs, and solve problems based on mathematical data.",
-      buttonText: "Start Data Handling",
+      buttonText: "Open Data Handling",
     },
     {
       title: "Algebra & Reasoning",
-      path: "/math-test/algebra-reasoning",
+      path: "/math/algebra-reasoning",
       icon: "🧠",
       description:
         "Develop algebraic thinking, sequences, formulas, and logical mathematical reasoning.",
-      buttonText: "Start Algebra & Reasoning",
+      buttonText: "Open Algebra & Reasoning",
     },
   ]
 
@@ -123,6 +124,10 @@ export default function MathTestPage() {
     loadMathStats()
   }, [])
 
+  function openCategory(path: string) {
+    router.push(path)
+  }
+
   function getScoreLabel(score: number | null) {
     if (score === null) return "Not tested yet"
     return `${score}%`
@@ -157,90 +162,94 @@ export default function MathTestPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.hero}>
-        <h1 style={styles.title}>Math Practice</h1>
-        <p style={styles.subtitle}>
-          Choose a Math training activity and keep building confidence across
-          all 11+ topics.
-        </p>
-      </div>
+    <>
+      <Header />
 
-      <div style={styles.grid}>
-        {topics.map((topic) => (
-          <div
-            key={topic.title}
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => router.push(topic.path)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={styles.icon}>{topic.icon}</div>
-            <h2 style={styles.cardTitle}>{topic.title}</h2>
-            <p style={styles.cardText}>{topic.description}</p>
+      <div style={styles.page}>
+        <div style={styles.hero}>
+          <h1 style={styles.title}>Math</h1>
+          <p style={styles.subtitle}>
+            Practise core mathematical skills across all major 11+ topics and
+            build confidence step by step.
+          </p>
+        </div>
 
-            <div style={styles.statsBox}>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Last score:</span>
-                <span
-                  style={{
-                    ...styles.scoreBadge,
-                    ...getScoreBadgeStyle(loadingStats ? null : stats.mathScore),
-                  }}
-                >
-                  {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
-                </span>
-              </div>
-
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Review items:</span>
-                <span style={styles.reviewCount}>
-                  {loadingStats ? "Loading..." : stats.mathReviewCount}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                router.push(topic.path)
-              }}
+        <div style={styles.grid}>
+          {topics.map((topic) => (
+            <div
+              key={topic.title}
+              style={{ ...styles.card, ...hoverCardStyle }}
+              onClick={() => openCategory(topic.path)}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.transform = "translateY(-6px)"
+                e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.transform = "translateY(0)"
+                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
               }}
-              style={styles.button}
             >
-              {topic.buttonText}
-            </button>
-          </div>
-        ))}
-      </div>
+              <div style={styles.icon}>{topic.icon}</div>
+              <h2 style={styles.cardTitle}>{topic.title}</h2>
+              <p style={styles.cardText}>{topic.description}</p>
 
-      <div style={styles.bottomButtons}>
-        <button
-          onClick={() => router.push("/review/math")}
-          style={styles.secondaryButton}
-        >
-          Math Review
-        </button>
+              <div style={styles.infoBox}>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Last score:</span>
+                  <span
+                    style={{
+                      ...styles.scoreBadge,
+                      ...getScoreBadgeStyle(loadingStats ? null : stats.mathScore),
+                    }}
+                  >
+                    {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
+                  </span>
+                </div>
 
-        <button
-          onClick={() => router.push("/progress/math")}
-          style={styles.secondaryButton}
-        >
-          Math Progress
-        </button>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Review items:</span>
+                  <span style={styles.infoValue}>
+                    {loadingStats ? "Loading..." : stats.mathReviewCount}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openCategory(topic.path)
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#bbf7d0"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#d4f5d0"
+                }}
+                style={styles.button}
+              >
+                {topic.buttonText}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.bottomButtons}>
+          <button
+            onClick={() => router.push("/review/math")}
+            style={styles.secondaryButton}
+          >
+            Math Review
+          </button>
+
+          <button
+            onClick={() => router.push("/progress/math")}
+            style={styles.secondaryButton}
+          >
+            Math Progress
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -297,24 +306,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "18px",
     minHeight: "96px",
   },
-  statsBox: {
+  infoBox: {
     width: "100%",
     background: "#f9fafb",
     borderRadius: "12px",
     padding: "14px",
     marginBottom: "18px",
   },
-  statRow: {
+  infoRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: "12px",
     margin: "8px 0",
   },
-  statLabel: {
+  infoLabel: {
     color: "#374151",
     fontSize: "15px",
     fontWeight: 500,
+  },
+  infoValue: {
+    fontSize: "15px",
+    fontWeight: 700,
+    color: "#111827",
   },
   scoreBadge: {
     padding: "6px 12px",
@@ -323,11 +337,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 700,
     minWidth: "92px",
     textAlign: "center",
-  },
-  reviewCount: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
   },
   button: {
     padding: "12px 18px",

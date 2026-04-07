@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 
 const hoverCardStyle = {
@@ -17,10 +18,24 @@ type VRWordRelationshipsTest = {
   created_at: string
 }
 
+type VRProgressRow = {
+  id: string
+  user_id: string
+  test_id: number | null
+  success_rate: number | null
+  created_at: string | null
+}
+
+type TestWithProgress = VRWordRelationshipsTest & {
+  score: number
+  completed_at: string | null
+  isCompleted: boolean
+}
+
 export default function VRWordRelationshipsPage() {
   const router = useRouter()
 
-  const [tests, setTests] = useState<VRWordRelationshipsTest[]>([])
+  const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,6 +44,10 @@ export default function VRWordRelationshipsPage() {
 
   async function loadTests() {
     setLoading(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     const { data, error } = await supabase
       .from("vr_tests")
@@ -43,7 +62,77 @@ export default function VRWordRelationshipsPage() {
       return
     }
 
-    setTests(data || [])
+    const allTests = (data || []) as VRWordRelationshipsTest[]
+
+    if (!user) {
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+    const testIds = allTests.map((test) => test.id)
+
+    if (testIds.length === 0) {
+      setTests([])
+      setLoading(false)
+      return
+    }
+
+    const { data: progressData, error: progressError } = await supabase
+      .from("vr_progress")
+      .select("id, user_id, test_id, success_rate, created_at")
+      .eq("user_id", user.id)
+      .in("test_id", testIds)
+
+    if (progressError) {
+      console.error("Error loading VR progress:", progressError)
+
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+    const progressRows = (progressData || []) as VRProgressRow[]
+    const latestProgressMap = new Map<number, VRProgressRow>()
+
+    for (const row of progressRows) {
+      if (row.test_id === null) continue
+
+      const existing = latestProgressMap.get(row.test_id)
+      const rowDate = new Date(row.created_at || 0).getTime()
+      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+
+      if (!existing || rowDate > existingDate) {
+        latestProgressMap.set(row.test_id, row)
+      }
+    }
+
+    const mergedTests: TestWithProgress[] = allTests.map((test) => {
+      const progress = latestProgressMap.get(test.id)
+
+      return {
+        ...test,
+        score: progress?.success_rate ?? 0,
+        completed_at: progress?.created_at || null,
+        isCompleted: !!progress,
+      }
+    })
+
+    setTests(mergedTests)
     setLoading(false)
   }
 
@@ -82,100 +171,140 @@ export default function VRWordRelationshipsPage() {
     }
   }
 
+  function getScorePercentage(score: number, isCompleted: boolean) {
+    if (!isCompleted) return 0
+    return score <= 10 ? score * 10 : score
+  }
+
+  function getScoreText(test: TestWithProgress) {
+    return `${getScorePercentage(test.score, test.isCompleted)}%`
+  }
+
+  function getScoreIcon(score: number, isCompleted: boolean) {
+    const percentage = getScorePercentage(score, isCompleted)
+
+    if (!isCompleted) return "⚪"
+    if (percentage >= 90) return "😄"
+    if (percentage >= 70) return "🙂"
+    if (percentage >= 50) return "😐"
+    if (percentage >= 30) return "😕"
+    return "☹️"
+  }
+
   if (loading) {
-    return <p style={styles.message}>Loading word relationships tests...</p>
+    return (
+      <>
+        <Header />
+        <p style={styles.message}>Loading word relationships tests...</p>
+      </>
+    )
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.hero}>
-        <h1 style={styles.title}>Word Relationships</h1>
-        <p style={styles.subtitle}>
-          Practise synonyms, antonyms, analogies, and meaning connections with
-          structured verbal reasoning tests.
-        </p>
-      </div>
-
-      {tests.length === 0 ? (
-        <div style={styles.emptyCard}>
-          <h2 style={styles.emptyTitle}>No tests available yet</h2>
-          <p style={styles.emptyText}>
-            Word Relationships tests will appear here when they are added.
+    <>
+      <Header />
+      <div style={styles.page}>
+        <div style={styles.hero}>
+          <h1 style={styles.title}>Word Relationships</h1>
+          <p style={styles.subtitle}>
+            Practise synonyms, antonyms, analogies, and meaning connections with
+            structured verbal reasoning tests.
           </p>
         </div>
-      ) : (
-        <div style={styles.grid}>
-          {tests.map((test) => (
-            <div
-              key={test.id}
-              style={{ ...styles.card, ...hoverCardStyle }}
-              onClick={() => router.push(`/vr-test/word-relationships/${test.id}`)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)"
-                e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)"
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-              }}
-            >
-              <div style={styles.icon}>📝</div>
-              <h2 style={styles.cardTitle}>{test.title}</h2>
-              <p style={styles.cardText}>
-                Strengthen verbal reasoning through word meaning, opposites,
-                connections, and analogy questions.
-              </p>
 
-              <div style={styles.infoBox}>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>Difficulty:</span>
-                  <span
-                    style={{
-                      ...styles.badge,
-                      ...getDifficultyBadgeStyle(test.difficulty),
-                    }}
-                  >
-                    {getDifficultyLabel(test.difficulty)}
-                  </span>
-                </div>
-
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>Test ID:</span>
-                  <span style={styles.infoValue}>{test.id}</span>
-                </div>
-
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>Created:</span>
-                  <span style={styles.infoValue}>
-                    {new Date(test.created_at).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push(`/vr-test/word-relationships/${test.id}`)
-                }}
+        {tests.length === 0 ? (
+          <div style={styles.emptyCard}>
+            <h2 style={styles.emptyTitle}>No tests available yet</h2>
+            <p style={styles.emptyText}>
+              Word Relationships tests will appear here when they are added.
+            </p>
+          </div>
+        ) : (
+          <div style={styles.grid}>
+            {tests.map((test) => (
+              <div
+                key={test.id}
+                style={{ ...styles.card, ...hoverCardStyle }}
+                onClick={() => router.push(`/vr-test/word-relationships/${test.id}`)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#bbf7d0"
+                  e.currentTarget.style.transform = "translateY(-6px)"
+                  e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#d4f5d0"
+                  e.currentTarget.style.transform = "translateY(0)"
+                  e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
                 }}
-                style={styles.button}
               >
-                Start Test
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                <div style={styles.icon}>📝</div>
+                <h2 style={styles.cardTitle}>{test.title}</h2>
+                <p style={styles.cardText}>
+                  Strengthen verbal reasoning through word meaning, opposites,
+                  connections, and analogy questions.
+                </p>
+
+                <div style={styles.infoBox}>
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>Difficulty:</span>
+                    <span
+                      style={{
+                        ...styles.badge,
+                        ...getDifficultyBadgeStyle(test.difficulty),
+                      }}
+                    >
+                      {getDifficultyLabel(test.difficulty)}
+                    </span>
+                  </div>
+
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>Score:</span>
+                    <span style={styles.infoValue}>
+                      {getScoreText(test)} {getScoreIcon(test.score, test.isCompleted)}
+                    </span>
+                  </div>
+
+                  <div style={styles.infoRow}>
+                    <span style={styles.infoLabel}>Completed:</span>
+                    <span style={styles.infoValue}>
+                      {test.completed_at
+                        ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "Not yet"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/vr-test/word-relationships/${test.id}`)
+                  }}
+                  onMouseEnter={(e) => {
+                    if (test.isCompleted) {
+                      e.currentTarget.style.background = "#bbf7d0"
+                    } else {
+                      e.currentTarget.style.background = "#d1d5db"
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (test.isCompleted) {
+                      e.currentTarget.style.background = "#d4f5d0"
+                    } else {
+                      e.currentTarget.style.background = "#e5e7eb"
+                    }
+                  }}
+                  style={test.isCompleted ? styles.startButton : styles.retryButton}
+                >
+                  {test.isCompleted ? "Retry Test" : "Start Test"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -264,12 +393,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "92px",
     textAlign: "center",
   },
-  button: {
+  startButton: {
     padding: "12px 18px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
     color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
+    minWidth: "180px",
+  },
+  retryButton: {
+    padding: "12px 18px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#e5e7eb",
+    color: "#111827",
     cursor: "pointer",
     fontWeight: 600,
     fontSize: "16px",

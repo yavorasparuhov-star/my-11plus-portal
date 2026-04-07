@@ -19,9 +19,23 @@ type VRTestRow = {
   created_at: string
 }
 
+type VRProgressRow = {
+  id: string
+  user_id: string
+  test_id: number | null
+  success_rate: number | null
+  created_at: string | null
+}
+
+type TestWithProgress = VRTestRow & {
+  score: number
+  completed_at: string | null
+  isCompleted: boolean
+}
+
 export default function VRSequencePatternsPage() {
   const router = useRouter()
-  const [tests, setTests] = useState<VRTestRow[]>([])
+  const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,6 +44,10 @@ export default function VRSequencePatternsPage() {
 
   async function loadTests() {
     setLoading(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     const { data, error } = await supabase
       .from("vr_tests")
@@ -44,7 +62,77 @@ export default function VRSequencePatternsPage() {
       return
     }
 
-    setTests(data || [])
+    const allTests = (data || []) as VRTestRow[]
+
+    if (!user) {
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+    const testIds = allTests.map((test) => test.id)
+
+    if (testIds.length === 0) {
+      setTests([])
+      setLoading(false)
+      return
+    }
+
+    const { data: progressData, error: progressError } = await supabase
+      .from("vr_progress")
+      .select("id, user_id, test_id, success_rate, created_at")
+      .eq("user_id", user.id)
+      .in("test_id", testIds)
+
+    if (progressError) {
+      console.error("Error loading VR progress:", progressError)
+
+      const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
+        ...test,
+        score: 0,
+        completed_at: null,
+        isCompleted: false,
+      }))
+
+      setTests(testsWithoutProgress)
+      setLoading(false)
+      return
+    }
+
+    const progressRows = (progressData || []) as VRProgressRow[]
+    const latestProgressMap = new Map<number, VRProgressRow>()
+
+    for (const row of progressRows) {
+      if (row.test_id === null) continue
+
+      const existing = latestProgressMap.get(row.test_id)
+      const rowDate = new Date(row.created_at || 0).getTime()
+      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+
+      if (!existing || rowDate > existingDate) {
+        latestProgressMap.set(row.test_id, row)
+      }
+    }
+
+    const mergedTests: TestWithProgress[] = allTests.map((test) => {
+      const progress = latestProgressMap.get(test.id)
+
+      return {
+        ...test,
+        score: progress?.success_rate ?? 0,
+        completed_at: progress?.created_at || null,
+        isCompleted: !!progress,
+      }
+    })
+
+    setTests(mergedTests)
     setLoading(false)
   }
 
@@ -60,6 +148,26 @@ export default function VRSequencePatternsPage() {
     if (level === 2) return { backgroundColor: "#fef3c7", color: "#92400e" }
     if (level === 3) return { backgroundColor: "#fee2e2", color: "#991b1b" }
     return { backgroundColor: "#e5e7eb", color: "#374151" }
+  }
+
+  function getScorePercentage(score: number, isCompleted: boolean) {
+    if (!isCompleted) return 0
+    return score <= 10 ? score * 10 : score
+  }
+
+  function getScoreText(test: TestWithProgress) {
+    return `${getScorePercentage(test.score, test.isCompleted)}%`
+  }
+
+  function getScoreIcon(score: number, isCompleted: boolean) {
+    const percentage = getScorePercentage(score, isCompleted)
+
+    if (!isCompleted) return "⚪"
+    if (percentage >= 90) return "😄"
+    if (percentage >= 70) return "🙂"
+    if (percentage >= 50) return "😐"
+    if (percentage >= 30) return "😕"
+    return "☹️"
   }
 
   if (loading) {
@@ -132,18 +240,22 @@ export default function VRSequencePatternsPage() {
                   </div>
 
                   <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Test ID:</span>
-                    <span style={styles.infoValue}>{test.id}</span>
+                    <span style={styles.infoLabel}>Score:</span>
+                    <span style={styles.infoValue}>
+                      {getScoreText(test)} {getScoreIcon(test.score, test.isCompleted)}
+                    </span>
                   </div>
 
                   <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Created:</span>
+                    <span style={styles.infoLabel}>Completed:</span>
                     <span style={styles.infoValue}>
-                      {new Date(test.created_at).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {test.completed_at
+                        ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "Not yet"}
                     </span>
                   </div>
                 </div>
@@ -154,14 +266,22 @@ export default function VRSequencePatternsPage() {
                     router.push(`/vr/sequence-patterns/${test.id}`)
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#bbf7d0"
+                    if (test.isCompleted) {
+                      e.currentTarget.style.background = "#bbf7d0"
+                    } else {
+                      e.currentTarget.style.background = "#d1d5db"
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#d4f5d0"
+                    if (test.isCompleted) {
+                      e.currentTarget.style.background = "#d4f5d0"
+                    } else {
+                      e.currentTarget.style.background = "#e5e7eb"
+                    }
                   }}
-                  style={styles.button}
+                  style={test.isCompleted ? styles.startButton : styles.retryButton}
                 >
-                  Start Test
+                  {test.isCompleted ? "Retry Test" : "Start Test"}
                 </button>
               </div>
             ))}
@@ -240,12 +360,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "92px",
     textAlign: "center",
   },
-  button: {
+  startButton: {
     padding: "12px 18px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
     color: "#065f46",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
+    minWidth: "180px",
+  },
+  retryButton: {
+    padding: "12px 18px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#e5e7eb",
+    color: "#111827",
     cursor: "pointer",
     fontWeight: 600,
     fontSize: "16px",
