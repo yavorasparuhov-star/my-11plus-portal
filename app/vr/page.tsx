@@ -31,7 +31,7 @@ export default function VRPage() {
         <div style={styles.grid}>
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/vr-test/word-relationships")}
+            onClick={() => openCategory("/vr/word-relationships")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -63,7 +63,7 @@ export default function VRPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/vr-test/word-relationships")
+                openCategory("/vr/word-relationships")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -79,7 +79,7 @@ export default function VRPage() {
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/vr-test/codes-logic")}
+            onClick={() => openCategory("/vr/codes-logic")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -111,7 +111,7 @@ export default function VRPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/vr-test/codes-logic")
+                openCategory("/vr/codes-logic")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -127,7 +127,7 @@ export default function VRPage() {
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/vr-test/sequence-patterns")}
+            onClick={() => openCategory("/vr/sequence-patterns")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -159,7 +159,7 @@ export default function VRPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/vr-test/sequence-patterns")
+                openCategory("/vr/sequence-patterns")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"

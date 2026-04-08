@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
@@ -10,7 +11,7 @@ const hoverCardStyle = {
   cursor: "pointer",
 }
 
-type VRWordRelationshipsTest = {
+type VRTestRow = {
   id: number
   title: string
   category: string | null
@@ -26,7 +27,7 @@ type VRProgressRow = {
   created_at: string | null
 }
 
-type TestWithProgress = VRWordRelationshipsTest & {
+type TestWithProgress = VRTestRow & {
   score: number
   completed_at: string | null
   isCompleted: boolean
@@ -34,7 +35,6 @@ type TestWithProgress = VRWordRelationshipsTest & {
 
 export default function VRWordRelationshipsPage() {
   const router = useRouter()
-
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -62,7 +62,7 @@ export default function VRWordRelationshipsPage() {
       return
     }
 
-    const allTests = (data || []) as VRWordRelationshipsTest[]
+    const allTests = (data || []) as VRTestRow[]
 
     if (!user) {
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
@@ -144,31 +144,10 @@ export default function VRWordRelationshipsPage() {
   }
 
   function getDifficultyBadgeStyle(level: number | null): React.CSSProperties {
-    if (level === 1) {
-      return {
-        backgroundColor: "#d1fae5",
-        color: "#065f46",
-      }
-    }
-
-    if (level === 2) {
-      return {
-        backgroundColor: "#fef3c7",
-        color: "#92400e",
-      }
-    }
-
-    if (level === 3) {
-      return {
-        backgroundColor: "#fee2e2",
-        color: "#991b1b",
-      }
-    }
-
-    return {
-      backgroundColor: "#e5e7eb",
-      color: "#374151",
-    }
+    if (level === 1) return { backgroundColor: "#d1fae5", color: "#065f46" }
+    if (level === 2) return { backgroundColor: "#fef3c7", color: "#92400e" }
+    if (level === 3) return { backgroundColor: "#fee2e2", color: "#991b1b" }
+    return { backgroundColor: "#e5e7eb", color: "#374151" }
   }
 
   function getScorePercentage(score: number, isCompleted: boolean) {
@@ -207,9 +186,14 @@ export default function VRWordRelationshipsPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>Word Relationships</h1>
           <p style={styles.subtitle}>
-            Practise synonyms, antonyms, analogies, and meaning connections with
-            structured verbal reasoning tests.
+            Practise synonyms, antonyms, analogies, and meaning connections for
+            11+ verbal reasoning.
           </p>
+          <div style={styles.heroActions}>
+            <Link href="/vr" style={styles.backLink}>
+              ← Back to Verbal Reasoning
+            </Link>
+          </div>
         </div>
 
         {tests.length === 0 ? (
@@ -225,7 +209,7 @@ export default function VRWordRelationshipsPage() {
               <div
                 key={test.id}
                 style={{ ...styles.card, ...hoverCardStyle }}
-                onClick={() => router.push(`/vr-test/word-relationships/${test.id}`)}
+                onClick={() => router.push(`/vr/word-relationships/${test.id}`)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-6px)"
                   e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -238,8 +222,8 @@ export default function VRWordRelationshipsPage() {
                 <div style={styles.icon}>📝</div>
                 <h2 style={styles.cardTitle}>{test.title}</h2>
                 <p style={styles.cardText}>
-                  Strengthen verbal reasoning through word meaning, opposites,
-                  connections, and analogy questions.
+                  Strengthen verbal reasoning through synonyms, antonyms,
+                  analogies, and meaning connection questions.
                 </p>
 
                 <div style={styles.infoBox}>
@@ -279,7 +263,7 @@ export default function VRWordRelationshipsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    router.push(`/vr-test/word-relationships/${test.id}`)
+                    router.push(`/vr/word-relationships/${test.id}`)
                   }}
                   onMouseEnter={(e) => {
                     if (test.isCompleted) {
@@ -309,26 +293,24 @@ export default function VRWordRelationshipsPage() {
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
-  page: {
-    padding: "32px 20px 50px",
-    maxWidth: "1100px",
-    margin: "0 auto",
-  },
-  hero: {
-    textAlign: "center",
-    marginBottom: "32px",
-  },
-  title: {
-    fontSize: "40px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
+  page: { padding: "32px 20px 50px", maxWidth: "1100px", margin: "0 auto" },
+  hero: { textAlign: "center", marginBottom: "32px" },
+  title: { fontSize: "40px", marginBottom: "10px", color: "#111827" },
   subtitle: {
     fontSize: "18px",
     color: "#4b5563",
     maxWidth: "700px",
     margin: "0 auto",
     lineHeight: 1.6,
+  },
+  heroActions: {
+    marginTop: "16px",
+  },
+  backLink: {
+    display: "inline-block",
+    textDecoration: "none",
+    color: "#3730a3",
+    fontWeight: 600,
   },
   grid: {
     display: "grid",
@@ -345,15 +327,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     alignItems: "center",
   },
-  icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
-  },
-  cardTitle: {
-    fontSize: "24px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
+  icon: { fontSize: "42px", marginBottom: "12px" },
+  cardTitle: { fontSize: "24px", marginBottom: "10px", color: "#111827" },
   cardText: {
     fontSize: "16px",
     color: "#4b5563",
@@ -375,16 +350,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     margin: "8px 0",
   },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
-  },
+  infoLabel: { color: "#374151", fontSize: "15px", fontWeight: 500 },
+  infoValue: { fontSize: "15px", fontWeight: 700, color: "#111827" },
   badge: {
     padding: "6px 12px",
     borderRadius: "999px",
@@ -424,16 +391,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "700px",
     margin: "0 auto",
   },
-  emptyTitle: {
-    fontSize: "28px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
-  emptyText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-  },
+  emptyTitle: { fontSize: "28px", marginBottom: "10px", color: "#111827" },
+  emptyText: { fontSize: "16px", color: "#4b5563", lineHeight: 1.6 },
   message: {
     textAlign: "center",
     marginTop: "40px",
