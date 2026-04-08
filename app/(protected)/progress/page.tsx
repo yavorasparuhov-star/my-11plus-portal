@@ -7,23 +7,17 @@ export default function ProgressPage() {
     <div style={styles.container}>
       <div style={styles.card}>
         <h1>📊 Your Progress</h1>
-        <p>Choose a category to track your performance:</p>
+        <p>Choose a subject to track your performance:</p>
 
         <div style={styles.buttons}>
-          <Link href="/progress/vocabulary" style={styles.button}>
-            📘 Vocabulary Progress →
+          <Link href="/progress/english" style={styles.button}>
+            📘 English Progress →
           </Link>
 
-          <Link href="/progress/spelling" style={styles.button}>
-            ✍️ Spelling Progress →
-          </Link>
-
-          <Link href="/progress/comprehension" style={styles.button}>
-            📖 Comprehension Progress →
-          </Link>
- <Link href="/progress/math" style={styles.button}>
+          <Link href="/progress/math" style={styles.button}>
             ➕ Math Progress →
           </Link>
+
           <Link href="/progress/vr" style={styles.button}>
             🧠 Verbal Reasoning Progress →
           </Link>
@@ -31,8 +25,6 @@ export default function ProgressPage() {
           <Link href="/progress/nvr" style={styles.button}>
             🔷 Non-Verbal Reasoning Progress →
           </Link>
-
-         
         </div>
       </div>
     </div>

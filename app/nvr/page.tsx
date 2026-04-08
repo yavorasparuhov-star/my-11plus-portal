@@ -1,219 +1,271 @@
 "use client"
 
-import { useState } from "react"
+import React from "react"
+import Header from "../../components/Header"
+import { useRouter } from "next/navigation"
 
-export default function NVRTestPage() {
-  const [difficulty, setDifficulty] = useState(1)
-  const [testStarted, setTestStarted] = useState(false)
+const hoverCardStyle = {
+  transition: "all 0.25s ease",
+  cursor: "pointer",
+}
 
-  if (!testStarted) {
-    return (
+export default function NVRPage() {
+  const router = useRouter()
+
+  function openCategory(path: string) {
+    router.push(path)
+  }
+
+  return (
+    <>
+      <Header />
+
       <div style={styles.page}>
-        <div style={styles.wrapper}>
-          <div style={styles.hero}>
-            <h1 style={styles.title}>Non-Verbal Reasoning Test</h1>
-            <p style={styles.subtitle}>
-              Practise non-verbal reasoning skills such as shapes, patterns,
-              rotations, reflections, and diagram-based logic. Choose your
-              difficulty level to begin.
+        <div style={styles.hero}>
+          <h1 style={styles.title}>Non-Verbal Reasoning</h1>
+          <p style={styles.subtitle}>
+            Practise core NVR skills including shape patterns, rotations and
+            reflections, and codes with spatial logic to build confidence for
+            11+ entrance exams.
+          </p>
+        </div>
+
+        <div style={styles.grid}>
+          <div
+            style={{ ...styles.card, ...hoverCardStyle }}
+            onClick={() => openCategory("/nvr/shape-patterns")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-6px)"
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+            }}
+          >
+            <div style={styles.icon}>🧩</div>
+            <h2 style={styles.cardTitle}>Shape Patterns</h2>
+            <p style={styles.cardText}>
+              Practise visual patterns, odd one out, missing shapes, and
+              rule-based figure sequences.
             </p>
-          </div>
-
-          <div style={styles.card}>
-            <h2 style={styles.cardTitle}>Choose Difficulty</h2>
-
-            <div style={styles.difficultyRow}>
-              <button
-                onClick={() => setDifficulty(1)}
-                style={{
-                  ...styles.difficultyButton,
-                  ...(difficulty === 1 ? styles.activeDifficultyButton : {}),
-                }}
-              >
-                Easy
-              </button>
-
-              <button
-                onClick={() => setDifficulty(2)}
-                style={{
-                  ...styles.difficultyButton,
-                  ...(difficulty === 2 ? styles.activeDifficultyButton : {}),
-                }}
-              >
-                Medium
-              </button>
-
-              <button
-                onClick={() => setDifficulty(3)}
-                style={{
-                  ...styles.difficultyButton,
-                  ...(difficulty === 3 ? styles.activeDifficultyButton : {}),
-                }}
-              >
-                Hard
-              </button>
-            </div>
 
             <div style={styles.infoBox}>
-              <p style={styles.infoText}>
-                Selected level:{" "}
-                <strong>{["Easy", "Medium", "Hard"][difficulty - 1]}</strong>
-              </p>
-              <p style={styles.infoText}>
-                This page is ready and protected. Next we will connect it to
-                Supabase test data and question images.
-              </p>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Focus:</span>
+                <span style={styles.infoValue}>Pattern spotting</span>
+              </div>
+
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Status:</span>
+                <span style={styles.infoValue}>Ready</span>
+              </div>
             </div>
 
             <button
-              onClick={() => setTestStarted(true)}
-              style={styles.startButton}
+              onClick={(e) => {
+                e.stopPropagation()
+                openCategory("/nvr/shape-patterns")
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#bbf7d0"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#d4f5d0"
+              }}
+              style={styles.button}
             >
-              Start NVR Test
+              Open Shape Patterns
+            </button>
+          </div>
+
+          <div
+            style={{ ...styles.card, ...hoverCardStyle }}
+            onClick={() => openCategory("/nvr/rotations-reflections")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-6px)"
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+            }}
+          >
+            <div style={styles.icon}>🔄</div>
+            <h2 style={styles.cardTitle}>Rotations & Reflections</h2>
+            <p style={styles.cardText}>
+              Build confidence with mirror images, rotations, flips, and changes
+              in shape orientation.
+            </p>
+
+            <div style={styles.infoBox}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Focus:</span>
+                <span style={styles.infoValue}>Transformations</span>
+              </div>
+
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Status:</span>
+                <span style={styles.infoValue}>Ready</span>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openCategory("/nvr/rotations-reflections")
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#bbf7d0"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#d4f5d0"
+              }}
+              style={styles.button}
+            >
+              Open Rotations & Reflections
+            </button>
+          </div>
+
+          <div
+            style={{ ...styles.card, ...hoverCardStyle }}
+            onClick={() => openCategory("/nvr/codes-spatial-logic")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-6px)"
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+            }}
+          >
+            <div style={styles.icon}>🧠</div>
+            <h2 style={styles.cardTitle}>Codes & Spatial Logic</h2>
+            <p style={styles.cardText}>
+              Work on shape codes, spatial logic, hidden shapes, nets, cubes,
+              and other visual reasoning problems.
+            </p>
+
+            <div style={styles.infoBox}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Focus:</span>
+                <span style={styles.infoValue}>Spatial reasoning</span>
+              </div>
+
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Status:</span>
+                <span style={styles.infoValue}>Ready</span>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openCategory("/nvr/codes-spatial-logic")
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#bbf7d0"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#d4f5d0"
+              }}
+              style={styles.button}
+            >
+              Open Codes & Spatial Logic
             </button>
           </div>
         </div>
       </div>
-    )
-  }
-
-  return (
-    <div style={styles.page}>
-      <div style={styles.wrapper}>
-        <div style={styles.testCard}>
-          <div style={styles.testIcon}>🔷</div>
-          <h1 style={styles.title}>NVR Test Coming Soon</h1>
-          <p style={styles.subtitle}>
-            The protected NVR test page is working correctly.
-          </p>
-
-          <div style={styles.infoBox}>
-            <p style={styles.infoText}>
-              Chosen difficulty:{" "}
-              <strong>{["Easy", "Medium", "Hard"][difficulty - 1]}</strong>
-            </p>
-            <p style={styles.infoText}>
-              Next step: connect sample NVR questions from Supabase, including
-              image support.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setTestStarted(false)}
-            style={styles.secondaryButton}
-          >
-            Back
-          </button>
-        </div>
-      </div>
-    </div>
+    </>
   )
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
-    minHeight: "calc(100vh - 70px)",
-    background: "#f9fafb",
     padding: "32px 20px 50px",
-  },
-  wrapper: {
-    maxWidth: "850px",
+    maxWidth: "1100px",
     margin: "0 auto",
   },
   hero: {
     textAlign: "center",
-    marginBottom: "28px",
+    marginBottom: "32px",
   },
   title: {
-    fontSize: "38px",
+    fontSize: "40px",
     marginBottom: "10px",
     color: "#111827",
   },
   subtitle: {
     fontSize: "18px",
     color: "#4b5563",
-    lineHeight: 1.6,
     maxWidth: "700px",
     margin: "0 auto",
+    lineHeight: 1.6,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "20px",
   },
   card: {
     background: "white",
-    borderRadius: "22px",
+    borderRadius: "20px",
+    padding: "26px",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    padding: "30px",
     textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
   },
-  testCard: {
-    background: "white",
-    borderRadius: "22px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    padding: "40px 30px",
-    textAlign: "center",
-  },
-  testIcon: {
-    fontSize: "54px",
+  icon: {
+    fontSize: "42px",
     marginBottom: "12px",
   },
   cardTitle: {
-    fontSize: "26px",
-    marginBottom: "20px",
+    fontSize: "24px",
+    marginBottom: "10px",
     color: "#111827",
   },
-  difficultyRow: {
-    display: "flex",
-    gap: "14px",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    marginBottom: "22px",
-  },
-  difficultyButton: {
-    padding: "12px 22px",
-    borderRadius: "12px",
-    border: "1px solid #d1d5db",
-    background: "white",
-    color: "#111827",
-    cursor: "pointer",
+  cardText: {
     fontSize: "16px",
-    fontWeight: 600,
-    minWidth: "120px",
-  },
-  activeDifficultyButton: {
-    background: "#d4f5d0",
-    border: "1px solid #86efac",
-    color: "#065f46",
+    color: "#4b5563",
+    lineHeight: 1.6,
+    marginBottom: "18px",
+    minHeight: "78px",
   },
   infoBox: {
+    width: "100%",
     background: "#f9fafb",
-    borderRadius: "14px",
-    padding: "16px",
-    marginBottom: "24px",
+    borderRadius: "12px",
+    padding: "14px",
+    marginBottom: "18px",
   },
-  infoText: {
-    fontSize: "16px",
-    color: "#374151",
+  infoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
     margin: "8px 0",
-    lineHeight: 1.5,
   },
-  startButton: {
-    padding: "14px 24px",
+  infoLabel: {
+    color: "#374151",
+    fontSize: "15px",
+    fontWeight: 500,
+  },
+  infoValue: {
+    fontSize: "15px",
+    fontWeight: 700,
+    color: "#111827",
+  },
+  button: {
+    padding: "12px 18px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
     color: "#065f46",
     cursor: "pointer",
-    fontSize: "17px",
-    fontWeight: 700,
-    minWidth: "180px",
-  },
-  secondaryButton: {
-    padding: "12px 22px",
-    borderRadius: "12px",
-    border: "1px solid #d1d5db",
-    background: "white",
-    color: "#111827",
-    cursor: "pointer",
-    fontSize: "16px",
     fontWeight: 600,
-    minWidth: "140px",
+    fontSize: "16px",
+    minWidth: "180px",
   },
 }

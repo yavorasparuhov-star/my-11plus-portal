@@ -16,24 +16,54 @@ import type {
   NameType,
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent"
-type VRReviewRow = {
+
+type VocabularyReviewRow = {
+  id: string
+  user_id: string
+  word_id: number | null
+  word: string
+  knew_it: boolean | null
+  difficulty: number | null
+  created_at: string
+}
+
+type SpellingReviewRow = {
+  id: string
+  user_id: string
+  word_id: number | null
+  word: string
+  knew_it: boolean | null
+  difficulty: number | null
+  created_at: string
+}
+
+type ComprehensionReviewRow = {
   id: string
   user_id: string
   question_id: number | null
   question_text: string
-  knew_it: boolean | null
+  created_at: string
+}
+
+type ComprehensionQuestionRow = {
+  id: number
+  explanation: string | null
+  difficulty: number | null
+}
+
+type EnglishReviewRow = {
+  id: string
+  category: "vocabulary" | "spelling" | "comprehension"
+  item_id: number | null
+  item_text: string
   difficulty: number | null
   created_at: string
   explanation?: string
 }
 
-type VRQuestionRow = {
-  id: number
-  explanation: string | null
-}
-
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -47,6 +77,13 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
   { value: "1", label: "Easy" },
   { value: "2", label: "Medium" },
   { value: "3", label: "Hard" },
+]
+
+const categoryOptions: { value: CategoryFilter; label: string }[] = [
+  { value: "all", label: "All Categories" },
+  { value: "vocabulary", label: "Vocabulary" },
+  { value: "spelling", label: "Spelling" },
+  { value: "comprehension", label: "Comprehension" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -70,6 +107,13 @@ function getLevelLabel(level: number | null | undefined) {
   return "Not set"
 }
 
+function getCategoryLabel(category: string) {
+  if (category === "vocabulary") return "Vocabulary"
+  if (category === "spelling") return "Spelling"
+  if (category === "comprehension") return "Comprehension"
+  return "Not set"
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value)
   return date.toLocaleString("en-GB", {
@@ -81,17 +125,25 @@ function formatDateTime(value: string) {
   })
 }
 
-function formatShortDate(value: string) {
-  const date = new Date(value)
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-  })
-}
-
 function truncateText(text: string, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function questionsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [number, string] {
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+      ? Number(value)
+      : Array.isArray(value)
+      ? Number(value[0])
+      : 0
+
+  return [numericValue, "Items"]
 }
 
 function StatCard({
@@ -174,34 +226,21 @@ function SectionCard({
     </section>
   )
 }
-function questionsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [number, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
 
-  return [numericValue, "Questions"]
-}
-export default function VRReviewPage() {
+export default function EnglishReviewPage() {
   const router = useRouter()
 
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
-  const [reviewQuestions, setReviewQuestions] = useState<VRReviewRow[]>([])
+  const [reviewItems, setReviewItems] = useState<EnglishReviewRow[]>([])
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
-    async function fetchReviewQuestions() {
+    async function fetchReviewItems() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -215,222 +254,330 @@ export default function VRReviewPage() {
 
       setLoadingUser(false)
 
-      const { data, error } = await supabase
-        .from("vr_review")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+      const [vocabularyResult, spellingResult, comprehensionResult] = await Promise.all([
+        supabase
+          .from("vocabulary_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("spelling_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("comprehension_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ])
 
-      if (error) {
-        console.error("Error loading VR review:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        })
-        setReviewQuestions([])
-        setLoadingData(false)
-        return
+      if (vocabularyResult.error) {
+        console.error("Error loading vocabulary review:", vocabularyResult.error)
+      }
+      if (spellingResult.error) {
+        console.error("Error loading spelling review:", spellingResult.error)
+      }
+      if (comprehensionResult.error) {
+        console.error("Error loading comprehension review:", comprehensionResult.error)
       }
 
-      const reviewData = (data || []) as VRReviewRow[]
+      const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
+      const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
+      const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionReviewRow[]
 
-      const questionIds = reviewData
+      const comprehensionQuestionIds = comprehensionRows
         .map((row) => row.question_id)
         .filter((id): id is number => id !== null)
 
-      let explanationMap = new Map<number, string>()
+      let comprehensionMap = new Map<number, { explanation: string; difficulty: number | null }>()
 
-      if (questionIds.length > 0) {
-        const { data: questionsData, error: questionsError } = await supabase
-          .from("vr_questions")
-          .select("id, explanation")
-          .in("id", questionIds)
+      if (comprehensionQuestionIds.length > 0) {
+        const { data: comprehensionQuestionsData, error: comprehensionQuestionsError } =
+          await supabase
+            .from("comprehension_questions")
+            .select("id, explanation, difficulty")
+            .in("id", comprehensionQuestionIds)
 
-        if (questionsError) {
-          console.error("Error loading VR explanations:", questionsError)
+        if (comprehensionQuestionsError) {
+          console.error("Error loading comprehension explanations:", comprehensionQuestionsError)
         } else {
-          explanationMap = new Map(
-            ((questionsData || []) as VRQuestionRow[]).map((question) => [
+          comprehensionMap = new Map(
+            ((comprehensionQuestionsData ?? []) as ComprehensionQuestionRow[]).map((question) => [
               question.id,
-              question.explanation || "",
+              {
+                explanation: question.explanation || "",
+                difficulty: question.difficulty,
+              },
             ])
           )
         }
       }
 
-      const mergedData = reviewData.map((row) => ({
-        ...row,
-        explanation:
-          row.question_id !== null ? explanationMap.get(row.question_id) || "" : "",
-      }))
+      const mergedRows: EnglishReviewRow[] = [
+        ...vocabularyRows.map((row) => ({
+          id: `vocabulary-${row.id}`,
+          category: "vocabulary" as const,
+          item_id: row.word_id,
+          item_text: row.word,
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+          explanation: "",
+        })),
+        ...spellingRows.map((row) => ({
+          id: `spelling-${row.id}`,
+          category: "spelling" as const,
+          item_id: row.word_id,
+          item_text: row.word,
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+          explanation: "",
+        })),
+        ...comprehensionRows.map((row) => ({
+          id: `comprehension-${row.id}`,
+          category: "comprehension" as const,
+          item_id: row.question_id,
+          item_text: row.question_text,
+          difficulty:
+            row.question_id !== null
+              ? comprehensionMap.get(row.question_id)?.difficulty ?? null
+              : null,
+          created_at: row.created_at,
+          explanation:
+            row.question_id !== null
+              ? comprehensionMap.get(row.question_id)?.explanation || ""
+              : "",
+        })),
+      ]
 
       if (mounted) {
-        setReviewQuestions(mergedData)
+        setReviewItems(mergedRows)
         setLoadingData(false)
       }
     }
 
-    fetchReviewQuestions()
+    fetchReviewItems()
 
     return () => {
       mounted = false
     }
   }, [router])
 
-  async function removeQuestion(questionText: string) {
+  async function removeItem(item: EnglishReviewRow) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
     if (!user) return
 
-    const { error } = await supabase
-      .from("vr_review")
-      .delete()
-      .eq("user_id", user.id)
-      .ilike("question_text", questionText)
+    let error = null
+
+    if (item.category === "vocabulary") {
+      const result = await supabase
+        .from("vocabulary_review")
+        .delete()
+        .eq("user_id", user.id)
+        .ilike("word", item.item_text)
+
+      error = result.error
+    } else if (item.category === "spelling") {
+      const result = await supabase
+        .from("spelling_review")
+        .delete()
+        .eq("user_id", user.id)
+        .ilike("word", item.item_text)
+
+      error = result.error
+    } else if (item.category === "comprehension") {
+      const result = await supabase
+        .from("comprehension_review")
+        .delete()
+        .eq("user_id", user.id)
+        .ilike("question_text", item.item_text)
+
+      error = result.error
+    }
 
     if (error) {
-      console.error("Error deleting VR review question:", error)
+      console.error("Error deleting English review item:", error)
       return
     }
 
-    setReviewQuestions((prev) =>
-      prev.filter((row) => row.question_text.toLowerCase() !== questionText.toLowerCase())
+    setReviewItems((prev) =>
+      prev.filter(
+        (row) =>
+          !(
+            row.category === item.category &&
+            row.item_text.toLowerCase() === item.item_text.toLowerCase()
+          )
+      )
     )
   }
 
-  const uniqueQuestions = useMemo(() => {
+  const uniqueItems = useMemo(() => {
     return Array.from(
-      new Map(reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])).values()
+      new Map(
+        reviewItems.map((item) => [`${item.category}::${item.item_text.toLowerCase()}`, item])
+      ).values()
     )
-  }, [reviewQuestions])
+  }, [reviewItems])
 
-  const filteredQuestions = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const cutoff = getCutoffDate(timeFilter)
 
-    return uniqueQuestions.filter((q) => {
+    return uniqueItems.filter((item) => {
       const matchesDifficulty =
-        difficultyFilter === "all" || String(q.difficulty ?? "") === difficultyFilter
-      const matchesTime = cutoff ? new Date(q.created_at) >= cutoff : true
-      return matchesDifficulty && matchesTime
-    })
-  }, [uniqueQuestions, difficultyFilter, timeFilter])
+        difficultyFilter === "all" || String(item.difficulty ?? "") === difficultyFilter
+      const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter
 
-  function retryFilteredQuestions() {
-    const reviewQuestionIds = filteredQuestions
-      .map((row) => row.question_id)
+      return matchesDifficulty && matchesTime && matchesCategory
+    })
+  }, [uniqueItems, difficultyFilter, timeFilter, categoryFilter])
+
+  function retryFilteredItems() {
+    const vocabularyIds = filteredItems
+      .filter((row) => row.category === "vocabulary")
+      .map((row) => row.item_id)
       .filter((id): id is number => id !== null)
 
-    if (reviewQuestionIds.length === 0) return
+    const spellingIds = filteredItems
+      .filter((row) => row.category === "spelling")
+      .map((row) => row.item_id)
+      .filter((id): id is number => id !== null)
 
-    localStorage.setItem("vr_review_question_ids", JSON.stringify(reviewQuestionIds))
-    router.push("/vr-test?mode=review")
+    const comprehensionIds = filteredItems
+      .filter((row) => row.category === "comprehension")
+      .map((row) => row.item_id)
+      .filter((id): id is number => id !== null)
+
+    if (categoryFilter === "vocabulary" && vocabularyIds.length > 0) {
+      localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
+      router.push("/english/vocabulary?mode=review")
+      return
+    }
+
+    if (categoryFilter === "spelling" && spellingIds.length > 0) {
+      localStorage.setItem("spelling_review_ids", JSON.stringify(spellingIds))
+      router.push("/english/spelling?mode=review")
+      return
+    }
+
+    if (categoryFilter === "comprehension" && comprehensionIds.length > 0) {
+      localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
+      router.push("/english/comprehension?mode=review")
+      return
+    }
+
+    if (filteredItems.length > 0) {
+      const firstCategory = filteredItems[0].category
+
+      if (firstCategory === "vocabulary" && vocabularyIds.length > 0) {
+        localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
+        router.push("/english/vocabulary?mode=review")
+        return
+      }
+
+      if (firstCategory === "spelling" && spellingIds.length > 0) {
+        localStorage.setItem("spelling_review_ids", JSON.stringify(spellingIds))
+        router.push("/english/spelling?mode=review")
+        return
+      }
+
+      if (firstCategory === "comprehension" && comprehensionIds.length > 0) {
+        localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
+        router.push("/english/comprehension?mode=review")
+      }
+    }
   }
 
   const reviewStats = useMemo(() => {
-    const totalQuestions = filteredQuestions.length
-    const allUnique = uniqueQuestions.length
+    const totalItems = filteredItems.length
+    const allUnique = uniqueItems.length
 
-    const byDifficulty = Object.entries(
-      filteredQuestions.reduce((acc, row) => {
-        const key = getLevelLabel(row.difficulty)
+    const byCategory = Object.entries(
+      filteredItems.reduce((acc, row) => {
+        const key = getCategoryLabel(row.category)
         if (!acc[key]) {
           acc[key] = 0
         }
         acc[key] += 1
         return acc
       }, {} as Record<string, number>)
-    ).map(([difficulty, count]) => ({
-      difficulty,
+    ).map(([category, count]) => ({
+      category,
       count,
     }))
 
-    const mostCommonLevel =
-      byDifficulty.length > 0
-        ? byDifficulty.reduce((max, current) => (current.count > max.count ? current : max))
+    const mostCommonCategory =
+      byCategory.length > 0
+        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
         : null
 
-    const mostRecentItem = filteredQuestions.length
-      ? [...filteredQuestions].sort(
+    const mostRecentItem = filteredItems.length
+      ? [...filteredItems].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
       : null
 
-    const withExplanation = filteredQuestions.filter(
+    const withExplanation = filteredItems.filter(
       (row) => row.explanation && row.explanation.trim() !== ""
     ).length
 
     return {
-      totalQuestions,
+      totalItems,
       allUnique,
-      mostCommonLevel,
+      mostCommonCategory,
       mostRecentItem,
       withExplanation,
     }
-  }, [filteredQuestions, uniqueQuestions])
+  }, [filteredItems, uniqueItems])
 
-  const reviewByDifficultyData = useMemo(() => {
-    const grouped = filteredQuestions.reduce((acc, row) => {
-      const key = getLevelLabel(row.difficulty)
+  const reviewByCategoryData = useMemo(() => {
+    const grouped = filteredItems.reduce((acc, row) => {
+      const key = getCategoryLabel(row.category)
 
       if (!acc[key]) {
         acc[key] = {
-          difficulty: key,
+          category: key,
           count: 0,
         }
       }
 
       acc[key].count += 1
       return acc
-    }, {} as Record<string, { difficulty: string; count: number }>)
+    }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Easy", "Medium", "Hard", "Not set"]
+    const order = ["Vocabulary", "Spelling", "Comprehension", "Not set"]
 
     return Object.values(grouped).sort(
-      (a, b) => order.indexOf(a.difficulty) - order.indexOf(b.difficulty)
+      (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
     )
-  }, [filteredQuestions])
+  }, [filteredItems])
 
-  const reviewTrendData = useMemo(() => {
-    const grouped = filteredQuestions.reduce((acc, row) => {
-      const dateKey = formatShortDate(row.created_at)
-      if (!acc[dateKey]) {
-        acc[dateKey] = 0
-      }
-      acc[dateKey] += 1
-      return acc
-    }, {} as Record<string, number>)
-
-    return Object.entries(grouped).map(([date, count]) => ({
-      date,
-      count,
-    }))
-  }, [filteredQuestions])
-
-  const recentQuestions = useMemo(() => {
-    return [...filteredQuestions]
+  const recentItems = useMemo(() => {
+    return [...filteredItems]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 12)
-  }, [filteredQuestions])
+  }, [filteredItems])
 
   const summaryText = useMemo(() => {
-    if (!filteredQuestions.length) {
-      return "No verbal reasoning review questions found for the selected filters."
+    if (!filteredItems.length) {
+      return "No English review items found for the selected filters."
     }
 
-    const mostCommon = reviewStats.mostCommonLevel
-      ? `${reviewStats.mostCommonLevel.difficulty} (${reviewStats.mostCommonLevel.count})`
+    const mostCommon = reviewStats.mostCommonCategory
+      ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
       : "N/A"
 
-    return `You currently have ${reviewStats.totalQuestions} verbal reasoning questions to review. The biggest review level is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
-  }, [filteredQuestions, reviewStats])
+    return `You currently have ${reviewStats.totalItems} English items to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these items already include an explanation to support revision.`
+  }, [filteredItems, reviewStats])
 
   if (loadingUser || loadingData) {
     return (
       <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
-        Loading VR review...
+        Loading English review...
       </div>
     )
   }
@@ -440,7 +587,7 @@ export default function VRReviewPage() {
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(124,58,237,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #f5f3ff 100%)",
+          "radial-gradient(circle at top, rgba(59,130,246,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)",
         padding: "28px 20px 50px",
       }}
     >
@@ -465,7 +612,7 @@ export default function VRReviewPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              🧠 VR Review
+              📘 English Review
             </h1>
             <p
               style={{
@@ -476,8 +623,8 @@ export default function VRReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review verbal reasoning questions that need more practice, filter by
-              difficulty, and jump straight into a focused retry session.
+              Review English items that need more practice, filter by category and
+              difficulty, and jump into a focused retry session.
             </p>
           </div>
 
@@ -489,6 +636,18 @@ export default function VRReviewPage() {
               alignItems: "center",
             }}
           >
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              style={selectStyle}
+            >
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
             <select
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
@@ -514,15 +673,15 @@ export default function VRReviewPage() {
             </select>
 
             <button
-              onClick={retryFilteredQuestions}
-              disabled={filteredQuestions.length === 0}
+              onClick={retryFilteredItems}
+              disabled={filteredItems.length === 0}
               style={{
                 ...actionButtonStyle,
-                opacity: filteredQuestions.length === 0 ? 0.5 : 1,
-                cursor: filteredQuestions.length === 0 ? "not-allowed" : "pointer",
+                opacity: filteredItems.length === 0 ? 0.5 : 1,
+                cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
             >
-              Retry filtered questions
+              Retry filtered items
             </button>
           </div>
         </div>
@@ -535,24 +694,21 @@ export default function VRReviewPage() {
             marginBottom: "24px",
           }}
         >
-          <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
+          <StatCard title="Items to Review" value={String(reviewStats.totalItems)} />
           <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
+          <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
           <StatCard
-            title="With Explanations"
-            value={String(reviewStats.withExplanation)}
-          />
-          <StatCard
-            title="Most Common Level"
-            value={reviewStats.mostCommonLevel ? reviewStats.mostCommonLevel.difficulty : "—"}
+            title="Most Common Category"
+            value={reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
             subtitle={
-              reviewStats.mostCommonLevel
-                ? `${reviewStats.mostCommonLevel.count} questions`
+              reviewStats.mostCommonCategory
+                ? `${reviewStats.mostCommonCategory.count} items`
                 : undefined
             }
           />
           <StatCard
             title="Most Recent Item"
-            value={reviewStats.mostRecentItem ? getLevelLabel(reviewStats.mostRecentItem.difficulty) : "—"}
+            value={reviewStats.mostRecentItem ? getCategoryLabel(reviewStats.mostRecentItem.category) : "—"}
             subtitle={
               reviewStats.mostRecentItem
                 ? formatDateTime(reviewStats.mostRecentItem.created_at)
@@ -561,14 +717,8 @@ export default function VRReviewPage() {
           />
           <StatCard
             title="Current Filter"
-            value={
-              difficultyFilter === "all"
-                ? "All Levels"
-                : getLevelLabel(Number(difficultyFilter))
-            }
-            subtitle={
-              timeOptions.find((option) => option.value === timeFilter)?.label
-            }
+            value={categoryFilter === "all" ? "All Categories" : getCategoryLabel(categoryFilter)}
+            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
           />
         </div>
 
@@ -581,18 +731,18 @@ export default function VRReviewPage() {
           }}
         >
           <SectionCard
-            title="Review Questions by Difficulty"
-            subtitle="See which levels need the most revision."
+            title="Review Items by Category"
+            subtitle="See which English categories need the most revision."
           >
             <div style={{ width: "100%", height: "340px" }}>
-              {reviewByDifficultyData.length ? (
+              {reviewByCategoryData.length ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reviewByDifficultyData}>
+                  <BarChart data={reviewByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="difficulty" />
+                    <XAxis dataKey="category" />
                     <YAxis allowDecimals={false} />
-                  <Tooltip formatter={questionsTooltipFormatter} /> 
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
+                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -610,15 +760,15 @@ export default function VRReviewPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#f3e8ff",
-                  border: "1px solid #e9d5ff",
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
                 }}
               >
-                <div style={{ color: "#7e22ce", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
                   Review Queue
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.totalQuestions}
+                  {reviewStats.totalItems}
                 </div>
               </div>
 
@@ -626,11 +776,11 @@ export default function VRReviewPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Explanations Ready
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -650,7 +800,7 @@ export default function VRReviewPage() {
                   Main Focus
                 </div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.mostCommonLevel ? reviewStats.mostCommonLevel.difficulty : "—"}
+                  {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
                 </div>
               </div>
             </div>
@@ -659,28 +809,29 @@ export default function VRReviewPage() {
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your latest verbal reasoning questions to revisit."
+          subtitle="Your latest English items to revisit."
         >
-          {recentQuestions.length ? (
+          {recentItems.length ? (
             <div style={{ overflowX: "auto" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "980px",
+                  minWidth: "1080px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Category</th>
                     <th style={thStyle}>Level</th>
-                    <th style={thStyle}>Question</th>
+                    <th style={thStyle}>Item</th>
                     <th style={thStyle}>Explanation</th>
                     <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentQuestions.map((row) => (
+                  {recentItems.map((row) => (
                     <tr
                       key={row.id}
                       style={{
@@ -688,9 +839,10 @@ export default function VRReviewPage() {
                       }}
                     >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                       <td style={{ ...tdStyle, maxWidth: "320px" }}>
-                        {truncateText(row.question_text, 130)}
+                        {truncateText(row.item_text, 130)}
                       </td>
                       <td style={{ ...tdStyle, maxWidth: "340px" }}>
                         {row.explanation && row.explanation.trim()
@@ -699,7 +851,7 @@ export default function VRReviewPage() {
                       </td>
                       <td style={tdStyle}>
                         <button
-                          onClick={() => removeQuestion(row.question_text)}
+                          onClick={() => removeItem(row)}
                           style={removeButtonStyle}
                         >
                           Remove
@@ -715,7 +867,7 @@ export default function VRReviewPage() {
           )}
         </SectionCard>
 
-        {filteredQuestions.length > 0 ? (
+        {filteredItems.length > 0 ? (
           <div
             style={{
               display: "grid",
@@ -724,11 +876,11 @@ export default function VRReviewPage() {
               marginTop: "20px",
             }}
           >
-            {filteredQuestions.slice(0, 9).map((row) => (
+            {filteredItems.slice(0, 9).map((row) => (
               <div
                 key={row.id}
                 style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #fafaff 100%)",
+                  background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
                   border: "1px solid #e5e7eb",
                   borderRadius: "24px",
                   padding: "20px",
@@ -740,11 +892,27 @@ export default function VRReviewPage() {
                     display: "inline-block",
                     padding: "6px 10px",
                     borderRadius: "999px",
-                    background: "#ede9fe",
-                    color: "#6d28d9",
+                    background: "#dbeafe",
+                    color: "#1d4ed8",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    marginBottom: "10px",
+                  }}
+                >
+                  {getCategoryLabel(row.category)}
+                </div>
+
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: "999px",
+                    background: "#eff6ff",
+                    color: "#1e40af",
                     fontSize: "12px",
                     fontWeight: 700,
                     marginBottom: "14px",
+                    marginLeft: "8px",
                   }}
                 >
                   {getLevelLabel(row.difficulty)}
@@ -758,7 +926,7 @@ export default function VRReviewPage() {
                     fontWeight: 800,
                   }}
                 >
-                  Question
+                  Item
                 </h3>
 
                 <p
@@ -769,7 +937,7 @@ export default function VRReviewPage() {
                     fontWeight: 500,
                   }}
                 >
-                  {row.question_text}
+                  {row.item_text}
                 </p>
 
                 <div
@@ -815,7 +983,7 @@ export default function VRReviewPage() {
                 </div>
 
                 <button
-                  onClick={() => removeQuestion(row.question_text)}
+                  onClick={() => removeItem(row)}
                   style={removeButtonStyle}
                 >
                   Remove from review
@@ -828,17 +996,17 @@ export default function VRReviewPage() {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+            background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(15, 23, 42, 0.22)",
+            boxShadow: "0 12px 34px rgba(30, 58, 138, 0.22)",
           }}
         >
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dbeafe", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -863,10 +1031,10 @@ const actionButtonStyle: React.CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
-  background: "#7c3aed",
+  background: "#3b82f6",
   color: "white",
   fontWeight: 700,
-  boxShadow: "0 10px 24px rgba(124, 58, 237, 0.25)",
+  boxShadow: "0 10px 24px rgba(59, 130, 246, 0.25)",
 }
 
 const removeButtonStyle: React.CSSProperties = {
