@@ -79,7 +79,7 @@ export default function VRPage() {
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/vr/codes-logic")}
+            onClick={() => openCategory("/vr/code-logic")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -111,7 +111,7 @@ export default function VRPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/vr/codes-logic")
+                openCategory("/vr/code-logic")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"

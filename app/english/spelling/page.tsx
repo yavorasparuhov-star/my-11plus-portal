@@ -25,6 +25,11 @@ export default function SpellingPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [timeLeft, setTimeLeft] = useState(15)
 
+  const [repeatPressed, setRepeatPressed] = useState(false)
+  const [hearPressed, setHearPressed] = useState(false)
+  const [hintPressed, setHintPressed] = useState(false)
+  const [timerPressed, setTimerPressed] = useState(false)
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const reviewMode = searchParams.get("mode") === "review"
@@ -159,6 +164,23 @@ export default function SpellingPage() {
     utterance.rate = 0.8
     utterance.pitch = 1
     window.speechSynthesis.speak(utterance)
+  }
+
+  function animatePress(setter: (value: boolean) => void) {
+    setter(true)
+
+    setTimeout(() => {
+      setter(false)
+    }, 140)
+  }
+
+  function handleRepeatPress(word: string) {
+    setRepeatPressed(true)
+    speakWord(word)
+
+    setTimeout(() => {
+      setRepeatPressed(false)
+    }, 140)
   }
 
   function generateOptions(wordItem: any) {
@@ -390,8 +412,7 @@ export default function SpellingPage() {
   const currentWord = words[currentIndex]
 
   if (!currentWord) {
-    const displayedDifficulty =
-      reviewMode ? words[0]?.difficulty ?? null : difficulty
+    const displayedDifficulty = reviewMode ? words[0]?.difficulty ?? null : difficulty
 
     return (
       <>
@@ -447,36 +468,65 @@ export default function SpellingPage() {
 
           <div style={styles.headerButtons}>
             <button
-              onClick={() => setVoiceEnabled((prev) => !prev)}
+              onClick={() => {
+                animatePress(setHearPressed)
+                setVoiceEnabled((prev) => !prev)
+              }}
               style={{
                 ...styles.controlButton,
                 backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
                 color: voiceEnabled ? "white" : "black",
+                transform: hearPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                boxShadow: hearPressed
+                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                  : "0 2px 6px rgba(0,0,0,0.15)",
               }}
             >
               🔊 Hear: {voiceEnabled ? "ON" : "OFF"}
             </button>
 
             <button
-              onClick={() => speakWord(correctAnswer)}
-              style={styles.controlButton}
+              onClick={() => handleRepeatPress(correctAnswer)}
+              style={{
+                ...styles.controlButton,
+                transform: repeatPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                boxShadow: repeatPressed
+                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                  : "0 2px 6px rgba(0,0,0,0.15)",
+              }}
             >
               Repeat
             </button>
 
             <button
-              onClick={handleHint}
-              style={styles.controlButton}
+              onClick={() => {
+                animatePress(setHintPressed)
+                handleHint()
+              }}
+              style={{
+                ...styles.controlButton,
+                transform: hintPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                boxShadow: hintPressed
+                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                  : "0 2px 6px rgba(0,0,0,0.15)",
+              }}
             >
               💡 Hint
             </button>
 
             <button
-              onClick={() => setTimerEnabled((prev) => !prev)}
+              onClick={() => {
+                animatePress(setTimerPressed)
+                setTimerEnabled((prev) => !prev)
+              }}
               style={{
                 ...styles.controlButton,
                 backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
                 color: timerEnabled ? "white" : "black",
+                transform: timerPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                boxShadow: timerPressed
+                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                  : "0 2px 6px rgba(0,0,0,0.15)",
               }}
             >
               Timer: {timerEnabled ? "ON" : "OFF"}
@@ -511,7 +561,8 @@ export default function SpellingPage() {
                 style={{
                   ...styles.answerButton,
                   backgroundColor: bg,
-                  color: selected && (opt === correctAnswer || opt === selected) ? "white" : "black",
+                  color:
+                    selected && (opt === correctAnswer || opt === selected) ? "white" : "black",
                   cursor: selected ? "not-allowed" : "pointer",
                 }}
               >
@@ -612,6 +663,8 @@ const styles: any = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "transform 0.12s ease, box-shadow 0.12s ease",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
   },
   wordArea: {
     textAlign: "center",
@@ -625,7 +678,6 @@ const styles: any = {
   hintText: {
     textAlign: "center",
     fontStyle: "italic",
-    marginBottom: "20px",
     fontSize: "30px",
     color: "#066e0b",
     lineHeight: "1.5",

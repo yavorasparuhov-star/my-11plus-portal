@@ -209,7 +209,7 @@ export default function VRCodesLogicPage() {
               <div
                 key={test.id}
                 style={{ ...styles.card, ...hoverCardStyle }}
-                onClick={() => router.push(`/vr/codes-logic/${test.id}`)}
+                onClick={() => router.push(`/vr/code-logic/${test.id}`)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-6px)"
                   e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -263,7 +263,7 @@ export default function VRCodesLogicPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    router.push(`/vr/codes-logic/${test.id}`)
+                    router.push(`/vr/code-logic/${test.id}`)
                   }}
                   onMouseEnter={(e) => {
                     if (test.isCompleted) {

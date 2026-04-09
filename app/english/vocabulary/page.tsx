@@ -30,6 +30,11 @@ export default function Home() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [timerEnabled, setTimerEnabled] = useState(true)
 
+  const [repeatPressed, setRepeatPressed] = useState(false)
+  const [hearPressed, setHearPressed] = useState(false)
+  const [hintPressed, setHintPressed] = useState(false)
+  const [timerPressed, setTimerPressed] = useState(false)
+
   const currentWord = testWords[currentIndex] || null
 
   useEffect(() => {
@@ -294,6 +299,23 @@ export default function Home() {
     window.speechSynthesis.speak(utterance)
   }
 
+  function animatePress(setter: (value: boolean) => void) {
+    setter(true)
+
+    setTimeout(() => {
+      setter(false)
+    }, 140)
+  }
+
+  function handleRepeatPress(word: string) {
+    setRepeatPressed(true)
+    speakWord(word)
+
+    setTimeout(() => {
+      setRepeatPressed(false)
+    }, 140)
+  }
+
   const toggleVoice = () => {
     const newValue = !voiceEnabled
     setVoiceEnabled(newValue)
@@ -398,36 +420,65 @@ export default function Home() {
 
               <div style={styles.headerButtons}>
                 <button
-                  onClick={toggleVoice}
+                  onClick={() => {
+                    animatePress(setHearPressed)
+                    toggleVoice()
+                  }}
                   style={{
                     ...styles.controlButton,
                     backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
                     color: voiceEnabled ? "white" : "black",
+                    transform: hearPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    boxShadow: hearPressed
+                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                      : "0 2px 6px rgba(0,0,0,0.15)",
                   }}
                 >
                   🔊 Hear: {voiceEnabled ? "ON" : "OFF"}
                 </button>
 
                 <button
-                  onClick={() => currentWord && speakWord(currentWord.word)}
-                  style={styles.controlButton}
+                  onClick={() => currentWord && handleRepeatPress(currentWord.word)}
+                  style={{
+                    ...styles.controlButton,
+                    transform: repeatPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    boxShadow: repeatPressed
+                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                      : "0 2px 6px rgba(0,0,0,0.15)",
+                  }}
                 >
                   Repeat
                 </button>
 
                 <button
-                  onClick={() => setShowHint((prev) => !prev)}
-                  style={styles.controlButton}
+                  onClick={() => {
+                    animatePress(setHintPressed)
+                    setShowHint((prev) => !prev)
+                  }}
+                  style={{
+                    ...styles.controlButton,
+                    transform: hintPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    boxShadow: hintPressed
+                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                      : "0 2px 6px rgba(0,0,0,0.15)",
+                  }}
                 >
                   💡 Hint
                 </button>
 
                 <button
-                  onClick={toggleTimer}
+                  onClick={() => {
+                    animatePress(setTimerPressed)
+                    toggleTimer()
+                  }}
                   style={{
                     ...styles.controlButton,
                     backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
                     color: timerEnabled ? "white" : "black",
+                    transform: timerPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    boxShadow: timerPressed
+                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                      : "0 2px 6px rgba(0,0,0,0.15)",
                   }}
                 >
                   Timer: {timerEnabled ? "ON" : "OFF"}
@@ -589,6 +640,8 @@ const styles: any = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "transform 0.12s ease, box-shadow 0.12s ease",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
   },
   wordArea: {
     textAlign: "center",

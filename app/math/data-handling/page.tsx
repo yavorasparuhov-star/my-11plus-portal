@@ -186,7 +186,9 @@ export default function DataHandlingPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Data Handling tests...</p>
+        <div style={styles.page}>
+          <p style={styles.message}>Loading Data Handling tests...</p>
+        </div>
       </>
     )
   }
@@ -201,6 +203,11 @@ export default function DataHandlingPage() {
             <p style={styles.subtitle}>
               Choose a Data Handling test and answer 10 multiple-choice questions.
             </p>
+            <div style={styles.heroActions}>
+              <Link href="/math" style={styles.backLink}>
+                ← Back to Math
+              </Link>
+            </div>
           </div>
 
           {tests.length === 0 ? (
@@ -352,6 +359,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
+  },
+  heroActions: {
+    marginTop: "16px",
+  },
+  backLink: {
+    display: "inline-block",
+    textDecoration: "none",
+    color: "#3730a3",
+    fontWeight: 600,
   },
   summaryCard: {
     background: "white",

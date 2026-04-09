@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
+import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 
 const hoverCardStyle = {
@@ -182,140 +183,155 @@ export default function AlgebraReasoningPage() {
       : tests.filter((test) => test.difficulty === difficultyFilter)
 
   if (loading) {
-    return <p style={styles.message}>Loading Algebra & Reasoning tests...</p>
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <p style={styles.message}>Loading Algebra & Reasoning tests...</p>
+        </div>
+      </>
+    )
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.heroCard}>
-          <h1 style={styles.title}>🧠 Algebra & Reasoning Tests</h1>
-          <p style={styles.subtitle}>
-            Choose an Algebra & Reasoning test and answer 10 multiple-choice questions.
-          </p>
-        </div>
-
-        {tests.length === 0 ? (
-          <div style={styles.emptyCard}>
-            <h2>No Algebra & Reasoning tests yet</h2>
-            <p>Add tests in Supabase and they will appear here.</p>
-          </div>
-        ) : (
-          <>
-            <div style={styles.summaryCard}>
-              <div style={styles.filterRow}>
-                <button
-                  onClick={() => setDifficultyFilter("all")}
-                  style={{
-                    ...styles.filterButton,
-                    backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
-                    color: difficultyFilter === "all" ? "white" : "black",
-                  }}
-                >
-                  All ({allCompletedPercent}% Completed)
-                </button>
-
-                <button
-                  onClick={() => setDifficultyFilter(1)}
-                  style={{
-                    ...styles.filterButton,
-                    backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
-                    color: difficultyFilter === 1 ? "white" : "black",
-                  }}
-                >
-                  Easy ({easyCompletedPercent}% Completed)
-                </button>
-
-                <button
-                  onClick={() => setDifficultyFilter(2)}
-                  style={{
-                    ...styles.filterButton,
-                    backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
-                    color: difficultyFilter === 2 ? "white" : "black",
-                  }}
-                >
-                  Medium ({mediumCompletedPercent}% Completed)
-                </button>
-
-                <button
-                  onClick={() => setDifficultyFilter(3)}
-                  style={{
-                    ...styles.filterButton,
-                    backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
-                    color: difficultyFilter === 3 ? "white" : "black",
-                  }}
-                >
-                  Hard ({hardCompletedPercent}% Completed)
-                </button>
-              </div>
+    <>
+      <Header />
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.heroCard}>
+            <h1 style={styles.title}>🧠 Algebra & Reasoning Tests</h1>
+            <p style={styles.subtitle}>
+              Choose an Algebra & Reasoning test and answer 10 multiple-choice questions.
+            </p>
+            <div style={styles.heroActions}>
+              <Link href="/math" style={styles.backLink}>
+                ← Back to Math
+              </Link>
             </div>
+          </div>
 
-            {filteredTests.length === 0 ? (
-              <div style={styles.emptyCard}>
-                <h2>No tests in this difficulty</h2>
-                <p>Try another filter.</p>
-              </div>
-            ) : (
-              <div style={styles.grid}>
-                {filteredTests.map((test) => (
-                  <div
-                    key={test.id}
-                    style={{ ...styles.card, ...hoverCardStyle }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-6px)"
-                      e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)"
-                      e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+          {tests.length === 0 ? (
+            <div style={styles.emptyCard}>
+              <h2>No Algebra & Reasoning tests yet</h2>
+              <p>Add tests in Supabase and they will appear here.</p>
+            </div>
+          ) : (
+            <>
+              <div style={styles.summaryCard}>
+                <div style={styles.filterRow}>
+                  <button
+                    onClick={() => setDifficultyFilter("all")}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === "all" ? "white" : "black",
                     }}
                   >
-                    <div style={styles.cardTop}>
-                      <h2 style={styles.cardTitle}>{test.title}</h2>
-                      <span style={styles.badge}>
-                        {getDifficultyLabel(test.difficulty)}
-                      </span>
-                    </div>
+                    All ({allCompletedPercent}% Completed)
+                  </button>
 
-                    <p style={styles.preview}>
-                      Practise sequences, simple algebra, formulas, and logical
-                      mathematical reasoning in this test.
-                    </p>
+                  <button
+                    onClick={() => setDifficultyFilter(1)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 1 ? "white" : "black",
+                    }}
+                  >
+                    Easy ({easyCompletedPercent}% Completed)
+                  </button>
 
-                    <div style={styles.metaRow}>
-                      <p style={styles.metaHalf}>
-                        <strong>Completed:</strong>{" "}
-                        {test.completed_at
-                          ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "Not yet"}
-                      </p>
+                  <button
+                    onClick={() => setDifficultyFilter(2)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 2 ? "white" : "black",
+                    }}
+                  >
+                    Medium ({mediumCompletedPercent}% Completed)
+                  </button>
 
-                      <p style={styles.metaHalf}>
-                        <strong>Score:</strong> {getScoreText(test)}{" "}
-                        <span style={styles.scoreIcon}>
-                          {getScoreIcon(test.score, test.isCompleted)}
-                        </span>
-                      </p>
-                    </div>
-
-                    <Link
-                      href={`/math-test/algebra-reasoning/${test.id}`}
-                      style={test.isCompleted ? styles.startButton : styles.retryButton}
-                    >
-                      {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                    </Link>
-                  </div>
-                ))}
+                  <button
+                    onClick={() => setDifficultyFilter(3)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 3 ? "white" : "black",
+                    }}
+                  >
+                    Hard ({hardCompletedPercent}% Completed)
+                  </button>
+                </div>
               </div>
-            )}
-          </>
-        )}
+
+              {filteredTests.length === 0 ? (
+                <div style={styles.emptyCard}>
+                  <h2>No tests in this difficulty</h2>
+                  <p>Try another filter.</p>
+                </div>
+              ) : (
+                <div style={styles.grid}>
+                  {filteredTests.map((test) => (
+                    <div
+                      key={test.id}
+                      style={{ ...styles.card, ...hoverCardStyle }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-6px)"
+                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)"
+                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                      }}
+                    >
+                      <div style={styles.cardTop}>
+                        <h2 style={styles.cardTitle}>{test.title}</h2>
+                        <span style={styles.badge}>
+                          {getDifficultyLabel(test.difficulty)}
+                        </span>
+                      </div>
+
+                      <p style={styles.preview}>
+                        Practise sequences, simple algebra, formulas, and logical
+                        mathematical reasoning in this test.
+                      </p>
+
+                      <div style={styles.metaRow}>
+                        <p style={styles.metaHalf}>
+                          <strong>Completed:</strong>{" "}
+                          {test.completed_at
+                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "Not yet"}
+                        </p>
+
+                        <p style={styles.metaHalf}>
+                          <strong>Score:</strong> {getScoreText(test)}{" "}
+                          <span style={styles.scoreIcon}>
+                            {getScoreIcon(test.score, test.isCompleted)}
+                          </span>
+                        </p>
+                      </div>
+
+                      <Link
+                        href={`/math/algebra-reasoning/${test.id}`}
+                        style={test.isCompleted ? styles.startButton : styles.retryButton}
+                      >
+                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -343,6 +359,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
+  },
+  heroActions: {
+    marginTop: "16px",
+  },
+  backLink: {
+    display: "inline-block",
+    textDecoration: "none",
+    color: "#3730a3",
+    fontWeight: 600,
   },
   summaryCard: {
     background: "white",
