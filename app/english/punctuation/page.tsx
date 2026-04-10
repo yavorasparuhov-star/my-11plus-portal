@@ -1,7 +1,7 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import Header from "../../components/Header"
+import Header from "../../../components/Header"
 import { useRouter } from "next/navigation"
 
 const hoverCardStyle: CSSProperties = {
@@ -9,7 +9,7 @@ const hoverCardStyle: CSSProperties = {
   cursor: "pointer",
 }
 
-export default function EnglishPage() {
+export default function PunctuationPage() {
   const router = useRouter()
 
   function openCategory(path: string) {
@@ -22,18 +22,17 @@ export default function EnglishPage() {
 
       <div style={styles.page}>
         <div style={styles.hero}>
-          <h1 style={styles.title}>English</h1>
+          <h1 style={styles.title}>Punctuation</h1>
           <p style={styles.subtitle}>
-            Practise core English skills including vocabulary, spelling,
-            comprehension, grammar, and punctuation to build confidence for 11+
-            entrance exams.
+            Practise punctuation skills for 11+ English, from sentence endings
+            and commas to apostrophes, advanced punctuation, and direct speech.
           </p>
         </div>
 
         <div style={styles.grid}>
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/vocabulary")}
+            onClick={() => openCategory("/english/punctuation/sentence")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -43,17 +42,17 @@ export default function EnglishPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>📘</div>
-            <h2 style={styles.cardTitle}>Vocabulary</h2>
+            <div style={styles.icon}>📍</div>
+            <h2 style={styles.cardTitle}>Sentence</h2>
             <p style={styles.cardText}>
-              Strengthen word meaning, synonyms, antonyms, and precise language
-              knowledge for 11+ English.
+              Practise full stops, capital letters, question marks,
+              exclamation marks, and accurate sentence punctuation.
             </p>
 
             <div style={styles.infoBox}>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Word meaning</span>
+                <span style={styles.infoValue}>Sentence punctuation</span>
               </div>
 
               <div style={styles.infoRow}>
@@ -65,7 +64,7 @@ export default function EnglishPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/english/vocabulary")
+                openCategory("/english/punctuation/sentence")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -75,13 +74,13 @@ export default function EnglishPage() {
               }}
               style={styles.button}
             >
-              Open Vocabulary
+              Open Sentence
             </button>
           </div>
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/spelling")}
+            onClick={() => openCategory("/english/punctuation/comma")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -91,17 +90,17 @@ export default function EnglishPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>✍️</div>
-            <h2 style={styles.cardTitle}>Spelling</h2>
+            <div style={styles.icon}>➖</div>
+            <h2 style={styles.cardTitle}>Comma</h2>
             <p style={styles.cardText}>
-              Practise accurate spelling, spot common mistakes, and improve word
-              recognition under test conditions.
+              Learn how commas are used in lists, clauses, sentence openings,
+              and other common 11+ punctuation situations.
             </p>
 
             <div style={styles.infoBox}>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Correct spelling</span>
+                <span style={styles.infoValue}>Comma rules</span>
               </div>
 
               <div style={styles.infoRow}>
@@ -113,7 +112,7 @@ export default function EnglishPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/english/spelling")
+                openCategory("/english/punctuation/comma")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -123,13 +122,13 @@ export default function EnglishPage() {
               }}
               style={styles.button}
             >
-              Open Spelling
+              Open Comma
             </button>
           </div>
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/comprehension")}
+            onClick={() => openCategory("/english/punctuation/apostrophes")}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -139,17 +138,17 @@ export default function EnglishPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>📖</div>
-            <h2 style={styles.cardTitle}>Comprehension</h2>
+            <div style={styles.icon}>’</div>
+            <h2 style={styles.cardTitle}>Apostrophes</h2>
             <p style={styles.cardText}>
-              Develop reading skills, inference, retrieval, and understanding of
-              fiction and non-fiction passages.
+              Practise apostrophes for contraction and possession, including
+              singular and plural ownership rules.
             </p>
 
             <div style={styles.infoBox}>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Reading skills</span>
+                <span style={styles.infoValue}>Possession & omission</span>
               </div>
 
               <div style={styles.infoRow}>
@@ -161,7 +160,7 @@ export default function EnglishPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/english/comprehension")
+                openCategory("/english/punctuation/apostrophes")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -171,61 +170,15 @@ export default function EnglishPage() {
               }}
               style={styles.button}
             >
-              Open Comprehension
+              Open Apostrophes
             </button>
           </div>
 
           <div
             style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/grammar")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={styles.icon}>📝</div>
-            <h2 style={styles.cardTitle}>Grammar</h2>
-            <p style={styles.cardText}>
-              Build confidence with sentence structure, tenses, word classes,
-              agreement, and key grammar rules for 11+ exams.
-            </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Grammar rules</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/grammar")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Grammar
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/punctuation")}
+            onClick={() =>
+              openCategory("/english/punctuation/advanced-punctuation")
+            }
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-6px)"
               e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
@@ -236,16 +189,16 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>✒️</div>
-            <h2 style={styles.cardTitle}>Punctuation</h2>
+            <h2 style={styles.cardTitle}>Advanced Punctuation</h2>
             <p style={styles.cardText}>
-              Practise full stops, commas, apostrophes, speech marks, colons,
-              semicolons, and other punctuation used in 11+ English.
+              Explore colons, semicolons, brackets, dashes, and other advanced
+              punctuation often used in stronger 11+ English answers.
             </p>
 
             <div style={styles.infoBox}>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Punctuation marks</span>
+                <span style={styles.infoValue}>Advanced punctuation</span>
               </div>
 
               <div style={styles.infoRow}>
@@ -257,7 +210,7 @@ export default function EnglishPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                openCategory("/english/punctuation")
+                openCategory("/english/punctuation/advanced-punctuation")
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#bbf7d0"
@@ -267,7 +220,57 @@ export default function EnglishPage() {
               }}
               style={styles.button}
             >
-              Open Punctuation
+              Open Advanced Punctuation
+            </button>
+          </div>
+
+          <div
+            style={{ ...styles.card, ...hoverCardStyle }}
+            onClick={() =>
+              openCategory("/english/punctuation/direct-speech-punctuation")
+            }
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-6px)"
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)"
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+            }}
+          >
+            <div style={styles.icon}>💬</div>
+            <h2 style={styles.cardTitle}>Direct Speech Punctuation</h2>
+            <p style={styles.cardText}>
+              Practise speech marks, commas, capital letters, and punctuation
+              placement when writing or correcting direct speech.
+            </p>
+
+            <div style={styles.infoBox}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Focus:</span>
+                <span style={styles.infoValue}>Speech punctuation</span>
+              </div>
+
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Status:</span>
+                <span style={styles.infoValue}>Ready</span>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                openCategory("/english/punctuation/direct-speech-punctuation")
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#bbf7d0"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#d4f5d0"
+              }}
+              style={styles.button}
+            >
+              Open Direct Speech
             </button>
           </div>
         </div>
