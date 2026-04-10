@@ -1,9 +1,9 @@
 "use client"
 
+import React, { useMemo, useState, useEffect } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
 import { useParams, useRouter } from "next/navigation"
-import { useMemo, useState, useEffect } from "react"
 
 type VRTest = {
   id: number
@@ -165,7 +165,12 @@ export default function VRWordRelationshipsTestPage() {
     const isLastQuestion = currentIndex === questions.length - 1
 
     if (isLastQuestion) {
-      await saveResults(score)
+      const finalScore =
+        score +
+        (selectedAnswer === currentQuestion.correct_answer ? 1 : 0) -
+        (showFeedback && selectedAnswer === currentQuestion.correct_answer ? 1 : 0)
+
+      await saveResults(finalScore)
       setFinished(true)
       return
     }
@@ -193,6 +198,7 @@ export default function VRWordRelationshipsTestPage() {
 
     const { error: progressError } = await supabase.from("vr_progress").insert({
       user_id: user.id,
+      test_id: test?.id,
       total_questions: totalQuestions,
       correct_answers: finalScore,
       success_rate: successRate,
@@ -214,9 +220,7 @@ export default function VRWordRelationshipsTestPage() {
       }))
 
     if (reviewRows.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("vr_review")
-        .insert(reviewRows)
+      const { error: reviewError } = await supabase.from("vr_review").insert(reviewRows)
 
       if (reviewError) {
         console.error("Error saving VR review:", reviewError)
@@ -235,6 +239,26 @@ export default function VRWordRelationshipsTestPage() {
     if (answer === "B") return question.option_b
     if (answer === "C") return question.option_c
     return question.option_d
+  }
+
+  function getDifficultyLabel(difficulty: number | null) {
+    if (difficulty === 1) return "Easy"
+    if (difficulty === 2) return "Medium"
+    if (difficulty === 3) return "Hard"
+    return "Not set"
+  }
+
+  function getDifficultyColors(difficulty: number | null) {
+    if (difficulty === 1) {
+      return { background: "#ecfdf5", color: "#065f46" }
+    }
+    if (difficulty === 2) {
+      return { background: "#eff6ff", color: "#1d4ed8" }
+    }
+    if (difficulty === 3) {
+      return { background: "#fef2f2", color: "#b91c1c" }
+    }
+    return { background: "#f3f4f6", color: "#374151" }
   }
 
   if (!rawId) {
@@ -269,8 +293,8 @@ export default function VRWordRelationshipsTestPage() {
       <>
         <Header />
         <div style={styles.page}>
-          <div style={styles.wrapper}>
-            <div style={styles.card}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
               <h2 style={styles.cardTitle}>Could not open test</h2>
               <p style={styles.subtitle}>{errorMessage}</p>
               <button
@@ -291,8 +315,8 @@ export default function VRWordRelationshipsTestPage() {
       <>
         <Header />
         <div style={styles.page}>
-          <div style={styles.wrapper}>
-            <div style={styles.card}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
               <h2 style={styles.cardTitle}>No test found</h2>
               <p style={styles.subtitle}>This word relationships test is not available yet.</p>
               <button
@@ -310,28 +334,43 @@ export default function VRWordRelationshipsTestPage() {
 
   if (finished) {
     const totalQuestions = questions.length
-    const finalScore = score
     const percentage =
-      totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
+      totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
+    const badgeColors = getDifficultyColors(test.difficulty)
 
     return (
       <>
         <Header />
         <div style={styles.page}>
-          <div style={styles.wrapper}>
-            <div style={styles.card}>
-              <h1 style={styles.title}>Test Complete</h1>
+          <div style={styles.container}>
+            <div style={styles.heroCard}>
+              <h1 style={styles.title}>🧠 Word Relationships Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
+            </div>
+
+            <div style={styles.summaryCard}>
+              <div style={styles.cardTop}>
+                <h2 style={styles.cardTitle}>Your Results</h2>
+                <span
+                  style={{
+                    ...styles.badge,
+                    background: badgeColors.background,
+                    color: badgeColors.color,
+                  }}
+                >
+                  {getDifficultyLabel(test.difficulty)}
+                </span>
+              </div>
 
               <div style={styles.resultBox}>
                 <p style={styles.resultText}>
-                  Score: <strong>{finalScore}</strong> / {totalQuestions}
+                  <strong>Score:</strong> {score} / {totalQuestions}
                 </p>
                 <p style={styles.resultText}>
-                  Success Rate: <strong>{percentage}%</strong>
+                  <strong>Success Rate:</strong> {percentage}%
                 </p>
                 <p style={styles.resultText}>
-                  Category: <strong>Word Relationships</strong>
+                  <strong>Category:</strong> Word Relationships
                 </p>
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
               </div>
@@ -342,7 +381,7 @@ export default function VRWordRelationshipsTestPage() {
                 </button>
                 <button
                   onClick={() => router.push("/vr/word-relationships")}
-                  style={styles.secondaryButton}
+                  style={styles.retryButton}
                 >
                   Back to Topic
                 </button>
@@ -355,18 +394,45 @@ export default function VRWordRelationshipsTestPage() {
   }
 
   const isCorrect = selectedAnswer === currentQuestion.correct_answer
+  const progressPercent =
+    questions.length > 0 ? Math.round(((currentIndex + 1) / questions.length) * 100) : 0
+  const badgeColors = getDifficultyColors(test.difficulty)
 
   return (
     <>
       <Header />
       <div style={styles.page}>
-        <div style={styles.wrapper}>
+        <div style={styles.container}>
+          <div style={styles.heroCard}>
+            <div style={styles.cardTop}>
+              <div>
+                <h1 style={styles.titleLeft}>{test.title}</h1>
+                <p style={styles.subtitleLeft}>
+                  Choose the best matching relationship and check your answer before moving on.
+                </p>
+              </div>
+              <span
+                style={{
+                  ...styles.badge,
+                  background: badgeColors.background,
+                  color: badgeColors.color,
+                }}
+              >
+                {getDifficultyLabel(test.difficulty)}
+              </span>
+            </div>
+          </div>
+
           <div style={styles.questionCard}>
             <div style={styles.progressRow}>
               <span style={styles.progressText}>
                 Question {currentIndex + 1} / {questions.length}
               </span>
               <span style={styles.progressText}>Score: {score}</span>
+            </div>
+
+            <div style={styles.progressBarWrap}>
+              <div style={{ ...styles.progressBarFill, width: `${progressPercent}%` }} />
             </div>
 
             <h2 style={styles.questionText}>{currentQuestion.question_text}</h2>
@@ -435,26 +501,24 @@ export default function VRWordRelationshipsTestPage() {
                     borderColor: isCorrect ? "#34d399" : "#f87171",
                   }}
                 >
-                  <p style={styles.feedbackText}>
-                    {isCorrect ? "Correct!" : "Not quite."}
-                  </p>
+                  <p style={styles.feedbackText}>{isCorrect ? "Correct!" : "Not quite."}</p>
+
                   {!isCorrect && (
                     <p style={styles.feedbackText}>
-                      Correct answer:{" "}
-                      <strong>
-                        {currentQuestion.correct_answer}.{" "}
-                        {getOptionText(currentQuestion, currentQuestion.correct_answer)}
-                      </strong>
+                      <strong>Correct answer:</strong> {currentQuestion.correct_answer}.{" "}
+                      {getOptionText(currentQuestion, currentQuestion.correct_answer)}
                     </p>
                   )}
+
                   {selectedAnswer && (
                     <p style={styles.feedbackText}>
-                      Your answer: <strong>{selectedAnswer}. {selectedAnswerText}</strong>
+                      <strong>Your answer:</strong> {selectedAnswer}. {selectedAnswerText}
                     </p>
                   )}
+
                   {currentQuestion.explanation && (
                     <p style={styles.feedbackText}>
-                      Explanation: {currentQuestion.explanation}
+                      <strong>Explanation:</strong> {currentQuestion.explanation}
                     </p>
                   )}
                 </div>
@@ -473,86 +537,107 @@ export default function VRWordRelationshipsTestPage() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
-    minHeight: "calc(100vh - 70px)",
+    padding: "24px",
     background: "#f9fafb",
-    padding: "32px 20px 50px",
+    minHeight: "calc(100vh - 70px)",
   },
-  wrapper: {
-    maxWidth: "900px",
+  container: {
+    maxWidth: "1100px",
     margin: "0 auto",
   },
-  title: {
-    fontSize: "38px",
-    marginBottom: "10px",
-    color: "#111827",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: "18px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-    maxWidth: "700px",
-    margin: "0 auto",
-    textAlign: "center",
-  },
-  card: {
+  heroCard: {
     background: "white",
-    borderRadius: "22px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    padding: "30px",
-    textAlign: "center",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    marginBottom: "24px",
+  },
+  summaryCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
   questionCard: {
     background: "white",
-    borderRadius: "22px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    padding: "30px",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
-  cardTitle: {
-    fontSize: "26px",
-    marginBottom: "20px",
-    color: "#111827",
+  emptyCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "32px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
-  startButton: {
-    padding: "14px 24px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontSize: "17px",
-    fontWeight: 700,
-    minWidth: "180px",
-  },
-  secondaryButton: {
-    padding: "14px 24px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#e5e7eb",
+  title: {
+    fontSize: "36px",
+    margin: "0 0 8px 0",
+    textAlign: "center",
     color: "#111827",
-    cursor: "pointer",
-    fontSize: "17px",
-    fontWeight: 700,
-    minWidth: "180px",
   },
-  finishButtons: {
+  titleLeft: {
+    fontSize: "32px",
+    margin: "0 0 8px 0",
+    color: "#111827",
+  },
+  subtitle: {
+    margin: 0,
+    color: "#555",
+    lineHeight: 1.6,
+    textAlign: "center",
+  },
+  subtitleLeft: {
+    margin: 0,
+    color: "#555",
+    lineHeight: 1.6,
+  },
+  cardTop: {
     display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: "12px",
-    justifyContent: "center",
     flexWrap: "wrap",
+  },
+  cardTitle: {
+    margin: 0,
+    fontSize: "24px",
+    lineHeight: 1.3,
+    color: "#111827",
+  },
+  badge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 600,
+    fontSize: "14px",
+    whiteSpace: "nowrap",
   },
   progressRow: {
     display: "flex",
     justifyContent: "space-between",
     gap: "12px",
-    marginBottom: "24px",
+    marginBottom: "16px",
     flexWrap: "wrap",
   },
   progressText: {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+  progressBarWrap: {
+    width: "100%",
+    height: "10px",
+    background: "#e5e7eb",
+    borderRadius: "999px",
+    overflow: "hidden",
+    marginBottom: "24px",
+  },
+  progressBarFill: {
+    height: "100%",
+    background: "#4f46e5",
+    borderRadius: "999px",
+    transition: "width 0.25s ease",
   },
   questionText: {
     fontSize: "26px",
@@ -595,6 +680,37 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "18px",
     color: "#111827",
     margin: "10px 0",
+  },
+  finishButtons: {
+    display: "flex",
+    gap: "12px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  startButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#d4f5d0",
+    color: "#065f46",
+    textDecoration: "none",
+    fontWeight: 600,
+    textAlign: "center",
+    border: "none",
+    minWidth: "180px",
+  },
+  retryButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#e5e7eb",
+    color: "#111827",
+    textDecoration: "none",
+    fontWeight: 600,
+    textAlign: "center",
+    border: "none",
+    minWidth: "180px",
+    cursor: "pointer",
   },
   message: {
     textAlign: "center",

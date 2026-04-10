@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Header from "../../../components/Header"
@@ -37,6 +37,7 @@ export default function VRSequencePatternsPage() {
   const router = useRouter()
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
+  const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
 
   useEffect(() => {
     loadTests()
@@ -52,7 +53,7 @@ export default function VRSequencePatternsPage() {
     const { data, error } = await supabase
       .from("vr_tests")
       .select("*")
-      .eq("category", "sequence-patterns")
+      .eq("category", "sequence-pattern")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -170,6 +171,30 @@ export default function VRSequencePatternsPage() {
     return "☹️"
   }
 
+  function getCompletedPercentage(items: TestWithProgress[]) {
+    if (items.length === 0) return 0
+    const completedCount = items.filter((item) => item.isCompleted).length
+    return Math.round((completedCount / items.length) * 100)
+  }
+
+  function getTestHref(testId: number) {
+    return `/vr/sequence-patterns/${testId}`
+  }
+
+  const easyTests = tests.filter((test) => test.difficulty === 1)
+  const mediumTests = tests.filter((test) => test.difficulty === 2)
+  const hardTests = tests.filter((test) => test.difficulty === 3)
+
+  const allCompletedPercent = getCompletedPercentage(tests)
+  const easyCompletedPercent = getCompletedPercentage(easyTests)
+  const mediumCompletedPercent = getCompletedPercentage(mediumTests)
+  const hardCompletedPercent = getCompletedPercentage(hardTests)
+
+  const filteredTests =
+    difficultyFilter === "all"
+      ? tests
+      : tests.filter((test) => test.difficulty === difficultyFilter)
+
   if (loading) {
     return (
       <>
@@ -183,125 +208,182 @@ export default function VRSequencePatternsPage() {
     <>
       <Header />
       <div style={styles.page}>
-        <div style={styles.hero}>
-          <h1 style={styles.title}>Sequence & Patterns</h1>
-          <p style={styles.subtitle}>
-            Practise letter sequences, number patterns, and logical order questions
-            for 11+ verbal reasoning.
-          </p>
-          <div style={styles.heroActions}>
-            <Link href="/vr" style={styles.backLink}>
-              ← Back to Verbal Reasoning
-            </Link>
-          </div>
-        </div>
-
-        {tests.length === 0 ? (
-          <div style={styles.emptyCard}>
-            <h2 style={styles.emptyTitle}>No tests available yet</h2>
-            <p style={styles.emptyText}>
-              Sequence & Patterns tests will appear here when they are added.
+        <div style={styles.container}>
+          <div style={styles.heroCard}>
+            <h1 style={styles.title}>🔤 Sequence & Patterns</h1>
+            <p style={styles.subtitle}>
+              Practise letter sequences, number patterns, and logical order questions
+              for 11+ verbal reasoning.
             </p>
+            <div style={styles.heroActions}>
+              <Link href="/vr" style={styles.backLink}>
+                ← Back to Verbal Reasoning
+              </Link>
+            </div>
           </div>
-        ) : (
-          <div style={styles.grid}>
-            {tests.map((test) => (
-              <div
-                key={test.id}
-                style={{ ...styles.card, ...hoverCardStyle }}
-                onClick={() => router.push(`/vr/sequence-patterns/${test.id}`)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-6px)"
-                  e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)"
-                  e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-                }}
-              >
-                <div style={styles.icon}>🔤</div>
-                <h2 style={styles.cardTitle}>{test.title}</h2>
-                <p style={styles.cardText}>
-                  Strengthen pattern spotting through letters, numbers, and paired
-                  sequence questions.
-                </p>
 
-                <div style={styles.infoBox}>
-                  <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Difficulty:</span>
-                    <span
-                      style={{
-                        ...styles.badge,
-                        ...getDifficultyBadgeStyle(test.difficulty),
+          {tests.length === 0 ? (
+            <div style={styles.emptyCard}>
+              <h2 style={styles.emptyTitle}>No tests available yet</h2>
+              <p style={styles.emptyText}>
+                Sequence & Patterns tests will appear here when they are added.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div style={styles.summaryCard}>
+                <div style={styles.filterRow}>
+                  <button
+                    onClick={() => setDifficultyFilter("all")}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === "all" ? "white" : "black",
+                    }}
+                  >
+                    All ({allCompletedPercent}% Completed)
+                  </button>
+
+                  <button
+                    onClick={() => setDifficultyFilter(1)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 1 ? "white" : "black",
+                    }}
+                  >
+                    Easy ({easyCompletedPercent}% Completed)
+                  </button>
+
+                  <button
+                    onClick={() => setDifficultyFilter(2)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 2 ? "white" : "black",
+                    }}
+                  >
+                    Medium ({mediumCompletedPercent}% Completed)
+                  </button>
+
+                  <button
+                    onClick={() => setDifficultyFilter(3)}
+                    style={{
+                      ...styles.filterButton,
+                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      color: difficultyFilter === 3 ? "white" : "black",
+                    }}
+                  >
+                    Hard ({hardCompletedPercent}% Completed)
+                  </button>
+                </div>
+              </div>
+
+              {filteredTests.length === 0 ? (
+                <div style={styles.emptyCard}>
+                  <h2 style={styles.emptyTitle}>No tests in this difficulty</h2>
+                  <p style={styles.emptyText}>Try another filter.</p>
+                </div>
+              ) : (
+                <div style={styles.grid}>
+                  {filteredTests.map((test) => (
+                    <div
+                      key={test.id}
+                      style={{ ...styles.card, ...hoverCardStyle }}
+                      onClick={() => router.push(getTestHref(test.id))}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-6px)"
+                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)"
+                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
                       }}
                     >
-                      {getDifficultyLabel(test.difficulty)}
-                    </span>
-                  </div>
+                      <div style={styles.cardTop}>
+                        <h2 style={styles.cardTitle}>{test.title}</h2>
+                        <span
+                          style={{
+                            ...styles.badge,
+                            ...getDifficultyBadgeStyle(test.difficulty),
+                          }}
+                        >
+                          {getDifficultyLabel(test.difficulty)}
+                        </span>
+                      </div>
 
-                  <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Score:</span>
-                    <span style={styles.infoValue}>
-                      {getScoreText(test)} {getScoreIcon(test.score, test.isCompleted)}
-                    </span>
-                  </div>
+                      <p style={styles.preview}>
+                        Strengthen pattern spotting through letters, numbers, and paired
+                        sequence questions.
+                      </p>
 
-                  <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Completed:</span>
-                    <span style={styles.infoValue}>
-                      {test.completed_at
-                        ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "Not yet"}
-                    </span>
-                  </div>
+                      <div style={styles.metaRow}>
+                        <p style={styles.metaHalf}>
+                          <strong>Completed:</strong>{" "}
+                          {test.completed_at
+                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "Not yet"}
+                        </p>
+
+                        <p style={styles.metaHalf}>
+                          <strong>Score:</strong> {getScoreText(test)}{" "}
+                          <span style={styles.scoreIcon}>
+                            {getScoreIcon(test.score, test.isCompleted)}
+                          </span>
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(getTestHref(test.id))
+                        }}
+                        style={test.isCompleted ? styles.startButton : styles.retryButton}
+                      >
+                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
+                      </button>
+                    </div>
+                  ))}
                 </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/vr/sequence-patterns/${test.id}`)
-                  }}
-                  onMouseEnter={(e) => {
-                    if (test.isCompleted) {
-                      e.currentTarget.style.background = "#bbf7d0"
-                    } else {
-                      e.currentTarget.style.background = "#d1d5db"
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (test.isCompleted) {
-                      e.currentTarget.style.background = "#d4f5d0"
-                    } else {
-                      e.currentTarget.style.background = "#e5e7eb"
-                    }
-                  }}
-                  style={test.isCompleted ? styles.startButton : styles.retryButton}
-                >
-                  {test.isCompleted ? "Retry Test" : "Start Test"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
     </>
   )
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
-  page: { padding: "32px 20px 50px", maxWidth: "1100px", margin: "0 auto" },
-  hero: { textAlign: "center", marginBottom: "32px" },
-  title: { fontSize: "40px", marginBottom: "10px", color: "#111827" },
-  subtitle: {
-    fontSize: "18px",
-    color: "#4b5563",
-    maxWidth: "700px",
+  page: {
+    padding: "24px",
+  },
+  container: {
+    maxWidth: "1100px",
     margin: "0 auto",
+  },
+  heroCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    marginBottom: "24px",
+    textAlign: "center",
+  },
+  title: {
+    fontSize: "36px",
+    margin: "0 0 8px 0",
+  },
+  subtitle: {
+    margin: 0,
+    color: "#555",
     lineHeight: 1.6,
+    maxWidth: "700px",
+    marginInline: "auto",
   },
   heroActions: {
     marginTop: "16px",
@@ -312,87 +394,120 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#3730a3",
     fontWeight: 600,
   },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-  },
-  card: {
+  summaryCard: {
     background: "white",
-    borderRadius: "20px",
-    padding: "26px",
+    borderRadius: "16px",
+    padding: "24px",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
+    marginBottom: "24px",
+  },
+  filterRow: {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
   },
-  icon: { fontSize: "42px", marginBottom: "12px" },
-  cardTitle: { fontSize: "24px", marginBottom: "10px", color: "#111827" },
-  cardText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-    marginBottom: "18px",
-    minHeight: "78px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: { color: "#374151", fontSize: "15px", fontWeight: 500 },
-  infoValue: { fontSize: "15px", fontWeight: 700, color: "#111827" },
-  badge: {
-    padding: "6px 12px",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: 700,
-    minWidth: "92px",
-    textAlign: "center",
-  },
-  startButton: {
-    padding: "12px 18px",
-    borderRadius: "12px",
+  filterButton: {
+    padding: "8px 14px",
+    borderRadius: "10px",
     border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
     cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
-  },
-  retryButton: {
-    padding: "12px 18px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#e5e7eb",
-    color: "#111827",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
+    fontWeight: "bold",
   },
   emptyCard: {
     background: "white",
     borderRadius: "20px",
     padding: "32px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
-    maxWidth: "700px",
-    margin: "0 auto",
   },
-  emptyTitle: { fontSize: "28px", marginBottom: "10px", color: "#111827" },
-  emptyText: { fontSize: "16px", color: "#4b5563", lineHeight: 1.6 },
+  emptyTitle: {
+    fontSize: "28px",
+    marginBottom: "10px",
+    color: "#111827",
+  },
+  emptyText: {
+    fontSize: "16px",
+    color: "#4b5563",
+    lineHeight: 1.6,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "18px",
+  },
+  card: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "22px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+  },
+  cardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "12px",
+  },
+  cardTitle: {
+    margin: 0,
+    fontSize: "24px",
+    lineHeight: 1.3,
+    color: "#111827",
+  },
+  badge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 600,
+    fontSize: "14px",
+    whiteSpace: "nowrap",
+  },
+  preview: {
+    margin: 0,
+    color: "#374151",
+    lineHeight: 1.6,
+    flexGrow: 1,
+  },
+  metaRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+  metaHalf: {
+    margin: 0,
+    color: "#6b7280",
+    fontSize: "14px",
+  },
+  scoreIcon: {
+    marginLeft: "6px",
+    fontSize: "16px",
+  },
+  startButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#d4f5d0",
+    color: "#065f46",
+    textDecoration: "none",
+    fontWeight: 600,
+    textAlign: "center",
+    border: "none",
+    cursor: "pointer",
+  },
+  retryButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#e5e7eb",
+    color: "#111827",
+    textDecoration: "none",
+    fontWeight: 600,
+    textAlign: "center",
+    border: "none",
+    cursor: "pointer",
+  },
   message: {
     textAlign: "center",
     marginTop: "40px",
