@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
@@ -233,14 +233,14 @@ export default function EnglishReviewPage() {
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
   const [reviewItems, setReviewItems] = useState<EnglishReviewRow[]>([])
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
-    async function fetchReviewItems() {
+    async function loadData() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -254,7 +254,11 @@ export default function EnglishReviewPage() {
 
       setLoadingUser(false)
 
-      const [vocabularyResult, spellingResult, comprehensionResult] = await Promise.all([
+      const [
+        vocabularyResult,
+        spellingResult,
+        comprehensionResult,
+      ] = await Promise.all([
         supabase
           .from("vocabulary_review")
           .select("*")
@@ -286,9 +290,13 @@ export default function EnglishReviewPage() {
       const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
       const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionReviewRow[]
 
-      const comprehensionQuestionIds = comprehensionRows
-        .map((row) => row.question_id)
-        .filter((id): id is number => id !== null)
+      const comprehensionQuestionIds = Array.from(
+        new Set(
+          comprehensionRows
+            .map((row) => row.question_id)
+            .filter((id): id is number => id !== null)
+        )
+      )
 
       let comprehensionMap = new Map<number, { explanation: string; difficulty: number | null }>()
 
@@ -356,7 +364,7 @@ export default function EnglishReviewPage() {
       }
     }
 
-    fetchReviewItems()
+    loadData()
 
     return () => {
       mounted = false
@@ -426,15 +434,15 @@ export default function EnglishReviewPage() {
     const cutoff = getCutoffDate(timeFilter)
 
     return uniqueItems.filter((item) => {
+      const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
       const matchesDifficulty =
         difficultyFilter === "all" || String(item.difficulty ?? "") === difficultyFilter
-      const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
       const matchesCategory =
         categoryFilter === "all" || item.category === categoryFilter
 
-      return matchesDifficulty && matchesTime && matchesCategory
+      return matchesTime && matchesDifficulty && matchesCategory
     })
-  }, [uniqueItems, difficultyFilter, timeFilter, categoryFilter])
+  }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredItems() {
     const vocabularyIds = filteredItems
@@ -623,8 +631,8 @@ export default function EnglishReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review English items that need more practice, filter by category and
-              difficulty, and jump into a focused retry session.
+              Review English items across vocabulary, spelling, and comprehension
+              with live filters, category insights, and quick retry access.
             </p>
           </div>
 
@@ -732,7 +740,7 @@ export default function EnglishReviewPage() {
         >
           <SectionCard
             title="Review Items by Category"
-            subtitle="See which English categories need the most revision."
+            subtitle="See which English categories currently need the most revision."
           >
             <div style={{ width: "100%", height: "340px" }}>
               {reviewByCategoryData.length ? (
@@ -753,7 +761,7 @@ export default function EnglishReviewPage() {
 
           <SectionCard
             title="Quick Insights"
-            subtitle="A snapshot of current revision needs."
+            subtitle="A snapshot of current English revision needs."
           >
             <div style={{ display: "grid", gap: "14px" }}>
               <div
@@ -803,13 +811,29 @@ export default function EnglishReviewPage() {
                   {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
                 </div>
               </div>
+
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                  Total Review Bank
+                </div>
+                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                  {reviewStats.allUnique}
+                </div>
+              </div>
             </div>
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your latest English items to revisit."
+          subtitle="Your most recent English review items for the selected filters."
         >
           {recentItems.length ? (
             <div style={{ overflowX: "auto" }}>
@@ -850,10 +874,7 @@ export default function EnglishReviewPage() {
                           : "No explanation available."}
                       </td>
                       <td style={tdStyle}>
-                        <button
-                          onClick={() => removeItem(row)}
-                          style={removeButtonStyle}
-                        >
+                        <button onClick={() => removeItem(row)} style={removeButtonStyle}>
                           Remove
                         </button>
                       </td>
@@ -982,10 +1003,7 @@ export default function EnglishReviewPage() {
                   Added: {formatDateTime(row.created_at)}
                 </div>
 
-                <button
-                  onClick={() => removeItem(row)}
-                  style={removeButtonStyle}
-                >
+                <button onClick={() => removeItem(row)} style={removeButtonStyle}>
                   Remove from review
                 </button>
               </div>

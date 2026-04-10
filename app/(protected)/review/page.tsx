@@ -7,23 +7,17 @@ export default function ReviewPage() {
     <div style={styles.container}>
       <div style={styles.card}>
         <h1>📚 Your Review</h1>
-        <p>Choose a category to review your mistakes:</p>
+        <p>Choose a subject to review your mistakes:</p>
 
         <div style={styles.buttons}>
-          <Link href="/review/vocabulary" style={styles.button}>
-            📘 Vocabulary Review →
+          <Link href="/review/english" style={styles.button}>
+            📘 English Review →
           </Link>
 
-          <Link href="/review/spelling" style={styles.button}>
-            ✍️ Spelling Review →
+          <Link href="/review/math" style={styles.button}>
+            ➕ Math Review →
           </Link>
 
-          <Link href="/review/comprehension" style={styles.button}>
-            📖 Comprehension Review →
-          </Link>
-<Link href="/review/math" style={styles.button}>
-  ➕ Math Review →
-</Link>
           <Link href="/review/vr" style={styles.button}>
             🧠 Verbal Reasoning Review →
           </Link>
