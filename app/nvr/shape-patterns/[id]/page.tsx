@@ -170,12 +170,10 @@ export default function NVRShapePatternsTestPage() {
     let correctAnswers = 0
     const wrongAnswersForReview: {
       user_id: string
-      test_id: number
       question_id: number
-      category: string
       question_text: string
-      user_answer: string
-      correct_answer: string
+      knew_it: boolean
+      difficulty: number | null
     }[] = []
 
     for (const question of questions) {
@@ -186,12 +184,10 @@ export default function NVRShapePatternsTestPage() {
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
-          test_id: test.id,
           question_id: question.id,
-          category: test.category || "shape-patterns",
           question_text: question.question_text,
-          user_answer: selected || "",
-          correct_answer: question.correct_answer,
+          knew_it: false,
+          difficulty: question.difficulty ?? test.difficulty ?? null,
         })
       }
     }
@@ -200,28 +196,46 @@ export default function NVRShapePatternsTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase.from("nvr_progress").insert([
-      {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category || "shape-patterns",
-        score: correctAnswers,
-        total_questions: totalQuestions,
-        success_rate: successRate,
-      },
-    ])
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty,
+    }
+
+    console.log("Saving NVR progress payload:", progressPayload)
+
+    const { error: progressError } = await supabase
+      .from("nvr_progress")
+      .insert([progressPayload])
 
     if (progressError) {
-      console.error("Error saving NVR progress:", progressError)
+      console.error("Error saving NVR progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+      })
     }
 
     if (wrongAnswersForReview.length > 0) {
+      console.log("Saving NVR review payload:", wrongAnswersForReview)
+
       const { error: reviewError } = await supabase
         .from("nvr_review")
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
-        console.error("Error saving NVR review:", reviewError)
+        console.error("Error saving NVR review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
       }
     }
 

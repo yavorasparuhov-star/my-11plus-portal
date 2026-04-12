@@ -168,15 +168,13 @@ export default function NVRCodesSpatialLogicTestPage() {
     setSubmitting(true)
 
     let correctAnswers = 0
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      category: string
-      question_text: string
-      user_answer: string
-      correct_answer: string
-    }[] = []
+   const wrongAnswersForReview: {
+  user_id: string
+  question_id: number
+  question_text: string
+  knew_it: boolean
+  difficulty: number | null
+}[] = []
 
     for (const question of questions) {
       const selected = answers[question.id]
@@ -184,15 +182,13 @@ export default function NVRCodesSpatialLogicTestPage() {
       if (selected === question.correct_answer) {
         correctAnswers += 1
       } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          category: test.category || "codes-spatial-logic",
-          question_text: question.question_text,
-          user_answer: selected || "",
-          correct_answer: question.correct_answer,
-        })
+      wrongAnswersForReview.push({
+  user_id: userId,
+  question_id: question.id,
+  question_text: question.question_text,
+  knew_it: false,
+  difficulty: question.difficulty ?? test.difficulty ?? null,
+})
       }
     }
 
@@ -200,16 +196,16 @@ export default function NVRCodesSpatialLogicTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase.from("nvr_progress").insert([
-      {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category || "codes-spatial-logic",
-        score: correctAnswers,
-        total_questions: totalQuestions,
-        success_rate: successRate,
-      },
-    ])
+  const { error: progressError } = await supabase.from("nvr_progress").insert([
+  {
+    user_id: userId,
+    test_id: test.id,
+    total_questions: totalQuestions,
+    correct_answers: correctAnswers,
+    success_rate: successRate,
+    difficulty: test.difficulty ?? null,
+  },
+])
 
     if (progressError) {
       console.error("Error saving NVR progress:", progressError)

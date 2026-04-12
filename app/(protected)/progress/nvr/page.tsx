@@ -23,11 +23,11 @@ type NVRProgressRow = {
   id: number
   user_id: string
   test_id: number | null
-  category: string | null
-  score: number
-  total_questions: number
-  success_rate: number
-  created_at: string
+  total_questions: number | null
+  correct_answers: number | null
+  success_rate: number | null
+  difficulty: number | null
+  created_at: string | null
 }
 
 type NVRTestRow = {
@@ -38,8 +38,9 @@ type NVRTestRow = {
 }
 
 type EnrichedNVRProgressRow = NVRProgressRow & {
-  difficulty: number | null
+  resolved_difficulty: number | null
   test_title: string
+  category: string | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
@@ -118,6 +119,11 @@ function formatShortDate(value: string) {
   })
 }
 
+function toSafeNumber(value: unknown) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
 function successTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
@@ -131,7 +137,7 @@ function successTooltipFormatter(
       ? Number(value[0])
       : 0
 
-  return [`${numericValue}%`, "Success"]
+  return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Success"]
 }
 
 function averageSuccessTooltipFormatter(
@@ -147,8 +153,9 @@ function averageSuccessTooltipFormatter(
       ? Number(value[0])
       : 0
 
-  return [`${numericValue}%`, "Average Success"]
+  return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Average Success"]
 }
+
 function StatCard({
   title,
   value,
@@ -259,7 +266,7 @@ export default function NVRProgressPage() {
 
       const { data: progressData, error: progressError } = await supabase
         .from("nvr_progress")
-        .select("*")
+        .select("id, user_id, test_id, total_questions, correct_answers, success_rate, difficulty, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
@@ -271,6 +278,7 @@ export default function NVRProgressPage() {
       }
 
       const progressRows = (progressData ?? []) as NVRProgressRow[]
+
       const testIds = Array.from(
         new Set(progressRows.map((row) => row.test_id).filter((id): id is number => id !== null))
       )
@@ -295,9 +303,9 @@ export default function NVRProgressPage() {
 
         return {
           ...row,
-          difficulty: linkedTest?.difficulty ?? null,
+          resolved_difficulty: row.difficulty ?? linkedTest?.difficulty ?? null,
           test_title: linkedTest?.title ?? "NVR Test",
-          category: row.category ?? linkedTest?.category ?? null,
+          category: linkedTest?.category ?? null,
         }
       })
 
@@ -319,9 +327,12 @@ export default function NVRProgressPage() {
     const cutoff = getCutoffDate(timeFilter)
 
     return rows.filter((row) => {
-      const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
+      const matchesTime =
+        cutoff && row.created_at ? new Date(row.created_at) >= cutoff : cutoff ? false : true
+
       const matchesDifficulty =
-        difficultyFilter === "all" || String(row.difficulty ?? "") === difficultyFilter
+        difficultyFilter === "all" || String(row.resolved_difficulty ?? "") === difficultyFilter
+
       const matchesCategory =
         categoryFilter === "all" || (row.category ?? "") === categoryFilter
 
@@ -331,17 +342,24 @@ export default function NVRProgressPage() {
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
-    const questionsPractised = filteredRows.reduce((sum, row) => sum + row.total_questions, 0)
-    const totalCorrect = filteredRows.reduce((sum, row) => sum + row.score, 0)
+    const questionsPractised = filteredRows.reduce(
+      (sum, row) => sum + toSafeNumber(row.total_questions),
+      0
+    )
+    const totalCorrect = filteredRows.reduce(
+      (sum, row) => sum + toSafeNumber(row.correct_answers),
+      0
+    )
 
     const averageSuccess =
       testsCompleted > 0
-        ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) / testsCompleted
+        ? filteredRows.reduce((sum, row) => sum + toSafeNumber(row.success_rate), 0) /
+          testsCompleted
         : 0
 
     const bestScore =
       testsCompleted > 0
-        ? Math.max(...filteredRows.map((row) => Number(row.success_rate)))
+        ? Math.max(...filteredRows.map((row) => toSafeNumber(row.success_rate)))
         : 0
 
     const byCategory = Object.entries(
@@ -351,7 +369,7 @@ export default function NVRProgressPage() {
           acc[key] = { attempts: 0, totalSuccess: 0 }
         }
         acc[key].attempts += 1
-        acc[key].totalSuccess += Number(row.success_rate)
+        acc[key].totalSuccess += toSafeNumber(row.success_rate)
         return acc
       }, {} as Record<string, { attempts: number; totalSuccess: number }>)
     ).map(([category, data]) => ({
@@ -386,15 +404,15 @@ export default function NVRProgressPage() {
 
   const performanceTrendData = useMemo(() => {
     const sorted = [...filteredRows].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
     )
 
     return sorted.map((row, index) => ({
       attempt: index + 1,
-      date: formatShortDate(row.created_at),
-      success: Number(row.success_rate),
-      scoreLabel: `${row.score}/${row.total_questions}`,
-      difficulty: getLevelLabel(row.difficulty),
+      date: row.created_at ? formatShortDate(row.created_at) : "—",
+      success: toSafeNumber(row.success_rate),
+      scoreLabel: `${toSafeNumber(row.correct_answers)}/${toSafeNumber(row.total_questions)}`,
+      difficulty: getLevelLabel(row.resolved_difficulty),
       category: getCategoryLabel(row.category),
     }))
   }, [filteredRows])
@@ -412,7 +430,7 @@ export default function NVRProgressPage() {
       }
 
       acc[key].attempts += 1
-      acc[key].totalSuccess += Number(row.success_rate)
+      acc[key].totalSuccess += toSafeNumber(row.success_rate)
       return acc
     }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
 
@@ -428,7 +446,7 @@ export default function NVRProgressPage() {
 
   const attemptsByDifficultyData = useMemo(() => {
     const grouped = filteredRows.reduce((acc, row) => {
-      const key = getLevelLabel(row.difficulty)
+      const key = getLevelLabel(row.resolved_difficulty)
 
       if (!acc[key]) {
         acc[key] = {
@@ -439,7 +457,7 @@ export default function NVRProgressPage() {
       }
 
       acc[key].attempts += 1
-      acc[key].questions += row.total_questions
+      acc[key].questions += toSafeNumber(row.total_questions)
       return acc
     }, {} as Record<string, { difficulty: string; attempts: number; questions: number }>)
 
@@ -456,7 +474,7 @@ export default function NVRProgressPage() {
 
   const recentAttempts = useMemo(() => {
     return [...filteredRows]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
       .slice(0, 12)
   }, [filteredRows])
 
@@ -804,12 +822,12 @@ export default function NVRProgressPage() {
                         borderBottom: "1px solid #f1f5f9",
                       }}
                     >
-                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{row.created_at ? formatDateTime(row.created_at) : "—"}</td>
                       <td style={tdStyle}>{row.test_title}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-                      <td style={tdStyle}>{row.score}</td>
-                      <td style={tdStyle}>{row.total_questions}</td>
+                      <td style={tdStyle}>{getLevelLabel(row.resolved_difficulty)}</td>
+                      <td style={tdStyle}>{toSafeNumber(row.correct_answers)}</td>
+                      <td style={tdStyle}>{toSafeNumber(row.total_questions)}</td>
                       <td style={tdStyle}>
                         <span
                           style={{
@@ -817,22 +835,22 @@ export default function NVRProgressPage() {
                             padding: "6px 10px",
                             borderRadius: "999px",
                             background:
-                              Number(row.success_rate) >= 70
+                              toSafeNumber(row.success_rate) >= 70
                                 ? "#dcfce7"
-                                : Number(row.success_rate) >= 50
+                                : toSafeNumber(row.success_rate) >= 50
                                 ? "#fef3c7"
                                 : "#fee2e2",
                             color:
-                              Number(row.success_rate) >= 70
+                              toSafeNumber(row.success_rate) >= 70
                                 ? "#166534"
-                                : Number(row.success_rate) >= 50
+                                : toSafeNumber(row.success_rate) >= 50
                                 ? "#92400e"
                                 : "#991b1b",
                             fontWeight: 700,
                             fontSize: "13px",
                           }}
                         >
-                          {Number(row.success_rate).toFixed(1)}%
+                          {toSafeNumber(row.success_rate).toFixed(1)}%
                         </span>
                       </td>
                     </tr>

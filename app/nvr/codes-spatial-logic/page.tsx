@@ -19,10 +19,13 @@ type NVRTest = {
 }
 
 type NVRProgress = {
-  id: string
+  id: number
   user_id: string
   test_id: number | null
+  total_questions: number | null
+  correct_answers: number | null
   success_rate: number | null
+  difficulty: number | null
   created_at: string | null
 }
 
@@ -77,7 +80,7 @@ export default function NVRCodesSpatialLogicPage() {
 
     const { data: progressData, error: progressError } = await supabase
       .from("nvr_progress")
-      .select("id, user_id, test_id, success_rate, created_at")
+      .select("id, user_id, test_id, total_questions, correct_answers, success_rate, difficulty, created_at")
       .eq("user_id", user.id)
 
     if (progressError) {
