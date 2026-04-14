@@ -72,7 +72,10 @@ export default function NVRRotationsReflectionsTestPage() {
       } = await supabase.auth.getUser()
 
       if (userError) {
-        console.error("Error getting user:", userError)
+        console.error("Error getting user:", {
+          message: userError.message,
+          details: userError,
+        })
         setErrorMessage("Could not verify your login.")
         setLoading(false)
         return
@@ -93,7 +96,13 @@ export default function NVRRotationsReflectionsTestPage() {
         .single()
 
       if (testError) {
-        console.error("Error loading NVR test:", testError)
+        console.error("Error loading NVR test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+          full: testError,
+        })
         setErrorMessage("Could not load this Rotations & Reflections test.")
         setLoading(false)
         return
@@ -106,7 +115,13 @@ export default function NVRRotationsReflectionsTestPage() {
         .order("question_order", { ascending: true })
 
       if (questionError) {
-        console.error("Error loading NVR questions:", questionError)
+        console.error("Error loading NVR questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
@@ -167,70 +182,93 @@ export default function NVRRotationsReflectionsTestPage() {
 
     setSubmitting(true)
 
-    let correctAnswers = 0
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      category: string
-      question_text: string
-      user_answer: string
-      correct_answer: string
-    }[] = []
+    try {
+      let correctAnswers = 0
 
-    for (const question of questions) {
-      const selected = answers[question.id]
+      const wrongAnswersForReview: {
+        user_id: string
+        test_id: number
+        question_id: number
+        category: string
+        question_text: string
+        user_answer: string
+        correct_answer: string
+      }[] = []
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          category: test.category || "rotations-reflections",
-          question_text: question.question_text,
-          user_answer: selected || "",
-          correct_answer: question.correct_answer,
-        })
+      for (const question of questions) {
+        const selected = answers[question.id]
+
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
+        } else {
+          wrongAnswersForReview.push({
+            user_id: userId,
+            test_id: test.id,
+            question_id: question.id,
+            category: test.category || "rotations-reflections",
+            question_text: question.question_text,
+            user_answer: selected || "",
+            correct_answer: question.correct_answer,
+          })
+        }
       }
-    }
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase.from("nvr_progress").insert([
-      {
+      const progressPayload = {
         user_id: userId,
         test_id: test.id,
         category: test.category || "rotations-reflections",
-        score: correctAnswers,
+        correct_answers: correctAnswers,
         total_questions: totalQuestions,
         success_rate: successRate,
-      },
-    ])
-
-    if (progressError) {
-      console.error("Error saving NVR progress:", progressError)
-    }
-
-    if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("nvr_review")
-        .insert(wrongAnswersForReview)
-
-      if (reviewError) {
-        console.error("Error saving NVR review:", reviewError)
+        difficulty: test.difficulty ?? null,
       }
+
+      console.log("Saving NVR progress payload:", progressPayload)
+
+      const { error: progressError } = await supabase
+        .from("nvr_progress")
+        .insert([progressPayload])
+
+      if (progressError) {
+        console.error("Error saving NVR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+        })
+      }
+
+      if (wrongAnswersForReview.length > 0) {
+        console.log("Saving NVR review rows:", wrongAnswersForReview)
+
+        const { error: reviewError } = await supabase
+          .from("nvr_review")
+          .insert(wrongAnswersForReview)
+
+        if (reviewError) {
+          console.error("Error saving NVR review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
+      }
+
+      setScore(correctAnswers)
+      setSubmitted(true)
+      setShowIncompleteModal(false)
+
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } finally {
+      setSubmitting(false)
     }
-
-    setScore(correctAnswers)
-    setSubmitted(true)
-    setSubmitting(false)
-    setShowIncompleteModal(false)
-
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function handleSubmit() {

@@ -41,7 +41,10 @@ type ComprehensionProgressRow = {
   id: string | number
   user_id: string
   test_id: number | null
+  total_questions?: number | null
+  correct_answers?: number | null
   success_rate: number
+  difficulty?: number | null
   created_at: string
 }
 
@@ -49,9 +52,20 @@ type ComprehensionQuestionCountRow = {
   test_id: number
 }
 
+type PrimaryWordClassesProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
 type EnglishProgressRow = {
   id: string
-  category: "vocabulary" | "spelling" | "comprehension"
+  category: "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
   total_questions: number
   correct_answers: number
   success_rate: number
@@ -61,7 +75,7 @@ type EnglishProgressRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension"
+type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -82,6 +96,7 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "vocabulary", label: "Vocabulary" },
   { value: "spelling", label: "Spelling" },
   { value: "comprehension", label: "Comprehension" },
+  { value: "primary_word_classes", label: "Primary Word Classes" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -109,6 +124,7 @@ function getCategoryLabel(category: string) {
   if (category === "vocabulary") return "Vocabulary"
   if (category === "spelling") return "Spelling"
   if (category === "comprehension") return "Comprehension"
+  if (category === "primary_word_classes") return "Primary Word Classes"
   return "Not set"
 }
 
@@ -275,6 +291,7 @@ export default function EnglishProgressPage() {
         vocabularyResult,
         spellingResult,
         comprehensionResult,
+        primaryWordClassesResult,
       ] = await Promise.all([
         supabase
           .from("vocabulary_progress")
@@ -291,6 +308,11 @@ export default function EnglishProgressPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("grammar_primary_word_classes_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ])
 
       if (vocabularyResult.error) {
@@ -302,17 +324,21 @@ export default function EnglishProgressPage() {
       if (comprehensionResult.error) {
         console.error("Error loading comprehension progress:", comprehensionResult.error)
       }
+      if (primaryWordClassesResult.error) {
+        console.error(
+          "Error loading primary word classes progress:",
+          primaryWordClassesResult.error
+        )
+      }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
       const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionProgressRow[]
+      const primaryWordClassesRows =
+        (primaryWordClassesResult.data ?? []) as PrimaryWordClassesProgressRow[]
 
       const comprehensionTestIds = Array.from(
-        new Set(
-          comprehensionRows
-            .map((row) => row.test_id)
-            .filter((id): id is number => id !== null)
-        )
+        new Set(comprehensionRows.map((row) => row.test_id).filter((id): id is number => id !== null))
       )
 
       const comprehensionQuestionCounts = new Map<number, number>()
@@ -356,10 +382,16 @@ export default function EnglishProgressPage() {
         })),
         ...comprehensionRows.map((row) => {
           const totalQuestions =
-            row.test_id !== null ? comprehensionQuestionCounts.get(row.test_id) ?? 0 : 0
+            typeof row.total_questions === "number"
+              ? row.total_questions
+              : row.test_id !== null
+              ? comprehensionQuestionCounts.get(row.test_id) ?? 0
+              : 0
 
           const correctAnswers =
-            totalQuestions > 0
+            typeof row.correct_answers === "number"
+              ? row.correct_answers
+              : totalQuestions > 0
               ? Math.round((Number(row.success_rate) / 100) * totalQuestions)
               : 0
 
@@ -369,10 +401,19 @@ export default function EnglishProgressPage() {
             total_questions: totalQuestions,
             correct_answers: correctAnswers,
             success_rate: Number(row.success_rate),
-            difficulty: null,
+            difficulty: row.difficulty ?? null,
             created_at: row.created_at,
           }
         }),
+        ...primaryWordClassesRows.map((row) => ({
+          id: `primary-word-classes-${row.id}`,
+          category: "primary_word_classes" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
       ]
 
       setRows(mergedRows)
@@ -490,7 +531,13 @@ export default function EnglishProgressPage() {
       return acc
     }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
 
-    const order = ["Vocabulary", "Spelling", "Comprehension", "Not set"]
+    const order = [
+      "Vocabulary",
+      "Spelling",
+      "Comprehension",
+      "Primary Word Classes",
+      "Not set",
+    ]
 
     return Object.values(grouped)
       .map((item) => ({
@@ -517,7 +564,13 @@ export default function EnglishProgressPage() {
       return acc
     }, {} as Record<string, { category: string; attempts: number; questions: number }>)
 
-    const order = ["Vocabulary", "Spelling", "Comprehension", "Not set"]
+    const order = [
+      "Vocabulary",
+      "Spelling",
+      "Comprehension",
+      "Primary Word Classes",
+      "Not set",
+    ]
 
     return Object.values(grouped)
       .map((item) => ({
@@ -599,8 +652,7 @@ export default function EnglishProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore English performance across vocabulary, spelling, and
-              comprehension with live filters, trend tracking, and category insights.
+              Explore English performance across vocabulary, spelling, comprehension, and grammar with live filters, trend tracking, and category insights.
             </p>
           </div>
 
@@ -859,13 +911,14 @@ export default function EnglishProgressPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "900px",
+                  minWidth: "980px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Category</th>
+                    <th style={thStyle}>Difficulty</th>
                     <th style={thStyle}>Correct</th>
                     <th style={thStyle}>Questions</th>
                     <th style={thStyle}>Success</th>
@@ -881,6 +934,7 @@ export default function EnglishProgressPage() {
                     >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
+                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                       <td style={tdStyle}>{row.correct_answers}</td>
                       <td style={tdStyle}>{row.total_questions}</td>
                       <td style={tdStyle}>

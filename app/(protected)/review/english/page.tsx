@@ -51,9 +51,26 @@ type ComprehensionQuestionRow = {
   difficulty: number | null
 }
 
+type PrimaryWordClassesReviewRow = {
+  id: string
+  user_id: string
+  question_id: number | null
+  question_text: string
+  correct_answer: string
+  user_answer: string | null
+  difficulty: number | null
+  created_at: string
+}
+
+type PrimaryWordClassesQuestionRow = {
+  id: number
+  explanation: string | null
+  difficulty: number | null
+}
+
 type EnglishReviewRow = {
   id: string
-  category: "vocabulary" | "spelling" | "comprehension"
+  category: "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
   item_id: number | null
   item_text: string
   difficulty: number | null
@@ -63,7 +80,7 @@ type EnglishReviewRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension"
+type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -84,6 +101,7 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "vocabulary", label: "Vocabulary" },
   { value: "spelling", label: "Spelling" },
   { value: "comprehension", label: "Comprehension" },
+  { value: "primary_word_classes", label: "Primary Word Classes" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -111,6 +129,7 @@ function getCategoryLabel(category: string) {
   if (category === "vocabulary") return "Vocabulary"
   if (category === "spelling") return "Spelling"
   if (category === "comprehension") return "Comprehension"
+  if (category === "primary_word_classes") return "Primary Word Classes"
   return "Not set"
 }
 
@@ -258,6 +277,7 @@ export default function EnglishReviewPage() {
         vocabularyResult,
         spellingResult,
         comprehensionResult,
+        primaryWordClassesResult,
       ] = await Promise.all([
         supabase
           .from("vocabulary_review")
@@ -274,6 +294,11 @@ export default function EnglishReviewPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("grammar_primary_word_classes_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ])
 
       if (vocabularyResult.error) {
@@ -285,10 +310,18 @@ export default function EnglishReviewPage() {
       if (comprehensionResult.error) {
         console.error("Error loading comprehension review:", comprehensionResult.error)
       }
+      if (primaryWordClassesResult.error) {
+        console.error(
+          "Error loading primary word classes review:",
+          primaryWordClassesResult.error
+        )
+      }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
       const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionReviewRow[]
+      const primaryWordClassesRows =
+        (primaryWordClassesResult.data ?? []) as PrimaryWordClassesReviewRow[]
 
       const comprehensionQuestionIds = Array.from(
         new Set(
@@ -298,7 +331,19 @@ export default function EnglishReviewPage() {
         )
       )
 
+      const primaryWordClassesQuestionIds = Array.from(
+        new Set(
+          primaryWordClassesRows
+            .map((row) => row.question_id)
+            .filter((id): id is number => id !== null)
+        )
+      )
+
       let comprehensionMap = new Map<number, { explanation: string; difficulty: number | null }>()
+      let primaryWordClassesMap = new Map<
+        number,
+        { explanation: string; difficulty: number | null }
+      >()
 
       if (comprehensionQuestionIds.length > 0) {
         const { data: comprehensionQuestionsData, error: comprehensionQuestionsError } =
@@ -318,6 +363,35 @@ export default function EnglishReviewPage() {
                 difficulty: question.difficulty,
               },
             ])
+          )
+        }
+      }
+
+      if (primaryWordClassesQuestionIds.length > 0) {
+        const {
+          data: primaryWordClassesQuestionsData,
+          error: primaryWordClassesQuestionsError,
+        } = await supabase
+          .from("grammar_primary_word_classes_questions")
+          .select("id, explanation, difficulty")
+          .in("id", primaryWordClassesQuestionIds)
+
+        if (primaryWordClassesQuestionsError) {
+          console.error(
+            "Error loading primary word classes explanations:",
+            primaryWordClassesQuestionsError
+          )
+        } else {
+          primaryWordClassesMap = new Map(
+            ((primaryWordClassesQuestionsData ?? []) as PrimaryWordClassesQuestionRow[]).map(
+              (question) => [
+                question.id,
+                {
+                  explanation: question.explanation || "",
+                  difficulty: question.difficulty,
+                },
+              ]
+            )
           )
         }
       }
@@ -354,6 +428,21 @@ export default function EnglishReviewPage() {
           explanation:
             row.question_id !== null
               ? comprehensionMap.get(row.question_id)?.explanation || ""
+              : "",
+        })),
+        ...primaryWordClassesRows.map((row) => ({
+          id: `primary-word-classes-${row.id}`,
+          category: "primary_word_classes" as const,
+          item_id: row.question_id,
+          item_text: row.question_text,
+          difficulty:
+            row.question_id !== null
+              ? primaryWordClassesMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
+              : row.difficulty ?? null,
+          created_at: row.created_at,
+          explanation:
+            row.question_id !== null
+              ? primaryWordClassesMap.get(row.question_id)?.explanation || ""
               : "",
         })),
       ]
@@ -399,6 +488,14 @@ export default function EnglishReviewPage() {
     } else if (item.category === "comprehension") {
       const result = await supabase
         .from("comprehension_review")
+        .delete()
+        .eq("user_id", user.id)
+        .ilike("question_text", item.item_text)
+
+      error = result.error
+    } else if (item.category === "primary_word_classes") {
+      const result = await supabase
+        .from("grammar_primary_word_classes_review")
         .delete()
         .eq("user_id", user.id)
         .ilike("question_text", item.item_text)
@@ -460,6 +557,11 @@ export default function EnglishReviewPage() {
       .map((row) => row.item_id)
       .filter((id): id is number => id !== null)
 
+    const primaryWordClassesIds = filteredItems
+      .filter((row) => row.category === "primary_word_classes")
+      .map((row) => row.item_id)
+      .filter((id): id is number => id !== null)
+
     if (categoryFilter === "vocabulary" && vocabularyIds.length > 0) {
       localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
       router.push("/english/vocabulary?mode=review")
@@ -475,6 +577,15 @@ export default function EnglishReviewPage() {
     if (categoryFilter === "comprehension" && comprehensionIds.length > 0) {
       localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
       router.push("/english/comprehension?mode=review")
+      return
+    }
+
+    if (categoryFilter === "primary_word_classes" && primaryWordClassesIds.length > 0) {
+      localStorage.setItem(
+        "primary_word_classes_review_ids",
+        JSON.stringify(primaryWordClassesIds)
+      )
+      router.push("/english/grammar/primary-word-classes?mode=review")
       return
     }
 
@@ -496,6 +607,15 @@ export default function EnglishReviewPage() {
       if (firstCategory === "comprehension" && comprehensionIds.length > 0) {
         localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
         router.push("/english/comprehension?mode=review")
+        return
+      }
+
+      if (firstCategory === "primary_word_classes" && primaryWordClassesIds.length > 0) {
+        localStorage.setItem(
+          "primary_word_classes_review_ids",
+          JSON.stringify(primaryWordClassesIds)
+        )
+        router.push("/english/grammar/primary-word-classes?mode=review")
       }
     }
   }
@@ -557,7 +677,7 @@ export default function EnglishReviewPage() {
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Vocabulary", "Spelling", "Comprehension", "Not set"]
+    const order = ["Vocabulary", "Spelling", "Comprehension", "Primary Word Classes", "Not set"]
 
     return Object.values(grouped).sort(
       (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
@@ -631,8 +751,7 @@ export default function EnglishReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review English items across vocabulary, spelling, and comprehension
-              with live filters, category insights, and quick retry access.
+              Review English items across vocabulary, spelling, comprehension, and grammar with live filters, category insights, and quick retry access.
             </p>
           </div>
 
