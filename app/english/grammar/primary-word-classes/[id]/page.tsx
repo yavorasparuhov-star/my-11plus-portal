@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../../components/Header"
 import { supabase } from "../../../../../lib/supabaseClient"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 type PrimaryWordClassesTest = {
   id: number
@@ -23,6 +23,7 @@ type PrimaryWordClassesQuestion = {
   option_d: string
   correct_answer: string
   explanation: string | null
+  difficulty: number | null
   question_order: number
   created_at: string
 }
@@ -34,6 +35,8 @@ type UserAnswerMap = {
 export default function PrimaryWordClassesTestPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const mode = searchParams.get("mode")
 
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id
   const testId = Number(rawId)
@@ -48,6 +51,31 @@ export default function PrimaryWordClassesTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
+  const [reviewIds, setReviewIds] = useState<number[]>([])
+
+  useEffect(() => {
+    if (mode !== "review") {
+      setReviewIds([])
+      return
+    }
+
+    const raw = localStorage.getItem("primary_word_classes_review_ids")
+    if (!raw) {
+      setReviewIds([])
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        setReviewIds(parsed.filter((id) => typeof id === "number"))
+      } else {
+        setReviewIds([])
+      }
+    } catch {
+      setReviewIds([])
+    }
+  }, [mode])
 
   useEffect(() => {
     async function loadPage() {
@@ -92,11 +120,24 @@ export default function PrimaryWordClassesTestPage() {
         return
       }
 
-      const { data: questionData, error: questionError } = await supabase
+      let questionQuery = supabase
         .from("grammar_primary_word_classes_questions")
         .select("*")
         .eq("test_id", testId)
         .order("question_order", { ascending: true })
+
+      if (mode === "review") {
+        if (reviewIds.length === 0) {
+          setTest(testData as PrimaryWordClassesTest)
+          setQuestions([])
+          setLoading(false)
+          return
+        }
+
+        questionQuery = questionQuery.in("id", reviewIds)
+      }
+
+      const { data: questionData, error: questionError } = await questionQuery
 
       if (questionError) {
         console.error("Error loading primary word classes questions:", questionError)
@@ -111,7 +152,7 @@ export default function PrimaryWordClassesTestPage() {
     }
 
     loadPage()
-  }, [rawId, testId, router])
+  }, [rawId, testId, router, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -142,6 +183,12 @@ export default function PrimaryWordClassesTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
+
+    if (mode === "review") {
+      router.push("/english/grammar/primary-word-classes?mode=review")
+      return
+    }
+
     router.push("/english/grammar/primary-word-classes")
   }
 
@@ -184,7 +231,7 @@ export default function PrimaryWordClassesTestPage() {
           question_text: question.question_text,
           user_answer: selected || "",
           correct_answer: question.correct_answer,
-          difficulty: test.difficulty,
+          difficulty: question.difficulty ?? test.difficulty,
         })
       }
     }
@@ -224,6 +271,14 @@ export default function PrimaryWordClassesTestPage() {
     setSubmitted(true)
     setSubmitting(false)
     setShowIncompleteModal(false)
+
+    if (mode === "review") {
+      const remainingIds = reviewIds.filter((id) => !questions.some((q) => q.id === id))
+      localStorage.setItem(
+        "primary_word_classes_review_ids",
+        JSON.stringify(remainingIds)
+      )
+    }
 
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -266,7 +321,11 @@ export default function PrimaryWordClassesTestPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Primary Word Classes test...</p>
+        <p style={styles.message}>
+          {mode === "review"
+            ? "Loading Primary Word Classes review..."
+            : "Loading Primary Word Classes test..."}
+        </p>
       </>
     )
   }
@@ -312,9 +371,13 @@ export default function PrimaryWordClassesTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>📝 {test.title}</h1>
+                <h1 style={styles.title}>
+                  {mode === "review" ? "📝 Review:" : "📝"} {test.title}
+                </h1>
                 <p style={styles.subtitle}>
-                  Answer all grammar questions carefully, then submit your test.
+                  {mode === "review"
+                    ? "Answer your saved review questions carefully, then submit."
+                    : "Answer all grammar questions carefully, then submit your test."}
                 </p>
               </div>
 
@@ -345,12 +408,9 @@ export default function PrimaryWordClassesTestPage() {
 
                 <div style={styles.resultButtons}>
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
-                    Retry This Test
+                    Retry This Set
                   </button>
-                  <button
-                    onClick={() => router.push("/english/grammar/primary-word-classes")}
-                    style={styles.primaryButton}
-                  >
+                  <button onClick={goBackSafely} style={styles.primaryButton}>
                     Back to Primary Word Classes
                   </button>
                 </div>
@@ -363,12 +423,20 @@ export default function PrimaryWordClassesTestPage() {
           </div>
 
           <div style={styles.questionsCard}>
-            <h2 style={styles.sectionTitle}>Questions</h2>
+            <h2 style={styles.sectionTitle}>
+              {mode === "review" ? "Review Questions" : "Questions"}
+            </h2>
 
             {questions.length === 0 ? (
               <div style={styles.emptyCard}>
-                <h2>No questions found</h2>
-                <p>Add questions in Supabase for this test.</p>
+                <h2>
+                  {mode === "review" ? "No review questions found" : "No questions found"}
+                </h2>
+                <p>
+                  {mode === "review"
+                    ? "There are no saved review questions for this test."
+                    : "Add questions in Supabase for this test."}
+                </p>
               </div>
             ) : (
               questions.map((question, index) => {

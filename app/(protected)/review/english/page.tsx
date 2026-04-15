@@ -751,7 +751,8 @@ export default function EnglishReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review English items across vocabulary, spelling, comprehension, and grammar with live filters, category insights, and quick retry access.
+              Review English items across vocabulary, spelling, comprehension, and grammar
+              with live filters, category insights, and quick retry access.
             </p>
           </div>
 
@@ -835,7 +836,11 @@ export default function EnglishReviewPage() {
           />
           <StatCard
             title="Most Recent Item"
-            value={reviewStats.mostRecentItem ? getCategoryLabel(reviewStats.mostRecentItem.category) : "—"}
+            value={
+              reviewStats.mostRecentItem
+                ? getCategoryLabel(reviewStats.mostRecentItem.category)
+                : "—"
+            }
             subtitle={
               reviewStats.mostRecentItem
                 ? formatDateTime(reviewStats.mostRecentItem.created_at)

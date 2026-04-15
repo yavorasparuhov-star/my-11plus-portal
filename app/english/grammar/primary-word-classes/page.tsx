@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
@@ -18,6 +19,11 @@ type GrammarPrimaryWordClassesTest = {
   created_at: string
 }
 
+type GrammarPrimaryWordClassesQuestion = {
+  id: number
+  test_id: number
+}
+
 type GrammarPrimaryWordClassesProgress = {
   id: string
   user_id: string
@@ -30,16 +36,45 @@ type TestWithProgress = GrammarPrimaryWordClassesTest & {
   score: number
   completed_at: string | null
   isCompleted: boolean
+  reviewQuestionIds?: number[]
 }
 
 export default function PrimaryWordClassesPage() {
+  const searchParams = useSearchParams()
+  const mode = searchParams.get("mode")
+
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
+  const [reviewIds, setReviewIds] = useState<number[]>([])
+
+  useEffect(() => {
+    if (mode !== "review") {
+      setReviewIds([])
+      return
+    }
+
+    const raw = localStorage.getItem("primary_word_classes_review_ids")
+    if (!raw) {
+      setReviewIds([])
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        setReviewIds(parsed.filter((id) => typeof id === "number"))
+      } else {
+        setReviewIds([])
+      }
+    } catch {
+      setReviewIds([])
+    }
+  }, [mode])
 
   useEffect(() => {
     fetchTests()
-  }, [])
+  }, [mode, reviewIds.join(",")])
 
   async function fetchTests() {
     setLoading(true)
@@ -59,7 +94,42 @@ export default function PrimaryWordClassesPage() {
       return
     }
 
-    const allTests = (testsData || []) as GrammarPrimaryWordClassesTest[]
+    let allTests = (testsData || []) as GrammarPrimaryWordClassesTest[]
+    let reviewQuestionMap = new Map<number, number[]>()
+
+    if (mode === "review") {
+      if (reviewIds.length === 0) {
+        setTests([])
+        setLoading(false)
+        return
+      }
+
+      const { data: reviewQuestionsData, error: reviewQuestionsError } = await supabase
+        .from("grammar_primary_word_classes_questions")
+        .select("id, test_id")
+        .in("id", reviewIds)
+
+      if (reviewQuestionsError) {
+        console.error(
+          "Error loading primary word classes review questions:",
+          reviewQuestionsError
+        )
+        setLoading(false)
+        return
+      }
+
+      const reviewQuestions = (reviewQuestionsData || []) as GrammarPrimaryWordClassesQuestion[]
+
+      reviewQuestionMap = reviewQuestions.reduce((map, row) => {
+        const existing = map.get(row.test_id) || []
+        existing.push(row.id)
+        map.set(row.test_id, existing)
+        return map
+      }, new Map<number, number[]>())
+
+      const reviewTestIds = Array.from(reviewQuestionMap.keys())
+      allTests = allTests.filter((test) => reviewTestIds.includes(test.id))
+    }
 
     if (!user) {
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
@@ -67,6 +137,7 @@ export default function PrimaryWordClassesPage() {
         score: 0,
         completed_at: null,
         isCompleted: false,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
       setTests(testsWithoutProgress)
@@ -96,6 +167,7 @@ export default function PrimaryWordClassesPage() {
         score: 0,
         completed_at: null,
         isCompleted: false,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
       setTests(testsWithoutProgress)
@@ -126,6 +198,7 @@ export default function PrimaryWordClassesPage() {
         score: progress?.success_rate ?? 0,
         completed_at: progress?.created_at || null,
         isCompleted: !!progress,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }
     })
 
@@ -184,7 +257,11 @@ export default function PrimaryWordClassesPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Primary Word Classes tests...</p>
+        <p style={styles.message}>
+          {mode === "review"
+            ? "Loading Primary Word Classes review..."
+            : "Loading Primary Word Classes tests..."}
+        </p>
       </>
     )
   }
@@ -195,9 +272,15 @@ export default function PrimaryWordClassesPage() {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>📝 Primary Word Classes Tests</h1>
+            <h1 style={styles.title}>
+              {mode === "review"
+                ? "📝 Primary Word Classes Review"
+                : "📝 Primary Word Classes Tests"}
+            </h1>
             <p style={styles.subtitle}>
-              Choose a Primary Word Classes test and answer 10 multiple-choice questions.
+              {mode === "review"
+                ? "Revise your saved grammar mistakes and strengthen your word-class knowledge."
+                : "Choose a Primary Word Classes test and answer 10 multiple-choice questions."}
             </p>
             <div style={styles.heroActions}>
               <Link href="/english/grammar" style={styles.backLink}>
@@ -208,8 +291,16 @@ export default function PrimaryWordClassesPage() {
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>No Primary Word Classes tests yet</h2>
-              <p>Add tests in Supabase and they will appear here.</p>
+              <h2>
+                {mode === "review"
+                  ? "No Primary Word Classes review items found"
+                  : "No Primary Word Classes tests yet"}
+              </h2>
+              <p>
+                {mode === "review"
+                  ? "Try another category or make a few mistakes first so they can appear here for revision."
+                  : "Add tests in Supabase and they will appear here."}
+              </p>
             </div>
           ) : (
             <>
@@ -268,60 +359,78 @@ export default function PrimaryWordClassesPage() {
                 </div>
               ) : (
                 <div style={styles.grid}>
-                  {filteredTests.map((test) => (
-                    <div
-                      key={test.id}
-                      style={{ ...styles.card, ...hoverCardStyle }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-6px)"
-                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)"
-                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
-                      }}
-                    >
-                      <div style={styles.cardTop}>
-                        <h2 style={styles.cardTitle}>{test.title}</h2>
-                        <span style={styles.badge}>
-                          {getDifficultyLabel(test.difficulty)}
-                        </span>
-                      </div>
+                  {filteredTests.map((test) => {
+                    const href =
+                      mode === "review"
+                        ? `/english/grammar/primary-word-classes/${test.id}?mode=review`
+                        : `/english/grammar/primary-word-classes/${test.id}`
 
-                      <p style={styles.preview}>
-                        {test.description?.trim()
-                          ? test.description
-                          : "Practise nouns, verbs, adjectives, adverbs, pronouns, prepositions, conjunctions and determiners in this test."}
-                      </p>
-
-                      <div style={styles.metaRow}>
-                        <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
-                        </p>
-
-                        <p style={styles.metaHalf}>
-                          <strong>Score:</strong> {getScoreText(test)}{" "}
-                          <span style={styles.scoreIcon}>
-                            {getScoreIcon(test.score, test.isCompleted)}
-                          </span>
-                        </p>
-                      </div>
-
-                      <Link
-                        href={`/english/grammar/primary-word-classes/${test.id}`}
-                        style={test.isCompleted ? styles.startButton : styles.retryButton}
+                    return (
+                      <div
+                        key={test.id}
+                        style={{ ...styles.card, ...hoverCardStyle }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-6px)"
+                          e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)"
+                          e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                        }}
                       >
-                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                      </Link>
-                    </div>
-                  ))}
+                        <div style={styles.cardTop}>
+                          <h2 style={styles.cardTitle}>{test.title}</h2>
+                          <span style={styles.badge}>
+                            {getDifficultyLabel(test.difficulty)}
+                          </span>
+                        </div>
+
+                        <p style={styles.preview}>
+                          {test.description?.trim()
+                            ? test.description
+                            : "Practise nouns, verbs, adjectives, adverbs, pronouns, prepositions, conjunctions and determiners in this test."}
+                        </p>
+
+                        {mode === "review" && (
+                          <p style={styles.metaHalf}>
+                            <strong>Review items in this test:</strong>{" "}
+                            {test.reviewQuestionIds?.length || 0}
+                          </p>
+                        )}
+
+                        <div style={styles.metaRow}>
+                          <p style={styles.metaHalf}>
+                            <strong>Completed:</strong>{" "}
+                            {test.completed_at
+                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "Not yet"}
+                          </p>
+
+                          <p style={styles.metaHalf}>
+                            <strong>Score:</strong> {getScoreText(test)}{" "}
+                            <span style={styles.scoreIcon}>
+                              {getScoreIcon(test.score, test.isCompleted)}
+                            </span>
+                          </p>
+                        </div>
+
+                        <Link
+                          href={href}
+                          style={test.isCompleted ? styles.startButton : styles.retryButton}
+                        >
+                          {mode === "review"
+                            ? "Open Review →"
+                            : test.isCompleted
+                            ? "Retry Test →"
+                            : "Start Test →"}
+                        </Link>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </>
