@@ -74,14 +74,76 @@ type SentenceStructureSyntaxProgressRow = {
   created_at: string
 }
 
+type AdvancedPunctuationProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
+type ApostrophesProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
+type CommaProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
+type DirectSpeechPunctuationProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
+type SentencePunctuationProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
+type EnglishProgressCategory =
+  | "vocabulary"
+  | "spelling"
+  | "comprehension"
+  | "primary_word_classes"
+  | "sentence_structure_syntax"
+  | "advanced_punctuation"
+  | "apostrophes"
+  | "comma"
+  | "direct_speech_punctuation"
+  | "sentence_punctuation"
+
 type EnglishProgressRow = {
   id: string
-  category:
-    | "vocabulary"
-    | "spelling"
-    | "comprehension"
-    | "primary_word_classes"
-    | "sentence_structure_syntax"
+  category: EnglishProgressCategory
   total_questions: number
   correct_answers: number
   success_rate: number
@@ -98,6 +160,11 @@ type CategoryFilter =
   | "comprehension"
   | "primary_word_classes"
   | "sentence_structure_syntax"
+  | "advanced_punctuation"
+  | "apostrophes"
+  | "comma"
+  | "direct_speech_punctuation"
+  | "sentence_punctuation"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -120,6 +187,11 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "comprehension", label: "Comprehension" },
   { value: "primary_word_classes", label: "Primary Word Classes" },
   { value: "sentence_structure_syntax", label: "Sentence Structure & Syntax" },
+  { value: "advanced_punctuation", label: "Advanced Punctuation" },
+  { value: "apostrophes", label: "Apostrophes" },
+  { value: "comma", label: "Comma" },
+  { value: "direct_speech_punctuation", label: "Direct Speech Punctuation" },
+  { value: "sentence_punctuation", label: "Sentence Punctuation" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -149,6 +221,11 @@ function getCategoryLabel(category: string) {
   if (category === "comprehension") return "Comprehension"
   if (category === "primary_word_classes") return "Primary Word Classes"
   if (category === "sentence_structure_syntax") return "Sentence Structure & Syntax"
+  if (category === "advanced_punctuation") return "Advanced Punctuation"
+  if (category === "apostrophes") return "Apostrophes"
+  if (category === "comma") return "Comma"
+  if (category === "direct_speech_punctuation") return "Direct Speech Punctuation"
+  if (category === "sentence_punctuation") return "Sentence Punctuation"
   return "Not set"
 }
 
@@ -317,6 +394,11 @@ export default function EnglishProgressPage() {
         comprehensionResult,
         primaryWordClassesResult,
         sentenceStructureSyntaxResult,
+        advancedPunctuationResult,
+        apostrophesResult,
+        commaResult,
+        directSpeechPunctuationResult,
+        sentencePunctuationResult,
       ] = await Promise.all([
         supabase
           .from("vocabulary_progress")
@@ -343,6 +425,31 @@ export default function EnglishProgressPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("punctuation_advanced_punctuation_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("punctuation_apostrophes_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("punctuation_comma_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("punctuation_direct_speech_punctuation_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("punctuation_sentence_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ])
 
       if (vocabularyResult.error) {
@@ -366,6 +473,30 @@ export default function EnglishProgressPage() {
           sentenceStructureSyntaxResult.error
         )
       }
+      if (advancedPunctuationResult.error) {
+        console.error(
+          "Error loading advanced punctuation progress:",
+          advancedPunctuationResult.error
+        )
+      }
+      if (apostrophesResult.error) {
+        console.error("Error loading apostrophes progress:", apostrophesResult.error)
+      }
+      if (commaResult.error) {
+        console.error("Error loading comma progress:", commaResult.error)
+      }
+      if (directSpeechPunctuationResult.error) {
+        console.error(
+          "Error loading direct speech punctuation progress:",
+          directSpeechPunctuationResult.error
+        )
+      }
+      if (sentencePunctuationResult.error) {
+        console.error(
+          "Error loading sentence punctuation progress:",
+          sentencePunctuationResult.error
+        )
+      }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
@@ -374,6 +505,14 @@ export default function EnglishProgressPage() {
         (primaryWordClassesResult.data ?? []) as PrimaryWordClassesProgressRow[]
       const sentenceStructureSyntaxRows =
         (sentenceStructureSyntaxResult.data ?? []) as SentenceStructureSyntaxProgressRow[]
+      const advancedPunctuationRows =
+        (advancedPunctuationResult.data ?? []) as AdvancedPunctuationProgressRow[]
+      const apostrophesRows = (apostrophesResult.data ?? []) as ApostrophesProgressRow[]
+      const commaRows = (commaResult.data ?? []) as CommaProgressRow[]
+      const directSpeechPunctuationRows =
+        (directSpeechPunctuationResult.data ?? []) as DirectSpeechPunctuationProgressRow[]
+      const sentencePunctuationRows =
+        (sentencePunctuationResult.data ?? []) as SentencePunctuationProgressRow[]
 
       const comprehensionTestIds = Array.from(
         new Set(
@@ -459,6 +598,51 @@ export default function EnglishProgressPage() {
         ...sentenceStructureSyntaxRows.map((row) => ({
           id: `sentence-structure-syntax-${row.id}`,
           category: "sentence_structure_syntax" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...advancedPunctuationRows.map((row) => ({
+          id: `advanced-punctuation-${row.id}`,
+          category: "advanced_punctuation" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...apostrophesRows.map((row) => ({
+          id: `apostrophes-${row.id}`,
+          category: "apostrophes" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...commaRows.map((row) => ({
+          id: `comma-${row.id}`,
+          category: "comma" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...directSpeechPunctuationRows.map((row) => ({
+          id: `direct-speech-punctuation-${row.id}`,
+          category: "direct_speech_punctuation" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...sentencePunctuationRows.map((row) => ({
+          id: `sentence-punctuation-${row.id}`,
+          category: "sentence_punctuation" as const,
           total_questions: row.total_questions,
           correct_answers: row.correct_answers,
           success_rate: Number(row.success_rate),
@@ -588,6 +772,11 @@ export default function EnglishProgressPage() {
       "Comprehension",
       "Primary Word Classes",
       "Sentence Structure & Syntax",
+      "Advanced Punctuation",
+      "Apostrophes",
+      "Comma",
+      "Direct Speech Punctuation",
+      "Sentence Punctuation",
       "Not set",
     ]
 
@@ -622,6 +811,11 @@ export default function EnglishProgressPage() {
       "Comprehension",
       "Primary Word Classes",
       "Sentence Structure & Syntax",
+      "Advanced Punctuation",
+      "Apostrophes",
+      "Comma",
+      "Direct Speech Punctuation",
+      "Sentence Punctuation",
       "Not set",
     ]
 
@@ -705,7 +899,7 @@ export default function EnglishProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore English performance across vocabulary, spelling, comprehension, and grammar with live filters, trend tracking, and category insights.
+              Explore English performance across vocabulary, spelling, comprehension, grammar, and punctuation with live filters, trend tracking, and category insights.
             </p>
           </div>
 
