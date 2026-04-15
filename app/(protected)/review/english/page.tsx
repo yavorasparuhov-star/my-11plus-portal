@@ -68,9 +68,31 @@ type PrimaryWordClassesQuestionRow = {
   difficulty: number | null
 }
 
+type SentenceStructureSyntaxReviewRow = {
+  id: string
+  user_id: string
+  question_id: number | null
+  question_text: string
+  correct_answer: string
+  user_answer: string | null
+  difficulty: number | null
+  created_at: string
+}
+
+type SentenceStructureSyntaxQuestionRow = {
+  id: number
+  explanation: string | null
+  difficulty: number | null
+}
+
 type EnglishReviewRow = {
   id: string
-  category: "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
+  category:
+    | "vocabulary"
+    | "spelling"
+    | "comprehension"
+    | "primary_word_classes"
+    | "sentence_structure_syntax"
   item_id: number | null
   item_text: string
   difficulty: number | null
@@ -80,7 +102,13 @@ type EnglishReviewRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
+type CategoryFilter =
+  | "all"
+  | "vocabulary"
+  | "spelling"
+  | "comprehension"
+  | "primary_word_classes"
+  | "sentence_structure_syntax"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -102,6 +130,7 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "spelling", label: "Spelling" },
   { value: "comprehension", label: "Comprehension" },
   { value: "primary_word_classes", label: "Primary Word Classes" },
+  { value: "sentence_structure_syntax", label: "Sentence Structure & Syntax" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -130,6 +159,7 @@ function getCategoryLabel(category: string) {
   if (category === "spelling") return "Spelling"
   if (category === "comprehension") return "Comprehension"
   if (category === "primary_word_classes") return "Primary Word Classes"
+  if (category === "sentence_structure_syntax") return "Sentence Structure & Syntax"
   return "Not set"
 }
 
@@ -278,6 +308,7 @@ export default function EnglishReviewPage() {
         spellingResult,
         comprehensionResult,
         primaryWordClassesResult,
+        sentenceStructureSyntaxResult,
       ] = await Promise.all([
         supabase
           .from("vocabulary_review")
@@ -299,6 +330,11 @@ export default function EnglishReviewPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("grammar_sentence_structure_syntax_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ])
 
       if (vocabularyResult.error) {
@@ -316,12 +352,20 @@ export default function EnglishReviewPage() {
           primaryWordClassesResult.error
         )
       }
+      if (sentenceStructureSyntaxResult.error) {
+        console.error(
+          "Error loading sentence structure syntax review:",
+          sentenceStructureSyntaxResult.error
+        )
+      }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
       const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionReviewRow[]
       const primaryWordClassesRows =
         (primaryWordClassesResult.data ?? []) as PrimaryWordClassesReviewRow[]
+      const sentenceStructureSyntaxRows =
+        (sentenceStructureSyntaxResult.data ?? []) as SentenceStructureSyntaxReviewRow[]
 
       const comprehensionQuestionIds = Array.from(
         new Set(
@@ -339,8 +383,20 @@ export default function EnglishReviewPage() {
         )
       )
 
+      const sentenceStructureSyntaxQuestionIds = Array.from(
+        new Set(
+          sentenceStructureSyntaxRows
+            .map((row) => row.question_id)
+            .filter((id): id is number => id !== null)
+        )
+      )
+
       let comprehensionMap = new Map<number, { explanation: string; difficulty: number | null }>()
       let primaryWordClassesMap = new Map<
+        number,
+        { explanation: string; difficulty: number | null }
+      >()
+      let sentenceStructureSyntaxMap = new Map<
         number,
         { explanation: string; difficulty: number | null }
       >()
@@ -384,6 +440,35 @@ export default function EnglishReviewPage() {
         } else {
           primaryWordClassesMap = new Map(
             ((primaryWordClassesQuestionsData ?? []) as PrimaryWordClassesQuestionRow[]).map(
+              (question) => [
+                question.id,
+                {
+                  explanation: question.explanation || "",
+                  difficulty: question.difficulty,
+                },
+              ]
+            )
+          )
+        }
+      }
+
+      if (sentenceStructureSyntaxQuestionIds.length > 0) {
+        const {
+          data: sentenceStructureSyntaxQuestionsData,
+          error: sentenceStructureSyntaxQuestionsError,
+        } = await supabase
+          .from("grammar_sentence_structure_syntax_questions")
+          .select("id, explanation, difficulty")
+          .in("id", sentenceStructureSyntaxQuestionIds)
+
+        if (sentenceStructureSyntaxQuestionsError) {
+          console.error(
+            "Error loading sentence structure syntax explanations:",
+            sentenceStructureSyntaxQuestionsError
+          )
+        } else {
+          sentenceStructureSyntaxMap = new Map(
+            ((sentenceStructureSyntaxQuestionsData ?? []) as SentenceStructureSyntaxQuestionRow[]).map(
               (question) => [
                 question.id,
                 {
@@ -445,6 +530,21 @@ export default function EnglishReviewPage() {
               ? primaryWordClassesMap.get(row.question_id)?.explanation || ""
               : "",
         })),
+        ...sentenceStructureSyntaxRows.map((row) => ({
+          id: `sentence-structure-syntax-${row.id}`,
+          category: "sentence_structure_syntax" as const,
+          item_id: row.question_id,
+          item_text: row.question_text,
+          difficulty:
+            row.question_id !== null
+              ? sentenceStructureSyntaxMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
+              : row.difficulty ?? null,
+          created_at: row.created_at,
+          explanation:
+            row.question_id !== null
+              ? sentenceStructureSyntaxMap.get(row.question_id)?.explanation || ""
+              : "",
+        })),
       ]
 
       if (mounted) {
@@ -496,6 +596,14 @@ export default function EnglishReviewPage() {
     } else if (item.category === "primary_word_classes") {
       const result = await supabase
         .from("grammar_primary_word_classes_review")
+        .delete()
+        .eq("user_id", user.id)
+        .ilike("question_text", item.item_text)
+
+      error = result.error
+    } else if (item.category === "sentence_structure_syntax") {
+      const result = await supabase
+        .from("grammar_sentence_structure_syntax_review")
         .delete()
         .eq("user_id", user.id)
         .ilike("question_text", item.item_text)
@@ -562,6 +670,11 @@ export default function EnglishReviewPage() {
       .map((row) => row.item_id)
       .filter((id): id is number => id !== null)
 
+    const sentenceStructureSyntaxIds = filteredItems
+      .filter((row) => row.category === "sentence_structure_syntax")
+      .map((row) => row.item_id)
+      .filter((id): id is number => id !== null)
+
     if (categoryFilter === "vocabulary" && vocabularyIds.length > 0) {
       localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
       router.push("/english/vocabulary?mode=review")
@@ -586,6 +699,15 @@ export default function EnglishReviewPage() {
         JSON.stringify(primaryWordClassesIds)
       )
       router.push("/english/grammar/primary-word-classes?mode=review")
+      return
+    }
+
+    if (categoryFilter === "sentence_structure_syntax" && sentenceStructureSyntaxIds.length > 0) {
+      localStorage.setItem(
+        "sentence_structure_syntax_review_ids",
+        JSON.stringify(sentenceStructureSyntaxIds)
+      )
+      router.push("/english/grammar/sentence-structure-syntax?mode=review")
       return
     }
 
@@ -616,6 +738,15 @@ export default function EnglishReviewPage() {
           JSON.stringify(primaryWordClassesIds)
         )
         router.push("/english/grammar/primary-word-classes?mode=review")
+        return
+      }
+
+      if (firstCategory === "sentence_structure_syntax" && sentenceStructureSyntaxIds.length > 0) {
+        localStorage.setItem(
+          "sentence_structure_syntax_review_ids",
+          JSON.stringify(sentenceStructureSyntaxIds)
+        )
+        router.push("/english/grammar/sentence-structure-syntax?mode=review")
       }
     }
   }
@@ -677,7 +808,14 @@ export default function EnglishReviewPage() {
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Vocabulary", "Spelling", "Comprehension", "Primary Word Classes", "Not set"]
+    const order = [
+      "Vocabulary",
+      "Spelling",
+      "Comprehension",
+      "Primary Word Classes",
+      "Sentence Structure & Syntax",
+      "Not set",
+    ]
 
     return Object.values(grouped).sort(
       (a, b) => order.indexOf(a.category) - order.indexOf(b.category)

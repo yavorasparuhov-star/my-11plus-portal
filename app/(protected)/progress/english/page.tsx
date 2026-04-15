@@ -63,9 +63,25 @@ type PrimaryWordClassesProgressRow = {
   created_at: string
 }
 
+type SentenceStructureSyntaxProgressRow = {
+  id: string | number
+  user_id: string
+  test_id: number | null
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  created_at: string
+}
+
 type EnglishProgressRow = {
   id: string
-  category: "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
+  category:
+    | "vocabulary"
+    | "spelling"
+    | "comprehension"
+    | "primary_word_classes"
+    | "sentence_structure_syntax"
   total_questions: number
   correct_answers: number
   success_rate: number
@@ -75,7 +91,13 @@ type EnglishProgressRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-type CategoryFilter = "all" | "vocabulary" | "spelling" | "comprehension" | "primary_word_classes"
+type CategoryFilter =
+  | "all"
+  | "vocabulary"
+  | "spelling"
+  | "comprehension"
+  | "primary_word_classes"
+  | "sentence_structure_syntax"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -97,6 +119,7 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "spelling", label: "Spelling" },
   { value: "comprehension", label: "Comprehension" },
   { value: "primary_word_classes", label: "Primary Word Classes" },
+  { value: "sentence_structure_syntax", label: "Sentence Structure & Syntax" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -125,6 +148,7 @@ function getCategoryLabel(category: string) {
   if (category === "spelling") return "Spelling"
   if (category === "comprehension") return "Comprehension"
   if (category === "primary_word_classes") return "Primary Word Classes"
+  if (category === "sentence_structure_syntax") return "Sentence Structure & Syntax"
   return "Not set"
 }
 
@@ -292,6 +316,7 @@ export default function EnglishProgressPage() {
         spellingResult,
         comprehensionResult,
         primaryWordClassesResult,
+        sentenceStructureSyntaxResult,
       ] = await Promise.all([
         supabase
           .from("vocabulary_progress")
@@ -313,6 +338,11 @@ export default function EnglishProgressPage() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("grammar_sentence_structure_syntax_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
       ])
 
       if (vocabularyResult.error) {
@@ -330,15 +360,27 @@ export default function EnglishProgressPage() {
           primaryWordClassesResult.error
         )
       }
+      if (sentenceStructureSyntaxResult.error) {
+        console.error(
+          "Error loading sentence structure syntax progress:",
+          sentenceStructureSyntaxResult.error
+        )
+      }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
       const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionProgressRow[]
       const primaryWordClassesRows =
         (primaryWordClassesResult.data ?? []) as PrimaryWordClassesProgressRow[]
+      const sentenceStructureSyntaxRows =
+        (sentenceStructureSyntaxResult.data ?? []) as SentenceStructureSyntaxProgressRow[]
 
       const comprehensionTestIds = Array.from(
-        new Set(comprehensionRows.map((row) => row.test_id).filter((id): id is number => id !== null))
+        new Set(
+          comprehensionRows
+            .map((row) => row.test_id)
+            .filter((id): id is number => id !== null)
+        )
       )
 
       const comprehensionQuestionCounts = new Map<number, number>()
@@ -408,6 +450,15 @@ export default function EnglishProgressPage() {
         ...primaryWordClassesRows.map((row) => ({
           id: `primary-word-classes-${row.id}`,
           category: "primary_word_classes" as const,
+          total_questions: row.total_questions,
+          correct_answers: row.correct_answers,
+          success_rate: Number(row.success_rate),
+          difficulty: row.difficulty,
+          created_at: row.created_at,
+        })),
+        ...sentenceStructureSyntaxRows.map((row) => ({
+          id: `sentence-structure-syntax-${row.id}`,
+          category: "sentence_structure_syntax" as const,
           total_questions: row.total_questions,
           correct_answers: row.correct_answers,
           success_rate: Number(row.success_rate),
@@ -536,6 +587,7 @@ export default function EnglishProgressPage() {
       "Spelling",
       "Comprehension",
       "Primary Word Classes",
+      "Sentence Structure & Syntax",
       "Not set",
     ]
 
@@ -569,6 +621,7 @@ export default function EnglishProgressPage() {
       "Spelling",
       "Comprehension",
       "Primary Word Classes",
+      "Sentence Structure & Syntax",
       "Not set",
     ]
 
