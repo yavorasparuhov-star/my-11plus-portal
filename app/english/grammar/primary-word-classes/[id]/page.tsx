@@ -5,6 +5,12 @@ import Header from "../../../../../components/Header"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
+const MAIN_CATEGORY = "grammar"
+const SUBCATEGORY = "primary_word_classes"
+const REVIEW_STORAGE_KEY = "primary_word_classes_review_ids"
+
+type AnswerOption = "A" | "B" | "C" | "D"
+
 type PrimaryWordClassesTest = {
   id: number
   title: string
@@ -21,7 +27,7 @@ type PrimaryWordClassesQuestion = {
   option_b: string
   option_c: string
   option_d: string
-  correct_answer: string
+  correct_answer: AnswerOption
   explanation: string | null
   difficulty: number | null
   question_order: number
@@ -29,7 +35,7 @@ type PrimaryWordClassesQuestion = {
 }
 
 type UserAnswerMap = {
-  [questionId: number]: "A" | "B" | "C" | "D"
+  [questionId: number]: AnswerOption
 }
 
 export default function PrimaryWordClassesTestPage() {
@@ -59,7 +65,7 @@ export default function PrimaryWordClassesTestPage() {
       return
     }
 
-    const raw = localStorage.getItem("primary_word_classes_review_ids")
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
     if (!raw) {
       setReviewIds([])
       return
@@ -94,7 +100,10 @@ export default function PrimaryWordClassesTestPage() {
       } = await supabase.auth.getUser()
 
       if (userError) {
-        console.error("Error getting user:", userError)
+        console.error("Error getting user:", {
+          message: userError.message,
+          name: userError.name,
+        })
         setErrorMessage("Could not verify your login.")
         setLoading(false)
         return
@@ -108,22 +117,33 @@ export default function PrimaryWordClassesTestPage() {
       setUserId(user.id)
 
       const { data: testData, error: testError } = await supabase
-        .from("grammar_primary_word_classes_tests")
-        .select("*")
+        .from("english_tests")
+        .select("id, title, description, difficulty, created_at")
         .eq("id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .single()
 
       if (testError) {
-        console.error("Error loading primary word classes test:", testError)
+        console.error("Error loading primary word classes test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+        })
         setErrorMessage("Could not load this Primary Word Classes test.")
         setLoading(false)
         return
       }
 
       let questionQuery = supabase
-        .from("grammar_primary_word_classes_questions")
-        .select("*")
+        .from("english_questions")
+        .select(
+          "id, test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, question_order, created_at"
+        )
         .eq("test_id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .order("question_order", { ascending: true })
 
       if (mode === "review") {
@@ -140,7 +160,12 @@ export default function PrimaryWordClassesTestPage() {
       const { data: questionData, error: questionError } = await questionQuery
 
       if (questionError) {
-        console.error("Error loading primary word classes questions:", questionError)
+        console.error("Error loading primary word classes questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+        })
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
@@ -192,7 +217,7 @@ export default function PrimaryWordClassesTestPage() {
     router.push("/english/grammar/primary-word-classes")
   }
 
-  function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
+  function handleSelect(questionId: number, option: AnswerOption) {
     if (submitted) return
 
     setAnswers((prev) => ({
@@ -206,32 +231,44 @@ export default function PrimaryWordClassesTestPage() {
     if (questions.length === 0) return
 
     setSubmitting(true)
+    setErrorMessage("")
 
     let correctAnswers = 0
+
     const wrongAnswersForReview: {
       user_id: string
       test_id: number
       question_id: number
+      main_category: string
+      subcategory: string
       question_text: string
-      user_answer: string
-      correct_answer: string
+      user_answer: AnswerOption | null
+      correct_answer: AnswerOption
       difficulty: number | null
     }[] = []
+
+    const correctlyAnsweredReviewQuestionIds: number[] = []
 
     for (const question of questions) {
       const selected = answers[question.id]
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
+
+        if (mode === "review") {
+          correctlyAnsweredReviewQuestionIds.push(question.id)
+        }
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
           test_id: test.id,
           question_id: question.id,
+          main_category: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
           question_text: question.question_text,
-          user_answer: selected || "",
+          user_answer: selected ?? null,
           correct_answer: question.correct_answer,
-          difficulty: question.difficulty ?? test.difficulty,
+          difficulty: question.difficulty ?? test.difficulty ?? null,
         })
       }
     }
@@ -240,45 +277,86 @@ export default function PrimaryWordClassesTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase
-      .from("grammar_primary_word_classes_progress")
-      .insert([
-        {
-          user_id: userId,
-          test_id: test.id,
-          total_questions: totalQuestions,
-          correct_answers: correctAnswers,
-          success_rate: successRate,
-          difficulty: test.difficulty,
-        },
-      ])
-
-    if (progressError) {
-      console.error("Error saving primary word classes progress:", progressError)
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      main_category: MAIN_CATEGORY,
+      subcategory: SUBCATEGORY,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
     }
 
-    if (wrongAnswersForReview.length > 0) {
+    const { error: progressError } = await supabase
+      .from("english_progress")
+      .insert([progressPayload])
+
+    if (progressError) {
+      console.error("Error saving primary word classes progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        payload: progressPayload,
+      })
+      setErrorMessage(progressError.message || "Could not save your progress. Please try again.")
+      setSubmitting(false)
+      return
+    }
+
+    if (mode === "review") {
+      if (correctlyAnsweredReviewQuestionIds.length > 0) {
+        const { error: deleteReviewError } = await supabase
+          .from("english_review")
+          .delete()
+          .eq("user_id", userId)
+          .eq("main_category", MAIN_CATEGORY)
+          .eq("subcategory", SUBCATEGORY)
+          .in("question_id", correctlyAnsweredReviewQuestionIds)
+
+        if (deleteReviewError) {
+          console.error("Error removing correctly answered primary word classes review items:", {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+          })
+        }
+      }
+    } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
-        .from("grammar_primary_word_classes_review")
+        .from("english_review")
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
-        console.error("Error saving primary word classes review:", reviewError)
+        console.error("Error saving primary word classes review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+        })
       }
+
+      const existingReviewIds = Array.from(new Set(reviewIds))
+      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+      setReviewIds(updatedReviewIds)
+    }
+
+    if (mode === "review") {
+      const remainingIds = reviewIds.filter(
+        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+      )
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+      setReviewIds(remainingIds)
     }
 
     setScore(correctAnswers)
     setSubmitted(true)
     setSubmitting(false)
     setShowIncompleteModal(false)
-
-    if (mode === "review") {
-      const remainingIds = reviewIds.filter((id) => !questions.some((q) => q.id === id))
-      localStorage.setItem(
-        "primary_word_classes_review_ids",
-        JSON.stringify(remainingIds)
-      )
-    }
 
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -297,10 +375,7 @@ export default function PrimaryWordClassesTestPage() {
     await submitTest()
   }
 
-  function getOptionText(
-    question: PrimaryWordClassesQuestion,
-    option: "A" | "B" | "C" | "D"
-  ) {
+  function getOptionText(question: PrimaryWordClassesQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -312,6 +387,7 @@ export default function PrimaryWordClassesTestPage() {
     setSubmitted(false)
     setScore(0)
     setShowIncompleteModal(false)
+    setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -330,7 +406,7 @@ export default function PrimaryWordClassesTestPage() {
     )
   }
 
-  if (errorMessage) {
+  if (errorMessage && !test) {
     return (
       <>
         <Header />
@@ -416,9 +492,13 @@ export default function PrimaryWordClassesTestPage() {
                 </div>
               </div>
             ) : (
-              <div style={styles.progressInfo}>
-                Answered: <strong>{answeredCount}</strong> / {questions.length}
-              </div>
+              <>
+                <div style={styles.progressInfo}>
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
+                </div>
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+              </>
             )}
           </div>
 
@@ -507,10 +587,7 @@ export default function PrimaryWordClassesTestPage() {
                             Correct answer:{" "}
                             <strong>
                               {question.correct_answer} —{" "}
-                              {getOptionText(
-                                question,
-                                question.correct_answer as "A" | "B" | "C" | "D"
-                              )}
+                              {getOptionText(question, question.correct_answer)}
                             </strong>
                           </p>
                         )}
@@ -616,6 +693,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   progressInfo: {
     marginTop: "20px",
     color: "#444",
+  },
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
   },
   resultBanner: {
     marginTop: "20px",

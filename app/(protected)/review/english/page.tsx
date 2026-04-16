@@ -37,136 +37,29 @@ type SpellingReviewRow = {
   created_at: string
 }
 
-type ComprehensionReviewRow = {
+type EnglishSharedReviewRow = {
   id: string
   user_id: string
+  test_id: number | null
   question_id: number | null
+  main_category: string
+  subcategory: string | null
   question_text: string
-  created_at: string
-}
-
-type ComprehensionQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type PrimaryWordClassesReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
   user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type PrimaryWordClassesQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type SentenceStructureSyntaxReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
   correct_answer: string
-  user_answer: string | null
   difficulty: number | null
   created_at: string
 }
 
-type SentenceStructureSyntaxQuestionRow = {
+type EnglishQuestionLookupRow = {
   id: number
   explanation: string | null
   difficulty: number | null
 }
 
-type AdvancedPunctuationReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type AdvancedPunctuationQuestionRow = {
+type WordLookupRow = {
   id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type ApostrophesReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type ApostrophesQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type CommaReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type CommaQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type DirectSpeechPunctuationReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type DirectSpeechPunctuationQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
-
-type SentencePunctuationReviewRow = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
-  difficulty: number | null
-  created_at: string
-}
-
-type SentencePunctuationQuestionRow = {
-  id: number
-  explanation: string | null
+  definition: string | null
   difficulty: number | null
 }
 
@@ -294,12 +187,137 @@ function questionsTooltipFormatter(
     typeof value === "number"
       ? value
       : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
+        ? Number(value)
+        : Array.isArray(value)
+          ? Number(value[0])
+          : 0
 
   return [numericValue, "Items"]
+}
+
+function mapSharedReviewCategory(
+  row: EnglishSharedReviewRow
+): Exclude<EnglishReviewCategory, "vocabulary" | "spelling"> | null {
+  if (row.main_category === "comprehension") {
+    return "comprehension"
+  }
+
+  if (row.main_category === "grammar") {
+    if (row.subcategory === "primary_word_classes") return "primary_word_classes"
+    if (row.subcategory === "sentence_structure_syntax") return "sentence_structure_syntax"
+  }
+
+  if (row.main_category === "punctuation") {
+    if (row.subcategory === "advanced_punctuation") return "advanced_punctuation"
+    if (row.subcategory === "apostrophes") return "apostrophes"
+    if (row.subcategory === "comma") return "comma"
+    if (row.subcategory === "direct_speech_punctuation") return "direct_speech_punctuation"
+    if (row.subcategory === "sentence_punctuation") return "sentence_punctuation"
+  }
+
+  return null
+}
+
+function getSharedReviewMeta(category: EnglishReviewCategory) {
+  if (category === "comprehension") {
+    return { main_category: "comprehension", subcategory: null as string | null }
+  }
+  if (category === "primary_word_classes") {
+    return { main_category: "grammar", subcategory: "primary_word_classes" }
+  }
+  if (category === "sentence_structure_syntax") {
+    return { main_category: "grammar", subcategory: "sentence_structure_syntax" }
+  }
+  if (category === "advanced_punctuation") {
+    return { main_category: "punctuation", subcategory: "advanced_punctuation" }
+  }
+  if (category === "apostrophes") {
+    return { main_category: "punctuation", subcategory: "apostrophes" }
+  }
+  if (category === "comma") {
+    return { main_category: "punctuation", subcategory: "comma" }
+  }
+  if (category === "direct_speech_punctuation") {
+    return { main_category: "punctuation", subcategory: "direct_speech_punctuation" }
+  }
+  if (category === "sentence_punctuation") {
+    return { main_category: "punctuation", subcategory: "sentence_punctuation" }
+  }
+  return null
+}
+
+function getReviewStorageConfig(category: EnglishReviewCategory) {
+  if (category === "vocabulary") {
+    return {
+      key: "vocabulary_review_ids",
+      route: "/english/vocabulary?mode=review",
+    }
+  }
+  if (category === "spelling") {
+    return {
+      key: "spelling_review_ids",
+      route: "/english/spelling?mode=review",
+    }
+  }
+  if (category === "comprehension") {
+    return {
+      key: "comprehension_review_ids",
+      route: "/english/comprehension?mode=review",
+    }
+  }
+  if (category === "primary_word_classes") {
+    return {
+      key: "primary_word_classes_review_ids",
+      route: "/english/grammar/primary-word-classes?mode=review",
+    }
+  }
+  if (category === "sentence_structure_syntax") {
+    return {
+      key: "sentence_structure_syntax_review_ids",
+      route: "/english/grammar/sentence-structure-syntax?mode=review",
+    }
+  }
+  if (category === "advanced_punctuation") {
+    return {
+      key: "advanced_punctuation_review_ids",
+      route: "/english/punctuation/advanced-punctuation?mode=review",
+    }
+  }
+  if (category === "apostrophes") {
+    return {
+      key: "apostrophes_review_ids",
+      route: "/english/punctuation/apostrophes?mode=review",
+    }
+  }
+  if (category === "comma") {
+    return {
+      key: "comma_review_ids",
+      route: "/english/punctuation/comma?mode=review",
+    }
+  }
+  if (category === "direct_speech_punctuation") {
+    return {
+      key: "direct_speech_punctuation_review_ids",
+      route: "/english/punctuation/direct-speech-punctuation?mode=review",
+    }
+  }
+  if (category === "sentence_punctuation") {
+    return {
+      key: "sentence_punctuation_review_ids",
+      route: "/english/punctuation/sentence?mode=review",
+    }
+  }
+  return null
+}
+
+function isSameReviewItem(a: EnglishReviewRow, b: EnglishReviewRow) {
+  if (a.category !== b.category) return false
+
+  if (a.item_id !== null && b.item_id !== null) {
+    return a.item_id === b.item_id
+  }
+
+  return a.item_text.toLowerCase() === b.item_text.toLowerCase()
 }
 
 function StatCard({
@@ -410,67 +428,24 @@ export default function EnglishReviewPage() {
 
       setLoadingUser(false)
 
-      const [
-        vocabularyResult,
-        spellingResult,
-        comprehensionResult,
-        primaryWordClassesResult,
-        sentenceStructureSyntaxResult,
-        advancedPunctuationResult,
-        apostrophesResult,
-        commaResult,
-        directSpeechPunctuationResult,
-        sentencePunctuationResult,
-      ] = await Promise.all([
+      const [vocabularyResult, spellingResult, englishSharedReviewResult] = await Promise.all([
         supabase
           .from("vocabulary_review")
           .select("*")
           .eq("user_id", user.id)
+          .eq("knew_it", false)
           .order("created_at", { ascending: false }),
         supabase
           .from("spelling_review")
           .select("*")
           .eq("user_id", user.id)
+          .eq("knew_it", false)
           .order("created_at", { ascending: false }),
         supabase
-          .from("comprehension_review")
+          .from("english_review")
           .select("*")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("grammar_primary_word_classes_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("grammar_sentence_structure_syntax_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_advanced_punctuation_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_apostrophes_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_comma_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_direct_speech_punctuation_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_sentence_review")
-          .select("*")
-          .eq("user_id", user.id)
+          .in("main_category", ["comprehension", "grammar", "punctuation"])
           .order("created_at", { ascending: false }),
       ])
 
@@ -480,357 +455,73 @@ export default function EnglishReviewPage() {
       if (spellingResult.error) {
         console.error("Error loading spelling review:", spellingResult.error)
       }
-      if (comprehensionResult.error) {
-        console.error("Error loading comprehension review:", comprehensionResult.error)
-      }
-      if (primaryWordClassesResult.error) {
-        console.error(
-          "Error loading primary word classes review:",
-          primaryWordClassesResult.error
-        )
-      }
-      if (sentenceStructureSyntaxResult.error) {
-        console.error(
-          "Error loading sentence structure syntax review:",
-          sentenceStructureSyntaxResult.error
-        )
-      }
-      if (advancedPunctuationResult.error) {
-        console.error(
-          "Error loading advanced punctuation review:",
-          advancedPunctuationResult.error
-        )
-      }
-      if (apostrophesResult.error) {
-        console.error("Error loading apostrophes review:", apostrophesResult.error)
-      }
-      if (commaResult.error) {
-        console.error("Error loading comma review:", commaResult.error)
-      }
-      if (directSpeechPunctuationResult.error) {
-        console.error(
-          "Error loading direct speech punctuation review:",
-          directSpeechPunctuationResult.error
-        )
-      }
-      if (sentencePunctuationResult.error) {
-        console.error(
-          "Error loading sentence punctuation review:",
-          sentencePunctuationResult.error
-        )
+      if (englishSharedReviewResult.error) {
+        console.error("Error loading shared English review:", englishSharedReviewResult.error)
       }
 
       const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
       const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
-      const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionReviewRow[]
-      const primaryWordClassesRows =
-        (primaryWordClassesResult.data ?? []) as PrimaryWordClassesReviewRow[]
-      const sentenceStructureSyntaxRows =
-        (sentenceStructureSyntaxResult.data ?? []) as SentenceStructureSyntaxReviewRow[]
-      const advancedPunctuationRows =
-        (advancedPunctuationResult.data ?? []) as AdvancedPunctuationReviewRow[]
-      const apostrophesRows = (apostrophesResult.data ?? []) as ApostrophesReviewRow[]
-      const commaRows = (commaResult.data ?? []) as CommaReviewRow[]
-      const directSpeechPunctuationRows =
-        (directSpeechPunctuationResult.data ?? []) as DirectSpeechPunctuationReviewRow[]
-      const sentencePunctuationRows =
-        (sentencePunctuationResult.data ?? []) as SentencePunctuationReviewRow[]
+      const englishSharedRows = (englishSharedReviewResult.data ?? []) as EnglishSharedReviewRow[]
 
-      const comprehensionQuestionIds = Array.from(
+      const vocabularyAndSpellingWordIds = Array.from(
         new Set(
-          comprehensionRows
+          [...vocabularyRows, ...spellingRows]
+            .map((row) => row.word_id)
+            .filter((id): id is number => id !== null)
+        )
+      )
+
+      const englishSharedQuestionIds = Array.from(
+        new Set(
+          englishSharedRows
             .map((row) => row.question_id)
             .filter((id): id is number => id !== null)
         )
       )
 
-      const primaryWordClassesQuestionIds = Array.from(
-        new Set(
-          primaryWordClassesRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const sentenceStructureSyntaxQuestionIds = Array.from(
-        new Set(
-          sentenceStructureSyntaxRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const advancedPunctuationQuestionIds = Array.from(
-        new Set(
-          advancedPunctuationRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const apostrophesQuestionIds = Array.from(
-        new Set(
-          apostrophesRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const commaQuestionIds = Array.from(
-        new Set(
-          commaRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const directSpeechPunctuationQuestionIds = Array.from(
-        new Set(
-          directSpeechPunctuationRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const sentencePunctuationQuestionIds = Array.from(
-        new Set(
-          sentencePunctuationRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      let comprehensionMap = new Map<number, { explanation: string; difficulty: number | null }>()
-      let primaryWordClassesMap = new Map<
+      let wordLookupMap = new Map<number, { definition: string; difficulty: number | null }>()
+      let englishSharedQuestionMap = new Map<
         number,
         { explanation: string; difficulty: number | null }
       >()
-      let sentenceStructureSyntaxMap = new Map<
-        number,
-        { explanation: string; difficulty: number | null }
-      >()
-      let advancedPunctuationMap = new Map<
-        number,
-        { explanation: string; difficulty: number | null }
-      >()
-      let apostrophesMap = new Map<number, { explanation: string; difficulty: number | null }>()
-      let commaMap = new Map<number, { explanation: string; difficulty: number | null }>()
-      let directSpeechPunctuationMap = new Map<
-        number,
-        { explanation: string; difficulty: number | null }
-      >()
-      let sentencePunctuationMap = new Map<
-        number,
-        { explanation: string; difficulty: number | null }
-      >()
+            if (vocabularyAndSpellingWordIds.length > 0) {
+        const { data: wordLookupData, error: wordLookupError } = await supabase
+          .from("words")
+          .select("id, definition, difficulty")
+          .in("id", vocabularyAndSpellingWordIds)
 
-// PART 1 ENDS HERE
-      if (comprehensionQuestionIds.length > 0) {
-        const { data: comprehensionQuestionsData, error: comprehensionQuestionsError } =
-          await supabase
-            .from("comprehension_questions")
-            .select("id, explanation, difficulty")
-            .in("id", comprehensionQuestionIds)
-
-        if (comprehensionQuestionsError) {
-          console.error("Error loading comprehension explanations:", comprehensionQuestionsError)
+        if (wordLookupError) {
+          console.error("Error loading vocabulary/spelling definitions:", wordLookupError)
         } else {
-          comprehensionMap = new Map(
-            ((comprehensionQuestionsData ?? []) as ComprehensionQuestionRow[]).map((question) => [
-              question.id,
+          wordLookupMap = new Map(
+            ((wordLookupData ?? []) as WordLookupRow[]).map((word) => [
+              word.id,
               {
-                explanation: question.explanation || "",
-                difficulty: question.difficulty,
+                definition: word.definition || "",
+                difficulty: word.difficulty ?? null,
               },
             ])
           )
         }
       }
 
-      if (primaryWordClassesQuestionIds.length > 0) {
-        const {
-          data: primaryWordClassesQuestionsData,
-          error: primaryWordClassesQuestionsError,
-        } = await supabase
-          .from("grammar_primary_word_classes_questions")
+      if (englishSharedQuestionIds.length > 0) {
+        const { data: englishQuestionsData, error: englishQuestionsError } = await supabase
+          .from("english_questions")
           .select("id, explanation, difficulty")
-          .in("id", primaryWordClassesQuestionIds)
+          .in("id", englishSharedQuestionIds)
 
-        if (primaryWordClassesQuestionsError) {
-          console.error(
-            "Error loading primary word classes explanations:",
-            primaryWordClassesQuestionsError
-          )
+        if (englishQuestionsError) {
+          console.error("Error loading shared English explanations:", englishQuestionsError)
         } else {
-          primaryWordClassesMap = new Map(
-            ((primaryWordClassesQuestionsData ?? []) as PrimaryWordClassesQuestionRow[]).map(
-              (question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                },
-              ]
-            )
-          )
-        }
-      }
-
-      if (sentenceStructureSyntaxQuestionIds.length > 0) {
-        const {
-          data: sentenceStructureSyntaxQuestionsData,
-          error: sentenceStructureSyntaxQuestionsError,
-        } = await supabase
-          .from("grammar_sentence_structure_syntax_questions")
-          .select("id, explanation, difficulty")
-          .in("id", sentenceStructureSyntaxQuestionIds)
-
-        if (sentenceStructureSyntaxQuestionsError) {
-          console.error(
-            "Error loading sentence structure syntax explanations:",
-            sentenceStructureSyntaxQuestionsError
-          )
-        } else {
-          sentenceStructureSyntaxMap = new Map(
-            ((sentenceStructureSyntaxQuestionsData ?? []) as SentenceStructureSyntaxQuestionRow[]).map(
-              (question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                },
-              ]
-            )
-          )
-        }
-      }
-
-      if (advancedPunctuationQuestionIds.length > 0) {
-        const {
-          data: advancedPunctuationQuestionsData,
-          error: advancedPunctuationQuestionsError,
-        } = await supabase
-          .from("punctuation_advanced_punctuation_questions")
-          .select("id, explanation, difficulty")
-          .in("id", advancedPunctuationQuestionIds)
-
-        if (advancedPunctuationQuestionsError) {
-          console.error(
-            "Error loading advanced punctuation explanations:",
-            advancedPunctuationQuestionsError
-          )
-        } else {
-          advancedPunctuationMap = new Map(
-            ((advancedPunctuationQuestionsData ?? []) as AdvancedPunctuationQuestionRow[]).map(
-              (question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                },
-              ]
-            )
-          )
-        }
-      }
-
-      if (apostrophesQuestionIds.length > 0) {
-        const { data: apostrophesQuestionsData, error: apostrophesQuestionsError } =
-          await supabase
-            .from("punctuation_apostrophes_questions")
-            .select("id, explanation, difficulty")
-            .in("id", apostrophesQuestionIds)
-
-        if (apostrophesQuestionsError) {
-          console.error("Error loading apostrophes explanations:", apostrophesQuestionsError)
-        } else {
-          apostrophesMap = new Map(
-            ((apostrophesQuestionsData ?? []) as ApostrophesQuestionRow[]).map((question) => [
+          englishSharedQuestionMap = new Map(
+            ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map((question) => [
               question.id,
               {
                 explanation: question.explanation || "",
-                difficulty: question.difficulty,
+                difficulty: question.difficulty ?? null,
               },
             ])
-          )
-        }
-      }
-
-      if (commaQuestionIds.length > 0) {
-        const { data: commaQuestionsData, error: commaQuestionsError } = await supabase
-          .from("punctuation_comma_questions")
-          .select("id, explanation, difficulty")
-          .in("id", commaQuestionIds)
-
-        if (commaQuestionsError) {
-          console.error("Error loading comma explanations:", commaQuestionsError)
-        } else {
-          commaMap = new Map(
-            ((commaQuestionsData ?? []) as CommaQuestionRow[]).map((question) => [
-              question.id,
-              {
-                explanation: question.explanation || "",
-                difficulty: question.difficulty,
-              },
-            ])
-          )
-        }
-      }
-
-      if (directSpeechPunctuationQuestionIds.length > 0) {
-        const {
-          data: directSpeechPunctuationQuestionsData,
-          error: directSpeechPunctuationQuestionsError,
-        } = await supabase
-          .from("punctuation_direct_speech_punctuation_questions")
-          .select("id, explanation, difficulty")
-          .in("id", directSpeechPunctuationQuestionIds)
-
-        if (directSpeechPunctuationQuestionsError) {
-          console.error(
-            "Error loading direct speech punctuation explanations:",
-            directSpeechPunctuationQuestionsError
-          )
-        } else {
-          directSpeechPunctuationMap = new Map(
-            ((directSpeechPunctuationQuestionsData ?? []) as DirectSpeechPunctuationQuestionRow[]).map(
-              (question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                },
-              ]
-            )
-          )
-        }
-      }
-
-      if (sentencePunctuationQuestionIds.length > 0) {
-        const {
-          data: sentencePunctuationQuestionsData,
-          error: sentencePunctuationQuestionsError,
-        } = await supabase
-          .from("punctuation_sentence_questions")
-          .select("id, explanation, difficulty")
-          .in("id", sentencePunctuationQuestionIds)
-
-        if (sentencePunctuationQuestionsError) {
-          console.error(
-            "Error loading sentence punctuation explanations:",
-            sentencePunctuationQuestionsError
-          )
-        } else {
-          sentencePunctuationMap = new Map(
-            ((sentencePunctuationQuestionsData ?? []) as SentencePunctuationQuestionRow[]).map(
-              (question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                },
-              ]
-            )
           )
         }
       }
@@ -841,149 +532,55 @@ export default function EnglishReviewPage() {
           category: "vocabulary" as const,
           item_id: row.word_id,
           item_text: row.word,
-          difficulty: row.difficulty,
+          difficulty:
+            row.word_id !== null
+              ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
+              : row.difficulty ?? null,
           created_at: row.created_at,
-          explanation: "",
+          explanation: row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
         })),
         ...spellingRows.map((row) => ({
           id: `spelling-${row.id}`,
           category: "spelling" as const,
           item_id: row.word_id,
           item_text: row.word,
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-          explanation: "",
-        })),
-        ...comprehensionRows.map((row) => ({
-          id: `comprehension-${row.id}`,
-          category: "comprehension" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
           difficulty:
-            row.question_id !== null
-              ? comprehensionMap.get(row.question_id)?.difficulty ?? null
-              : null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? comprehensionMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
-        ...primaryWordClassesRows.map((row) => ({
-          id: `primary-word-classes-${row.id}`,
-          category: "primary_word_classes" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? primaryWordClassesMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
+            row.word_id !== null
+              ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
               : row.difficulty ?? null,
           created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? primaryWordClassesMap.get(row.question_id)?.explanation || ""
-              : "",
+          explanation: row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
         })),
-        ...sentenceStructureSyntaxRows.map((row) => ({
-          id: `sentence-structure-syntax-${row.id}`,
-          category: "sentence_structure_syntax" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? sentenceStructureSyntaxMap.get(row.question_id)?.difficulty ??
-                row.difficulty ??
-                null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? sentenceStructureSyntaxMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
-        ...advancedPunctuationRows.map((row) => ({
-          id: `advanced-punctuation-${row.id}`,
-          category: "advanced_punctuation" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? advancedPunctuationMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? advancedPunctuationMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
-        ...apostrophesRows.map((row) => ({
-          id: `apostrophes-${row.id}`,
-          category: "apostrophes" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? apostrophesMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? apostrophesMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
-        ...commaRows.map((row) => ({
-          id: `comma-${row.id}`,
-          category: "comma" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? commaMap.get(row.question_id)?.difficulty ?? row.difficulty ?? null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null ? commaMap.get(row.question_id)?.explanation || "" : "",
-        })),
-        ...directSpeechPunctuationRows.map((row) => ({
-          id: `direct-speech-punctuation-${row.id}`,
-          category: "direct_speech_punctuation" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? directSpeechPunctuationMap.get(row.question_id)?.difficulty ??
-                row.difficulty ??
-                null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? directSpeechPunctuationMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
-        ...sentencePunctuationRows.map((row) => ({
-          id: `sentence-punctuation-${row.id}`,
-          category: "sentence_punctuation" as const,
-          item_id: row.question_id,
-          item_text: row.question_text,
-          difficulty:
-            row.question_id !== null
-              ? sentencePunctuationMap.get(row.question_id)?.difficulty ??
-                row.difficulty ??
-                null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation:
-            row.question_id !== null
-              ? sentencePunctuationMap.get(row.question_id)?.explanation || ""
-              : "",
-        })),
+        ...englishSharedRows.flatMap((row) => {
+          const mappedCategory = mapSharedReviewCategory(row)
+          if (!mappedCategory) return []
+
+          return [
+            {
+              id: `english-shared-${row.id}`,
+              category: mappedCategory,
+              item_id: row.question_id,
+              item_text: row.question_text,
+              difficulty:
+                row.question_id !== null
+                  ? englishSharedQuestionMap.get(row.question_id)?.difficulty ??
+                    row.difficulty ??
+                    null
+                  : row.difficulty ?? null,
+              created_at: row.created_at,
+              explanation:
+                row.question_id !== null
+                  ? englishSharedQuestionMap.get(row.question_id)?.explanation || ""
+                  : "",
+            },
+          ]
+        }),
       ]
 
-      if (mounted) {
-        setReviewItems(mergedRows)
-        setLoadingData(false)
-      }
+      if (!mounted) return
+
+      setReviewItems(mergedRows)
+      setLoadingData(false)
     }
 
     loadData()
@@ -993,7 +590,6 @@ export default function EnglishReviewPage() {
     }
   }, [router])
 
-// PART 2 ENDS HERE
   async function removeItem(item: EnglishReviewRow) {
     const {
       data: { user },
@@ -1001,86 +597,55 @@ export default function EnglishReviewPage() {
 
     if (!user) return
 
-    let error = null
+    let error: { message?: string } | null = null
 
     if (item.category === "vocabulary") {
-      const result = await supabase
+      const query = supabase
         .from("vocabulary_review")
         .delete()
         .eq("user_id", user.id)
-        .ilike("word", item.item_text)
+        .eq("knew_it", false)
+
+      const result =
+        item.item_id !== null
+          ? await query.eq("word_id", item.item_id)
+          : await query.ilike("word", item.item_text)
 
       error = result.error
     } else if (item.category === "spelling") {
-      const result = await supabase
+      const query = supabase
         .from("spelling_review")
         .delete()
         .eq("user_id", user.id)
-        .ilike("word", item.item_text)
+        .eq("knew_it", false)
+
+      const result =
+        item.item_id !== null
+          ? await query.eq("word_id", item.item_id)
+          : await query.ilike("word", item.item_text)
 
       error = result.error
-    } else if (item.category === "comprehension") {
-      const result = await supabase
-        .from("comprehension_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
+    } else {
+      const sharedMeta = getSharedReviewMeta(item.category)
 
-      error = result.error
-    } else if (item.category === "primary_word_classes") {
-      const result = await supabase
-        .from("grammar_primary_word_classes_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
+      if (!sharedMeta) return
 
-      error = result.error
-    } else if (item.category === "sentence_structure_syntax") {
-      const result = await supabase
-        .from("grammar_sentence_structure_syntax_review")
+      let query = supabase
+        .from("english_review")
         .delete()
         .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
+        .eq("main_category", sharedMeta.main_category)
 
-      error = result.error
-    } else if (item.category === "advanced_punctuation") {
-      const result = await supabase
-        .from("punctuation_advanced_punctuation_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
+      if (sharedMeta.subcategory === null) {
+        query = query.is("subcategory", null)
+      } else {
+        query = query.eq("subcategory", sharedMeta.subcategory)
+      }
 
-      error = result.error
-    } else if (item.category === "apostrophes") {
-      const result = await supabase
-        .from("punctuation_apostrophes_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
-
-      error = result.error
-    } else if (item.category === "comma") {
-      const result = await supabase
-        .from("punctuation_comma_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
-
-      error = result.error
-    } else if (item.category === "direct_speech_punctuation") {
-      const result = await supabase
-        .from("punctuation_direct_speech_punctuation_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
-
-      error = result.error
-    } else if (item.category === "sentence_punctuation") {
-      const result = await supabase
-        .from("punctuation_sentence_review")
-        .delete()
-        .eq("user_id", user.id)
-        .ilike("question_text", item.item_text)
+      const result =
+        item.item_id !== null
+          ? await query.eq("question_id", item.item_id)
+          : await query.ilike("question_text", item.item_text)
 
       error = result.error
     }
@@ -1090,21 +655,20 @@ export default function EnglishReviewPage() {
       return
     }
 
-    setReviewItems((prev) =>
-      prev.filter(
-        (row) =>
-          !(
-            row.category === item.category &&
-            row.item_text.toLowerCase() === item.item_text.toLowerCase()
-          )
-      )
-    )
+    setReviewItems((prev) => prev.filter((row) => !isSameReviewItem(row, item)))
   }
 
   const uniqueItems = useMemo(() => {
     return Array.from(
       new Map(
-        reviewItems.map((item) => [`${item.category}::${item.item_text.toLowerCase()}`, item])
+        reviewItems.map((item) => {
+          const key =
+            item.item_id !== null
+              ? `${item.category}::id::${item.item_id}`
+              : `${item.category}::text::${item.item_text.toLowerCase()}`
+
+          return [key, item]
+        })
       ).values()
     )
   }, [reviewItems])
@@ -1116,222 +680,39 @@ export default function EnglishReviewPage() {
       const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
       const matchesDifficulty =
         difficultyFilter === "all" || String(item.difficulty ?? "") === difficultyFilter
-      const matchesCategory =
-        categoryFilter === "all" || item.category === categoryFilter
+      const matchesCategory = categoryFilter === "all" || item.category === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
   }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredItems() {
-    const vocabularyIds = filteredItems
-      .filter((row) => row.category === "vocabulary")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+    const groupedIds = filteredItems.reduce((acc, row) => {
+      if (row.item_id === null) return acc
 
-    const spellingIds = filteredItems
-      .filter((row) => row.category === "spelling")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+      const category = row.category
+      const existing = acc[category] ?? []
+      acc[category] = [...existing, row.item_id]
 
-    const comprehensionIds = filteredItems
-      .filter((row) => row.category === "comprehension")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+      return acc
+    }, {} as Partial<Record<EnglishReviewCategory, number[]>>)
 
-    const primaryWordClassesIds = filteredItems
-      .filter((row) => row.category === "primary_word_classes")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+    const targetCategory =
+      categoryFilter !== "all"
+        ? (categoryFilter as EnglishReviewCategory)
+        : filteredItems.length > 0
+          ? filteredItems[0].category
+          : null
 
-    const sentenceStructureSyntaxIds = filteredItems
-      .filter((row) => row.category === "sentence_structure_syntax")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+    if (!targetCategory) return
 
-    const advancedPunctuationIds = filteredItems
-      .filter((row) => row.category === "advanced_punctuation")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+    const config = getReviewStorageConfig(targetCategory)
+    const ids = groupedIds[targetCategory] ?? []
 
-    const apostrophesIds = filteredItems
-      .filter((row) => row.category === "apostrophes")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
+    if (!config || ids.length === 0) return
 
-    const commaIds = filteredItems
-      .filter((row) => row.category === "comma")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
-
-    const directSpeechPunctuationIds = filteredItems
-      .filter((row) => row.category === "direct_speech_punctuation")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
-
-    const sentencePunctuationIds = filteredItems
-      .filter((row) => row.category === "sentence_punctuation")
-      .map((row) => row.item_id)
-      .filter((id): id is number => id !== null)
-
-    if (categoryFilter === "vocabulary" && vocabularyIds.length > 0) {
-      localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
-      router.push("/english/vocabulary?mode=review")
-      return
-    }
-
-    if (categoryFilter === "spelling" && spellingIds.length > 0) {
-      localStorage.setItem("spelling_review_ids", JSON.stringify(spellingIds))
-      router.push("/english/spelling?mode=review")
-      return
-    }
-
-    if (categoryFilter === "comprehension" && comprehensionIds.length > 0) {
-      localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
-      router.push("/english/comprehension?mode=review")
-      return
-    }
-
-    if (categoryFilter === "primary_word_classes" && primaryWordClassesIds.length > 0) {
-      localStorage.setItem(
-        "primary_word_classes_review_ids",
-        JSON.stringify(primaryWordClassesIds)
-      )
-      router.push("/english/grammar/primary-word-classes?mode=review")
-      return
-    }
-
-    if (categoryFilter === "sentence_structure_syntax" && sentenceStructureSyntaxIds.length > 0) {
-      localStorage.setItem(
-        "sentence_structure_syntax_review_ids",
-        JSON.stringify(sentenceStructureSyntaxIds)
-      )
-      router.push("/english/grammar/sentence-structure-syntax?mode=review")
-      return
-    }
-
-    if (categoryFilter === "advanced_punctuation" && advancedPunctuationIds.length > 0) {
-      localStorage.setItem(
-        "advanced_punctuation_review_ids",
-        JSON.stringify(advancedPunctuationIds)
-      )
-      router.push("/english/punctuation/advanced-punctuation?mode=review")
-      return
-    }
-
-    if (categoryFilter === "apostrophes" && apostrophesIds.length > 0) {
-      localStorage.setItem("apostrophes_review_ids", JSON.stringify(apostrophesIds))
-      router.push("/english/punctuation/apostrophes?mode=review")
-      return
-    }
-
-    if (categoryFilter === "comma" && commaIds.length > 0) {
-      localStorage.setItem("comma_review_ids", JSON.stringify(commaIds))
-      router.push("/english/punctuation/comma?mode=review")
-      return
-    }
-
-    if (
-      categoryFilter === "direct_speech_punctuation" &&
-      directSpeechPunctuationIds.length > 0
-    ) {
-      localStorage.setItem(
-        "direct_speech_punctuation_review_ids",
-        JSON.stringify(directSpeechPunctuationIds)
-      )
-      router.push("/english/punctuation/direct-speech-punctuation?mode=review")
-      return
-    }
-
-    if (categoryFilter === "sentence_punctuation" && sentencePunctuationIds.length > 0) {
-      localStorage.setItem(
-        "sentence_punctuation_review_ids",
-        JSON.stringify(sentencePunctuationIds)
-      )
-      router.push("/english/punctuation/sentence?mode=review")
-      return
-    }
-
-    if (filteredItems.length > 0) {
-      const firstCategory = filteredItems[0].category
-
-      if (firstCategory === "vocabulary" && vocabularyIds.length > 0) {
-        localStorage.setItem("vocabulary_review_ids", JSON.stringify(vocabularyIds))
-        router.push("/english/vocabulary?mode=review")
-        return
-      }
-
-      if (firstCategory === "spelling" && spellingIds.length > 0) {
-        localStorage.setItem("spelling_review_ids", JSON.stringify(spellingIds))
-        router.push("/english/spelling?mode=review")
-        return
-      }
-
-      if (firstCategory === "comprehension" && comprehensionIds.length > 0) {
-        localStorage.setItem("comprehension_review_ids", JSON.stringify(comprehensionIds))
-        router.push("/english/comprehension?mode=review")
-        return
-      }
-
-      if (firstCategory === "primary_word_classes" && primaryWordClassesIds.length > 0) {
-        localStorage.setItem(
-          "primary_word_classes_review_ids",
-          JSON.stringify(primaryWordClassesIds)
-        )
-        router.push("/english/grammar/primary-word-classes?mode=review")
-        return
-      }
-
-      if (firstCategory === "sentence_structure_syntax" && sentenceStructureSyntaxIds.length > 0) {
-        localStorage.setItem(
-          "sentence_structure_syntax_review_ids",
-          JSON.stringify(sentenceStructureSyntaxIds)
-        )
-        router.push("/english/grammar/sentence-structure-syntax?mode=review")
-        return
-      }
-
-      if (firstCategory === "advanced_punctuation" && advancedPunctuationIds.length > 0) {
-        localStorage.setItem(
-          "advanced_punctuation_review_ids",
-          JSON.stringify(advancedPunctuationIds)
-        )
-        router.push("/english/punctuation/advanced-punctuation?mode=review")
-        return
-      }
-
-      if (firstCategory === "apostrophes" && apostrophesIds.length > 0) {
-        localStorage.setItem("apostrophes_review_ids", JSON.stringify(apostrophesIds))
-        router.push("/english/punctuation/apostrophes?mode=review")
-        return
-      }
-
-      if (firstCategory === "comma" && commaIds.length > 0) {
-        localStorage.setItem("comma_review_ids", JSON.stringify(commaIds))
-        router.push("/english/punctuation/comma?mode=review")
-        return
-      }
-
-      if (
-        firstCategory === "direct_speech_punctuation" &&
-        directSpeechPunctuationIds.length > 0
-      ) {
-        localStorage.setItem(
-          "direct_speech_punctuation_review_ids",
-          JSON.stringify(directSpeechPunctuationIds)
-        )
-        router.push("/english/punctuation/direct-speech-punctuation?mode=review")
-        return
-      }
-
-      if (firstCategory === "sentence_punctuation" && sentencePunctuationIds.length > 0) {
-        localStorage.setItem(
-          "sentence_punctuation_review_ids",
-          JSON.stringify(sentencePunctuationIds)
-        )
-        router.push("/english/punctuation/sentence?mode=review")
-      }
-    }
+    localStorage.setItem(config.key, JSON.stringify(ids))
+    router.push(config.route)
   }
 
   const reviewStats = useMemo(() => {
@@ -1435,8 +816,7 @@ export default function EnglishReviewPage() {
       </div>
     )
   }
-
-  return (
+    return (
     <div
       style={{
         minHeight: "100vh",
@@ -1477,8 +857,8 @@ export default function EnglishReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review English items across vocabulary, spelling, comprehension, grammar, and punctuation
-              with live filters, category insights, and quick retry access.
+              Review English items across vocabulary, spelling, comprehension, grammar, and
+              punctuation with live filters, category insights, and quick retry access.
             </p>
           </div>
 

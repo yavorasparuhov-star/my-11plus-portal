@@ -1,20 +1,37 @@
 "use client"
 
+import React, { useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
-import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export default function Home() {
+type WordRow = {
+  id: number
+  word: string
+  definition: string
+  difficulty: number | null
+  example_sentence: string | null
+}
+
+type PracticeResult = {
+  wordId: number
+  word: string
+  knewIt: boolean
+}
+
+const REVIEW_STORAGE_KEY = "vocabulary_review_ids"
+const LEGACY_REVIEW_STORAGE_KEY = "vocabulary_review_word_ids"
+
+export default function VocabularyPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reviewMode = searchParams.get("mode") === "review"
 
-  const [words, setWords] = useState<any[]>([])
-  const [testWords, setTestWords] = useState<any[]>([])
+  const [words, setWords] = useState<WordRow[]>([])
+  const [testWords, setTestWords] = useState<WordRow[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [difficulty, setDifficulty] = useState(1)
-  const [practiceResults, setPracticeResults] = useState<any[]>([])
+  const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1)
+  const [practiceResults, setPracticeResults] = useState<PracticeResult[]>([])
   const [timer, setTimer] = useState(15)
   const [totalTimer, setTotalTimer] = useState(90)
   const [isTimerActive, setIsTimerActive] = useState(false)
@@ -23,9 +40,11 @@ export default function Home() {
   const [showHint, setShowHint] = useState(false)
   const [progressSaved, setProgressSaved] = useState(false)
   const [isAnswerLocked, setIsAnswerLocked] = useState(false)
-  const [options, setOptions] = useState<any[]>([])
-  const [selectedAnswer, setSelectedAnswer] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
+  const [options, setOptions] = useState<WordRow[]>([])
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [clearedReviewWordIds, setClearedReviewWordIds] = useState<number[]>([])
 
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [timerEnabled, setTimerEnabled] = useState(true)
@@ -39,11 +58,21 @@ export default function Home() {
 
   useEffect(() => {
     async function getUser() {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user ?? null)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push("/login")
+        return
+      }
+
+      setUserId(user.id)
+      setAuthChecked(true)
     }
+
     getUser()
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const savedVoice = localStorage.getItem("vocabulary_voice_enabled")
@@ -60,21 +89,60 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchWords() {
-      const { data, error } = await supabase.from("words").select().order("id")
-      if (error) console.error(error)
-      else setWords(data || [])
+      const { data, error } = await supabase
+        .from("words")
+        .select("id, word, definition, difficulty, example_sentence")
+        .order("id", { ascending: true })
+
+      if (error) {
+        console.error("Error loading vocabulary words:", error)
+        return
+      }
+
+      setWords((data || []) as WordRow[])
     }
+
     fetchWords()
   }, [])
 
-  useEffect(() => {
-    if (!user || !testStarted || words.length === 0) return
+  function getStoredReviewIds() {
+    const rawNew = localStorage.getItem(REVIEW_STORAGE_KEY)
+    const rawOld = localStorage.getItem(LEGACY_REVIEW_STORAGE_KEY)
+    const raw = rawNew ?? rawOld
 
-    let selectedWords: any[] = []
+    if (!raw) return []
+
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return []
+
+      const ids = Array.from(
+        new Set(parsed.filter((id): id is number => typeof id === "number"))
+      )
+
+      if (!rawNew && rawOld) {
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(ids))
+        localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+      }
+
+      return ids
+    } catch {
+      return []
+    }
+  }
+
+  function clearStoredReviewIds() {
+    localStorage.removeItem(REVIEW_STORAGE_KEY)
+    localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+  }
+
+  useEffect(() => {
+    if (!userId || !testStarted || words.length === 0) return
+
+    let selectedWords: WordRow[] = []
 
     if (reviewMode) {
-      const saved = localStorage.getItem("vocabulary_review_word_ids")
-      const reviewIds: number[] = saved ? JSON.parse(saved) : []
+      const reviewIds = getStoredReviewIds()
       selectedWords = words.filter((w) => reviewIds.includes(w.id))
     } else {
       selectedWords = words.filter((w) => w.difficulty === difficulty)
@@ -93,12 +161,13 @@ export default function Home() {
     setSelectedAnswer(null)
     setShowHint(false)
     setIsAnswerLocked(false)
-  }, [difficulty, words, user, testStarted, reviewMode])
+    setClearedReviewWordIds([])
+  }, [difficulty, words, userId, testStarted, reviewMode, timerEnabled])
 
-  function generateOptions(correctWord: any, allWords: any[]) {
+  function generateOptions(correctWord: WordRow, allWords: WordRow[]) {
     const incorrect = allWords
       .filter((w) => w.id !== correctWord.id)
-      .sort(() => 0.5 - Math.random())
+      .sort(() => Math.random() - 0.5)
       .slice(0, 3)
 
     return [...incorrect, correctWord].sort(() => Math.random() - 0.5)
@@ -135,7 +204,7 @@ export default function Home() {
 
     if (timer === 0) {
       setIsTimerActive(false)
-      handleNext(false)
+      void handleNext(false)
       return
     }
 
@@ -162,7 +231,7 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [isTimerActive, totalTimer, timerEnabled])
 
-  function handleAnswer(option: any) {
+  function handleAnswer(option: WordRow) {
     if (isAnswerLocked) return
     if (selectedAnswer !== null) return
     if (!currentWord) return
@@ -176,18 +245,18 @@ export default function Home() {
     setIsTimerActive(false)
 
     setTimeout(() => {
-      handleNext(correct)
+      void handleNext(correct)
       setSelectedAnswer(null)
     }, 1800)
   }
 
   async function removeWordFromReview(wordId: number) {
-    if (!user) return
+    if (!userId) return
 
     const { error } = await supabase
       .from("vocabulary_review")
       .delete()
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("word_id", wordId)
 
     if (error) {
@@ -195,36 +264,52 @@ export default function Home() {
     }
   }
 
-  const handleNext = async (knewIt: boolean | null = null) => {
-    if (!user || !currentWord) {
+  async function addWordToReview(word: WordRow) {
+    if (!userId) return
+
+    const { error } = await supabase.from("vocabulary_review").insert([
+      {
+        user_id: userId,
+        word_id: word.id,
+        word: word.word,
+        knew_it: false,
+        difficulty: word.difficulty,
+      },
+    ])
+
+    if (error) {
+      console.error("Error saving vocabulary review:", error)
+    }
+  }
+
+  async function handleNext(knewIt: boolean | null = null) {
+    if (!userId || !currentWord) {
       setIsAnswerLocked(false)
       return
     }
 
     let updatedResults = practiceResults
+    let updatedClearedReviewIds = clearedReviewWordIds
 
     if (knewIt !== null) {
-      const newResult = { word: currentWord.word, knewIt }
+      const newResult: PracticeResult = {
+        wordId: currentWord.id,
+        word: currentWord.word,
+        knewIt,
+      }
+
       updatedResults = [...practiceResults, newResult]
       setPracticeResults(updatedResults)
 
       if (reviewMode) {
         if (knewIt) {
           await removeWordFromReview(currentWord.id)
+          updatedClearedReviewIds = [...clearedReviewWordIds, currentWord.id]
+          setClearedReviewWordIds(updatedClearedReviewIds)
         }
       } else {
-        const { error } = await supabase.from("vocabulary_review").insert([
-          {
-            user_id: user.id,
-            word_id: currentWord.id,
-            word: currentWord.word,
-            knew_it: knewIt,
-            difficulty: currentWord.difficulty,
-          },
-        ])
-
-        if (error) {
-          console.error("Error saving vocabulary review:", error)
+        if (!knewIt) {
+          await addWordToReview(currentWord)
         }
       }
     }
@@ -233,15 +318,16 @@ export default function Home() {
       const totalWordsPracticed = updatedResults.length
       const correctAnswers = updatedResults.filter((r) => r.knewIt).length
       const successRate =
-        totalWordsPracticed > 0 ? (correctAnswers / totalWordsPracticed) * 100 : 0
+        totalWordsPracticed > 0
+          ? Math.round((correctAnswers / totalWordsPracticed) * 100)
+          : 0
 
       const { error } = await supabase.from("vocabulary_progress").insert([
         {
-          user_id: user.id,
+          user_id: userId,
           total_words_practiced: totalWordsPracticed,
           correct_answers: correctAnswers,
           success_rate: successRate,
-          difficulty: difficulty,
         },
       ])
 
@@ -252,7 +338,13 @@ export default function Home() {
       }
 
       if (reviewMode) {
-        localStorage.removeItem("vocabulary_review_word_ids")
+        const storedIds = getStoredReviewIds()
+        const remainingIds = storedIds.filter(
+          (id) => !updatedClearedReviewIds.includes(id)
+        )
+
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+        localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
       }
 
       setTestCompleted(true)
@@ -269,7 +361,7 @@ export default function Home() {
     setIsTimerActive(timerEnabled)
   }
 
-  const restartTest = () => {
+  function restartTest() {
     setTestStarted(false)
     setTestCompleted(false)
     setCurrentIndex(0)
@@ -281,13 +373,14 @@ export default function Home() {
     setSelectedAnswer(null)
     setShowHint(false)
     setIsAnswerLocked(false)
+    setClearedReviewWordIds([])
 
     setTimeout(() => {
       setTestStarted(true)
     }, 0)
   }
 
-  const speakWord = (text: string) => {
+  function speakWord(text: string) {
     if (typeof window === "undefined") return
     if (!("speechSynthesis" in window)) return
 
@@ -316,13 +409,13 @@ export default function Home() {
     }, 140)
   }
 
-  const toggleVoice = () => {
+  function toggleVoice() {
     const newValue = !voiceEnabled
     setVoiceEnabled(newValue)
     localStorage.setItem("vocabulary_voice_enabled", String(newValue))
   }
 
-  const toggleTimer = () => {
+  function toggleTimer() {
     const newValue = !timerEnabled
     setTimerEnabled(newValue)
     localStorage.setItem("vocabulary_timer_enabled", String(newValue))
@@ -334,11 +427,11 @@ export default function Home() {
     }
   }
 
-  if (!user) {
+  if (!authChecked) {
     return (
       <>
         <Header />
-        <p>Loading...</p>
+        <p style={{ padding: "20px" }}>Loading...</p>
       </>
     )
   }
@@ -362,7 +455,7 @@ export default function Home() {
                 {[1, 2, 3].map((level) => (
                   <button
                     key={level}
-                    onClick={() => setDifficulty(level)}
+                    onClick={() => setDifficulty(level as 1 | 2 | 3)}
                     style={{
                       ...styles.smallButton,
                       backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
@@ -391,7 +484,26 @@ export default function Home() {
     return (
       <>
         <Header />
-        <p style={{ padding: "20px" }}>Preparing test...</p>
+        <div style={styles.center}>
+          <div style={styles.card}>
+            <h1 style={{ marginBottom: "12px" }}>
+              {reviewMode ? "No review words found" : "Preparing test..."}
+            </h1>
+
+            <p style={{ marginBottom: "20px", fontSize: "18px" }}>
+              {reviewMode
+                ? "There are no saved vocabulary review words for this set."
+                : "Please wait while your vocabulary test is being prepared."}
+            </p>
+
+            <button
+              onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
+              style={styles.button}
+            >
+              {reviewMode ? "Back to English Review" : "Back to English"}
+            </button>
+          </div>
+        </div>
       </>
     )
   }
@@ -404,13 +516,17 @@ export default function Home() {
           <>
             <div style={styles.headerRow}>
               <div style={styles.headerLeft}>
-                <h1 style={styles.title}>Vocabulary Test</h1>
+                <h1 style={styles.title}>
+                  {reviewMode ? "Vocabulary Review" : "Vocabulary Test"}
+                </h1>
                 <p style={styles.metaText}>
                   Question {Math.min(currentIndex + 1, testWords.length)} / {testWords.length}
                 </p>
-                <p style={styles.metaText}>
-                  Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}
-                </p>
+                {!reviewMode && (
+                  <p style={styles.metaText}>
+                    Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}
+                  </p>
+                )}
                 {timerEnabled && (
                   <p style={styles.metaText}>
                     Word Timer: {timer}s | Total: {totalTimer}s
@@ -428,7 +544,9 @@ export default function Home() {
                     ...styles.controlButton,
                     backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
                     color: voiceEnabled ? "white" : "black",
-                    transform: hearPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    transform: hearPressed
+                      ? "translateY(2px) scale(0.98)"
+                      : "translateY(0) scale(1)",
                     boxShadow: hearPressed
                       ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                       : "0 2px 6px rgba(0,0,0,0.15)",
@@ -438,10 +556,12 @@ export default function Home() {
                 </button>
 
                 <button
-                  onClick={() => currentWord && handleRepeatPress(currentWord.word)}
+                  onClick={() => handleRepeatPress(currentWord.word)}
                   style={{
                     ...styles.controlButton,
-                    transform: repeatPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    transform: repeatPressed
+                      ? "translateY(2px) scale(0.98)"
+                      : "translateY(0) scale(1)",
                     boxShadow: repeatPressed
                       ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                       : "0 2px 6px rgba(0,0,0,0.15)",
@@ -457,7 +577,9 @@ export default function Home() {
                   }}
                   style={{
                     ...styles.controlButton,
-                    transform: hintPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    transform: hintPressed
+                      ? "translateY(2px) scale(0.98)"
+                      : "translateY(0) scale(1)",
                     boxShadow: hintPressed
                       ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                       : "0 2px 6px rgba(0,0,0,0.15)",
@@ -475,7 +597,9 @@ export default function Home() {
                     ...styles.controlButton,
                     backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
                     color: timerEnabled ? "white" : "black",
-                    transform: timerPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                    transform: timerPressed
+                      ? "translateY(2px) scale(0.98)"
+                      : "translateY(0) scale(1)",
                     boxShadow: timerPressed
                       ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                       : "0 2px 6px rgba(0,0,0,0.15)",
@@ -490,7 +614,7 @@ export default function Home() {
               <h2 style={styles.word}>{currentWord.word}</h2>
             </div>
 
-            {showHint && currentWord?.example_sentence && (
+            {showHint && currentWord.example_sentence && (
               <p style={styles.hintText}>{currentWord.example_sentence}</p>
             )}
 
@@ -515,7 +639,9 @@ export default function Home() {
                       ...styles.answerButton,
                       backgroundColor: bg,
                       color:
-                        selectedAnswer !== null && (isCorrect || isSelected) ? "white" : "black",
+                        selectedAnswer !== null && (isCorrect || isSelected)
+                          ? "white"
+                          : "black",
                     }}
                   >
                     {option.definition}
@@ -532,6 +658,7 @@ export default function Home() {
 
             <p>Correct: {practiceResults.filter((r) => r.knewIt).length}</p>
             <p>Wrong: {practiceResults.filter((r) => !r.knewIt).length}</p>
+            {progressSaved && <p>Progress saved.</p>}
 
             <div style={{ marginTop: "20px" }}>
               <button onClick={restartTest} style={{ ...styles.button, marginRight: "10px" }}>
@@ -539,13 +666,13 @@ export default function Home() {
               </button>
 
               <button
-                onClick={() => router.push("/english")}
+                onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
                 style={{
                   ...styles.button,
                   backgroundColor: "#0070f3",
                 }}
               >
-                📘 Back to English
+                {reviewMode ? "📘 Back to English Review" : "📘 Back to English"}
               </button>
             </div>
           </div>
@@ -555,7 +682,7 @@ export default function Home() {
   )
 }
 
-const styles: any = {
+const styles: Record<string, React.CSSProperties> = {
   page: {
     padding: "20px",
     maxWidth: "900px",

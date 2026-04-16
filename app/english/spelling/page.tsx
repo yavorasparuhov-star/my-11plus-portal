@@ -1,15 +1,32 @@
 "use client"
 
+import React, { useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
-import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export default function SpellingPage() {
-  const [user, setUser] = useState<any>(null)
+type WordRow = {
+  id: number
+  word: string
+  definition: string | null
+  difficulty: number | null
+  wrong_words: string[] | null
+}
 
-  const [words, setWords] = useState<any[]>([])
-  const [difficulty, setDifficulty] = useState(1)
+const REVIEW_STORAGE_KEY = "spelling_review_ids"
+const LEGACY_REVIEW_STORAGE_KEY = "spelling_review_word_ids"
+const TOTAL_QUESTIONS = 10
+
+export default function SpellingPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const reviewMode = searchParams.get("mode") === "review"
+
+  const [userId, setUserId] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+
+  const [words, setWords] = useState<WordRow[]>([])
+  const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1)
   const [testStarted, setTestStarted] = useState(false)
 
   const [showHint, setShowHint] = useState(false)
@@ -30,19 +47,26 @@ export default function SpellingPage() {
   const [hintPressed, setHintPressed] = useState(false)
   const [timerPressed, setTimerPressed] = useState(false)
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const reviewMode = searchParams.get("mode") === "review"
-  const TOTAL_QUESTIONS = 10
   const totalQuestions = words.length > 0 ? words.length : TOTAL_QUESTIONS
+  const currentWord = words[currentIndex] || null
 
   useEffect(() => {
     async function getUser() {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user ?? null)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push("/login")
+        return
+      }
+
+      setUserId(user.id)
+      setAuthChecked(true)
     }
+
     getUser()
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const savedTimer = localStorage.getItem("spelling_timer_enabled")
@@ -65,21 +89,81 @@ export default function SpellingPage() {
     localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
   }, [voiceEnabled])
 
-  async function fetchWords() {
-    const { data, error } = await supabase.from("words").select("*")
+  function getStoredReviewIds() {
+    const rawNew = localStorage.getItem(REVIEW_STORAGE_KEY)
+    const rawOld = localStorage.getItem(LEGACY_REVIEW_STORAGE_KEY)
+    const raw = rawNew ?? rawOld
 
-    if (error) {
-      console.error(error)
+    if (!raw) return []
+
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return []
+
+      const ids = Array.from(
+        new Set(parsed.filter((id): id is number => typeof id === "number"))
+      )
+
+      if (!rawNew && rawOld) {
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(ids))
+        localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+      }
+
+      return ids
+    } catch {
+      return []
+    }
+  }
+
+  function setStoredReviewIds(ids: number[]) {
+    const uniqueIds = Array.from(new Set(ids))
+
+    if (uniqueIds.length === 0) {
+      localStorage.removeItem(REVIEW_STORAGE_KEY)
+      localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
       return
     }
 
-    const allWords = data || []
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(uniqueIds))
+    localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+  }
 
-    let selectedWords: any[] = []
+  function removeWordIdFromStoredReviewIds(wordId: number) {
+    const remainingIds = getStoredReviewIds().filter((id) => id !== wordId)
+    setStoredReviewIds(remainingIds)
+  }
+
+  function getProgressDifficulty(testWords: WordRow[]) {
+    if (!reviewMode) return difficulty
+
+    const uniqueDifficulties = Array.from(
+      new Set(
+        testWords
+          .map((word) => word.difficulty)
+          .filter((value): value is number => typeof value === "number")
+      )
+    )
+
+    return uniqueDifficulties.length === 1 ? uniqueDifficulties[0] : null
+  }
+
+  async function fetchWords() {
+    const { data, error } = await supabase
+      .from("words")
+      .select("id, word, definition, difficulty, wrong_words")
+      .order("id", { ascending: true })
+
+    if (error) {
+      console.error("Error loading spelling words:", error)
+      return
+    }
+
+    const allWords = (data || []) as WordRow[]
+
+    let selectedWords: WordRow[] = []
 
     if (reviewMode) {
-      const saved = localStorage.getItem("spelling_review_word_ids")
-      const reviewIds: number[] = saved ? JSON.parse(saved) : []
+      const reviewIds = getStoredReviewIds()
       selectedWords = allWords.filter((w) => reviewIds.includes(w.id))
     } else {
       selectedWords = allWords.filter((w) => w.difficulty === difficulty)
@@ -99,25 +183,23 @@ export default function SpellingPage() {
   }
 
   useEffect(() => {
-    if (user) {
-      fetchWords()
-    }
-  }, [user, difficulty, reviewMode])
+    if (!userId) return
+    void fetchWords()
+  }, [userId, difficulty, reviewMode])
 
   useEffect(() => {
     if (words.length > 0 && words[currentIndex]) {
-      generateOptions(words[currentIndex])
+      generateOptions(words[currentIndex], words)
     }
   }, [words, currentIndex])
 
   useEffect(() => {
     if (!testStarted) return
     if (!voiceEnabled) return
-    if (words.length === 0) return
-    if (!words[currentIndex]) return
+    if (!currentWord) return
 
-    speakWord(words[currentIndex].word)
-  }, [testStarted, words, currentIndex, voiceEnabled])
+    speakWord(currentWord.word)
+  }, [testStarted, currentWord, voiceEnabled])
 
   useEffect(() => {
     if (!timerEnabled) {
@@ -125,7 +207,8 @@ export default function SpellingPage() {
       return
     }
 
-    if (!words[currentIndex]) return
+    if (!testStarted) return
+    if (!currentWord) return
     if (selected) return
 
     setTimeLeft(15)
@@ -134,7 +217,7 @@ export default function SpellingPage() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
-          handleTimeout()
+          void handleTimeout()
           return 0
         }
         return prev - 1
@@ -142,13 +225,7 @@ export default function SpellingPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [currentIndex, timerEnabled, selected, words])
-
-  useEffect(() => {
-    if (user && words.length > 0 && currentIndex >= words.length && !progressSaved) {
-      saveSpellingProgress(score)
-    }
-  }, [currentIndex, words.length, progressSaved, score, user])
+  }, [currentIndex, timerEnabled, selected, currentWord, testStarted])
 
   function shuffle(array: string[]) {
     return [...array].sort(() => Math.random() - 0.5)
@@ -183,15 +260,29 @@ export default function SpellingPage() {
     }, 140)
   }
 
-  function generateOptions(wordItem: any) {
-    if (!wordItem || !wordItem.word) return
-
+  function generateOptions(wordItem: WordRow, allWords: WordRow[]) {
     const correct = wordItem.word
-    const wrong = Array.isArray(wordItem.wrong_words)
-      ? [...new Set(wordItem.wrong_words)]
+    const wrongFromRow = Array.isArray(wordItem.wrong_words)
+      ? wordItem.wrong_words.filter((value): value is string => typeof value === "string")
       : []
 
-    const allOptions = shuffle([correct, ...wrong])
+    const cleanedWrong = [...new Set(wrongFromRow.map((w) => w.trim()).filter(Boolean))]
+      .filter((w) => w.toLowerCase() !== correct.trim().toLowerCase())
+
+    let wrongOptions = cleanedWrong.slice(0, 3)
+
+    if (wrongOptions.length < 3) {
+      const fallback = allWords
+        .map((w) => w.word)
+        .filter((w) => w.trim().toLowerCase() !== correct.trim().toLowerCase())
+        .filter((w) => !wrongOptions.includes(w))
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3 - wrongOptions.length)
+
+      wrongOptions = [...wrongOptions, ...fallback]
+    }
+
+    const allOptions = shuffle([correct, ...wrongOptions]).slice(0, 4)
 
     setOptions(allOptions)
     setSelected(null)
@@ -201,17 +292,18 @@ export default function SpellingPage() {
   }
 
   async function saveSpellingProgress(finalScore: number) {
-    if (!user || words.length === 0) return
+    if (!userId || words.length === 0) return
 
     const successRate = Math.round((finalScore / words.length) * 100)
+    const progressDifficulty = getProgressDifficulty(words)
 
     const { error } = await supabase.from("spelling_progress").insert([
       {
-        user_id: user.id,
+        user_id: userId,
         total_words_practiced: words.length,
         correct_answers: finalScore,
         success_rate: successRate,
-        difficulty: difficulty,
+        difficulty: progressDifficulty,
       },
     ])
 
@@ -222,27 +314,25 @@ export default function SpellingPage() {
     }
   }
 
-  async function saveWrongSpellingReview(wordItem: any) {
-    if (!user) return
+  async function saveWrongSpellingReview(wordItem: WordRow) {
+    if (!userId) return
 
     const cleanedWord = wordItem.word.trim().toLowerCase()
 
-    const { error } = await supabase
-      .from("spelling_review")
-      .upsert(
-        [
-          {
-            user_id: user.id,
-            word_id: wordItem.id,
-            word: cleanedWord,
-            knew_it: false,
-            difficulty: wordItem.difficulty,
-          },
-        ],
+    const { error } = await supabase.from("spelling_review").upsert(
+      [
         {
-          onConflict: "user_id,word",
-        }
-      )
+          user_id: userId,
+          word_id: wordItem.id,
+          word: cleanedWord,
+          knew_it: false,
+          difficulty: wordItem.difficulty,
+        },
+      ],
+      {
+        onConflict: "user_id,word",
+      }
+    )
 
     if (error) {
       console.error("Error saving spelling review:", {
@@ -255,12 +345,12 @@ export default function SpellingPage() {
   }
 
   async function removeWordFromReview(wordId: number) {
-    if (!user) return
+    if (!userId) return
 
     const { error } = await supabase
       .from("spelling_review")
       .delete()
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("word_id", wordId)
 
     if (error) {
@@ -275,62 +365,62 @@ export default function SpellingPage() {
   }
 
   async function handleAnswer(option: string) {
-    if (selected) return
+    if (selected || !currentWord) return
 
-    const currentWordItem = words[currentIndex]
-    const correct = currentWordItem.word
+    const correct = currentWord.word
+    const isCorrect = option === correct
+    const updatedScore = isCorrect ? score + 1 : score
+
     setSelected(option)
 
-    if (option === correct) {
+    if (isCorrect) {
       setFeedback("Correct ✅")
-      setScore((prev) => prev + 1)
+      setScore(updatedScore)
 
       if (reviewMode) {
-        await removeWordFromReview(currentWordItem.id)
+        await removeWordFromReview(currentWord.id)
+        removeWordIdFromStoredReviewIds(currentWord.id)
       }
     } else {
       setFeedback(`Incorrect ❌ (Correct: ${correct})`)
 
       if (!reviewMode) {
-        await saveWrongSpellingReview(currentWordItem)
+        await saveWrongSpellingReview(currentWord)
       }
     }
 
     setTimeout(() => {
-      nextQuestion()
+      void nextQuestion(updatedScore)
     }, 1500)
   }
 
   async function handleTimeout() {
-    if (selected || !words[currentIndex]) return
+    if (selected || !currentWord) return
 
-    const currentWordItem = words[currentIndex]
-    const correct = currentWordItem.word
+    const correct = currentWord.word
     setSelected("TIMEOUT")
     setFeedback(`⏰ Time's up! Correct: ${correct}`)
 
     if (!reviewMode) {
-      await saveWrongSpellingReview(currentWordItem)
+      await saveWrongSpellingReview(currentWord)
     }
 
     setTimeout(() => {
-      nextQuestion()
+      void nextQuestion(score)
     }, 1500)
   }
 
-  function nextQuestion() {
+  async function nextQuestion(finalScore: number) {
     if (currentIndex < words.length - 1) {
       setCurrentIndex((prev) => prev + 1)
-    } else {
-      setCurrentIndex(words.length)
+      return
     }
+
+    await saveSpellingProgress(finalScore)
+    setCurrentIndex(words.length)
   }
 
   function restartTest() {
-    if (reviewMode) {
-      localStorage.removeItem("spelling_review_word_ids")
-    }
-
     setTestStarted(false)
     setScore(0)
     setCurrentIndex(0)
@@ -341,7 +431,7 @@ export default function SpellingPage() {
     setShowHint(false)
     setTimeLeft(15)
     setProgressSaved(false)
-    setWords([])
+    void fetchWords()
   }
 
   function getDifficultyLabel(value: number | null | undefined) {
@@ -351,7 +441,7 @@ export default function SpellingPage() {
     return "Not set"
   }
 
-  if (!user) {
+  if (!authChecked) {
     return (
       <>
         <Header />
@@ -375,7 +465,7 @@ export default function SpellingPage() {
                 {[1, 2, 3].map((level) => (
                   <button
                     key={level}
-                    onClick={() => setDifficulty(level)}
+                    onClick={() => setDifficulty(level as 1 | 2 | 3)}
                     style={{
                       ...styles.smallButton,
                       backgroundColor: difficulty === level ? "#c7d2fe" : "#e5e7eb",
@@ -404,15 +494,32 @@ export default function SpellingPage() {
     return (
       <>
         <Header />
-        <div style={styles.center}>Preparing test...</div>
+        <div style={styles.center}>
+          <div style={styles.card}>
+            <h1 style={{ marginBottom: "12px" }}>
+              {reviewMode ? "No review words found" : "Preparing test..."}
+            </h1>
+
+            <p style={{ marginBottom: "20px", fontSize: "18px" }}>
+              {reviewMode
+                ? "There are no saved spelling review words for this set."
+                : "Please wait while your spelling test is being prepared."}
+            </p>
+
+            <button
+              onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
+              style={styles.button}
+            >
+              {reviewMode ? "Back to English Review" : "Back to English"}
+            </button>
+          </div>
+        </div>
       </>
     )
   }
 
-  const currentWord = words[currentIndex]
-
   if (!currentWord) {
-    const displayedDifficulty = reviewMode ? words[0]?.difficulty ?? null : difficulty
+    const displayedDifficulty = reviewMode ? getProgressDifficulty(words) : difficulty
 
     return (
       <>
@@ -424,6 +531,7 @@ export default function SpellingPage() {
               Your Score: {score} / {totalQuestions}
             </h2>
             <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
+            {progressSaved && <p>Progress saved.</p>}
 
             <div style={{ marginTop: "20px" }}>
               <button onClick={restartTest} style={{ ...styles.button, marginRight: "10px" }}>
@@ -431,13 +539,13 @@ export default function SpellingPage() {
               </button>
 
               <button
-                onClick={() => router.push("/english")}
+                onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
                 style={{
                   ...styles.button,
                   backgroundColor: "#0070f3",
                 }}
               >
-                📘 Back to English
+                {reviewMode ? "📘 Back to English Review" : "📘 Back to English"}
               </button>
             </div>
           </div>
@@ -448,7 +556,7 @@ export default function SpellingPage() {
 
   const correctAnswer = currentWord.word
   const displayedDifficulty =
-    reviewMode ? currentWord?.difficulty ?? words[0]?.difficulty ?? null : difficulty
+    reviewMode ? currentWord.difficulty ?? words[0]?.difficulty ?? null : difficulty
 
   return (
     <>
@@ -456,7 +564,7 @@ export default function SpellingPage() {
       <div style={styles.page}>
         <div style={styles.headerRow}>
           <div style={styles.headerLeft}>
-            <h1 style={styles.title}>Spelling Test</h1>
+            <h1 style={styles.title}>{reviewMode ? "Spelling Review" : "Spelling Test"}</h1>
             <p style={styles.metaText}>
               Question {currentIndex + 1} / {totalQuestions}
             </p>
@@ -489,7 +597,9 @@ export default function SpellingPage() {
               onClick={() => handleRepeatPress(correctAnswer)}
               style={{
                 ...styles.controlButton,
-                transform: repeatPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                transform: repeatPressed
+                  ? "translateY(2px) scale(0.98)"
+                  : "translateY(0) scale(1)",
                 boxShadow: repeatPressed
                   ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                   : "0 2px 6px rgba(0,0,0,0.15)",
@@ -505,7 +615,9 @@ export default function SpellingPage() {
               }}
               style={{
                 ...styles.controlButton,
-                transform: hintPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                transform: hintPressed
+                  ? "translateY(2px) scale(0.98)"
+                  : "translateY(0) scale(1)",
                 boxShadow: hintPressed
                   ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                   : "0 2px 6px rgba(0,0,0,0.15)",
@@ -523,7 +635,9 @@ export default function SpellingPage() {
                 ...styles.controlButton,
                 backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
                 color: timerEnabled ? "white" : "black",
-                transform: timerPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
+                transform: timerPressed
+                  ? "translateY(2px) scale(0.98)"
+                  : "translateY(0) scale(1)",
                 boxShadow: timerPressed
                   ? "inset 0 2px 6px rgba(0,0,0,0.25)"
                   : "0 2px 6px rgba(0,0,0,0.15)",
@@ -540,7 +654,7 @@ export default function SpellingPage() {
 
         {showHint && (
           <p style={styles.hintText}>
-            <strong>Definition:</strong> {currentWord.definition}
+            <strong>Definition:</strong> {currentWord.definition || "No definition available."}
           </p>
         )}
 
@@ -555,14 +669,16 @@ export default function SpellingPage() {
 
             return (
               <button
-                key={i}
+                key={`${opt}-${i}`}
                 onClick={() => handleAnswer(opt)}
                 disabled={!!selected}
                 style={{
                   ...styles.answerButton,
                   backgroundColor: bg,
                   color:
-                    selected && (opt === correctAnswer || opt === selected) ? "white" : "black",
+                    selected && (opt === correctAnswer || opt === selected)
+                      ? "white"
+                      : "black",
                   cursor: selected ? "not-allowed" : "pointer",
                 }}
               >
@@ -578,7 +694,7 @@ export default function SpellingPage() {
   )
 }
 
-const styles: any = {
+const styles: Record<string, React.CSSProperties> = {
   page: {
     padding: "20px",
     maxWidth: "900px",

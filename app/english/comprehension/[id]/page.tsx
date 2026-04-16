@@ -3,17 +3,17 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 
-type ComprehensionTest = {
+type EnglishComprehensionTest = {
   id: number
   title: string
-  passage: string
+  passage: string | null
   difficulty: number | null
   created_at: string
 }
 
-type ComprehensionQuestion = {
+type EnglishComprehensionQuestion = {
   id: number
   test_id: number
   question_text: string
@@ -23,8 +23,14 @@ type ComprehensionQuestion = {
   option_d: string
   correct_answer: string
   explanation: string | null
+  difficulty: number | null
   question_order: number
   created_at: string
+}
+
+type QuestionMigrationMapRow = {
+  old_question_id: number
+  new_question_id: number
 }
 
 type UserAnswerMap = {
@@ -34,13 +40,15 @@ type UserAnswerMap = {
 export default function ComprehensionTestPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const mode = searchParams.get("mode")
 
   const rawId = Array.isArray(params.id) ? params.id[0] : params.id
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [test, setTest] = useState<ComprehensionTest | null>(null)
-  const [questions, setQuestions] = useState<ComprehensionQuestion[]>([])
+  const [test, setTest] = useState<EnglishComprehensionTest | null>(null)
+  const [questions, setQuestions] = useState<EnglishComprehensionQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -48,6 +56,61 @@ export default function ComprehensionTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
+  const [reviewIds, setReviewIds] = useState<number[]>([])
+
+  useEffect(() => {
+    async function loadReviewIds() {
+      if (mode !== "review") {
+        setReviewIds([])
+        return
+      }
+
+      const raw = localStorage.getItem("comprehension_review_ids")
+      if (!raw) {
+        setReviewIds([])
+        return
+      }
+
+      try {
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) {
+          setReviewIds([])
+          return
+        }
+
+        const rawIds = parsed.filter((id) => typeof id === "number") as number[]
+
+        if (rawIds.length === 0) {
+          setReviewIds([])
+          return
+        }
+
+        const { data: directRows } = await supabase
+          .from("english_questions")
+          .select("id")
+          .in("id", rawIds)
+          .eq("main_category", "comprehension")
+          .eq("subcategory", "comprehension")
+
+        const { data: mappedRows } = await supabase
+          .from("english_question_migration_map")
+          .select("old_question_id, new_question_id")
+          .eq("old_questions_table", "comprehension_questions")
+          .in("old_question_id", rawIds)
+
+        const directIds = (directRows ?? []).map((row) => row.id)
+        const mappedIds = ((mappedRows ?? []) as QuestionMigrationMapRow[]).map(
+          (row) => row.new_question_id
+        )
+
+        setReviewIds(Array.from(new Set([...directIds, ...mappedIds])))
+      } catch {
+        setReviewIds([])
+      }
+    }
+
+    loadReviewIds()
+  }, [mode])
 
   useEffect(() => {
     async function loadPage() {
@@ -80,9 +143,11 @@ export default function ComprehensionTestPage() {
       setUserId(user.id)
 
       const { data: testData, error: testError } = await supabase
-        .from("comprehension_tests")
-        .select("*")
+        .from("english_tests")
+        .select("id, title, passage, difficulty, created_at")
         .eq("id", testId)
+        .eq("main_category", "comprehension")
+        .eq("subcategory", "comprehension")
         .single()
 
       if (testError) {
@@ -92,11 +157,26 @@ export default function ComprehensionTestPage() {
         return
       }
 
-      const { data: questionData, error: questionError } = await supabase
-        .from("comprehension_questions")
+      let questionQuery = supabase
+        .from("english_questions")
         .select("*")
         .eq("test_id", testId)
+        .eq("main_category", "comprehension")
+        .eq("subcategory", "comprehension")
         .order("question_order", { ascending: true })
+
+      if (mode === "review") {
+        if (reviewIds.length === 0) {
+          setTest(testData as EnglishComprehensionTest)
+          setQuestions([])
+          setLoading(false)
+          return
+        }
+
+        questionQuery = questionQuery.in("id", reviewIds)
+      }
+
+      const { data: questionData, error: questionError } = await questionQuery
 
       if (questionError) {
         console.error("Error loading comprehension questions:", questionError)
@@ -105,13 +185,13 @@ export default function ComprehensionTestPage() {
         return
       }
 
-      setTest(testData as ComprehensionTest)
-      setQuestions((questionData || []) as ComprehensionQuestion[])
+      setTest(testData as EnglishComprehensionTest)
+      setQuestions((questionData || []) as EnglishComprehensionQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router])
+  }, [rawId, testId, router, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -143,6 +223,12 @@ export default function ComprehensionTestPage() {
   function goHomeSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
+
+    if (mode === "review") {
+      router.push("/english/comprehension?mode=review")
+      return
+    }
+
     router.push("/english/comprehension")
   }
 
@@ -160,32 +246,43 @@ export default function ComprehensionTestPage() {
     if (questions.length === 0) return
 
     setSubmitting(true)
+    setErrorMessage("")
 
     let correctAnswers = 0
     const wrongAnswersForReview: {
       user_id: string
       test_id: number
       question_id: number
+      main_category: string
+      subcategory: string
       question_text: string
       user_answer: string
       correct_answer: string
       difficulty: number | null
     }[] = []
 
+    const correctlyAnsweredReviewQuestionIds: number[] = []
+
     for (const question of questions) {
       const selected = answers[question.id]
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
+
+        if (mode === "review") {
+          correctlyAnsweredReviewQuestionIds.push(question.id)
+        }
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
           test_id: test.id,
           question_id: question.id,
+          main_category: "comprehension",
+          subcategory: "comprehension",
           question_text: question.question_text,
           user_answer: selected || "",
           correct_answer: question.correct_answer,
-          difficulty: test.difficulty,
+          difficulty: question.difficulty ?? test.difficulty ?? null,
         })
       }
     }
@@ -194,31 +291,60 @@ export default function ComprehensionTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      main_category: "comprehension",
+      subcategory: "comprehension",
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+    }
+
     const { error: progressError } = await supabase
-      .from("comprehension_progress")
-      .insert([
-        {
-          user_id: userId,
-          test_id: test.id,
-          total_questions: totalQuestions,
-          correct_answers: correctAnswers,
-          success_rate: successRate,
-          difficulty: test.difficulty,
-        },
-      ])
+      .from("english_progress")
+      .insert([progressPayload])
 
     if (progressError) {
       console.error("Error saving comprehension progress:", progressError)
+      setErrorMessage(progressError.message || "Could not save your progress. Please try again.")
+      setSubmitting(false)
+      return
     }
 
-    if (wrongAnswersForReview.length > 0) {
+    if (mode === "review") {
+      if (correctlyAnsweredReviewQuestionIds.length > 0) {
+        const { error: deleteReviewError } = await supabase
+          .from("english_review")
+          .delete()
+          .eq("user_id", userId)
+          .eq("main_category", "comprehension")
+          .eq("subcategory", "comprehension")
+          .in("question_id", correctlyAnsweredReviewQuestionIds)
+
+        if (deleteReviewError) {
+          console.error(
+            "Error removing correctly answered comprehension review items:",
+            deleteReviewError
+          )
+        }
+      }
+    } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
-        .from("comprehension_review")
+        .from("english_review")
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
         console.error("Error saving comprehension review:", reviewError)
       }
+    }
+
+    if (mode === "review") {
+      const remainingIds = reviewIds.filter(
+        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+      )
+      localStorage.setItem("comprehension_review_ids", JSON.stringify(remainingIds))
     }
 
     setScore(correctAnswers)
@@ -243,7 +369,7 @@ export default function ComprehensionTestPage() {
     await submitTest()
   }
 
-  function getOptionText(question: ComprehensionQuestion, option: "A" | "B" | "C" | "D") {
+  function getOptionText(question: EnglishComprehensionQuestion, option: "A" | "B" | "C" | "D") {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -255,6 +381,7 @@ export default function ComprehensionTestPage() {
     setSubmitted(false)
     setScore(0)
     setShowIncompleteModal(false)
+    setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -264,12 +391,16 @@ export default function ComprehensionTestPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading comprehension test...</p>
+        <p style={styles.message}>
+          {mode === "review"
+            ? "Loading comprehension review..."
+            : "Loading comprehension test..."}
+        </p>
       </>
     )
   }
 
-  if (errorMessage) {
+  if (errorMessage && !test) {
     return (
       <>
         <Header />
@@ -310,9 +441,13 @@ export default function ComprehensionTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>📖 {test.title}</h1>
+                <h1 style={styles.title}>
+                  {mode === "review" ? "📖 Review:" : "📖"} {test.title}
+                </h1>
                 <p style={styles.subtitle}>
-                  Read the passage carefully, then answer all questions below.
+                  {mode === "review"
+                    ? "Answer your saved review questions carefully, then submit."
+                    : "Read the passage carefully, then answer all questions below."}
                 </p>
               </div>
 
@@ -321,10 +456,10 @@ export default function ComprehensionTestPage() {
                 {test.difficulty === 1
                   ? "Easy"
                   : test.difficulty === 2
-                  ? "Medium"
-                  : test.difficulty === 3
-                  ? "Hard"
-                  : "Not set"}
+                    ? "Medium"
+                    : test.difficulty === 3
+                      ? "Hard"
+                      : "Not set"}
               </div>
             </div>
 
@@ -345,121 +480,139 @@ export default function ComprehensionTestPage() {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Test
                   </button>
-                  <button
-                    onClick={() => router.push("/english/comprehension")}
-                    style={styles.primaryButton}
-                  >
+                  <button onClick={goHomeSafely} style={styles.primaryButton}>
                     Back to Comprehension
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={styles.progressInfo}>
-                Answered: <strong>{answeredCount}</strong> / {questions.length}
-              </div>
+              <>
+                <div style={styles.progressInfo}>
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
+                </div>
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+              </>
             )}
           </div>
 
           <div style={styles.passageCard}>
             <h2 style={styles.sectionTitle}>Passage</h2>
             <div style={styles.passageText}>
-              {test.passage.split("\n").map((paragraph, index) => (
-                <p key={index} style={styles.paragraph}>
-                  {paragraph}
-                </p>
-              ))}
+              {(test.passage || "No passage available.")
+                .split("\n")
+                .map((paragraph, index) => (
+                  <p key={index} style={styles.paragraph}>
+                    {paragraph}
+                  </p>
+                ))}
             </div>
           </div>
 
           <div style={styles.questionsCard}>
-            <h2 style={styles.sectionTitle}>Questions</h2>
+            <h2 style={styles.sectionTitle}>
+              {mode === "review" ? "Review Questions" : "Questions"}
+            </h2>
 
-            {questions.map((question, index) => {
-              const selected = answers[question.id]
-              const isCorrect = selected === question.correct_answer
+            {questions.length === 0 ? (
+              <div style={styles.centerCard}>
+                <h2>{mode === "review" ? "No review questions found" : "No questions found"}</h2>
+                <p>
+                  {mode === "review"
+                    ? "There are no saved review questions for this test."
+                    : "Add questions in Supabase for this test."}
+                </p>
+              </div>
+            ) : (
+              questions.map((question, index) => {
+                const selected = answers[question.id]
+                const isCorrect = selected === question.correct_answer
 
-              return (
-                <div key={question.id} style={styles.questionBlock}>
-                  <h3 style={styles.questionTitle}>
-                    {index + 1}. {question.question_text}
-                  </h3>
+                return (
+                  <div key={question.id} style={styles.questionBlock}>
+                    <h3 style={styles.questionTitle}>
+                      {index + 1}. {question.question_text}
+                    </h3>
 
-                  <div style={styles.optionsGrid}>
-                    {(["A", "B", "C", "D"] as const).map((option) => {
-                      const optionText = getOptionText(question, option)
+                    <div style={styles.optionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const optionText = getOptionText(question, option)
 
-                      let backgroundColor = "#f3f4f6"
-                      let borderColor = "transparent"
+                        let backgroundColor = "#f3f4f6"
+                        let borderColor = "transparent"
 
-                      if (selected === option) {
-                        backgroundColor = "#e0e7ff"
-                        borderColor = "#4f46e5"
-                      }
-
-                      if (submitted) {
-                        if (option === question.correct_answer) {
-                          backgroundColor = "#dcfce7"
-                          borderColor = "#16a34a"
-                        } else if (selected === option && option !== question.correct_answer) {
-                          backgroundColor = "#fee2e2"
-                          borderColor = "#dc2626"
+                        if (selected === option) {
+                          backgroundColor = "#e0e7ff"
+                          borderColor = "#4f46e5"
                         }
-                      }
 
-                      return (
-                        <button
-                          key={option}
-                          onClick={() => handleSelect(question.id, option)}
-                          disabled={submitted}
-                          style={{
-                            ...styles.optionButton,
-                            backgroundColor,
-                            borderColor,
-                            cursor: submitted ? "default" : "pointer",
-                          }}
-                        >
-                          <span style={styles.optionLetter}>{option}</span>
-                          <span>{optionText}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                        if (submitted) {
+                          if (option === question.correct_answer) {
+                            backgroundColor = "#dcfce7"
+                            borderColor = "#16a34a"
+                          } else if (selected === option && option !== question.correct_answer) {
+                            backgroundColor = "#fee2e2"
+                            borderColor = "#dc2626"
+                          }
+                        }
 
-                  {submitted && (
-                    <div
-                      style={{
-                        ...styles.feedbackBox,
-                        backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                        borderColor: isCorrect ? "#86efac" : "#fecaca",
-                      }}
-                    >
-                      <p style={{ margin: 0 }}>
-                        <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
-                      </p>
-                      {!isCorrect && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          Correct answer:{" "}
-                          <strong>
-                            {question.correct_answer} —{" "}
-                            {getOptionText(
-                              question,
-                              question.correct_answer as "A" | "B" | "C" | "D"
-                            )}
-                          </strong>
-                        </p>
-                      )}
-                      {question.explanation && question.explanation.trim() !== "" && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          <strong>Explanation:</strong> {question.explanation}
-                        </p>
-                      )}
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => handleSelect(question.id, option)}
+                            disabled={submitted}
+                            style={{
+                              ...styles.optionButton,
+                              backgroundColor,
+                              borderColor,
+                              cursor: submitted ? "default" : "pointer",
+                            }}
+                          >
+                            <span style={styles.optionLetter}>{option}</span>
+                            <span>{optionText}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
-              )
-            })}
 
-            {!submitted && (
+                    {submitted && (
+                      <div
+                        style={{
+                          ...styles.feedbackBox,
+                          backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                          borderColor: isCorrect ? "#86efac" : "#fecaca",
+                        }}
+                      >
+                        <p style={{ margin: 0 }}>
+                          <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
+                        </p>
+
+                        {!isCorrect && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            Correct answer:{" "}
+                            <strong>
+                              {question.correct_answer} —{" "}
+                              {getOptionText(
+                                question,
+                                question.correct_answer as "A" | "B" | "C" | "D"
+                              )}
+                            </strong>
+                          </p>
+                        )}
+
+                        {question.explanation && question.explanation.trim() !== "" && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            <strong>Explanation:</strong> {question.explanation}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+
+            {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
                   onClick={handleSubmit}
@@ -481,9 +634,7 @@ export default function ComprehensionTestPage() {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
-            <p style={styles.modalText}>
-              Not all questions have been answered.
-            </p>
+            <p style={styles.modalText}>Not all questions have been answered.</p>
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
@@ -550,6 +701,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   progressInfo: {
     marginTop: "20px",
     color: "#444",
+  },
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
   },
   resultBanner: {
     marginTop: "20px",
@@ -658,7 +816,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   centerCard: {
     maxWidth: "700px",
-    margin: "80px auto",
+    margin: "40px auto",
     background: "white",
     borderRadius: "20px",
     padding: "32px",

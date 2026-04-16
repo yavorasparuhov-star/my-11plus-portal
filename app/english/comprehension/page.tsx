@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 
@@ -10,36 +11,105 @@ const hoverCardStyle = {
   cursor: "pointer",
 }
 
-type ComprehensionTest = {
+type EnglishComprehensionTest = {
   id: number
   title: string
-  passage: string
+  passage: string | null
   difficulty: number | null
   created_at: string
 }
 
-type ComprehensionProgress = {
-  id: string
+type EnglishComprehensionQuestion = {
+  id: number
+  test_id: number
+}
+
+type EnglishComprehensionProgress = {
+  id: string | number
   user_id: string
   test_id: number | null
   success_rate: number | null
   created_at: string | null
 }
 
-type TestWithProgress = ComprehensionTest & {
+type QuestionMigrationMapRow = {
+  old_question_id: number
+  new_question_id: number
+}
+
+type TestWithProgress = EnglishComprehensionTest & {
   score: number
   completed_at: string | null
   isCompleted: boolean
+  reviewQuestionIds?: number[]
 }
 
 export default function ComprehensionTestsPage() {
+  const searchParams = useSearchParams()
+  const mode = searchParams.get("mode")
+
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
+  const [reviewIds, setReviewIds] = useState<number[]>([])
+
+  useEffect(() => {
+    async function loadReviewIds() {
+      if (mode !== "review") {
+        setReviewIds([])
+        return
+      }
+
+      const raw = localStorage.getItem("comprehension_review_ids")
+      if (!raw) {
+        setReviewIds([])
+        return
+      }
+
+      try {
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) {
+          setReviewIds([])
+          return
+        }
+
+        const rawIds = parsed.filter((id) => typeof id === "number") as number[]
+
+        if (rawIds.length === 0) {
+          setReviewIds([])
+          return
+        }
+
+        const { data: directRows } = await supabase
+          .from("english_questions")
+          .select("id")
+          .in("id", rawIds)
+          .eq("main_category", "comprehension")
+          .eq("subcategory", "comprehension")
+
+        const { data: mappedRows } = await supabase
+          .from("english_question_migration_map")
+          .select("old_question_id, new_question_id")
+          .eq("old_questions_table", "comprehension_questions")
+          .in("old_question_id", rawIds)
+
+        const directIds = (directRows ?? []).map((row) => row.id)
+        const mappedIds = ((mappedRows ?? []) as QuestionMigrationMapRow[]).map(
+          (row) => row.new_question_id
+        )
+
+        setReviewIds(Array.from(new Set([...directIds, ...mappedIds])))
+      } catch {
+        setReviewIds([])
+      }
+    }
+
+    loadReviewIds()
+  }, [mode])
 
   useEffect(() => {
     fetchTests()
-  }, [])
+  }, [mode, reviewIds.join(",")])
 
   async function fetchTests() {
     setLoading(true)
@@ -49,8 +119,10 @@ export default function ComprehensionTestsPage() {
     } = await supabase.auth.getUser()
 
     const { data: testsData, error: testsError } = await supabase
-      .from("comprehension_tests")
-      .select("*")
+      .from("english_tests")
+      .select("id, title, passage, difficulty, created_at")
+      .eq("main_category", "comprehension")
+      .eq("subcategory", "comprehension")
       .order("created_at", { ascending: false })
 
     if (testsError) {
@@ -59,7 +131,41 @@ export default function ComprehensionTestsPage() {
       return
     }
 
-    const allTests = (testsData || []) as ComprehensionTest[]
+    let allTests = (testsData || []) as EnglishComprehensionTest[]
+    let reviewQuestionMap = new Map<number, number[]>()
+
+    if (mode === "review") {
+      if (reviewIds.length === 0) {
+        setTests([])
+        setLoading(false)
+        return
+      }
+
+      const { data: reviewQuestionsData, error: reviewQuestionsError } = await supabase
+        .from("english_questions")
+        .select("id, test_id")
+        .eq("main_category", "comprehension")
+        .eq("subcategory", "comprehension")
+        .in("id", reviewIds)
+
+      if (reviewQuestionsError) {
+        console.error("Error loading comprehension review questions:", reviewQuestionsError)
+        setLoading(false)
+        return
+      }
+
+      const reviewQuestions = (reviewQuestionsData || []) as EnglishComprehensionQuestion[]
+
+      reviewQuestionMap = reviewQuestions.reduce((map, row) => {
+        const existing = map.get(row.test_id) || []
+        existing.push(row.id)
+        map.set(row.test_id, existing)
+        return map
+      }, new Map<number, number[]>())
+
+      const reviewTestIds = Array.from(reviewQuestionMap.keys())
+      allTests = allTests.filter((test) => reviewTestIds.includes(test.id))
+    }
 
     if (!user) {
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
@@ -67,6 +173,7 @@ export default function ComprehensionTestsPage() {
         score: 0,
         completed_at: null,
         isCompleted: false,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
       setTests(testsWithoutProgress)
@@ -74,10 +181,21 @@ export default function ComprehensionTestsPage() {
       return
     }
 
+    const testIds = allTests.map((test) => test.id)
+
+    if (testIds.length === 0) {
+      setTests([])
+      setLoading(false)
+      return
+    }
+
     const { data: progressData, error: progressError } = await supabase
-      .from("comprehension_progress")
+      .from("english_progress")
       .select("id, user_id, test_id, success_rate, created_at")
       .eq("user_id", user.id)
+      .eq("main_category", "comprehension")
+      .eq("subcategory", "comprehension")
+      .in("test_id", testIds)
 
     if (progressError) {
       console.error("Error loading comprehension progress:", progressError)
@@ -87,6 +205,7 @@ export default function ComprehensionTestsPage() {
         score: 0,
         completed_at: null,
         isCompleted: false,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
       setTests(testsWithoutProgress)
@@ -94,15 +213,13 @@ export default function ComprehensionTestsPage() {
       return
     }
 
-    const progressRows = (progressData || []) as ComprehensionProgress[]
-
-    const latestProgressMap = new Map<number, ComprehensionProgress>()
+    const progressRows = (progressData || []) as EnglishComprehensionProgress[]
+    const latestProgressMap = new Map<number, EnglishComprehensionProgress>()
 
     for (const row of progressRows) {
       if (row.test_id === null) continue
 
       const existing = latestProgressMap.get(row.test_id)
-
       const rowDate = new Date(row.created_at || 0).getTime()
       const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
 
@@ -119,6 +236,7 @@ export default function ComprehensionTestsPage() {
         score: progress?.success_rate ?? 0,
         completed_at: progress?.created_at || null,
         isCompleted: !!progress,
+        reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }
     })
 
@@ -133,9 +251,10 @@ export default function ComprehensionTestsPage() {
     return "Not set"
   }
 
-  function getPreviewText(passage: string) {
-    if (passage.length <= 180) return passage
-    return passage.slice(0, 180).trim() + "..."
+  function getPreviewText(passage: string | null) {
+    const safePassage = passage ?? ""
+    if (safePassage.length <= 180) return safePassage || "No passage available."
+    return safePassage.slice(0, 180).trim() + "..."
   }
 
   function getCompletedPercentage(items: TestWithProgress[]) {
@@ -182,7 +301,11 @@ export default function ComprehensionTestsPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading comprehension tests...</p>
+        <p style={styles.message}>
+          {mode === "review"
+            ? "Loading comprehension review..."
+            : "Loading comprehension tests..."}
+        </p>
       </>
     )
   }
@@ -193,16 +316,28 @@ export default function ComprehensionTestsPage() {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>📖 Comprehension Tests</h1>
+            <h1 style={styles.title}>
+              {mode === "review" ? "📖 Comprehension Review" : "📖 Comprehension Tests"}
+            </h1>
             <p style={styles.subtitle}>
-              Choose a comprehension passage and answer 10 multiple-choice questions.
+              {mode === "review"
+                ? "Revise your saved comprehension mistakes and strengthen reading accuracy."
+                : "Choose a comprehension passage and answer 10 multiple-choice questions."}
             </p>
           </div>
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>No comprehension tests yet</h2>
-              <p>Add a test in Supabase and it will appear here.</p>
+              <h2>
+                {mode === "review"
+                  ? "No comprehension review items found"
+                  : "No comprehension tests yet"}
+              </h2>
+              <p>
+                {mode === "review"
+                  ? "Try another category or make a few mistakes first so they can appear here for revision."
+                  : "Add a test in Supabase and it will appear here."}
+              </p>
             </div>
           ) : (
             <>
@@ -261,56 +396,74 @@ export default function ComprehensionTestsPage() {
                 </div>
               ) : (
                 <div style={styles.grid}>
-                  {filteredTests.map((test) => (
-                    <div
-                      key={test.id}
-                      style={{ ...styles.card, ...hoverCardStyle }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-6px)"
-                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)"
-                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
-                      }}
-                    >
-                      <div style={styles.cardTop}>
-                        <h2 style={styles.cardTitle}>{test.title}</h2>
-                        <span style={styles.badge}>
-                          {getDifficultyLabel(test.difficulty)}
-                        </span>
-                      </div>
+                  {filteredTests.map((test) => {
+                    const href =
+                      mode === "review"
+                        ? `/english/comprehension/${test.id}?mode=review`
+                        : `/english/comprehension/${test.id}`
 
-                      <p style={styles.preview}>{getPreviewText(test.passage)}</p>
-
-                      <div style={styles.metaRow}>
-                        <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
-                        </p>
-
-                        <p style={styles.metaHalf}>
-                          <strong>Score:</strong> {getScoreText(test)}{" "}
-                          <span style={styles.scoreIcon}>
-                            {getScoreIcon(test.score, test.isCompleted)}
-                          </span>
-                        </p>
-                      </div>
-
-                      <Link
-                        href={`/english/comprehension/${test.id}`}
-                        style={test.isCompleted ? styles.startButton : styles.retryButton}
+                    return (
+                      <div
+                        key={test.id}
+                        style={{ ...styles.card, ...hoverCardStyle }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-6px)"
+                          e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)"
+                          e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                        }}
                       >
-                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                      </Link>
-                    </div>
-                  ))}
+                        <div style={styles.cardTop}>
+                          <h2 style={styles.cardTitle}>{test.title}</h2>
+                          <span style={styles.badge}>
+                            {getDifficultyLabel(test.difficulty)}
+                          </span>
+                        </div>
+
+                        <p style={styles.preview}>{getPreviewText(test.passage)}</p>
+
+                        {mode === "review" && (
+                          <p style={styles.metaHalf}>
+                            <strong>Review items in this test:</strong>{" "}
+                            {test.reviewQuestionIds?.length || 0}
+                          </p>
+                        )}
+
+                        <div style={styles.metaRow}>
+                          <p style={styles.metaHalf}>
+                            <strong>Completed:</strong>{" "}
+                            {test.completed_at
+                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "Not yet"}
+                          </p>
+
+                          <p style={styles.metaHalf}>
+                            <strong>Score:</strong> {getScoreText(test)}{" "}
+                            <span style={styles.scoreIcon}>
+                              {getScoreIcon(test.score, test.isCompleted)}
+                            </span>
+                          </p>
+                        </div>
+
+                        <Link
+                          href={href}
+                          style={test.isCompleted ? styles.startButton : styles.retryButton}
+                        >
+                          {mode === "review"
+                            ? "Open Review →"
+                            : test.isCompleted
+                              ? "Retry Test →"
+                              : "Start Test →"}
+                        </Link>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </>
@@ -415,11 +568,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#374151",
     lineHeight: 1.6,
     flexGrow: 1,
-  },
-  meta: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "14px",
   },
   metaRow: {
     display: "flex",

@@ -5,6 +5,12 @@ import Header from "../../../../../components/Header"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
+const MAIN_CATEGORY = "punctuation"
+const SUBCATEGORY = "apostrophes"
+const REVIEW_STORAGE_KEY = "apostrophes_review_ids"
+
+type AnswerOption = "A" | "B" | "C" | "D"
+
 type ApostrophesTest = {
   id: number
   title: string
@@ -21,7 +27,7 @@ type ApostrophesQuestion = {
   option_b: string
   option_c: string
   option_d: string
-  correct_answer: string
+  correct_answer: AnswerOption
   explanation: string | null
   difficulty: number | null
   question_order: number
@@ -29,7 +35,7 @@ type ApostrophesQuestion = {
 }
 
 type UserAnswerMap = {
-  [questionId: number]: "A" | "B" | "C" | "D"
+  [questionId: number]: AnswerOption
 }
 
 export default function ApostrophesTestPage() {
@@ -59,7 +65,7 @@ export default function ApostrophesTestPage() {
       return
     }
 
-    const raw = localStorage.getItem("apostrophes_review_ids")
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
     if (!raw) {
       setReviewIds([])
       return
@@ -111,9 +117,11 @@ export default function ApostrophesTestPage() {
       setUserId(user.id)
 
       const { data: testData, error: testError } = await supabase
-        .from("punctuation_apostrophes_tests")
-        .select("*")
+        .from("english_tests")
+        .select("id, title, description, difficulty, created_at")
         .eq("id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .single()
 
       if (testError) {
@@ -129,9 +137,13 @@ export default function ApostrophesTestPage() {
       }
 
       let questionQuery = supabase
-        .from("punctuation_apostrophes_questions")
-        .select("*")
+        .from("english_questions")
+        .select(
+          "id, test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, question_order, created_at"
+        )
         .eq("test_id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .order("question_order", { ascending: true })
 
       if (mode === "review") {
@@ -205,7 +217,7 @@ export default function ApostrophesTestPage() {
     router.push("/english/punctuation/apostrophes")
   }
 
-  function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
+  function handleSelect(questionId: number, option: AnswerOption) {
     if (submitted) return
 
     setAnswers((prev) => ({
@@ -222,13 +234,16 @@ export default function ApostrophesTestPage() {
     setErrorMessage("")
 
     let correctAnswers = 0
+
     const wrongAnswersForReview: {
       user_id: string
       test_id: number
       question_id: number
+      main_category: string
+      subcategory: string
       question_text: string
-      user_answer: string
-      correct_answer: string
+      user_answer: AnswerOption | null
+      correct_answer: AnswerOption
       difficulty: number | null
     }[] = []
 
@@ -248,8 +263,10 @@ export default function ApostrophesTestPage() {
           user_id: userId,
           test_id: test.id,
           question_id: question.id,
+          main_category: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
           question_text: question.question_text,
-          user_answer: selected || "",
+          user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
         })
@@ -263,6 +280,8 @@ export default function ApostrophesTestPage() {
     const progressPayload = {
       user_id: userId,
       test_id: test.id,
+      main_category: MAIN_CATEGORY,
+      subcategory: SUBCATEGORY,
       total_questions: totalQuestions,
       correct_answers: correctAnswers,
       success_rate: successRate,
@@ -270,7 +289,7 @@ export default function ApostrophesTestPage() {
     }
 
     const { error: progressError } = await supabase
-      .from("punctuation_apostrophes_progress")
+      .from("english_progress")
       .insert([progressPayload])
 
     if (progressError) {
@@ -292,9 +311,11 @@ export default function ApostrophesTestPage() {
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
         const { error: deleteReviewError } = await supabase
-          .from("punctuation_apostrophes_review")
+          .from("english_review")
           .delete()
           .eq("user_id", userId)
+          .eq("main_category", MAIN_CATEGORY)
+          .eq("subcategory", SUBCATEGORY)
           .in("question_id", correctlyAnsweredReviewQuestionIds)
 
         if (deleteReviewError) {
@@ -308,7 +329,7 @@ export default function ApostrophesTestPage() {
       }
     } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
-        .from("punctuation_apostrophes_review")
+        .from("english_review")
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
@@ -319,13 +340,20 @@ export default function ApostrophesTestPage() {
           code: reviewError.code,
         })
       }
+
+      const existingReviewIds = Array.from(new Set(reviewIds))
+      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+      setReviewIds(updatedReviewIds)
     }
 
     if (mode === "review") {
       const remainingIds = reviewIds.filter(
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
-      localStorage.setItem("apostrophes_review_ids", JSON.stringify(remainingIds))
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+      setReviewIds(remainingIds)
     }
 
     setScore(correctAnswers)
@@ -350,7 +378,7 @@ export default function ApostrophesTestPage() {
     await submitTest()
   }
 
-  function getOptionText(question: ApostrophesQuestion, option: "A" | "B" | "C" | "D") {
+  function getOptionText(question: ApostrophesQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -560,10 +588,7 @@ export default function ApostrophesTestPage() {
                             Correct answer:{" "}
                             <strong>
                               {question.correct_answer} —{" "}
-                              {getOptionText(
-                                question,
-                                question.correct_answer as "A" | "B" | "C" | "D"
-                              )}
+                              {getOptionText(question, question.correct_answer)}
                             </strong>
                           </p>
                         )}

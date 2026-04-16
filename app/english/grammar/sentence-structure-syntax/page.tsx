@@ -6,12 +6,16 @@ import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
+const MAIN_CATEGORY = "grammar"
+const SUBCATEGORY = "sentence_structure_syntax"
+const REVIEW_STORAGE_KEY = "sentence_structure_syntax_review_ids"
+
 const hoverCardStyle = {
   transition: "all 0.25s ease",
   cursor: "pointer",
 }
 
-type GrammarSentenceStructureSyntaxTest = {
+type EnglishTest = {
   id: number
   title: string
   description: string | null
@@ -19,20 +23,20 @@ type GrammarSentenceStructureSyntaxTest = {
   created_at: string
 }
 
-type GrammarSentenceStructureSyntaxQuestion = {
+type EnglishQuestion = {
   id: number
   test_id: number
 }
 
-type GrammarSentenceStructureSyntaxProgress = {
-  id: string
+type EnglishProgress = {
+  id: number
   user_id: string
-  test_id: number | null
+  test_id: number
   success_rate: number | null
   created_at: string | null
 }
 
-type TestWithProgress = GrammarSentenceStructureSyntaxTest & {
+type TestWithProgress = EnglishTest & {
   score: number
   completed_at: string | null
   isCompleted: boolean
@@ -54,7 +58,8 @@ export default function SentenceStructureSyntaxPage() {
       return
     }
 
-    const raw = localStorage.getItem("sentence_structure_syntax_review_ids")
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
     if (!raw) {
       setReviewIds([])
       return
@@ -62,6 +67,7 @@ export default function SentenceStructureSyntaxPage() {
 
     try {
       const parsed = JSON.parse(raw)
+
       if (Array.isArray(parsed)) {
         setReviewIds(parsed.filter((id) => typeof id === "number"))
       } else {
@@ -74,6 +80,7 @@ export default function SentenceStructureSyntaxPage() {
 
   useEffect(() => {
     fetchTests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, reviewIds.join(",")])
 
   async function fetchTests() {
@@ -84,8 +91,10 @@ export default function SentenceStructureSyntaxPage() {
     } = await supabase.auth.getUser()
 
     const { data: testsData, error: testsError } = await supabase
-      .from("grammar_sentence_structure_syntax_tests")
-      .select("*")
+      .from("english_tests")
+      .select("id, title, description, difficulty, created_at")
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .order("created_at", { ascending: false })
 
     if (testsError) {
@@ -94,7 +103,7 @@ export default function SentenceStructureSyntaxPage() {
       return
     }
 
-    let allTests = (testsData || []) as GrammarSentenceStructureSyntaxTest[]
+    let allTests = (testsData || []) as EnglishTest[]
     let reviewQuestionMap = new Map<number, number[]>()
 
     if (mode === "review") {
@@ -105,8 +114,10 @@ export default function SentenceStructureSyntaxPage() {
       }
 
       const { data: reviewQuestionsData, error: reviewQuestionsError } = await supabase
-        .from("grammar_sentence_structure_syntax_questions")
+        .from("english_questions")
         .select("id, test_id")
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .in("id", reviewIds)
 
       if (reviewQuestionsError) {
@@ -118,8 +129,7 @@ export default function SentenceStructureSyntaxPage() {
         return
       }
 
-      const reviewQuestions =
-        (reviewQuestionsData || []) as GrammarSentenceStructureSyntaxQuestion[]
+      const reviewQuestions = (reviewQuestionsData || []) as EnglishQuestion[]
 
       reviewQuestionMap = reviewQuestions.reduce((map, row) => {
         const existing = map.get(row.test_id) || []
@@ -155,9 +165,11 @@ export default function SentenceStructureSyntaxPage() {
     }
 
     const { data: progressData, error: progressError } = await supabase
-      .from("grammar_sentence_structure_syntax_progress")
+      .from("english_progress")
       .select("id, user_id, test_id, success_rate, created_at")
       .eq("user_id", user.id)
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .in("test_id", testIds)
 
     if (progressError) {
@@ -176,12 +188,10 @@ export default function SentenceStructureSyntaxPage() {
       return
     }
 
-    const progressRows = (progressData || []) as GrammarSentenceStructureSyntaxProgress[]
-    const latestProgressMap = new Map<number, GrammarSentenceStructureSyntaxProgress>()
+    const progressRows = (progressData || []) as EnglishProgress[]
+    const latestProgressMap = new Map<number, EnglishProgress>()
 
     for (const row of progressRows) {
-      if (row.test_id === null) continue
-
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
       const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0

@@ -6,12 +6,16 @@ import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
+const MAIN_CATEGORY = "punctuation"
+const SUBCATEGORY = "comma"
+const REVIEW_STORAGE_KEY = "comma_review_ids"
+
 const hoverCardStyle = {
   transition: "all 0.25s ease",
   cursor: "pointer",
 }
 
-type PunctuationCommaTest = {
+type EnglishTest = {
   id: number
   title: string
   description: string | null
@@ -19,20 +23,20 @@ type PunctuationCommaTest = {
   created_at: string
 }
 
-type PunctuationCommaQuestion = {
+type EnglishQuestion = {
   id: number
   test_id: number
 }
 
-type PunctuationCommaProgress = {
-  id: string
+type EnglishProgress = {
+  id: number
   user_id: string
-  test_id: number | null
+  test_id: number
   success_rate: number | null
   created_at: string | null
 }
 
-type TestWithProgress = PunctuationCommaTest & {
+type TestWithProgress = EnglishTest & {
   score: number
   completed_at: string | null
   isCompleted: boolean
@@ -54,7 +58,7 @@ export default function CommaPage() {
       return
     }
 
-    const raw = localStorage.getItem("comma_review_ids")
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
     if (!raw) {
       setReviewIds([])
       return
@@ -74,6 +78,7 @@ export default function CommaPage() {
 
   useEffect(() => {
     fetchTests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, reviewIds.join(",")])
 
   async function fetchTests() {
@@ -84,8 +89,10 @@ export default function CommaPage() {
     } = await supabase.auth.getUser()
 
     const { data: testsData, error: testsError } = await supabase
-      .from("punctuation_comma_tests")
-      .select("*")
+      .from("english_tests")
+      .select("id, title, description, difficulty, created_at")
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .order("created_at", { ascending: false })
 
     if (testsError) {
@@ -94,7 +101,7 @@ export default function CommaPage() {
       return
     }
 
-    let allTests = (testsData || []) as PunctuationCommaTest[]
+    let allTests = (testsData || []) as EnglishTest[]
     let reviewQuestionMap = new Map<number, number[]>()
 
     if (mode === "review") {
@@ -105,8 +112,10 @@ export default function CommaPage() {
       }
 
       const { data: reviewQuestionsData, error: reviewQuestionsError } = await supabase
-        .from("punctuation_comma_questions")
+        .from("english_questions")
         .select("id, test_id")
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .in("id", reviewIds)
 
       if (reviewQuestionsError) {
@@ -115,7 +124,7 @@ export default function CommaPage() {
         return
       }
 
-      const reviewQuestions = (reviewQuestionsData || []) as PunctuationCommaQuestion[]
+      const reviewQuestions = (reviewQuestionsData || []) as EnglishQuestion[]
 
       reviewQuestionMap = reviewQuestions.reduce((map, row) => {
         const existing = map.get(row.test_id) || []
@@ -151,9 +160,11 @@ export default function CommaPage() {
     }
 
     const { data: progressData, error: progressError } = await supabase
-      .from("punctuation_comma_progress")
+      .from("english_progress")
       .select("id, user_id, test_id, success_rate, created_at")
       .eq("user_id", user.id)
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .in("test_id", testIds)
 
     if (progressError) {
@@ -172,12 +183,10 @@ export default function CommaPage() {
       return
     }
 
-    const progressRows = (progressData || []) as PunctuationCommaProgress[]
-    const latestProgressMap = new Map<number, PunctuationCommaProgress>()
+    const progressRows = (progressData || []) as EnglishProgress[]
+    const latestProgressMap = new Map<number, EnglishProgress>()
 
     for (const row of progressRows) {
-      if (row.test_id === null) continue
-
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
       const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
@@ -284,11 +293,7 @@ export default function CommaPage() {
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>
-                {mode === "review"
-                  ? "No Comma review items found"
-                  : "No Comma tests yet"}
-              </h2>
+              <h2>{mode === "review" ? "No Comma review items found" : "No Comma tests yet"}</h2>
               <p>
                 {mode === "review"
                   ? "Try another category or make a few mistakes first so they can appear here for revision."
@@ -373,9 +378,7 @@ export default function CommaPage() {
                       >
                         <div style={styles.cardTop}>
                           <h2 style={styles.cardTitle}>{test.title}</h2>
-                          <span style={styles.badge}>
-                            {getDifficultyLabel(test.difficulty)}
-                          </span>
+                          <span style={styles.badge}>{getDifficultyLabel(test.difficulty)}</span>
                         </div>
 
                         <p style={styles.preview}>
@@ -418,8 +421,8 @@ export default function CommaPage() {
                           {mode === "review"
                             ? "Open Review →"
                             : test.isCompleted
-                            ? "Retry Test →"
-                            : "Start Test →"}
+                              ? "Retry Test →"
+                              : "Start Test →"}
                         </Link>
                       </div>
                     )

@@ -25,6 +25,7 @@ type VocabularyProgressRow = {
   total_words_practiced: number
   correct_answers: number
   success_rate: number
+  difficulty: number | null
   created_at: string
 }
 
@@ -34,94 +35,16 @@ type SpellingProgressRow = {
   total_words_practiced: number
   correct_answers: number
   success_rate: number
-  created_at: string
-}
-
-type ComprehensionProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions?: number | null
-  correct_answers?: number | null
-  success_rate: number
-  difficulty?: number | null
-  created_at: string
-}
-
-type ComprehensionQuestionCountRow = {
-  test_id: number
-}
-
-type PrimaryWordClassesProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
   difficulty: number | null
   created_at: string
 }
 
-type SentenceStructureSyntaxProgressRow = {
+type EnglishSharedProgressRow = {
   id: string | number
   user_id: string
   test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
-  difficulty: number | null
-  created_at: string
-}
-
-type AdvancedPunctuationProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
-  difficulty: number | null
-  created_at: string
-}
-
-type ApostrophesProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
-  difficulty: number | null
-  created_at: string
-}
-
-type CommaProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
-  difficulty: number | null
-  created_at: string
-}
-
-type DirectSpeechPunctuationProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
-  total_questions: number
-  correct_answers: number
-  success_rate: number
-  difficulty: number | null
-  created_at: string
-}
-
-type SentencePunctuationProgressRow = {
-  id: string | number
-  user_id: string
-  test_id: number | null
+  main_category: string
+  subcategory: string | null
   total_questions: number
   correct_answers: number
   success_rate: number
@@ -256,10 +179,10 @@ function successTooltipFormatter(
     typeof value === "number"
       ? value
       : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
+        ? Number(value)
+        : Array.isArray(value)
+          ? Number(value[0])
+          : 0
 
   return [`${numericValue}%`, "Success"]
 }
@@ -272,12 +195,35 @@ function averageSuccessTooltipFormatter(
     typeof value === "number"
       ? value
       : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
+        ? Number(value)
+        : Array.isArray(value)
+          ? Number(value[0])
+          : 0
 
   return [`${numericValue}%`, "Average Success"]
+}
+
+function mapSharedProgressCategory(
+  row: EnglishSharedProgressRow
+): Exclude<EnglishProgressCategory, "vocabulary" | "spelling"> | null {
+  if (row.main_category === "comprehension") {
+    return "comprehension"
+  }
+
+  if (row.main_category === "grammar") {
+    if (row.subcategory === "primary_word_classes") return "primary_word_classes"
+    if (row.subcategory === "sentence_structure_syntax") return "sentence_structure_syntax"
+  }
+
+  if (row.main_category === "punctuation") {
+    if (row.subcategory === "advanced_punctuation") return "advanced_punctuation"
+    if (row.subcategory === "apostrophes") return "apostrophes"
+    if (row.subcategory === "comma") return "comma"
+    if (row.subcategory === "direct_speech_punctuation") return "direct_speech_punctuation"
+    if (row.subcategory === "sentence_punctuation") return "sentence_punctuation"
+  }
+
+  return null
 }
 
 function StatCard({
@@ -360,7 +306,6 @@ function SectionCard({
     </section>
   )
 }
-
 export default function EnglishProgressPage() {
   const router = useRouter()
 
@@ -375,290 +320,103 @@ export default function EnglishProgressPage() {
     let mounted = true
 
     async function loadData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (!user) {
-        router.push("/login")
-        return
-      }
-
-      setLoadingUser(false)
-
-      const [
-        vocabularyResult,
-        spellingResult,
-        comprehensionResult,
-        primaryWordClassesResult,
-        sentenceStructureSyntaxResult,
-        advancedPunctuationResult,
-        apostrophesResult,
-        commaResult,
-        directSpeechPunctuationResult,
-        sentencePunctuationResult,
-      ] = await Promise.all([
-        supabase
-          .from("vocabulary_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("spelling_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("comprehension_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("grammar_primary_word_classes_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("grammar_sentence_structure_syntax_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_advanced_punctuation_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_apostrophes_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_comma_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_direct_speech_punctuation_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("punctuation_sentence_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-      ])
-
-      if (vocabularyResult.error) {
-        console.error("Error loading vocabulary progress:", vocabularyResult.error)
-      }
-      if (spellingResult.error) {
-        console.error("Error loading spelling progress:", spellingResult.error)
-      }
-      if (comprehensionResult.error) {
-        console.error("Error loading comprehension progress:", comprehensionResult.error)
-      }
-      if (primaryWordClassesResult.error) {
-        console.error(
-          "Error loading primary word classes progress:",
-          primaryWordClassesResult.error
-        )
-      }
-      if (sentenceStructureSyntaxResult.error) {
-        console.error(
-          "Error loading sentence structure syntax progress:",
-          sentenceStructureSyntaxResult.error
-        )
-      }
-      if (advancedPunctuationResult.error) {
-        console.error(
-          "Error loading advanced punctuation progress:",
-          advancedPunctuationResult.error
-        )
-      }
-      if (apostrophesResult.error) {
-        console.error("Error loading apostrophes progress:", apostrophesResult.error)
-      }
-      if (commaResult.error) {
-        console.error("Error loading comma progress:", commaResult.error)
-      }
-      if (directSpeechPunctuationResult.error) {
-        console.error(
-          "Error loading direct speech punctuation progress:",
-          directSpeechPunctuationResult.error
-        )
-      }
-      if (sentencePunctuationResult.error) {
-        console.error(
-          "Error loading sentence punctuation progress:",
-          sentencePunctuationResult.error
-        )
-      }
-
-      const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
-      const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
-      const comprehensionRows = (comprehensionResult.data ?? []) as ComprehensionProgressRow[]
-      const primaryWordClassesRows =
-        (primaryWordClassesResult.data ?? []) as PrimaryWordClassesProgressRow[]
-      const sentenceStructureSyntaxRows =
-        (sentenceStructureSyntaxResult.data ?? []) as SentenceStructureSyntaxProgressRow[]
-      const advancedPunctuationRows =
-        (advancedPunctuationResult.data ?? []) as AdvancedPunctuationProgressRow[]
-      const apostrophesRows = (apostrophesResult.data ?? []) as ApostrophesProgressRow[]
-      const commaRows = (commaResult.data ?? []) as CommaProgressRow[]
-      const directSpeechPunctuationRows =
-        (directSpeechPunctuationResult.data ?? []) as DirectSpeechPunctuationProgressRow[]
-      const sentencePunctuationRows =
-        (sentencePunctuationResult.data ?? []) as SentencePunctuationProgressRow[]
-
-      const comprehensionTestIds = Array.from(
-        new Set(
-          comprehensionRows
-            .map((row) => row.test_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const comprehensionQuestionCounts = new Map<number, number>()
-
-      if (comprehensionTestIds.length > 0) {
-        const { data: questionCountRows, error: questionCountError } = await supabase
-          .from("comprehension_questions")
-          .select("test_id")
-          .in("test_id", comprehensionTestIds)
-
-        if (questionCountError) {
-          console.error("Error loading comprehension question counts:", questionCountError)
-        } else {
-          ;((questionCountRows ?? []) as ComprehensionQuestionCountRow[]).forEach((row) => {
-            comprehensionQuestionCounts.set(
-              row.test_id,
-              (comprehensionQuestionCounts.get(row.test_id) ?? 0) + 1
-            )
-          })
+        if (!user) {
+          router.push("/login")
+          return
         }
-      }
 
-      const mergedRows: EnglishProgressRow[] = [
-        ...vocabularyRows.map((row) => ({
-          id: `vocabulary-${row.id}`,
-          category: "vocabulary" as const,
-          total_questions: row.total_words_practiced,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: null,
-          created_at: row.created_at,
-        })),
-        ...spellingRows.map((row) => ({
-          id: `spelling-${row.id}`,
-          category: "spelling" as const,
-          total_questions: row.total_words_practiced,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: null,
-          created_at: row.created_at,
-        })),
-        ...comprehensionRows.map((row) => {
-          const totalQuestions =
-            typeof row.total_questions === "number"
-              ? row.total_questions
-              : row.test_id !== null
-              ? comprehensionQuestionCounts.get(row.test_id) ?? 0
-              : 0
+        setLoadingUser(false)
 
-          const correctAnswers =
-            typeof row.correct_answers === "number"
-              ? row.correct_answers
-              : totalQuestions > 0
-              ? Math.round((Number(row.success_rate) / 100) * totalQuestions)
-              : 0
+        const [vocabularyResult, spellingResult, englishSharedProgressResult] = await Promise.all([
+          supabase
+            .from("vocabulary_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("spelling_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("english_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("main_category", ["comprehension", "grammar", "punctuation"])
+            .order("created_at", { ascending: false }),
+        ])
 
-          return {
-            id: `comprehension-${row.id}`,
-            category: "comprehension" as const,
-            total_questions: totalQuestions,
-            correct_answers: correctAnswers,
+        if (vocabularyResult.error) {
+          console.error("Error loading vocabulary progress:", vocabularyResult.error)
+        }
+        if (spellingResult.error) {
+          console.error("Error loading spelling progress:", spellingResult.error)
+        }
+        if (englishSharedProgressResult.error) {
+          console.error("Error loading shared English progress:", englishSharedProgressResult.error)
+        }
+
+        const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
+        const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
+        const englishSharedRows =
+          (englishSharedProgressResult.data ?? []) as EnglishSharedProgressRow[]
+
+        const mergedRows: EnglishProgressRow[] = [
+          ...vocabularyRows.map((row) => ({
+            id: `vocabulary-${row.id}`,
+            category: "vocabulary" as const,
+            total_questions: row.total_words_practiced,
+            correct_answers: row.correct_answers,
             success_rate: Number(row.success_rate),
             difficulty: row.difficulty ?? null,
             created_at: row.created_at,
-          }
-        }),
-        ...primaryWordClassesRows.map((row) => ({
-          id: `primary-word-classes-${row.id}`,
-          category: "primary_word_classes" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...sentenceStructureSyntaxRows.map((row) => ({
-          id: `sentence-structure-syntax-${row.id}`,
-          category: "sentence_structure_syntax" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...advancedPunctuationRows.map((row) => ({
-          id: `advanced-punctuation-${row.id}`,
-          category: "advanced_punctuation" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...apostrophesRows.map((row) => ({
-          id: `apostrophes-${row.id}`,
-          category: "apostrophes" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...commaRows.map((row) => ({
-          id: `comma-${row.id}`,
-          category: "comma" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...directSpeechPunctuationRows.map((row) => ({
-          id: `direct-speech-punctuation-${row.id}`,
-          category: "direct_speech_punctuation" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-        ...sentencePunctuationRows.map((row) => ({
-          id: `sentence-punctuation-${row.id}`,
-          category: "sentence_punctuation" as const,
-          total_questions: row.total_questions,
-          correct_answers: row.correct_answers,
-          success_rate: Number(row.success_rate),
-          difficulty: row.difficulty,
-          created_at: row.created_at,
-        })),
-      ]
+          })),
+          ...spellingRows.map((row) => ({
+            id: `spelling-${row.id}`,
+            category: "spelling" as const,
+            total_questions: row.total_words_practiced,
+            correct_answers: row.correct_answers,
+            success_rate: Number(row.success_rate),
+            difficulty: row.difficulty ?? null,
+            created_at: row.created_at,
+          })),
+          ...englishSharedRows.flatMap((row) => {
+            const mappedCategory = mapSharedProgressCategory(row)
 
-      setRows(mergedRows)
+            if (!mappedCategory) return []
 
-      if (mounted) {
-        setLoadingData(false)
+            return [
+              {
+                id: `english-shared-${row.id}`,
+                category: mappedCategory,
+                total_questions: row.total_questions,
+                correct_answers: row.correct_answers,
+                success_rate: Number(row.success_rate),
+                difficulty: row.difficulty ?? null,
+                created_at: row.created_at,
+              },
+            ]
+          }),
+        ]
+
+        if (!mounted) return
+
+        setRows(mergedRows)
+      } finally {
+        if (mounted) {
+          setLoadingData(false)
+        }
       }
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       mounted = false
@@ -672,8 +430,7 @@ export default function EnglishProgressPage() {
       const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
       const matchesDifficulty =
         difficultyFilter === "all" || String(row.difficulty ?? "") === difficultyFilter
-      const matchesCategory =
-        categoryFilter === "all" || row.category === categoryFilter
+      const matchesCategory = categoryFilter === "all" || row.category === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
@@ -690,9 +447,7 @@ export default function EnglishProgressPage() {
         : 0
 
     const bestScore =
-      testsCompleted > 0
-        ? Math.max(...filteredRows.map((row) => Number(row.success_rate)))
-        : 0
+      testsCompleted > 0 ? Math.max(...filteredRows.map((row) => Number(row.success_rate))) : 0
 
     const byCategory = Object.entries(
       filteredRows.reduce((acc, row) => {
@@ -857,8 +612,7 @@ export default function EnglishProgressPage() {
       </div>
     )
   }
-
-  return (
+    return (
     <div
       style={{
         minHeight: "100vh",
@@ -899,7 +653,9 @@ export default function EnglishProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore English performance across vocabulary, spelling, comprehension, grammar, and punctuation with live filters, trend tracking, and category insights.
+              Explore English performance across vocabulary, spelling, comprehension,
+              grammar, and punctuation with live filters, trend tracking, and category
+              insights.
             </p>
           </div>
 
@@ -1194,14 +950,14 @@ export default function EnglishProgressPage() {
                               Number(row.success_rate) >= 70
                                 ? "#dcfce7"
                                 : Number(row.success_rate) >= 50
-                                ? "#fef3c7"
-                                : "#fee2e2",
+                                  ? "#fef3c7"
+                                  : "#fee2e2",
                             color:
                               Number(row.success_rate) >= 70
                                 ? "#166534"
                                 : Number(row.success_rate) >= 50
-                                ? "#92400e"
-                                : "#991b1b",
+                                  ? "#92400e"
+                                  : "#991b1b",
                             fontWeight: 700,
                             fontSize: "13px",
                           }}

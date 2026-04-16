@@ -6,12 +6,16 @@ import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
+const MAIN_CATEGORY = "punctuation"
+const SUBCATEGORY = "direct_speech_punctuation"
+const REVIEW_STORAGE_KEY = "direct_speech_punctuation_review_ids"
+
 const hoverCardStyle = {
   transition: "all 0.25s ease",
   cursor: "pointer",
 }
 
-type PunctuationDirectSpeechPunctuationTest = {
+type EnglishTest = {
   id: number
   title: string
   description: string | null
@@ -19,20 +23,20 @@ type PunctuationDirectSpeechPunctuationTest = {
   created_at: string
 }
 
-type PunctuationDirectSpeechPunctuationQuestion = {
+type EnglishQuestion = {
   id: number
   test_id: number
 }
 
-type PunctuationDirectSpeechPunctuationProgress = {
-  id: string
+type EnglishProgress = {
+  id: number
   user_id: string
-  test_id: number | null
+  test_id: number
   success_rate: number | null
   created_at: string | null
 }
 
-type TestWithProgress = PunctuationDirectSpeechPunctuationTest & {
+type TestWithProgress = EnglishTest & {
   score: number
   completed_at: string | null
   isCompleted: boolean
@@ -54,7 +58,7 @@ export default function DirectSpeechPunctuationPage() {
       return
     }
 
-    const raw = localStorage.getItem("direct_speech_punctuation_review_ids")
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
     if (!raw) {
       setReviewIds([])
       return
@@ -74,6 +78,7 @@ export default function DirectSpeechPunctuationPage() {
 
   useEffect(() => {
     fetchTests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, reviewIds.join(",")])
 
   async function fetchTests() {
@@ -84,8 +89,10 @@ export default function DirectSpeechPunctuationPage() {
     } = await supabase.auth.getUser()
 
     const { data: testsData, error: testsError } = await supabase
-      .from("punctuation_direct_speech_punctuation_tests")
-      .select("*")
+      .from("english_tests")
+      .select("id, title, description, difficulty, created_at")
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .order("created_at", { ascending: false })
 
     if (testsError) {
@@ -94,7 +101,7 @@ export default function DirectSpeechPunctuationPage() {
       return
     }
 
-    let allTests = (testsData || []) as PunctuationDirectSpeechPunctuationTest[]
+    let allTests = (testsData || []) as EnglishTest[]
     let reviewQuestionMap = new Map<number, number[]>()
 
     if (mode === "review") {
@@ -105,8 +112,10 @@ export default function DirectSpeechPunctuationPage() {
       }
 
       const { data: reviewQuestionsData, error: reviewQuestionsError } = await supabase
-        .from("punctuation_direct_speech_punctuation_questions")
+        .from("english_questions")
         .select("id, test_id")
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .in("id", reviewIds)
 
       if (reviewQuestionsError) {
@@ -118,8 +127,7 @@ export default function DirectSpeechPunctuationPage() {
         return
       }
 
-      const reviewQuestions =
-        (reviewQuestionsData || []) as PunctuationDirectSpeechPunctuationQuestion[]
+      const reviewQuestions = (reviewQuestionsData || []) as EnglishQuestion[]
 
       reviewQuestionMap = reviewQuestions.reduce((map, row) => {
         const existing = map.get(row.test_id) || []
@@ -155,9 +163,11 @@ export default function DirectSpeechPunctuationPage() {
     }
 
     const { data: progressData, error: progressError } = await supabase
-      .from("punctuation_direct_speech_punctuation_progress")
+      .from("english_progress")
       .select("id, user_id, test_id, success_rate, created_at")
       .eq("user_id", user.id)
+      .eq("main_category", MAIN_CATEGORY)
+      .eq("subcategory", SUBCATEGORY)
       .in("test_id", testIds)
 
     if (progressError) {
@@ -176,13 +186,10 @@ export default function DirectSpeechPunctuationPage() {
       return
     }
 
-    const progressRows =
-      (progressData || []) as PunctuationDirectSpeechPunctuationProgress[]
-    const latestProgressMap = new Map<number, PunctuationDirectSpeechPunctuationProgress>()
+    const progressRows = (progressData || []) as EnglishProgress[]
+    const latestProgressMap = new Map<number, EnglishProgress>()
 
     for (const row of progressRows) {
-      if (row.test_id === null) continue
-
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
       const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
@@ -427,8 +434,8 @@ export default function DirectSpeechPunctuationPage() {
                           {mode === "review"
                             ? "Open Review →"
                             : test.isCompleted
-                            ? "Retry Test →"
-                            : "Start Test →"}
+                              ? "Retry Test →"
+                              : "Start Test →"}
                         </Link>
                       </div>
                     )
