@@ -103,6 +103,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const mathHref = "/math"
   const vrHref = "/vr"
   const nvrHref = "/nvr"
+  const customTestsHref = "/custom-tests"
   const pricingHref = "/pricing"
 
   const isActivePath = (path: string) => {
@@ -232,6 +233,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
           {!isGuest && (
             <>
+              <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
+                🛠️ Custom Tests
+              </Link>
               <Link href="/progress" style={linkStyle("/progress")}>
                 📊 Progress
               </Link>
@@ -410,7 +414,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 🏠 Home
               </Link>
 
-              <Link href={englishHref} style={linkStyle(englishHref)} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={englishHref}
+                style={linkStyle(englishHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 📘 English
               </Link>
 
@@ -427,13 +435,25 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               </Link>
 
               {isGuest && (
-                <Link href={pricingHref} style={linkStyle(pricingHref)} onClick={() => setMenuOpen(false)}>
+                <Link
+                  href={pricingHref}
+                  style={linkStyle(pricingHref)}
+                  onClick={() => setMenuOpen(false)}
+                >
                   💎 Pricing
                 </Link>
               )}
 
               {!isGuest && (
                 <>
+                  <Link
+                    href={customTestsHref}
+                    style={linkStyle(customTestsHref)}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    🛠️ Custom Tests
+                  </Link>
+
                   <Link
                     href="/progress"
                     style={linkStyle("/progress")}
