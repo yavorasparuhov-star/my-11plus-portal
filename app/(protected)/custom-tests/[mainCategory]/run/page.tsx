@@ -455,70 +455,87 @@ export default function CustomTestRunPage() {
                   })}
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 24,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
-                    disabled={currentIndex === 0}
-                    style={{
-                      padding: "12px 18px",
-                      borderRadius: 10,
-                      border: "1px solid #d1d5db",
-                      background: currentIndex === 0 ? "#f3f4f6" : "#ffffff",
-                      color: currentIndex === 0 ? "#9ca3af" : "#111827",
-                      fontWeight: 700,
-                      cursor: currentIndex === 0 ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    Previous
-                  </button>
+               <div
+  style={{
+    marginTop: 24,
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+      flexWrap: "wrap",
+    }}
+  >
+    <button
+      type="button"
+      onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
+      disabled={currentIndex === 0}
+      style={{
+        padding: "12px 18px",
+        borderRadius: 10,
+        border: "1px solid #d1d5db",
+        background: currentIndex === 0 ? "#f3f4f6" : "#ffffff",
+        color: currentIndex === 0 ? "#9ca3af" : "#111827",
+        fontWeight: 700,
+        cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+        minWidth: 120,
+      }}
+    >
+      Previous
+    </button>
 
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                    {currentIndex < questions.length - 1 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1))
-                        }
-                        style={{
-                          padding: "12px 18px",
-                          borderRadius: 10,
-                          border: "1px solid #bef264",
-                          background: "#d9f99d",
-                          color: "#14532d",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Next
-                      </button>
-                    ) : null}
+    {currentIndex < questions.length - 1 ? (
+      <button
+        type="button"
+        onClick={() =>
+          setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1))
+        }
+        style={{
+          padding: "12px 18px",
+          borderRadius: 10,
+          border: "1px solid #bef264",
+          background: "#d9f99d",
+          color: "#14532d",
+          fontWeight: 700,
+          cursor: "pointer",
+          minWidth: 120,
+        }}
+      >
+        Next
+      </button>
+    ) : (
+      <div style={{ minWidth: 120 }} />
+    )}
+  </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      style={{
-                        padding: "12px 18px",
-                        borderRadius: 10,
-                        border: "1px solid #86efac",
-                        background: "#22c55e",
-                        color: "#ffffff",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Submit Test
-                    </button>
-                  </div>
-                </div>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "flex-start",
+      marginTop: 18,
+    }}
+  >
+    <button
+      type="button"
+      onClick={handleSubmit}
+      style={{
+        padding: "12px 18px",
+        borderRadius: 10,
+        border: "1px solid #86efac",
+        background: "#22c55e",
+        color: "#ffffff",
+        fontWeight: 700,
+        cursor: "pointer",
+        minWidth: 150,
+      }}
+    >
+      Submit Test
+    </button>
+  </div>
+</div>
               </>
             ) : (
               <>
