@@ -123,9 +123,7 @@ export async function POST(request: NextRequest) {
 
     const { generatedTest, answers, timeTakenSeconds } = validated.data
 
-    if (generatedTest.config.mainCategory !== "english") {
-      return jsonError("Only English custom tests are enabled in this first MVP.", 400)
-    }
+// no English-only guard here anymore
 
     if (!generatedTest.questions.length) {
       return jsonError("Generated test does not contain any questions.", 400)

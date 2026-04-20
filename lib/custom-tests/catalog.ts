@@ -30,7 +30,8 @@ export const CUSTOM_TEST_CATALOG: Record<
         label: "Comprehension",
         mainCategory: "english",
         sourceKind: "english_questions",
-        description: "Questions from english_questions where main_category = comprehension.",
+        description:
+          "Questions from english_questions where main_category = comprehension.",
         enabled: true,
       },
       {
@@ -38,7 +39,8 @@ export const CUSTOM_TEST_CATALOG: Record<
         label: "Grammar",
         mainCategory: "english",
         sourceKind: "english_questions",
-        description: "Questions from english_questions where main_category = grammar.",
+        description:
+          "Questions from english_questions where main_category = grammar.",
         enabled: true,
         childSubtopics: [
           {
@@ -56,7 +58,8 @@ export const CUSTOM_TEST_CATALOG: Record<
         label: "Punctuation",
         mainCategory: "english",
         sourceKind: "english_questions",
-        description: "Questions from english_questions where main_category = punctuation.",
+        description:
+          "Questions from english_questions where main_category = punctuation.",
         enabled: true,
         childSubtopics: [
           {
@@ -87,22 +90,127 @@ export const CUSTOM_TEST_CATALOG: Record<
   math: {
     key: "math",
     label: "Math",
-    enabled: false,
-    topics: [],
+    enabled: true,
+    topics: [
+      {
+        key: "arithmetic",
+        label: "Arithmetic",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description: "Questions from math_questions for arithmetic topics.",
+        enabled: true,
+      },
+      {
+        key: "fractions-decimals-percentages",
+        label: "Fractions, Decimals & Percentages",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description:
+          "Questions from math_questions for fractions, decimals and percentages.",
+        enabled: true,
+      },
+      {
+        key: "algebra-reasoning",
+        label: "Algebra & Reasoning",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description:
+          "Questions from math_questions for algebra and reasoning.",
+        enabled: true,
+      },
+      {
+        key: "geometry-measurement",
+        label: "Geometry & Measurement",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description:
+          "Questions from math_questions for geometry and measurement.",
+        enabled: true,
+      },
+      {
+        key: "ratio-proportion",
+        label: "Ratio & Proportion",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description:
+          "Questions from math_questions for ratio and proportion.",
+        enabled: true,
+      },
+      {
+        key: "word-problems",
+        label: "Word Problems",
+        mainCategory: "math",
+        sourceKind: "math_questions",
+        description: "Questions from math_questions for mixed word problems.",
+        enabled: true,
+      },
+    ],
   },
 
   vr: {
     key: "vr",
     label: "VR",
-    enabled: false,
-    topics: [],
+    enabled: true,
+    topics: [
+      {
+        key: "word-relationships",
+        label: "Word Relationships",
+        mainCategory: "vr",
+        sourceKind: "vr_questions",
+        description: "Questions from vr_questions for word relationships.",
+        enabled: true,
+      },
+      {
+        key: "codes-logic",
+        label: "Code & Logic",
+        mainCategory: "vr",
+        sourceKind: "vr_questions",
+        description: "Questions from vr_questions for code and logic.",
+        enabled: true,
+      },
+      {
+        key: "sequence-pattern",
+        label: "Sequence & Pattern",
+        mainCategory: "vr",
+        sourceKind: "vr_questions",
+        description: "Questions from vr_questions for sequence and pattern.",
+        enabled: true,
+      },
+    ],
   },
 
   nvr: {
     key: "nvr",
     label: "NVR",
-    enabled: false,
-    topics: [],
+    enabled: true,
+    topics: [
+      {
+        key: "shape-patterns",
+        label: "Shape Patterns",
+        mainCategory: "nvr",
+        sourceKind: "nvr_questions",
+        description: "Questions from nvr_questions for shape patterns.",
+        enabled: true,
+      },
+      {
+        key: "rotations-reflections",
+        label: "Rotations & Reflections",
+        mainCategory: "nvr",
+        sourceKind: "nvr_questions",
+        description:
+          "Questions from nvr_questions for rotations and reflections.",
+        enabled: true,
+      },
+      {
+        key: "codes-spatial-logic",
+        label: "Codes & Spatial Logic",
+        mainCategory: "nvr",
+        sourceKind: "nvr_questions",
+        description:
+          "Questions from nvr_questions for codes and spatial logic.",
+        enabled: true,
+      },
+    ],
   },
 }
 

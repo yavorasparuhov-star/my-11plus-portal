@@ -14,9 +14,9 @@ export type TopicSourceKind =
   | "words_vocabulary"
   | "words_spelling"
   | "english_questions"
-  | "math"
-  | "vr"
-  | "nvr"
+  | "math_questions"
+  | "vr_questions"
+  | "nvr_questions"
 
 export type DifficultyFilter = "all" | 1 | 2 | 3
 

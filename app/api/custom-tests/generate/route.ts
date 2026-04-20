@@ -9,6 +9,7 @@ import type {
   NormalizedOption,
   NormalizedQuestion,
   OptionKey,
+  QuestionSourceType,
 } from "../../../../lib/custom-tests/types"
 
 const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
@@ -16,6 +17,8 @@ const MAX_QUESTION_COUNT = 60
 const MIN_QUESTION_COUNT = 5
 const MAX_TIME_MINUTES = 120
 const MIN_TIME_MINUTES = 1
+
+type NonEnglishMainCategory = Exclude<MainCategory, "english">
 
 type WordRow = {
   id: number
@@ -45,10 +48,102 @@ type EnglishTestRow = {
   passage: string | null
 }
 
+type StandardTestRow = {
+  id: number
+  title: string | null
+  category: string | null
+  difficulty: number | null
+}
+
+type StandardQuestionRow = {
+  id: number
+  test_id: number | null
+  question_text: string | null
+  image_url?: string | null
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  option_a_image_url?: string | null
+  option_b_image_url?: string | null
+  option_c_image_url?: string | null
+  option_d_image_url?: string | null
+  correct_answer: string | null
+  explanation: string | null
+  question_order: number | null
+}
+
 type TopicPool = {
   topicKey: string
   questions: NormalizedQuestion[]
 }
+
+type StandardTableConfig = {
+  testsTable: string
+  questionsTable: string
+  questionSelect: string
+  sourceType: QuestionSourceType
+}
+
+const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig> =
+  {
+    math: {
+      testsTable: "math_tests",
+      questionsTable: "math_questions",
+      questionSelect: `
+      id,
+      test_id,
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation,
+      question_order
+    `,
+      sourceType: "math_question",
+    },
+    vr: {
+      testsTable: "vr_tests",
+      questionsTable: "vr_questions",
+      questionSelect: `
+      id,
+      test_id,
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation,
+      question_order
+    `,
+      sourceType: "vr_question",
+    },
+    nvr: {
+      testsTable: "nvr_tests",
+      questionsTable: "nvr_questions",
+      questionSelect: `
+      id,
+      test_id,
+      question_text,
+      image_url,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      option_a_image_url,
+      option_b_image_url,
+      option_c_image_url,
+      option_d_image_url,
+      correct_answer,
+      explanation,
+      question_order
+    `,
+      sourceType: "nvr_question",
+    },
+  }
 
 function isMainCategory(value: unknown): value is MainCategory {
   return (
@@ -61,6 +156,15 @@ function isMainCategory(value: unknown): value is MainCategory {
 
 function isOptionKey(value: unknown): value is OptionKey {
   return value === "A" || value === "B" || value === "C" || value === "D"
+}
+
+function toOptionKey(value: unknown): OptionKey | null {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  const normalized = value.trim().toUpperCase()
+  return isOptionKey(normalized) ? normalized : null
 }
 
 function jsonError(error: string, status = 400) {
@@ -344,7 +448,9 @@ function normalizeEnglishQuestions(
   passagesByTestId: Map<number, string>
 ): NormalizedQuestion[] {
   return rows.flatMap((row) => {
-    if (!isOptionKey(row.correct_answer)) {
+    const correctAnswer = toOptionKey(row.correct_answer)
+
+    if (!correctAnswer) {
       return []
     }
 
@@ -383,7 +489,7 @@ function normalizeEnglishQuestions(
       passageText,
       imageUrl: null,
       options,
-      correctAnswer: row.correct_answer,
+      correctAnswer,
       explanation: row.explanation,
       difficulty: row.difficulty,
       meta: {
@@ -395,6 +501,123 @@ function normalizeEnglishQuestions(
 
     return [question]
   })
+}
+
+function normalizeCategoryValue(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+}
+
+function getStandardTopicCategoryCandidates(
+  mainCategory: NonEnglishMainCategory,
+  topicKey: string
+): string[] {
+  const baseCandidates = [
+    topicKey,
+    topicKey.replace(/-/g, "_"),
+    topicKey.replace(/-/g, " "),
+  ]
+
+  let extraCandidates: string[] = []
+
+  if (mainCategory === "math") {
+    switch (topicKey) {
+      case "arithmetic":
+        extraCandidates = []
+        break
+      case "fractions-decimals-percentages":
+        extraCandidates = [
+          "fractions",
+          "decimals",
+          "percentages",
+          "fractions_decimals_percentages",
+        ]
+        break
+      case "algebra-reasoning":
+        extraCandidates = ["algebra", "algebra_reasoning"]
+        break
+      case "geometry-measurement":
+        extraCandidates = ["geometry", "measurement", "geometry_measurement"]
+        break
+      case "ratio-proportion":
+        extraCandidates = [
+          "ratio",
+          "proportion",
+          "ratios-proportions",
+          "ratios_proportions",
+          "ratio_proportion",
+        ]
+        break
+      case "word-problems":
+        extraCandidates = [
+          "problem-solving",
+          "problem_solving",
+          "word problems",
+          "problem solving",
+        ]
+        break
+    }
+  }
+
+  if (mainCategory === "vr") {
+    switch (topicKey) {
+      case "word-relationships":
+        extraCandidates = [
+          "word_relationships",
+          "word relationship",
+          "word_relationship",
+        ]
+        break
+      case "codes-logic":
+        extraCandidates = [
+          "codes_logic",
+          "codes logic",
+        ]
+        break
+      case "sequence-pattern":
+        extraCandidates = [
+          "sequence_pattern",
+          "sequence pattern",
+        ]
+        break
+    }
+  }
+
+  if (mainCategory === "nvr") {
+    switch (topicKey) {
+      case "shape-patterns":
+        extraCandidates = ["shape-pattern", "shape_patterns", "shape_pattern"]
+        break
+      case "rotations-reflections":
+        extraCandidates = [
+          "rotation-reflection",
+          "rotation_reflection",
+          "rotations_reflections",
+        ]
+        break
+      case "codes-spatial-logic":
+        extraCandidates = [
+          "code-spatial-logic",
+          "code_spatial_logic",
+          "spatial-logic",
+          "spatial_logic",
+          "codes_spatial_logic",
+        ]
+        break
+    }
+  }
+
+  return uniqueStrings([...baseCandidates, ...extraCandidates]).map(
+    normalizeCategoryValue
+  )
+}
+
+function getStandardTableConfig(
+  mainCategory: NonEnglishMainCategory
+): StandardTableConfig {
+  return STANDARD_TABLE_CONFIG[mainCategory]
 }
 
 function getSupabaseClient() {
@@ -500,6 +723,180 @@ async function fetchEnglishPassages(testIds: number[]) {
   }
 
   return map
+}
+
+async function fetchStandardTestsForTopic(
+  mainCategory: NonEnglishMainCategory,
+  topicKey: string
+) {
+  const supabase = getSupabaseClient()
+  const config = getStandardTableConfig(mainCategory)
+  const allowedCategories = new Set(
+    getStandardTopicCategoryCandidates(mainCategory, topicKey)
+  )
+
+  const { data, error } = await supabase
+    .from(config.testsTable)
+    .select("id, title, category, difficulty")
+    .range(0, 9999)
+
+  if (error) {
+    throw new Error(`Could not load ${mainCategory} tests: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as StandardTestRow[]
+
+  return rows.filter((row) =>
+    allowedCategories.has(normalizeCategoryValue(row.category))
+  )
+}
+
+async function fetchStandardQuestions(
+  mainCategory: NonEnglishMainCategory,
+  testIds: number[]
+) {
+  if (testIds.length === 0) {
+    return [] as StandardQuestionRow[]
+  }
+
+  const supabase = getSupabaseClient()
+  const config = getStandardTableConfig(mainCategory)
+
+  const { data, error } = await supabase
+    .from(config.questionsTable)
+    .select(config.questionSelect)
+    .in("test_id", testIds)
+    .order("test_id", { ascending: true })
+    .order("question_order", { ascending: true })
+
+  if (error) {
+    throw new Error(`Could not load ${mainCategory} questions: ${error.message}`)
+  }
+
+  return ((data ?? []) as unknown) as StandardQuestionRow[]
+}
+
+function normalizeStandardQuestions(
+  mainCategory: NonEnglishMainCategory,
+  topicKey: string,
+  rows: StandardQuestionRow[],
+  testsById: Map<number, StandardTestRow>
+): NormalizedQuestion[] {
+  const config = getStandardTableConfig(mainCategory)
+
+  return rows.flatMap((row) => {
+    if (typeof row.test_id !== "number") {
+      return []
+    }
+
+    const parentTest = testsById.get(row.test_id)
+    const correctAnswer = toOptionKey(row.correct_answer)
+
+    if (!correctAnswer) {
+      return []
+    }
+
+    const options: NormalizedOption[] = [
+      {
+        key: "A",
+        text: row.option_a,
+        imageUrl: row.option_a_image_url ?? null,
+      },
+      {
+        key: "B",
+        text: row.option_b,
+        imageUrl: row.option_b_image_url ?? null,
+      },
+      {
+        key: "C",
+        text: row.option_c,
+        imageUrl: row.option_c_image_url ?? null,
+      },
+      {
+        key: "D",
+        text: row.option_d,
+        imageUrl: row.option_d_image_url ?? null,
+      },
+    ]
+
+    const hasAnyOptionContent = options.some(
+      (option) =>
+        (typeof option.text === "string" && option.text.trim()) ||
+        (typeof option.imageUrl === "string" && option.imageUrl.trim())
+    )
+
+    if (!hasAnyOptionContent) {
+      return []
+    }
+
+    const hasQuestionImage =
+      typeof row.image_url === "string" && row.image_url.trim()
+
+    const hasOptionImages = options.some(
+      (option) =>
+        typeof option.imageUrl === "string" && option.imageUrl.trim()
+    )
+
+    const question: NormalizedQuestion = {
+      runnerId: `${config.sourceType}:${row.id}`,
+      sourceType: config.sourceType,
+      sourceId: row.id,
+      mainCategory,
+      topicKey,
+      subtopicKey: null,
+      prompt:
+        hasQuestionImage || hasOptionImages
+          ? "Study the image and choose the correct answer."
+          : "Choose the correct answer.",
+      questionText: row.question_text,
+      passageText: null,
+      imageUrl: row.image_url ?? null,
+      options,
+      correctAnswer,
+      explanation: row.explanation,
+      difficulty: parentTest?.difficulty ?? null,
+      meta: {
+        test_id: row.test_id,
+        test_title: parentTest?.title ?? null,
+        category: parentTest?.category ?? null,
+        question_order: row.question_order,
+      },
+    }
+
+    return [question]
+  })
+}
+
+async function buildStandardTopicQuestions(
+  mainCategory: NonEnglishMainCategory,
+  topicKey: string,
+  selectedDifficulty: DifficultyFilter
+) {
+  const tests = await fetchStandardTestsForTopic(mainCategory, topicKey)
+
+  const filteredTests = tests.filter((test) =>
+    matchesDifficulty(test.difficulty, selectedDifficulty)
+  )
+
+  if (filteredTests.length === 0) {
+    return [] as NormalizedQuestion[]
+  }
+
+  const testsById = new Map<number, StandardTestRow>(
+    filteredTests.map((test) => [test.id, test])
+  )
+
+  const questions = await fetchStandardQuestions(
+    mainCategory,
+    filteredTests.map((test) => test.id)
+  )
+
+  return normalizeStandardQuestions(
+    mainCategory,
+    topicKey,
+    questions,
+    testsById
+  )
 }
 
 function validateRequestBody(
@@ -697,14 +1094,6 @@ export async function POST(request: NextRequest) {
     }
 
     const config = validatedBody.data
-
-    if (config.mainCategory !== "english") {
-      return jsonError(
-        "Only English custom tests are enabled in this first MVP.",
-        400
-      )
-    }
-
     const selectionValidation = validateTopicSelection(config)
 
     if (!selectionValidation.ok) {
@@ -712,96 +1101,157 @@ export async function POST(request: NextRequest) {
     }
 
     const uniqueTopicKeys = Array.from(new Set(config.topicKeys))
-    const topicTargets = distributeCounts(config.questionCount, uniqueTopicKeys.length)
-    const targetByTopic = new Map<string, number>(
-      uniqueTopicKeys.map((topicKey, index) => [topicKey, topicTargets[index] ?? 0])
-    )
+    const catalog = getMainCategoryCatalog(config.mainCategory)
+    const mainCategoryLabel = catalog?.label ?? config.mainCategory.toUpperCase()
 
-    const needsWords =
-      uniqueTopicKeys.includes("vocabulary") ||
-      uniqueTopicKeys.includes("spelling")
+    if (config.mainCategory === "english") {
+      const topicTargets = distributeCounts(
+        config.questionCount,
+        uniqueTopicKeys.length
+      )
 
-    const words = needsWords
-      ? (await fetchWords()).filter((row) =>
-          matchesDifficulty(row.difficulty, config.selectedDifficulty)
-        )
-      : []
+      const targetByTopic = new Map<string, number>(
+        uniqueTopicKeys.map((topicKey, index) => [
+          topicKey,
+          topicTargets[index] ?? 0,
+        ])
+      )
 
-    const topicPools: TopicPool[] = []
+      const needsWords =
+        uniqueTopicKeys.includes("vocabulary") ||
+        uniqueTopicKeys.includes("spelling")
 
-    for (const topicKey of uniqueTopicKeys) {
-      if (topicKey === "vocabulary") {
-        const questions = normalizeVocabularyQuestions(words)
-        topicPools.push({ topicKey, questions })
-        continue
-      }
+      const words = needsWords
+        ? (await fetchWords()).filter((row) =>
+            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+          )
+        : []
 
-      if (topicKey === "spelling") {
-        const questions = normalizeSpellingQuestions(words)
-        topicPools.push({ topicKey, questions })
-        continue
-      }
+      const topicPools: TopicPool[] = []
 
-      if (
-        topicKey === "comprehension" ||
-        topicKey === "grammar" ||
-        topicKey === "punctuation"
-      ) {
-        const selectedSubtopics = Array.isArray(config.subtopicMap[topicKey])
-          ? config.subtopicMap[topicKey].filter(
-              (value): value is string => typeof value === "string"
+      for (const topicKey of uniqueTopicKeys) {
+        if (topicKey === "vocabulary") {
+          const questions = normalizeVocabularyQuestions(words)
+          topicPools.push({ topicKey, questions })
+          continue
+        }
+
+        if (topicKey === "spelling") {
+          const questions = normalizeSpellingQuestions(words)
+          topicPools.push({ topicKey, questions })
+          continue
+        }
+
+        if (
+          topicKey === "comprehension" ||
+          topicKey === "grammar" ||
+          topicKey === "punctuation"
+        ) {
+          const selectedSubtopics = Array.isArray(config.subtopicMap[topicKey])
+            ? config.subtopicMap[topicKey].filter(
+                (value): value is string => typeof value === "string"
+              )
+            : []
+
+          const rows = (await fetchEnglishQuestions(
+            topicKey,
+            selectedSubtopics
+          )).filter((row) =>
+            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+          )
+
+          if (topicKey === "comprehension") {
+            const requestedForComprehension =
+              targetByTopic.get(topicKey) ?? config.questionCount
+
+            const comprehensionPoolSize = Math.min(
+              rows.length,
+              requestedForComprehension + 10
             )
-          : []
 
-        const rows = (await fetchEnglishQuestions(topicKey, selectedSubtopics)).filter(
-          (row) => matchesDifficulty(row.difficulty, config.selectedDifficulty)
-        )
+            const selectedRows = selectComprehensionRowsByPassage(
+              rows,
+              comprehensionPoolSize
+            )
 
-        if (topicKey === "comprehension") {
-          const requestedForComprehension =
-            targetByTopic.get(topicKey) ?? config.questionCount
-
-          const comprehensionPoolSize = Math.min(
-            rows.length,
-            requestedForComprehension + 10
-          )
-
-          const selectedRows = selectComprehensionRowsByPassage(
-            rows,
-            comprehensionPoolSize
-          )
-
-          const passagesByTestId = await fetchEnglishPassages(
-            Array.from(
-              new Set(
-                selectedRows
-                  .map((row) => row.test_id)
-                  .filter((id): id is number => typeof id === "number")
+            const passagesByTestId = await fetchEnglishPassages(
+              Array.from(
+                new Set(
+                  selectedRows
+                    .map((row) => row.test_id)
+                    .filter((id): id is number => typeof id === "number")
+                )
               )
             )
-          )
+
+            const questions = normalizeEnglishQuestions(
+              selectedRows,
+              topicKey,
+              passagesByTestId
+            )
+
+            topicPools.push({ topicKey, questions })
+            continue
+          }
 
           const questions = normalizeEnglishQuestions(
-            selectedRows,
+            rows,
             topicKey,
-            passagesByTestId
+            new Map<number, string>()
           )
 
           topicPools.push({ topicKey, questions })
           continue
         }
 
-        const questions = normalizeEnglishQuestions(
-          rows,
-          topicKey,
-          new Map<number, string>()
-        )
-
-        topicPools.push({ topicKey, questions })
-        continue
+        return jsonError(`Topic "${topicKey}" is not supported yet.`, 400)
       }
 
-      return jsonError(`Topic "${topicKey}" is not supported yet.`, 400)
+      const totalAvailable = topicPools.reduce(
+        (sum, pool) => sum + pool.questions.length,
+        0
+      )
+
+      if (totalAvailable === 0) {
+        return jsonError(
+          "No questions were found for the selected English topics.",
+          400
+        )
+      }
+
+      const finalQuestions = selectFinalQuestions(topicPools, config.questionCount)
+
+      if (finalQuestions.length < config.questionCount) {
+        return jsonError(
+          `Only ${finalQuestions.length} questions are currently available for this custom test setup. Please reduce the question count, change difficulty, or choose more topics.`,
+          400
+        )
+      }
+
+      const response: GenerateCustomTestResponse = {
+        ok: true,
+        data: {
+          testSessionId: crypto.randomUUID(),
+          config,
+          questions: finalQuestions,
+          createdAt: new Date().toISOString(),
+        },
+      }
+
+      return NextResponse.json(response)
+    }
+
+    const nonEnglishMainCategory = config.mainCategory as NonEnglishMainCategory
+    const topicPools: TopicPool[] = []
+
+    for (const topicKey of uniqueTopicKeys) {
+      const questions = await buildStandardTopicQuestions(
+        nonEnglishMainCategory,
+        topicKey,
+        config.selectedDifficulty
+      )
+
+      topicPools.push({ topicKey, questions })
     }
 
     const totalAvailable = topicPools.reduce(
@@ -811,7 +1261,7 @@ export async function POST(request: NextRequest) {
 
     if (totalAvailable === 0) {
       return jsonError(
-        "No questions were found for the selected English topics.",
+        `No questions were found for the selected ${mainCategoryLabel} topics.`,
         400
       )
     }
