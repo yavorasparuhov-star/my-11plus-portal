@@ -10,7 +10,7 @@ type HeaderProps = {
   onLogout?: () => void
 }
 
-type UserPlan = "guest" | "free" | "paid"
+type UserPlan = "guest" | "free" | "monthly" | "annual"
 
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
@@ -28,24 +28,40 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
       if (propUser) {
         setCurrentUser(propUser)
 
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from("profiles")
           .select("plan")
           .eq("id", propUser.id)
           .maybeSingle()
 
+        if (error) {
+          console.error("Error loading profile plan:", error)
+        }
+
         if (!mounted) return
 
-        setPlan(profile?.plan === "paid" ? "paid" : "free")
+        const dbPlan = profile?.plan
+        setPlan(
+          dbPlan === "monthly" || dbPlan === "annual" || dbPlan === "free"
+            ? dbPlan
+            : "free"
+        )
         setLoadingUser(false)
         return
       }
 
-      const user = sessionUser ?? (await supabase.auth.getUser()).data.user ?? null
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error("Error getting authenticated user:", userError)
+      }
 
       if (!mounted) return
 
-      setCurrentUser(user)
+      setCurrentUser(user ?? null)
 
       if (!user) {
         setPlan("guest")
@@ -53,15 +69,24 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         return
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("plan")
         .eq("id", user.id)
         .maybeSingle()
 
+      if (error) {
+        console.error("Error loading profile plan:", error)
+      }
+
       if (!mounted) return
 
-      setPlan(profile?.plan === "paid" ? "paid" : "free")
+      const dbPlan = profile?.plan
+      setPlan(
+        dbPlan === "monthly" || dbPlan === "annual" || dbPlan === "free"
+          ? dbPlan
+          : "free"
+      )
       setLoadingUser(false)
     }
 
@@ -96,7 +121,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   }
 
   const activeUser = propUser ?? currentUser
-  const isGuest = !activeUser || plan === "guest"
+  const isGuest = !activeUser
 
   const homeHref = "/"
   const englishHref = "/english"
@@ -135,6 +160,34 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     activeUser?.email?.[0] ||
     "U"
   ).toUpperCase()
+
+  const planBadgeText =
+    plan === "monthly"
+      ? "Monthly"
+      : plan === "annual"
+        ? "Annual"
+        : plan === "free"
+          ? "Free"
+          : "Guest"
+
+  const planBadgeStyle: React.CSSProperties =
+    plan === "monthly" || plan === "annual"
+      ? {
+          background: "#dcfce7",
+          color: "#166534",
+          border: "1px solid #86efac",
+        }
+      : plan === "free"
+        ? {
+            background: "#eef2ff",
+            color: "#3730a3",
+            border: "1px solid #c7d2fe",
+          }
+        : {
+            background: "#f3f4f6",
+            color: "#374151",
+            border: "1px solid #d1d5db",
+          }
 
   return (
     <div
@@ -258,6 +311,19 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         >
           {loadingUser ? null : activeUser ? (
             <>
+              <div
+                style={{
+                  ...planBadgeStyle,
+                  padding: "7px 12px",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {planBadgeText}
+              </div>
+
               <Link
                 href="/profile"
                 style={{
@@ -503,6 +569,19 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   gap: "12px",
                 }}
               >
+                <div
+                  style={{
+                    ...planBadgeStyle,
+                    padding: "7px 12px",
+                    borderRadius: "999px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    width: "fit-content",
+                  }}
+                >
+                  {planBadgeText}
+                </div>
+
                 <Link
                   href="/profile"
                   onClick={() => setMenuOpen(false)}

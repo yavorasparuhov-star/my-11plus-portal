@@ -28,11 +28,6 @@ type EnglishComprehensionQuestion = {
   created_at: string
 }
 
-type QuestionMigrationMapRow = {
-  old_question_id: number
-  new_question_id: number
-}
-
 type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
@@ -92,18 +87,9 @@ export default function ComprehensionTestPage() {
           .eq("main_category", "comprehension")
           .eq("subcategory", "comprehension")
 
-        const { data: mappedRows } = await supabase
-          .from("english_question_migration_map")
-          .select("old_question_id, new_question_id")
-          .eq("old_questions_table", "comprehension_questions")
-          .in("old_question_id", rawIds)
-
         const directIds = (directRows ?? []).map((row) => row.id)
-        const mappedIds = ((mappedRows ?? []) as QuestionMigrationMapRow[]).map(
-          (row) => row.new_question_id
-        )
 
-        setReviewIds(Array.from(new Set([...directIds, ...mappedIds])))
+        setReviewIds(Array.from(new Set(directIds)))
       } catch {
         setReviewIds([])
       }
