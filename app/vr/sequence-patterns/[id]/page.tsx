@@ -395,8 +395,6 @@ export default function VRSequencePatternsTestPage() {
   }
 
   const isCorrect = selectedAnswer === currentQuestion.correct_answer
-  const progressPercent =
-    questions.length > 0 ? Math.round(((currentIndex + 1) / questions.length) * 100) : 0
   const badgeColors = getDifficultyColors(test.difficulty)
 
   return (
@@ -430,10 +428,6 @@ export default function VRSequencePatternsTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
               <span style={styles.progressText}>Score: {score}</span>
-            </div>
-
-            <div style={styles.progressBarWrap}>
-              <div style={{ ...styles.progressBarFill, width: `${progressPercent}%` }} />
             </div>
 
             <h2 style={styles.questionText}>{currentQuestion.question_text}</h2>
@@ -622,20 +616,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
-  },
-  progressBarWrap: {
-    width: "100%",
-    height: "10px",
-    background: "#e5e7eb",
-    borderRadius: "999px",
-    overflow: "hidden",
-    marginBottom: "24px",
-  },
-  progressBarFill: {
-    height: "100%",
-    background: "#4f46e5",
-    borderRadius: "999px",
-    transition: "width 0.25s ease",
   },
   questionText: {
     fontSize: "26px",
