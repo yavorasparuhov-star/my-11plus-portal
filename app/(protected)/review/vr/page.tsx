@@ -16,6 +16,7 @@ import type {
   NameType,
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent"
+
 type VRReviewRow = {
   id: string
   user_id: string
@@ -25,15 +26,29 @@ type VRReviewRow = {
   difficulty: number | null
   created_at: string
   explanation?: string
+  category?: string | null
+  test_id?: number | null
 }
 
 type VRQuestionRow = {
   id: number
   explanation: string | null
+  difficulty: number | null
+  test_id: number | null
+}
+
+type VRTestRow = {
+  id: number
+  category: string | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+type CategoryFilter =
+  | "all"
+  | "word-relationships"
+  | "code-logic"
+  | "sequences-patterns"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -47,6 +62,13 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
   { value: "1", label: "Easy" },
   { value: "2", label: "Medium" },
   { value: "3", label: "Hard" },
+]
+
+const categoryOptions: { value: CategoryFilter; label: string }[] = [
+  { value: "all", label: "All Categories" },
+  { value: "word-relationships", label: "Word Relationships" },
+  { value: "code-logic", label: "Codes & Logic" },
+  { value: "sequences-patterns", label: "Sequences & Patterns" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -70,6 +92,13 @@ function getLevelLabel(level: number | null | undefined) {
   return "Not set"
 }
 
+function getCategoryLabel(category: string | null | undefined) {
+  if (category === "word-relationships") return "Word Relationships"
+  if (category === "code-logic") return "Codes & Logic"
+  if (category === "sequences-patterns") return "Sequences & Patterns"
+  return "Not set"
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value)
   return date.toLocaleString("en-GB", {
@@ -78,14 +107,6 @@ function formatDateTime(value: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  })
-}
-
-function formatShortDate(value: string) {
-  const date = new Date(value)
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
   })
 }
 
@@ -145,6 +166,7 @@ function SectionCard({
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -174,6 +196,7 @@ function SectionCard({
     </section>
   )
 }
+
 function questionsTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
@@ -189,6 +212,7 @@ function questionsTooltipFormatter(
 
   return [numericValue, "Questions"]
 }
+
 export default function VRReviewPage() {
   const router = useRouter()
 
@@ -197,6 +221,7 @@ export default function VRReviewPage() {
   const [reviewQuestions, setReviewQuestions] = useState<VRReviewRow[]>([])
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
@@ -239,31 +264,76 @@ export default function VRReviewPage() {
         .map((row) => row.question_id)
         .filter((id): id is number => id !== null)
 
-      let explanationMap = new Map<number, string>()
+      let questionMap = new Map<
+        number,
+        {
+          explanation: string
+          difficulty: number | null
+          test_id: number | null
+        }
+      >()
 
       if (questionIds.length > 0) {
         const { data: questionsData, error: questionsError } = await supabase
           .from("vr_questions")
-          .select("id, explanation")
+          .select("id, explanation, difficulty, test_id")
           .in("id", questionIds)
 
         if (questionsError) {
-          console.error("Error loading VR explanations:", questionsError)
+          console.error("Error loading VR explanations/questions:", questionsError)
         } else {
-          explanationMap = new Map(
+          questionMap = new Map(
             ((questionsData || []) as VRQuestionRow[]).map((question) => [
               question.id,
-              question.explanation || "",
+              {
+                explanation: question.explanation || "",
+                difficulty: question.difficulty,
+                test_id: question.test_id,
+              },
             ])
           )
         }
       }
 
-      const mergedData = reviewData.map((row) => ({
-        ...row,
-        explanation:
-          row.question_id !== null ? explanationMap.get(row.question_id) || "" : "",
-      }))
+      const testIds = Array.from(
+        new Set(
+          Array.from(questionMap.values())
+            .map((item) => item.test_id)
+            .filter((id): id is number => id !== null)
+        )
+      )
+
+      let testMap = new Map<number, VRTestRow>()
+
+      if (testIds.length > 0) {
+        const { data: testsData, error: testsError } = await supabase
+          .from("vr_tests")
+          .select("id, category")
+          .in("id", testIds)
+
+        if (testsError) {
+          console.error("Error loading VR test categories:", testsError)
+        } else {
+          testMap = new Map(((testsData || []) as VRTestRow[]).map((test) => [test.id, test]))
+        }
+      }
+
+      const mergedData = reviewData.map((row) => {
+        const questionInfo =
+          row.question_id !== null ? questionMap.get(row.question_id) : undefined
+        const linkedTest =
+          questionInfo?.test_id !== null && questionInfo?.test_id !== undefined
+            ? testMap.get(questionInfo.test_id)
+            : undefined
+
+        return {
+          ...row,
+          explanation: questionInfo?.explanation || "",
+          difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
+          test_id: questionInfo?.test_id ?? null,
+          category: linkedTest?.category ?? null,
+        }
+      })
 
       if (mounted) {
         setReviewQuestions(mergedData)
@@ -314,9 +384,12 @@ export default function VRReviewPage() {
       const matchesDifficulty =
         difficultyFilter === "all" || String(q.difficulty ?? "") === difficultyFilter
       const matchesTime = cutoff ? new Date(q.created_at) >= cutoff : true
-      return matchesDifficulty && matchesTime
+      const matchesCategory =
+        categoryFilter === "all" || (q.category ?? "") === categoryFilter
+
+      return matchesDifficulty && matchesTime && matchesCategory
     })
-  }, [uniqueQuestions, difficultyFilter, timeFilter])
+  }, [uniqueQuestions, difficultyFilter, timeFilter, categoryFilter])
 
   function retryFilteredQuestions() {
     const reviewQuestionIds = filteredQuestions
@@ -333,23 +406,23 @@ export default function VRReviewPage() {
     const totalQuestions = filteredQuestions.length
     const allUnique = uniqueQuestions.length
 
-    const byDifficulty = Object.entries(
+    const byCategory = Object.entries(
       filteredQuestions.reduce((acc, row) => {
-        const key = getLevelLabel(row.difficulty)
+        const key = getCategoryLabel(row.category)
         if (!acc[key]) {
           acc[key] = 0
         }
         acc[key] += 1
         return acc
       }, {} as Record<string, number>)
-    ).map(([difficulty, count]) => ({
-      difficulty,
+    ).map(([category, count]) => ({
+      category,
       count,
     }))
 
-    const mostCommonLevel =
-      byDifficulty.length > 0
-        ? byDifficulty.reduce((max, current) => (current.count > max.count ? current : max))
+    const mostCommonCategory =
+      byCategory.length > 0
+        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
         : null
 
     const mostRecentItem = filteredQuestions.length
@@ -365,48 +438,32 @@ export default function VRReviewPage() {
     return {
       totalQuestions,
       allUnique,
-      mostCommonLevel,
+      mostCommonCategory,
       mostRecentItem,
       withExplanation,
     }
   }, [filteredQuestions, uniqueQuestions])
 
-  const reviewByDifficultyData = useMemo(() => {
+  const reviewByCategoryData = useMemo(() => {
     const grouped = filteredQuestions.reduce((acc, row) => {
-      const key = getLevelLabel(row.difficulty)
+      const key = getCategoryLabel(row.category)
 
       if (!acc[key]) {
         acc[key] = {
-          difficulty: key,
+          category: key,
           count: 0,
         }
       }
 
       acc[key].count += 1
       return acc
-    }, {} as Record<string, { difficulty: string; count: number }>)
+    }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Easy", "Medium", "Hard", "Not set"]
+    const order = ["Word Relationships", "Codes & Logic", "Sequences & Patterns", "Not set"]
 
     return Object.values(grouped).sort(
-      (a, b) => order.indexOf(a.difficulty) - order.indexOf(b.difficulty)
+      (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
     )
-  }, [filteredQuestions])
-
-  const reviewTrendData = useMemo(() => {
-    const grouped = filteredQuestions.reduce((acc, row) => {
-      const dateKey = formatShortDate(row.created_at)
-      if (!acc[dateKey]) {
-        acc[dateKey] = 0
-      }
-      acc[dateKey] += 1
-      return acc
-    }, {} as Record<string, number>)
-
-    return Object.entries(grouped).map(([date, count]) => ({
-      date,
-      count,
-    }))
   }, [filteredQuestions])
 
   const recentQuestions = useMemo(() => {
@@ -420,11 +477,11 @@ export default function VRReviewPage() {
       return "No verbal reasoning review questions found for the selected filters."
     }
 
-    const mostCommon = reviewStats.mostCommonLevel
-      ? `${reviewStats.mostCommonLevel.difficulty} (${reviewStats.mostCommonLevel.count})`
+    const mostCommon = reviewStats.mostCommonCategory
+      ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
       : "N/A"
 
-    return `You currently have ${reviewStats.totalQuestions} verbal reasoning questions to review. The biggest review level is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
+    return `You currently have ${reviewStats.totalQuestions} verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
   }, [filteredQuestions, reviewStats])
 
   if (loadingUser || loadingData) {
@@ -476,8 +533,8 @@ export default function VRReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review verbal reasoning questions that need more practice, filter by
-              difficulty, and jump straight into a focused retry session.
+              Review verbal reasoning questions that need more practice, filter by category
+              and difficulty, and jump straight into a focused retry session.
             </p>
           </div>
 
@@ -489,6 +546,18 @@ export default function VRReviewPage() {
               alignItems: "center",
             }}
           >
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              style={selectStyle}
+            >
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
             <select
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
@@ -537,22 +606,23 @@ export default function VRReviewPage() {
         >
           <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
           <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
+          <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
           <StatCard
-            title="With Explanations"
-            value={String(reviewStats.withExplanation)}
-          />
-          <StatCard
-            title="Most Common Level"
-            value={reviewStats.mostCommonLevel ? reviewStats.mostCommonLevel.difficulty : "—"}
+            title="Most Common Category"
+            value={reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
             subtitle={
-              reviewStats.mostCommonLevel
-                ? `${reviewStats.mostCommonLevel.count} questions`
+              reviewStats.mostCommonCategory
+                ? `${reviewStats.mostCommonCategory.count} questions`
                 : undefined
             }
           />
           <StatCard
             title="Most Recent Item"
-            value={reviewStats.mostRecentItem ? getLevelLabel(reviewStats.mostRecentItem.difficulty) : "—"}
+            value={
+              reviewStats.mostRecentItem
+                ? getCategoryLabel(reviewStats.mostRecentItem.category)
+                : "—"
+            }
             subtitle={
               reviewStats.mostRecentItem
                 ? formatDateTime(reviewStats.mostRecentItem.created_at)
@@ -562,36 +632,33 @@ export default function VRReviewPage() {
           <StatCard
             title="Current Filter"
             value={
-              difficultyFilter === "all"
-                ? "All Levels"
-                : getLevelLabel(Number(difficultyFilter))
+              categoryFilter === "all" ? "All Categories" : getCategoryLabel(categoryFilter)
             }
-            subtitle={
-              timeOptions.find((option) => option.value === timeFilter)?.label
-            }
+            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
           />
         </div>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: "20px",
             marginBottom: "20px",
+            alignItems: "stretch",
           }}
         >
           <SectionCard
-            title="Review Questions by Difficulty"
-            subtitle="See which levels need the most revision."
+            title="Review Questions by Category"
+            subtitle="See which VR categories need the most revision."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {reviewByDifficultyData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reviewByDifficultyData}>
+            <div style={{ width: "100%", height: "340px", minWidth: 0 }}>
+              {reviewByCategoryData.length ? (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <BarChart data={reviewByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="difficulty" />
+                    <XAxis dataKey="category" />
                     <YAxis allowDecimals={false} />
-                  <Tooltip formatter={questionsTooltipFormatter} /> 
+                    <Tooltip formatter={questionsTooltipFormatter} />
                     <Bar dataKey="count" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -650,7 +717,7 @@ export default function VRReviewPage() {
                   Main Focus
                 </div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.mostCommonLevel ? reviewStats.mostCommonLevel.difficulty : "—"}
+                  {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
                 </div>
               </div>
             </div>
@@ -667,12 +734,13 @@ export default function VRReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "980px",
+                  minWidth: "1080px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Category</th>
                     <th style={thStyle}>Level</th>
                     <th style={thStyle}>Question</th>
                     <th style={thStyle}>Explanation</th>
@@ -688,6 +756,7 @@ export default function VRReviewPage() {
                       }}
                     >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                       <td style={{ ...tdStyle, maxWidth: "320px" }}>
                         {truncateText(row.question_text, 130)}
@@ -744,7 +813,23 @@ export default function VRReviewPage() {
                     color: "#6d28d9",
                     fontSize: "12px",
                     fontWeight: 700,
+                    marginBottom: "10px",
+                  }}
+                >
+                  {getCategoryLabel(row.category)}
+                </div>
+
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 10px",
+                    borderRadius: "999px",
+                    background: "#f5f3ff",
+                    color: "#7c3aed",
+                    fontSize: "12px",
+                    fontWeight: 700,
                     marginBottom: "14px",
+                    marginLeft: "8px",
                   }}
                 >
                   {getLevelLabel(row.difficulty)}
