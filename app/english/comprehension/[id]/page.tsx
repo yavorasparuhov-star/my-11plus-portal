@@ -235,17 +235,17 @@ export default function ComprehensionTestPage() {
     setErrorMessage("")
 
     let correctAnswers = 0
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      main_category: string
-      subcategory: string
-      question_text: string
-      user_answer: string
-      correct_answer: string
-      difficulty: number | null
-    }[] = []
+const wrongAnswersForReview: {
+  user_id: string
+  test_id: number
+  question_id: number
+  main_category: string
+  subcategory: string | null
+  question_text: string
+  user_answer: string | null
+  correct_answer: string
+  difficulty: number | null
+}[] = []
 
     const correctlyAnsweredReviewQuestionIds: number[] = []
 
@@ -266,7 +266,7 @@ export default function ComprehensionTestPage() {
           main_category: "comprehension",
           subcategory: "comprehension",
           question_text: question.question_text,
-          user_answer: selected || "",
+          user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
         })

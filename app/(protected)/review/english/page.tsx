@@ -371,6 +371,7 @@ function SectionCard({
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -400,7 +401,6 @@ function SectionCard({
     </section>
   )
 }
-
 export default function EnglishReviewPage() {
   const router = useRouter()
 
@@ -415,175 +415,184 @@ export default function EnglishReviewPage() {
     let mounted = true
 
     async function loadData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (!user) {
-        router.push("/login")
-        return
-      }
+        if (!user) {
+          router.push("/login")
+          return
+        }
 
-      setLoadingUser(false)
+        setLoadingUser(false)
 
-      const [vocabularyResult, spellingResult, englishSharedReviewResult] = await Promise.all([
-        supabase
-          .from("vocabulary_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("knew_it", false)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("spelling_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("knew_it", false)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("english_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .in("main_category", ["comprehension", "grammar", "punctuation"])
-          .order("created_at", { ascending: false }),
-      ])
+        const [vocabularyResult, spellingResult, englishSharedReviewResult] = await Promise.all([
+          supabase
+            .from("vocabulary_review")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("knew_it", false)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("spelling_review")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("knew_it", false)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("english_review")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("main_category", ["comprehension", "grammar", "punctuation"])
+            .order("created_at", { ascending: false }),
+        ])
 
-      if (vocabularyResult.error) {
-        console.error("Error loading vocabulary review:", vocabularyResult.error)
-      }
-      if (spellingResult.error) {
-        console.error("Error loading spelling review:", spellingResult.error)
-      }
-      if (englishSharedReviewResult.error) {
-        console.error("Error loading shared English review:", englishSharedReviewResult.error)
-      }
+        if (vocabularyResult.error) {
+          console.error("Error loading vocabulary review:", vocabularyResult.error)
+        }
+        if (spellingResult.error) {
+          console.error("Error loading spelling review:", spellingResult.error)
+        }
+        if (englishSharedReviewResult.error) {
+          console.error("Error loading shared English review:", englishSharedReviewResult.error)
+        }
 
-      const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
-      const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
-      const englishSharedRows = (englishSharedReviewResult.data ?? []) as EnglishSharedReviewRow[]
+        const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
+        const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
+        const englishSharedRows =
+          (englishSharedReviewResult.data ?? []) as EnglishSharedReviewRow[]
 
-      const vocabularyAndSpellingWordIds = Array.from(
-        new Set(
-          [...vocabularyRows, ...spellingRows]
-            .map((row) => row.word_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      const englishSharedQuestionIds = Array.from(
-        new Set(
-          englishSharedRows
-            .map((row) => row.question_id)
-            .filter((id): id is number => id !== null)
-        )
-      )
-
-      let wordLookupMap = new Map<number, { definition: string; difficulty: number | null }>()
-      let englishSharedQuestionMap = new Map<
-        number,
-        { explanation: string; difficulty: number | null }
-      >()
-            if (vocabularyAndSpellingWordIds.length > 0) {
-        const { data: wordLookupData, error: wordLookupError } = await supabase
-          .from("words")
-          .select("id, definition, difficulty")
-          .in("id", vocabularyAndSpellingWordIds)
-
-        if (wordLookupError) {
-          console.error("Error loading vocabulary/spelling definitions:", wordLookupError)
-        } else {
-          wordLookupMap = new Map(
-            ((wordLookupData ?? []) as WordLookupRow[]).map((word) => [
-              word.id,
-              {
-                definition: word.definition || "",
-                difficulty: word.difficulty ?? null,
-              },
-            ])
+        const vocabularyAndSpellingWordIds = Array.from(
+          new Set(
+            [...vocabularyRows, ...spellingRows]
+              .map((row) => row.word_id)
+              .filter((id): id is number => id !== null)
           )
+        )
+
+        const englishSharedQuestionIds = Array.from(
+          new Set(
+            englishSharedRows
+              .map((row) => row.question_id)
+              .filter((id): id is number => id !== null)
+          )
+        )
+
+        let wordLookupMap = new Map<number, { definition: string; difficulty: number | null }>()
+        let englishSharedQuestionMap = new Map<
+          number,
+          { explanation: string; difficulty: number | null }
+        >()
+
+        if (vocabularyAndSpellingWordIds.length > 0) {
+          const { data: wordLookupData, error: wordLookupError } = await supabase
+            .from("words")
+            .select("id, definition, difficulty")
+            .in("id", vocabularyAndSpellingWordIds)
+
+          if (wordLookupError) {
+            console.error("Error loading vocabulary/spelling definitions:", wordLookupError)
+          } else {
+            wordLookupMap = new Map(
+              ((wordLookupData ?? []) as WordLookupRow[]).map((word) => [
+                word.id,
+                {
+                  definition: word.definition || "",
+                  difficulty: word.difficulty ?? null,
+                },
+              ])
+            )
+          }
+        }
+
+        if (englishSharedQuestionIds.length > 0) {
+          const { data: englishQuestionsData, error: englishQuestionsError } = await supabase
+            .from("english_questions")
+            .select("id, explanation, difficulty")
+            .in("id", englishSharedQuestionIds)
+
+          if (englishQuestionsError) {
+            console.error("Error loading shared English explanations:", englishQuestionsError)
+          } else {
+            englishSharedQuestionMap = new Map(
+              ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map((question) => [
+                question.id,
+                {
+                  explanation: question.explanation || "",
+                  difficulty: question.difficulty ?? null,
+                },
+              ])
+            )
+          }
+        }
+
+        const mergedRows: EnglishReviewRow[] = [
+          ...vocabularyRows.map((row) => ({
+            id: `vocabulary-${row.id}`,
+            category: "vocabulary" as const,
+            item_id: row.word_id,
+            item_text: row.word,
+            difficulty:
+              row.word_id !== null
+                ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
+                : row.difficulty ?? null,
+            created_at: row.created_at,
+            explanation:
+              row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
+          })),
+          ...spellingRows.map((row) => ({
+            id: `spelling-${row.id}`,
+            category: "spelling" as const,
+            item_id: row.word_id,
+            item_text: row.word,
+            difficulty:
+              row.word_id !== null
+                ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
+                : row.difficulty ?? null,
+            created_at: row.created_at,
+            explanation:
+              row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
+          })),
+          ...englishSharedRows.flatMap((row) => {
+            const mappedCategory = mapSharedReviewCategory(row)
+            if (!mappedCategory) return []
+
+            return [
+              {
+                id: `english-shared-${row.id}`,
+                category: mappedCategory,
+                item_id: row.question_id,
+                item_text: row.question_text,
+                difficulty:
+                  row.question_id !== null
+                    ? englishSharedQuestionMap.get(row.question_id)?.difficulty ??
+                      row.difficulty ??
+                      null
+                    : row.difficulty ?? null,
+                created_at: row.created_at,
+                explanation:
+                  row.question_id !== null
+                    ? englishSharedQuestionMap.get(row.question_id)?.explanation || ""
+                    : "",
+              },
+            ]
+          }),
+        ]
+
+        if (!mounted) return
+
+        setReviewItems(mergedRows)
+      } finally {
+        if (mounted) {
+          setLoadingData(false)
         }
       }
-
-      if (englishSharedQuestionIds.length > 0) {
-        const { data: englishQuestionsData, error: englishQuestionsError } = await supabase
-          .from("english_questions")
-          .select("id, explanation, difficulty")
-          .in("id", englishSharedQuestionIds)
-
-        if (englishQuestionsError) {
-          console.error("Error loading shared English explanations:", englishQuestionsError)
-        } else {
-          englishSharedQuestionMap = new Map(
-            ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map((question) => [
-              question.id,
-              {
-                explanation: question.explanation || "",
-                difficulty: question.difficulty ?? null,
-              },
-            ])
-          )
-        }
-      }
-
-      const mergedRows: EnglishReviewRow[] = [
-        ...vocabularyRows.map((row) => ({
-          id: `vocabulary-${row.id}`,
-          category: "vocabulary" as const,
-          item_id: row.word_id,
-          item_text: row.word,
-          difficulty:
-            row.word_id !== null
-              ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation: row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
-        })),
-        ...spellingRows.map((row) => ({
-          id: `spelling-${row.id}`,
-          category: "spelling" as const,
-          item_id: row.word_id,
-          item_text: row.word,
-          difficulty:
-            row.word_id !== null
-              ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
-              : row.difficulty ?? null,
-          created_at: row.created_at,
-          explanation: row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
-        })),
-        ...englishSharedRows.flatMap((row) => {
-          const mappedCategory = mapSharedReviewCategory(row)
-          if (!mappedCategory) return []
-
-          return [
-            {
-              id: `english-shared-${row.id}`,
-              category: mappedCategory,
-              item_id: row.question_id,
-              item_text: row.question_text,
-              difficulty:
-                row.question_id !== null
-                  ? englishSharedQuestionMap.get(row.question_id)?.difficulty ??
-                    row.difficulty ??
-                    null
-                  : row.difficulty ?? null,
-              created_at: row.created_at,
-              explanation:
-                row.question_id !== null
-                  ? englishSharedQuestionMap.get(row.question_id)?.explanation || ""
-                  : "",
-            },
-          ]
-        }),
-      ]
-
-      if (!mounted) return
-
-      setReviewItems(mergedRows)
-      setLoadingData(false)
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       mounted = false
@@ -688,11 +697,12 @@ export default function EnglishReviewPage() {
 
   function retryFilteredItems() {
     const groupedIds = filteredItems.reduce((acc, row) => {
-      if (row.item_id === null) return acc
+      const itemId = row.item_id
+      if (itemId === null) return acc
 
       const category = row.category
       const existing = acc[category] ?? []
-      acc[category] = [...existing, row.item_id]
+      acc[category] = existing.includes(itemId) ? existing : [...existing, itemId]
 
       return acc
     }, {} as Partial<Record<EnglishReviewCategory, number[]>>)
@@ -871,6 +881,8 @@ export default function EnglishReviewPage() {
             }}
           >
             <select
+             id="english-review-category-filter"
+  name="englishReviewCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
               style={selectStyle}
@@ -883,6 +895,8 @@ export default function EnglishReviewPage() {
             </select>
 
             <select
+             id="english-review-difficulty-filter"
+  name="englishReviewDifficultyFilter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
               style={selectStyle}
@@ -895,6 +909,8 @@ export default function EnglishReviewPage() {
             </select>
 
             <select
+              id="english-review-time-filter"
+  name="englishReviewTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -963,7 +979,7 @@ export default function EnglishReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
           }}
@@ -972,19 +988,24 @@ export default function EnglishReviewPage() {
             title="Review Items by Category"
             subtitle="See which English categories currently need the most revision."
           >
-            <div style={{ width: "100%", height: "340px" }}>
+            <div style={{ width: "100%", minWidth: 0 }}>
               {reviewByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reviewByCategoryData}>
+                <ResponsiveContainer width="100%" height={340} minWidth={0}>
+                  <BarChart
+                    data={reviewByCategoryData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
+                    <XAxis dataKey="category" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={questionsTooltipFormatter} />
                     <Bar dataKey="count" fill="#3b82f6" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
+                <div style={{ ...emptyStateStyle, height: "340px" }}>
+                  No data available for this filter.
+                </div>
               )}
             </div>
           </SectionCard>

@@ -169,7 +169,7 @@ export default function ShapeAndSpaceTestPage() {
       question_id: number
       category: string
       question_text: string
-      user_answer: string
+      user_answer: string | null
       correct_answer: string
     }[] = []
 
@@ -185,7 +185,7 @@ export default function ShapeAndSpaceTestPage() {
           question_id: question.id,
           category: test.category,
           question_text: question.question_text,
-          user_answer: selected || "",
+          user_answer: selected ?? null,
           correct_answer: question.correct_answer,
         })
       }

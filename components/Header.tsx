@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -25,13 +26,15 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     let mounted = true
 
     async function loadUserAndPlan(sessionUser?: any) {
-      if (propUser) {
-        setCurrentUser(propUser)
+      const userToLoad = propUser ?? sessionUser
+
+      if (userToLoad) {
+        setCurrentUser(userToLoad)
 
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("plan")
-          .eq("id", propUser.id)
+          .eq("id", userToLoad.id)
           .maybeSingle()
 
         if (error) {
@@ -138,7 +141,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
-    borderBottom: isActivePath(path) ? "2px solid #065f46" : "2px solid transparent",
+    borderBottom: isActivePath(path)
+      ? "2px solid #065f46"
+      : "2px solid transparent",
     color: isActivePath(path) ? "#065f46" : "#1f2937",
     fontWeight: isActivePath(path) ? 700 : 500,
     backgroundColor: "transparent",
@@ -206,9 +211,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           position: "relative",
           display: "flex",
           alignItems: "center",
-          padding: "14px 22px",
+          padding: "12px 22px",
           gap: "12px",
-          minHeight: "70px",
+          minHeight: "72px",
           maxWidth: "1200px",
           margin: "0 auto",
         }}
@@ -219,28 +224,57 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             textDecoration: "none",
             display: "flex",
             alignItems: "center",
+            gap: "12px",
             zIndex: 2,
             whiteSpace: "nowrap",
           }}
         >
+<div
+  style={{
+    width: "58px",
+    height: "58px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  }}
+>
+  <Image
+    src="/logo.png"
+    alt="YanBo Learning logo"
+    width={58}
+    height={58}
+    priority
+    style={{
+      objectFit: "contain",
+      display: "block",
+    }}
+  />
+</div>
+
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
             <span
-              style={{
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "#111827",
-              }}
-            >
-              11+ Trainer
-            </span>
+  style={{
+    fontSize: "18px",
+    fontWeight: 900,
+    color: "#111827",
+    letterSpacing: "-0.02em",
+  }}
+>
+  <span style={{ color: "#ec4899" }}>Y</span>
+  an
+  <span style={{ color: "#eab308" }}>B</span>
+  o Learning
+</span>
             <span
               style={{
                 fontSize: "12px",
-                color: "#4b5563",
-                fontWeight: 500,
+                color: "#111827",
+                fontWeight: 700,
               }}
             >
-              Learning Portal
+              11+ Practice Portal
             </span>
           </div>
         </Link>
@@ -289,9 +323,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
                 🛠️ Custom Tests
               </Link>
+
               <Link href="/progress" style={linkStyle("/progress")}>
                 📊 Progress
               </Link>
+
               <Link href="/review" style={linkStyle("/review")}>
                 📚 Review
               </Link>
@@ -345,7 +381,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     height: "30px",
                     borderRadius: "50%",
                     background: "#86efac",
-                    color: "#065f46",
+                    color: "#111827",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -476,7 +512,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 marginBottom: activeUser ? "14px" : "0",
               }}
             >
-              <Link href={homeHref} style={linkStyle(homeHref)} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={homeHref}
+                style={linkStyle(homeHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 🏠 Home
               </Link>
 
@@ -488,15 +528,27 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 📘 English
               </Link>
 
-              <Link href={mathHref} style={linkStyle(mathHref)} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={mathHref}
+                style={linkStyle(mathHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 ➗ Math
               </Link>
 
-              <Link href={vrHref} style={linkStyle(vrHref)} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={vrHref}
+                style={linkStyle(vrHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 🧠 VR
               </Link>
 
-              <Link href={nvrHref} style={linkStyle(nvrHref)} onClick={() => setMenuOpen(false)}>
+              <Link
+                href={nvrHref}
+                style={linkStyle(nvrHref)}
+                onClick={() => setMenuOpen(false)}
+              >
                 🔷 NVR
               </Link>
 
@@ -655,6 +707,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
           .mobile-menu {
             display: flex !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .mobile-menu-button {
+            width: 40px !important;
+            height: 40px !important;
           }
         }
       `}</style>

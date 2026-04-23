@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -277,6 +276,7 @@ function SectionCard({
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -304,6 +304,55 @@ function SectionCard({
       </div>
       {children}
     </section>
+  )
+}
+function ChartBox({
+  children,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height: 340 })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.max(0, Math.floor(rect.width))
+      const height = Math.max(0, Math.floor(rect.height))
+      setSize({ width, height })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "340px",
+        minWidth: 0,
+      }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div style={emptyStateStyle}>Loading chart...</div>
+      )}
+    </div>
   )
 }
 export default function EnglishProgressPage() {
@@ -668,6 +717,8 @@ export default function EnglishProgressPage() {
             }}
           >
             <select
+              id="english-progress-category-filter"
+  name="englishProgressCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
               style={selectStyle}
@@ -680,6 +731,8 @@ export default function EnglishProgressPage() {
             </select>
 
             <select
+              id="english-progress-difficulty-filter"
+  name="englishProgressDifficultyFilter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
               style={selectStyle}
@@ -692,6 +745,8 @@ export default function EnglishProgressPage() {
             </select>
 
             <select
+              id="english-progress-time-filter"
+  name="englishProgressTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -737,48 +792,48 @@ export default function EnglishProgressPage() {
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
+    gap: "20px",
+    marginBottom: "20px",
+  }}
+>
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent English attempts."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {performanceTrendData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={performanceTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip
-                      formatter={successTooltipFormatter}
-                      labelFormatter={(label, payload) => {
-                        const point = payload?.[0]?.payload
-                        return point
-                          ? `${point.date} • ${point.category} • ${point.scoreLabel}`
-                          : label
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="success"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+            <ChartBox>
+  {({ width, height }) =>
+    performanceTrendData.length ? (
+      <LineChart width={width} height={height} data={performanceTrendData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" />
+        <YAxis domain={[0, 100]} />
+        <Tooltip
+          formatter={successTooltipFormatter}
+          labelFormatter={(label, payload) => {
+            const point = payload?.[0]?.payload
+            return point
+              ? `${point.date} • ${point.category} • ${point.scoreLabel}`
+              : label
+          }}
+        />
+        <Line
+          type="monotone"
+          dataKey="success"
+          stroke="#3b82f6"
+          strokeWidth={3}
+          dot={{ r: 4 }}
+          activeDot={{ r: 6 }}
+        />
+      </LineChart>
+    ) : (
+      <div style={emptyStateStyle}>No data available for this filter.</div>
+    )
+  }
+</ChartBox>
           </SectionCard>
 
           <SectionCard
@@ -853,54 +908,54 @@ export default function EnglishProgressPage() {
           </SectionCard>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+    gap: "20px",
+    marginBottom: "20px",
+  }}
+>
           <SectionCard
             title="Average Success by Category"
             subtitle="Compare performance across English categories."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {successByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={successByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" fill="#3b82f6" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+<ChartBox>
+  {({ width, height }) =>
+    successByCategoryData.length ? (
+      <BarChart width={width} height={height} data={successByCategoryData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="category" />
+        <YAxis domain={[0, 100]} />
+        <Tooltip formatter={averageSuccessTooltipFormatter} />
+        <Bar dataKey="avgSuccess" fill="#3b82f6" radius={[10, 10, 0, 0]} />
+      </BarChart>
+    ) : (
+      <div style={emptyStateStyle}>No data available for this filter.</div>
+    )
+  }
+</ChartBox>
           </SectionCard>
 
           <SectionCard
             title="Practice Volume by Category"
             subtitle="See which English areas have been practised the most."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {attemptsByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={attemptsByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+<ChartBox>
+  {({ width, height }) =>
+    attemptsByCategoryData.length ? (
+      <BarChart width={width} height={height} data={attemptsByCategoryData}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="category" />
+        <YAxis allowDecimals={false} />
+        <Tooltip />
+        <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
+      </BarChart>
+    ) : (
+      <div style={emptyStateStyle}>No data available for this filter.</div>
+    )
+  }
+</ChartBox>
           </SectionCard>
         </div>
 
