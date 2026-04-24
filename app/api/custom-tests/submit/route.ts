@@ -110,23 +110,9 @@ export async function POST(request: NextRequest) {
     }
 
     const accessToken = authHeader.replace("Bearer ", "").trim()
+
     if (!accessToken) {
       return jsonError("Missing access token.", 401)
-    }
-
-    const body = await request.json()
-    const validated = validateBody(body)
-
-    if (!validated.ok) {
-      return jsonError(validated.error, 400)
-    }
-
-    const { generatedTest, answers, timeTakenSeconds } = validated.data
-
-// no English-only guard here anymore
-
-    if (!generatedTest.questions.length) {
-      return jsonError("Generated test does not contain any questions.", 400)
     }
 
     const supabase = getSupabaseClient(authHeader)
@@ -140,6 +126,33 @@ export async function POST(request: NextRequest) {
       return jsonError("Could not verify the logged-in user.", 401)
     }
 
+    const { data: hasPaidAccess, error: accessError } =
+      await supabase.rpc("has_paid_access")
+
+    if (accessError) {
+      return jsonError("Could not check your membership access.", 500)
+    }
+
+    if (!hasPaidAccess) {
+      return jsonError(
+        "Custom tests are available for monthly and annual members only.",
+        403
+      )
+    }
+
+    const body = await request.json()
+    const validated = validateBody(body)
+
+    if (!validated.ok) {
+      return jsonError(validated.error, 400)
+    }
+
+    const { generatedTest, answers, timeTakenSeconds } = validated.data
+
+    if (!generatedTest.questions.length) {
+      return jsonError("Generated test does not contain any questions.", 400)
+    }
+
     const safeAnswers: Record<string, OptionKey> = {}
 
     for (const [runnerId, answer] of Object.entries(answers)) {
@@ -149,8 +162,12 @@ export async function POST(request: NextRequest) {
     }
 
     const questionCount = generatedTest.questions.length
+
     const correctAnswers = generatedTest.questions.reduce((total, question) => {
-      return total + (safeAnswers[question.runnerId] === question.correctAnswer ? 1 : 0)
+      return (
+        total +
+        (safeAnswers[question.runnerId] === question.correctAnswer ? 1 : 0)
+      )
     }, 0)
 
     const scorePercent =
@@ -210,10 +227,7 @@ export async function POST(request: NextRequest) {
       .insert(itemRows)
 
     if (itemsError) {
-      await supabase
-        .from("custom_test_attempts")
-        .delete()
-        .eq("id", attempt.id)
+      await supabase.from("custom_test_attempts").delete().eq("id", attempt.id)
 
       return jsonError(
         itemsError.message ?? "Could not save custom test attempt items.",

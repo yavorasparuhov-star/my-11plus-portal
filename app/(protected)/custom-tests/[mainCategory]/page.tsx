@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { supabase } from "../../../../lib/supabaseClient"
 import { getMainCategoryCatalog } from "../../../../lib/custom-tests/catalog"
 import type {
   BuilderSubtopicMap,
@@ -15,6 +16,7 @@ import type {
 
 const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60]
 const TIME_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60]
+
 const DIFFICULTY_OPTIONS: Array<{
   value: DifficultyFilter
   label: string
@@ -24,6 +26,7 @@ const DIFFICULTY_OPTIONS: Array<{
   { value: 2, label: "Medium" },
   { value: 3, label: "Hard" },
 ]
+
 function isMainCategory(value: string): value is MainCategory {
   return value === "english" || value === "math" || value === "vr" || value === "nvr"
 }
@@ -34,6 +37,13 @@ function buildBuilderStorageKey(mainCategory: MainCategory) {
 
 function buildGeneratedTestStorageKey(mainCategory: MainCategory) {
   return `custom-test-generated:${mainCategory}`
+}
+
+function renderDifficultyLabel(value: DifficultyFilter) {
+  if (value === "all") return "All difficulties"
+  if (value === 1) return "Easy"
+  if (value === 2) return "Medium"
+  return "Hard"
 }
 
 export default function CustomTestBuilderPage() {
@@ -190,6 +200,16 @@ export default function CustomTestBuilderPage() {
     try {
       setIsGenerating(true)
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session) {
+        setErrorMessage("Please sign in to use custom tests.")
+        return
+      }
+
       sessionStorage.setItem(
         buildBuilderStorageKey(config.mainCategory),
         JSON.stringify(config)
@@ -199,6 +219,7 @@ export default function CustomTestBuilderPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(config),
       })
@@ -263,13 +284,6 @@ export default function CustomTestBuilderPage() {
     return `${topic.label}: ${labels.join(", ")}`
   }
 
-function renderDifficultyLabel(value: DifficultyFilter) {
-  if (value === "all") return "All difficulties"
-  if (value === 1) return "Easy"
-  if (value === 2) return "Medium"
-  return "Hard"
-}
-
   if (!mainCategoryParam || !catalog) {
     return (
       <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
@@ -283,7 +297,9 @@ function renderDifficultyLabel(value: DifficultyFilter) {
               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
             }}
           >
-            <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>Custom Test Builder</h1>
+            <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>
+              Custom Test Builder
+            </h1>
 
             <p style={{ margin: "0 0 20px 0", color: "#4b5563", lineHeight: 1.6 }}>
               This category does not exist.
@@ -882,8 +898,8 @@ function renderDifficultyLabel(value: DifficultyFilter) {
                 fontSize: "0.95rem",
               }}
             >
-              This builder stays inside one main category only and generates questions
-              from your existing English tables.
+              This builder stays inside one main category only. Custom tests are available
+              for monthly, annual and admin members.
             </div>
           </aside>
         </div>

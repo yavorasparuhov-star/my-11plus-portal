@@ -94,25 +94,22 @@ export default function SentencePunctuationTestPage() {
         return
       }
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+     const {
+  data: { session },
+  error: sessionError,
+} = await supabase.auth.getSession()
 
-      if (userError) {
-        console.error("Error getting user:", {
-          message: userError.message,
-          name: userError.name,
-        })
-        setErrorMessage("Could not verify your login.")
-        setLoading(false)
-        return
-      }
+if (sessionError) {
+  console.error("Error getting auth session:", sessionError)
+}
 
-      if (!user) {
-        router.push("/login")
-        return
-      }
+const user = session?.user ?? null
+
+if (!user) {
+  setErrorMessage("Please sign in to start this test.")
+  setLoading(false)
+  return
+}
 
       setUserId(user.id)
 

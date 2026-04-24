@@ -11,7 +11,7 @@ type HeaderProps = {
   onLogout?: () => void
 }
 
-type UserPlan = "guest" | "free" | "monthly" | "annual"
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
@@ -25,57 +25,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   useEffect(() => {
     let mounted = true
 
-    async function loadUserAndPlan(sessionUser?: any) {
-      const userToLoad = propUser ?? sessionUser
-
-      if (userToLoad) {
-        setCurrentUser(userToLoad)
-
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("plan")
-          .eq("id", userToLoad.id)
-          .maybeSingle()
-
-        if (error) {
-          console.error("Error loading profile plan:", error)
-        }
-
-        if (!mounted) return
-
-        const dbPlan = profile?.plan
-        setPlan(
-          dbPlan === "monthly" || dbPlan === "annual" || dbPlan === "free"
-            ? dbPlan
-            : "free"
-        )
-        setLoadingUser(false)
-        return
-      }
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError) {
-        console.error("Error getting authenticated user:", userError)
-      }
-
-      if (!mounted) return
-
-      setCurrentUser(user ?? null)
-
-      if (!user) {
-        setPlan("guest")
-        setLoadingUser(false)
-        return
-      }
-
+    async function loadProfilePlan(userToLoad: any) {
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("plan")
-        .eq("id", user.id)
+        .eq("id", userToLoad.id)
         .maybeSingle()
 
       if (error) {
@@ -85,12 +39,65 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
       if (!mounted) return
 
       const dbPlan = profile?.plan
+
       setPlan(
-        dbPlan === "monthly" || dbPlan === "annual" || dbPlan === "free"
+        dbPlan === "monthly" ||
+          dbPlan === "annual" ||
+          dbPlan === "admin" ||
+          dbPlan === "free"
           ? dbPlan
           : "free"
       )
-      setLoadingUser(false)
+    }
+
+    async function loadUserAndPlan(sessionUser?: any) {
+      try {
+        const userToLoad = propUser ?? sessionUser
+
+        if (userToLoad) {
+          if (!mounted) return
+
+          setCurrentUser(userToLoad)
+          await loadProfilePlan(userToLoad)
+
+          if (!mounted) return
+          setLoadingUser(false)
+          return
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error("Error getting auth session:", sessionError)
+        }
+
+        if (!mounted) return
+
+        const sessionUserFromClient = session?.user ?? null
+        setCurrentUser(sessionUserFromClient)
+
+        if (!sessionUserFromClient) {
+          setPlan("guest")
+          setLoadingUser(false)
+          return
+        }
+
+        await loadProfilePlan(sessionUserFromClient)
+
+        if (!mounted) return
+        setLoadingUser(false)
+      } catch (error) {
+        console.error("Error loading header user:", error)
+
+        if (!mounted) return
+
+        setCurrentUser(null)
+        setPlan("guest")
+        setLoadingUser(false)
+      }
     }
 
     loadUserAndPlan()
@@ -167,32 +174,40 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   ).toUpperCase()
 
   const planBadgeText =
-    plan === "monthly"
-      ? "Monthly"
-      : plan === "annual"
-        ? "Annual"
-        : plan === "free"
-          ? "Free"
-          : "Guest"
+    plan === "admin"
+      ? "Admin"
+      : plan === "monthly"
+        ? "Monthly"
+        : plan === "annual"
+          ? "Annual"
+          : plan === "free"
+            ? "Free"
+            : "Guest"
 
   const planBadgeStyle: React.CSSProperties =
-    plan === "monthly" || plan === "annual"
+    plan === "admin"
       ? {
-          background: "#dcfce7",
-          color: "#166534",
-          border: "1px solid #86efac",
+          background: "#fef3c7",
+          color: "#92400e",
+          border: "1px solid #fcd34d",
         }
-      : plan === "free"
+      : plan === "monthly" || plan === "annual"
         ? {
-            background: "#eef2ff",
-            color: "#3730a3",
-            border: "1px solid #c7d2fe",
+            background: "#dcfce7",
+            color: "#166534",
+            border: "1px solid #86efac",
           }
-        : {
-            background: "#f3f4f6",
-            color: "#374151",
-            border: "1px solid #d1d5db",
-          }
+        : plan === "free"
+          ? {
+              background: "#eef2ff",
+              color: "#3730a3",
+              border: "1px solid #c7d2fe",
+            }
+          : {
+              background: "#f3f4f6",
+              color: "#374151",
+              border: "1px solid #d1d5db",
+            }
 
   return (
     <div
@@ -229,44 +244,45 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             whiteSpace: "nowrap",
           }}
         >
-<div
-  style={{
-    width: "58px",
-    height: "58px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    flexShrink: 0,
-  }}
->
-  <Image
-    src="/logo.png"
-    alt="YanBo Learning logo"
-    width={58}
-    height={58}
-    priority
-    style={{
-      objectFit: "contain",
-      display: "block",
-    }}
-  />
-</div>
+          <div
+            style={{
+              width: "58px",
+              height: "58px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            <Image
+              src="/logo.png"
+              alt="YanBo Learning logo"
+              width={58}
+              height={58}
+              priority
+              style={{
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
             <span
-  style={{
-    fontSize: "18px",
-    fontWeight: 900,
-    color: "#111827",
-    letterSpacing: "-0.02em",
-  }}
->
-  <span style={{ color: "#ec4899" }}>Y</span>
-  an
-  <span style={{ color: "#eab308" }}>B</span>
-  o Learning
-</span>
+              style={{
+                fontSize: "18px",
+                fontWeight: 900,
+                color: "#111827",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              <span style={{ color: "#ec4899" }}>Y</span>
+              an
+              <span style={{ color: "#eab308" }}>B</span>
+              o Learning
+            </span>
+
             <span
               style={{
                 fontSize: "12px",
@@ -312,6 +328,10 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             🔷 NVR
           </Link>
 
+          <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
+            🛠️ Custom Tests
+          </Link>
+
           {isGuest && (
             <Link href={pricingHref} style={linkStyle(pricingHref)}>
               💎 Pricing
@@ -320,10 +340,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
           {!isGuest && (
             <>
-              <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
-                🛠️ Custom Tests
-              </Link>
-
               <Link href="/progress" style={linkStyle("/progress")}>
                 📊 Progress
               </Link>
@@ -552,6 +568,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 🔷 NVR
               </Link>
 
+              <Link
+                href={customTestsHref}
+                style={linkStyle(customTestsHref)}
+                onClick={() => setMenuOpen(false)}
+              >
+                🛠️ Custom Tests
+              </Link>
+
               {isGuest && (
                 <Link
                   href={pricingHref}
@@ -564,14 +588,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
               {!isGuest && (
                 <>
-                  <Link
-                    href={customTestsHref}
-                    style={linkStyle(customTestsHref)}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    🛠️ Custom Tests
-                  </Link>
-
                   <Link
                     href="/progress"
                     style={linkStyle("/progress")}

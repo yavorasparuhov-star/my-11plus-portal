@@ -1,9 +1,70 @@
+"use client"
+
 import Link from "next/link"
-import {
-  CUSTOM_TEST_MAIN_CATEGORIES,
-} from "../../../lib/custom-tests/catalog"
+import { useEffect, useState } from "react"
+import { supabase } from "../../../lib/supabaseClient"
+import { CUSTOM_TEST_MAIN_CATEGORIES } from "../../../lib/custom-tests/catalog"
+
+type UserPlan = "free" | "monthly" | "annual" | "admin" | null
+
+function hasCustomTestAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
 
 export default function CustomTestsPage() {
+  const [plan, setPlan] = useState<UserPlan>(null)
+  const [loadingPlan, setLoadingPlan] = useState(true)
+
+  useEffect(() => {
+    async function loadPlan() {
+      try {
+        setLoadingPlan(true)
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+
+        if (userError || !user) {
+          setPlan(null)
+          return
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", user.id)
+          .single()
+
+        if (profileError) {
+          setPlan("free")
+          return
+        }
+
+        const profilePlan = profile?.plan
+
+        if (
+          profilePlan === "free" ||
+          profilePlan === "monthly" ||
+          profilePlan === "annual" ||
+          profilePlan === "admin"
+        ) {
+          setPlan(profilePlan)
+        } else {
+          setPlan("free")
+        }
+      } catch {
+        setPlan("free")
+      } finally {
+        setLoadingPlan(false)
+      }
+    }
+
+    loadPlan()
+  }, [])
+
+  const canUseCustomTests = hasCustomTestAccess(plan)
+
   return (
     <main
       style={{
@@ -57,26 +118,102 @@ export default function CustomTestsPage() {
               select topics within that subject, choose the number of questions,
               and set the total time.
             </p>
+
+            <div
+              style={{
+                marginTop: 14,
+                display: "inline-block",
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: canUseCustomTests ? "#ecfccb" : "#fff7ed",
+                color: canUseCustomTests ? "#365314" : "#9a3412",
+                border: canUseCustomTests
+                  ? "1px solid #d9f99d"
+                  : "1px solid #fed7aa",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+              }}
+            >
+              {loadingPlan
+                ? "Checking membership..."
+                : canUseCustomTests
+                  ? "Custom tests unlocked"
+                  : "Custom tests are a paid feature"}
+            </div>
           </div>
 
-          <Link
-            href="/custom-tests/history"
+          {canUseCustomTests ? (
+            <Link
+              href="/custom-tests/history"
+              style={{
+                display: "inline-block",
+                textAlign: "center",
+                padding: "12px 18px",
+                borderRadius: 10,
+                fontWeight: 600,
+                textDecoration: "none",
+                background: "#ffffff",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              View History
+            </Link>
+          ) : (
+            <Link
+              href="/profile"
+              style={{
+                display: "inline-block",
+                textAlign: "center",
+                padding: "12px 18px",
+                borderRadius: 10,
+                fontWeight: 600,
+                textDecoration: "none",
+                background: "#fff7ed",
+                color: "#9a3412",
+                border: "1px solid #fed7aa",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Upgrade Membership
+            </Link>
+          )}
+        </div>
+
+        <div
+          style={{
+            marginBottom: 24,
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 20,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h2
             style={{
-              display: "inline-block",
-              textAlign: "center",
-              padding: "12px 18px",
-              borderRadius: 10,
-              fontWeight: 600,
-              textDecoration: "none",
-              background: "#ffffff",
+              margin: "0 0 10px 0",
               color: "#111827",
-              border: "1px solid #d1d5db",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
-              whiteSpace: "nowrap",
+              fontSize: "1.15rem",
             }}
           >
-            View History
-          </Link>
+            How custom tests work
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#4b5563",
+              lineHeight: 1.6,
+            }}
+          >
+            Free members can view how the custom test builder works. Monthly and
+            annual members can generate and run custom tests by choosing topics,
+            question count, difficulty and time limit.
+          </p>
         </div>
 
         <div
@@ -96,7 +233,7 @@ export default function CustomTestsPage() {
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
-              minHeight: 220,
+              minHeight: 240,
             }
 
             const titleStyle: React.CSSProperties = {
@@ -132,11 +269,11 @@ export default function CustomTestsPage() {
                     {category.key === "english" &&
                       "Create custom tests using Vocabulary, Spelling, Comprehension, Grammar, and Punctuation."}
                     {category.key === "math" &&
-                      "Math custom tests will be added after the English MVP is working."}
+                      "Create custom tests using Math topics such as Arithmetic, Fractions, Algebra, Geometry and Word Problems."}
                     {category.key === "vr" &&
-                      "VR custom tests will be added after the English MVP is working."}
+                      "Create custom tests using VR topics such as Word Relationships, Codes & Logic, and Sequences."}
                     {category.key === "nvr" &&
-                      "NVR custom tests will be added after the English MVP is working."}
+                      "Create custom tests using NVR topics such as Shape Patterns, Rotations, Reflections and Spatial Logic."}
                   </p>
 
                   <div
@@ -147,12 +284,38 @@ export default function CustomTestsPage() {
                     }}
                   >
                     {category.enabled
-                      ? `${category.topics.length} topic${category.topics.length === 1 ? "" : "s"} available`
+                      ? `${category.topics.length} topic${
+                          category.topics.length === 1 ? "" : "s"
+                        } available`
                       : "Coming soon"}
                   </div>
                 </div>
 
-                {category.enabled ? (
+                {!category.enabled ? (
+                  <span
+                    style={{
+                      ...buttonBaseStyle,
+                      background: "#e5e7eb",
+                      color: "#6b7280",
+                      border: "1px solid #d1d5db",
+                      cursor: "not-allowed",
+                    }}
+                  >
+                    Coming Soon
+                  </span>
+                ) : loadingPlan ? (
+                  <span
+                    style={{
+                      ...buttonBaseStyle,
+                      background: "#e5e7eb",
+                      color: "#6b7280",
+                      border: "1px solid #d1d5db",
+                      cursor: "wait",
+                    }}
+                  >
+                    Checking Access...
+                  </span>
+                ) : canUseCustomTests ? (
                   <Link
                     href={`/custom-tests/${category.key}`}
                     style={{
@@ -165,17 +328,17 @@ export default function CustomTestsPage() {
                     Build {category.label} Test
                   </Link>
                 ) : (
-                  <span
+                  <Link
+                    href="/profile"
                     style={{
                       ...buttonBaseStyle,
-                      background: "#e5e7eb",
-                      color: "#6b7280",
-                      border: "1px solid #d1d5db",
-                      cursor: "not-allowed",
+                      background: "#fff7ed",
+                      color: "#9a3412",
+                      border: "1px solid #fed7aa",
                     }}
                   >
-                    Coming Soon
-                  </span>
+                    Upgrade to Unlock
+                  </Link>
                 )}
               </div>
             )

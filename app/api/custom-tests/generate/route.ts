@@ -268,8 +268,7 @@ function selectComprehensionRowsByPassage(
   const grouped = new Map<number, EnglishQuestionRow[]>()
 
   for (const row of rows) {
-    const groupKey =
-      typeof row.test_id === "number" ? row.test_id : -row.id
+    const groupKey = typeof row.test_id === "number" ? row.test_id : -row.id
 
     const existing = grouped.get(groupKey) ?? []
     existing.push(row)
@@ -571,16 +570,10 @@ function getStandardTopicCategoryCandidates(
         ]
         break
       case "codes-logic":
-        extraCandidates = [
-          "codes_logic",
-          "codes logic",
-        ]
+        extraCandidates = ["codes_logic", "codes logic"]
         break
       case "sequence-pattern":
-        extraCandidates = [
-          "sequence_pattern",
-          "sequence pattern",
-        ]
+        extraCandidates = ["sequence_pattern", "sequence pattern"]
         break
     }
   }
@@ -633,9 +626,38 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseAnonKey)
 }
 
-async function fetchWords() {
-  const supabase = getSupabaseClient()
+function getAuthenticatedSupabaseClient(request: NextRequest) {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
 
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase environment variables are missing.")
+  }
+
+  const authorization = request.headers.get("authorization")
+
+  if (!authorization) {
+    return {
+      supabase: null,
+      error: "Please sign in to use custom tests.",
+    }
+  }
+
+  return {
+    supabase: createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authorization,
+        },
+      },
+    }),
+    error: null,
+  }
+}
+
+async function fetchWords(supabase: ReturnType<typeof getSupabaseClient>) {
   const { data, error } = await supabase
     .from("words")
     .select("id, word, definition, difficulty, wrong_words")
@@ -649,11 +671,10 @@ async function fetchWords() {
 }
 
 async function fetchEnglishQuestions(
+  supabase: ReturnType<typeof getSupabaseClient>,
   topicKey: string,
   selectedSubtopics: string[]
 ) {
-  const supabase = getSupabaseClient()
-
   let query = supabase
     .from("english_questions")
     .select(
@@ -693,12 +714,13 @@ async function fetchEnglishQuestions(
   return (data ?? []) as EnglishQuestionRow[]
 }
 
-async function fetchEnglishPassages(testIds: number[]) {
+async function fetchEnglishPassages(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  testIds: number[]
+) {
   if (testIds.length === 0) {
     return new Map<number, string>()
   }
-
-  const supabase = getSupabaseClient()
 
   const { data, error } = await supabase
     .from("english_tests")
@@ -726,10 +748,10 @@ async function fetchEnglishPassages(testIds: number[]) {
 }
 
 async function fetchStandardTestsForTopic(
+  supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
   topicKey: string
 ) {
-  const supabase = getSupabaseClient()
   const config = getStandardTableConfig(mainCategory)
   const allowedCategories = new Set(
     getStandardTopicCategoryCandidates(mainCategory, topicKey)
@@ -752,6 +774,7 @@ async function fetchStandardTestsForTopic(
 }
 
 async function fetchStandardQuestions(
+  supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
   testIds: number[]
 ) {
@@ -759,7 +782,6 @@ async function fetchStandardQuestions(
     return [] as StandardQuestionRow[]
   }
 
-  const supabase = getSupabaseClient()
   const config = getStandardTableConfig(mainCategory)
 
   const { data, error } = await supabase
@@ -773,7 +795,7 @@ async function fetchStandardQuestions(
     throw new Error(`Could not load ${mainCategory} questions: ${error.message}`)
   }
 
-  return ((data ?? []) as unknown) as StandardQuestionRow[]
+  return (data ?? []) as unknown as StandardQuestionRow[]
 }
 
 function normalizeStandardQuestions(
@@ -868,11 +890,16 @@ function normalizeStandardQuestions(
 }
 
 async function buildStandardTopicQuestions(
+  supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
   topicKey: string,
   selectedDifficulty: DifficultyFilter
 ) {
-  const tests = await fetchStandardTestsForTopic(mainCategory, topicKey)
+  const tests = await fetchStandardTestsForTopic(
+    supabase,
+    mainCategory,
+    topicKey
+  )
 
   const filteredTests = tests.filter((test) =>
     matchesDifficulty(test.difficulty, selectedDifficulty)
@@ -887,6 +914,7 @@ async function buildStandardTopicQuestions(
   )
 
   const questions = await fetchStandardQuestions(
+    supabase,
     mainCategory,
     filteredTests.map((test) => test.id)
   )
@@ -1086,6 +1114,37 @@ function selectFinalQuestions(
 
 export async function POST(request: NextRequest) {
   try {
+    const authenticatedClient = getAuthenticatedSupabaseClient(request)
+
+    if (!authenticatedClient.supabase) {
+      return jsonError(authenticatedClient.error, 401)
+    }
+
+    const supabase = authenticatedClient.supabase
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return jsonError("Please sign in to use custom tests.", 401)
+    }
+
+    const { data: hasPaidAccess, error: accessError } =
+      await supabase.rpc("has_paid_access")
+
+    if (accessError) {
+      return jsonError("Could not check your membership access.", 500)
+    }
+
+    if (!hasPaidAccess) {
+      return jsonError(
+        "Custom tests are available for monthly and annual members only.",
+        403
+      )
+    }
+
     const body = await request.json()
     const validatedBody = validateRequestBody(body)
 
@@ -1122,7 +1181,7 @@ export async function POST(request: NextRequest) {
         uniqueTopicKeys.includes("spelling")
 
       const words = needsWords
-        ? (await fetchWords()).filter((row) =>
+        ? (await fetchWords(supabase)).filter((row) =>
             matchesDifficulty(row.difficulty, config.selectedDifficulty)
           )
         : []
@@ -1153,10 +1212,9 @@ export async function POST(request: NextRequest) {
               )
             : []
 
-          const rows = (await fetchEnglishQuestions(
-            topicKey,
-            selectedSubtopics
-          )).filter((row) =>
+          const rows = (
+            await fetchEnglishQuestions(supabase, topicKey, selectedSubtopics)
+          ).filter((row) =>
             matchesDifficulty(row.difficulty, config.selectedDifficulty)
           )
 
@@ -1175,6 +1233,7 @@ export async function POST(request: NextRequest) {
             )
 
             const passagesByTestId = await fetchEnglishPassages(
+              supabase,
               Array.from(
                 new Set(
                   selectedRows
@@ -1219,7 +1278,10 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const finalQuestions = selectFinalQuestions(topicPools, config.questionCount)
+      const finalQuestions = selectFinalQuestions(
+        topicPools,
+        config.questionCount
+      )
 
       if (finalQuestions.length < config.questionCount) {
         return jsonError(
@@ -1246,6 +1308,7 @@ export async function POST(request: NextRequest) {
 
     for (const topicKey of uniqueTopicKeys) {
       const questions = await buildStandardTopicQuestions(
+        supabase,
         nonEnglishMainCategory,
         topicKey,
         config.selectedDifficulty
