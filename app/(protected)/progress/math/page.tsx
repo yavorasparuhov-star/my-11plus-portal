@@ -24,7 +24,7 @@ type MathProgressRow = {
   user_id: string
   test_id: number
   category: string
-  score: number
+  correct_answers: number
   total_questions: number
   success_rate: number
   created_at: string
@@ -292,7 +292,7 @@ export default function MathProgressPage() {
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
     const questionsPractised = filteredRows.reduce((sum, row) => sum + row.total_questions, 0)
-    const totalCorrect = filteredRows.reduce((sum, row) => sum + row.score, 0)
+    const totalCorrect = filteredRows.reduce((sum, row) => sum + row.correct_answers, 0)
 
     const averageSuccess =
       testsCompleted > 0
@@ -352,7 +352,7 @@ export default function MathProgressPage() {
       attempt: index + 1,
       date: formatShortDate(row.created_at),
       success: Number(row.success_rate),
-      scoreLabel: `${row.score}/${row.total_questions}`,
+      scoreLabel: `${row.correct_answers}/${row.total_questions}`,
       category: formatCategory(row.category),
     }))
   }, [filteredRows])
@@ -570,7 +570,7 @@ export default function MathProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {performanceTrendData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <LineChart data={performanceTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -690,7 +690,7 @@ export default function MathProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {successByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={successByCategoryData} layout="vertical" margin={{ left: 24 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" domain={[0, 100]} />
@@ -716,7 +716,7 @@ export default function MathProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {attemptsByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={attemptsByCategoryData} layout="vertical" margin={{ left: 24 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />
@@ -769,7 +769,7 @@ export default function MathProgressPage() {
                     >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{formatCategory(row.category)}</td>
-                      <td style={tdStyle}>{row.score}</td>
+                      <td style={tdStyle}>{row.correct_answers}</td>
                       <td style={tdStyle}>{row.total_questions}</td>
                       <td style={tdStyle}>
                         <span

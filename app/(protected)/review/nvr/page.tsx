@@ -96,6 +96,7 @@ function getCategoryLabel(category: string | null | undefined) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -108,6 +109,21 @@ function formatDateTime(value: string) {
 function truncateText(text: string, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function toNumericValue(value: ValueType | undefined) {
+  if (typeof value === "number") return value
+  if (typeof value === "string") return Number(value)
+  if (Array.isArray(value)) return Number(value[0])
+  return 0
+}
+
+function questionsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [number, string] {
+  const numericValue = toNumericValue(value)
+  return [numericValue, "Questions"]
 }
 
 function StatCard({
@@ -133,12 +149,25 @@ function StatCard({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.1,
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -174,6 +203,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -186,25 +216,10 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
-}
-
-function questionsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [number, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
-  return [numericValue, "Questions"]
 }
 
 export default function NVRReviewPage() {
@@ -246,7 +261,9 @@ export default function NVRReviewPage() {
           details: error.details,
           hint: error.hint,
           code: error.code,
+          full: error,
         })
+
         setReviewQuestions([])
         setLoadingData(false)
         return
@@ -258,7 +275,13 @@ export default function NVRReviewPage() {
         .map((row) => row.question_id)
         .filter((id): id is number => id !== null)
 
-      let questionMap = new Map<number, { explanation: string; difficulty: number | null }>()
+      let questionMap = new Map<
+        number,
+        {
+          explanation: string
+          difficulty: number | null
+        }
+      >()
 
       if (questionIds.length > 0) {
         const { data: questionsData, error: questionsError } = await supabase
@@ -267,7 +290,13 @@ export default function NVRReviewPage() {
           .in("id", questionIds)
 
         if (questionsError) {
-          console.error("Error loading NVR explanations:", questionsError)
+          console.error("Error loading NVR explanations:", {
+            message: questionsError.message,
+            details: questionsError.details,
+            hint: questionsError.hint,
+            code: questionsError.code,
+            full: questionsError,
+          })
         } else {
           questionMap = new Map(
             ((questionsData || []) as NVRQuestionRow[]).map((question) => [
@@ -281,13 +310,16 @@ export default function NVRReviewPage() {
         }
       }
 
-      const mergedData = reviewData.map((row) => ({
-        ...row,
-        explanation:
-          row.question_id !== null ? questionMap.get(row.question_id)?.explanation || "" : "",
-        difficulty:
-          row.question_id !== null ? questionMap.get(row.question_id)?.difficulty ?? null : null,
-      }))
+      const mergedData = reviewData.map((row) => {
+        const questionInfo =
+          row.question_id !== null ? questionMap.get(row.question_id) : undefined
+
+        return {
+          ...row,
+          explanation: questionInfo?.explanation || "",
+          difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
+        }
+      })
 
       if (mounted) {
         setReviewQuestions(mergedData)
@@ -302,7 +334,7 @@ export default function NVRReviewPage() {
     }
   }, [router])
 
-  async function removeQuestion(questionText: string) {
+  async function removeQuestion(reviewId: string) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -313,33 +345,42 @@ export default function NVRReviewPage() {
       .from("nvr_review")
       .delete()
       .eq("user_id", user.id)
-      .ilike("question_text", questionText)
+      .eq("id", reviewId)
 
     if (error) {
-      console.error("Error deleting NVR review question:", error)
+      console.error("Error deleting NVR review question:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        full: error,
+      })
       return
     }
 
-    setReviewQuestions((prev) =>
-      prev.filter((row) => row.question_text.toLowerCase() !== questionText.toLowerCase())
-    )
+    setReviewQuestions((prev) => prev.filter((row) => row.id !== reviewId))
   }
 
   const uniqueQuestions = useMemo(() => {
     return Array.from(
-      new Map(reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])).values()
+      new Map(
+        reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])
+      ).values()
     )
   }, [reviewQuestions])
 
   const filteredQuestions = useMemo(() => {
     const cutoff = getCutoffDate(timeFilter)
 
-    return uniqueQuestions.filter((q) => {
+    return uniqueQuestions.filter((question) => {
       const matchesDifficulty =
-        difficultyFilter === "all" || String(q.difficulty ?? "") === difficultyFilter
-      const matchesTime = cutoff ? new Date(q.created_at) >= cutoff : true
+        difficultyFilter === "all" ||
+        String(question.difficulty ?? "") === difficultyFilter
+
+      const matchesTime = cutoff ? new Date(question.created_at) >= cutoff : true
+
       const matchesCategory =
-        categoryFilter === "all" || (q.category ?? "") === categoryFilter
+        categoryFilter === "all" || (question.category ?? "") === categoryFilter
 
       return matchesDifficulty && matchesTime && matchesCategory
     })
@@ -363,9 +404,11 @@ export default function NVRReviewPage() {
     const byCategory = Object.entries(
       filteredQuestions.reduce((acc, row) => {
         const key = getCategoryLabel(row.category)
+
         if (!acc[key]) {
           acc[key] = 0
         }
+
         acc[key] += 1
         return acc
       }, {} as Record<string, number>)
@@ -376,12 +419,15 @@ export default function NVRReviewPage() {
 
     const mostCommonCategory =
       byCategory.length > 0
-        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
+        ? byCategory.reduce((max, current) =>
+            current.count > max.count ? current : max
+          )
         : null
 
     const mostRecentItem = filteredQuestions.length
       ? [...filteredQuestions].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
       : null
 
@@ -413,7 +459,12 @@ export default function NVRReviewPage() {
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Shape Patterns", "Rotations & Reflections", "Codes & Spatial Logic", "Not set"]
+    const order = [
+      "Shape Patterns",
+      "Rotations & Reflections",
+      "Codes & Spatial Logic",
+      "Not set",
+    ]
 
     return Object.values(grouped).sort(
       (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
@@ -422,7 +473,10 @@ export default function NVRReviewPage() {
 
   const recentQuestions = useMemo(() => {
     return [...filteredQuestions]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       .slice(0, 12)
   }, [filteredQuestions])
 
@@ -478,6 +532,7 @@ export default function NVRReviewPage() {
             >
               🔷 NVR Review
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -502,7 +557,9 @@ export default function NVRReviewPage() {
           >
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -514,7 +571,9 @@ export default function NVRReviewPage() {
 
             <select
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -526,7 +585,7 @@ export default function NVRReviewPage() {
 
             <select
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -542,7 +601,8 @@ export default function NVRReviewPage() {
               style={{
                 ...actionButtonStyle,
                 opacity: filteredQuestions.length === 0 ? 0.5 : 1,
-                cursor: filteredQuestions.length === 0 ? "not-allowed" : "pointer",
+                cursor:
+                  filteredQuestions.length === 0 ? "not-allowed" : "pointer",
               }}
             >
               Retry filtered questions
@@ -558,31 +618,52 @@ export default function NVRReviewPage() {
             marginBottom: "24px",
           }}
         >
-          <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
+          <StatCard
+            title="Questions to Review"
+            value={String(reviewStats.totalQuestions)}
+          />
+
           <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
-          <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
+
+          <StatCard
+            title="With Explanations"
+            value={String(reviewStats.withExplanation)}
+          />
+
           <StatCard
             title="Most Common Category"
-            value={reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+            value={
+              reviewStats.mostCommonCategory
+                ? reviewStats.mostCommonCategory.category
+                : "—"
+            }
             subtitle={
               reviewStats.mostCommonCategory
                 ? `${reviewStats.mostCommonCategory.count} questions`
                 : undefined
             }
           />
+
           <StatCard
             title="Most Recent Item"
-            value={reviewStats.mostRecentItem ? getCategoryLabel(reviewStats.mostRecentItem.category) : "—"}
+            value={
+              reviewStats.mostRecentItem
+                ? getCategoryLabel(reviewStats.mostRecentItem.category)
+                : "—"
+            }
             subtitle={
               reviewStats.mostRecentItem
                 ? formatDateTime(reviewStats.mostRecentItem.created_at)
                 : undefined
             }
           />
+
           <StatCard
             title="Current Filter"
             value={
-              categoryFilter === "all" ? "All Categories" : getCategoryLabel(categoryFilter)
+              categoryFilter === "all"
+                ? "All Categories"
+                : getCategoryLabel(categoryFilter)
             }
             subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
           />
@@ -602,7 +683,7 @@ export default function NVRReviewPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {reviewByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={reviewByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
@@ -630,10 +711,23 @@ export default function NVRReviewPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Review Queue
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {reviewStats.totalQuestions}
                 </div>
               </div>
@@ -646,10 +740,23 @@ export default function NVRReviewPage() {
                   border: "1px solid #bfdbfe",
                 }}
               >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#1d4ed8",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Explanations Ready
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {reviewStats.withExplanation}
                 </div>
               </div>
@@ -662,11 +769,26 @@ export default function NVRReviewPage() {
                   border: "1px solid #fed7aa",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Main Focus
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
+                  {reviewStats.mostCommonCategory
+                    ? reviewStats.mostCommonCategory.category
+                    : "—"}
                 </div>
               </div>
             </div>
@@ -696,6 +818,7 @@ export default function NVRReviewPage() {
                     <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentQuestions.map((row) => (
                     <tr
@@ -707,17 +830,20 @@ export default function NVRReviewPage() {
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
+
                       <td style={{ ...tdStyle, maxWidth: "320px" }}>
                         {truncateText(row.question_text, 130)}
                       </td>
+
                       <td style={{ ...tdStyle, maxWidth: "340px" }}>
                         {row.explanation && row.explanation.trim()
                           ? truncateText(row.explanation, 140)
                           : "No explanation available."}
                       </td>
+
                       <td style={tdStyle}>
                         <button
-                          onClick={() => removeQuestion(row.question_text)}
+                          onClick={() => removeQuestion(row.id)}
                           style={removeButtonStyle}
                         >
                           Remove
@@ -729,7 +855,9 @@ export default function NVRReviewPage() {
               </table>
             </div>
           ) : (
-            <div style={emptyStateStyle}>No review items found for the selected filters.</div>
+            <div style={emptyStateStyle}>
+              No review items found for the selected filters.
+            </div>
           )}
         </SectionCard>
 
@@ -825,6 +953,7 @@ export default function NVRReviewPage() {
                   >
                     Explanation
                   </div>
+
                   <div
                     style={{
                       color: "#334155",
@@ -849,7 +978,7 @@ export default function NVRReviewPage() {
                 </div>
 
                 <button
-                  onClick={() => removeQuestion(row.question_text)}
+                  onClick={() => removeQuestion(row.id)}
                   style={removeButtonStyle}
                 >
                   Remove from review
@@ -872,6 +1001,7 @@ export default function NVRReviewPage() {
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
+
           <div style={{ color: "#d1fae5", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>

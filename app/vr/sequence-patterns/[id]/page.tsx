@@ -5,11 +5,15 @@ import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
 import { useParams, useRouter } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type VRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
+  access_level?: string | null
+  is_free?: boolean | null
   created_at: string
 }
 
@@ -32,9 +36,18 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
+function isFreeTest(test: VRTest) {
+  return test.is_free === true || test.access_level === "free"
+}
+
 export default function VRSequencePatternsTestPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+
   const rawId = params?.id
   const testId = rawId ? Number(rawId) : null
 
@@ -49,11 +62,14 @@ export default function VRSequencePatternsTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [userId, setUserId] = useState<string | null>(null)
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(null)
 
   const currentQuestion = questions[currentIndex]
 
   const selectedAnswerText = useMemo(() => {
     if (!currentQuestion || !selectedAnswer) return ""
+
     if (selectedAnswer === "A") return currentQuestion.option_a
     if (selectedAnswer === "B") return currentQuestion.option_b
     if (selectedAnswer === "C") return currentQuestion.option_c
@@ -70,7 +86,53 @@ export default function VRSequencePatternsTestPage() {
     }
 
     loadVRTest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawId, testId])
+
+  async function loadCurrentUserAndPlan() {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error("Error getting auth session:", sessionError)
+    }
+
+    const sessionUser = session?.user ?? null
+
+    if (!sessionUser) {
+      return {
+        userId: null,
+        plan: "guest" as UserPlan,
+      }
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", sessionUser.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error loading profile plan:", profileError)
+    }
+
+    const dbPlan = profile?.plan
+
+    const safePlan: UserPlan =
+      dbPlan === "monthly" ||
+      dbPlan === "annual" ||
+      dbPlan === "admin" ||
+      dbPlan === "free"
+        ? dbPlan
+        : "free"
+
+    return {
+      userId: sessionUser.id,
+      plan: safePlan,
+    }
+  }
 
   async function loadVRTest() {
     if (testId === null || Number.isNaN(testId)) return
@@ -83,23 +145,7 @@ export default function VRSequencePatternsTestPage() {
     setShowFeedback(false)
     setScore(0)
     setErrorMessage("")
-
-    const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
-
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
-
-const user = session?.user ?? null
-
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+    setAccessBlocked(null)
 
     const { data: testData, error: testError } = await supabase
       .from("vr_tests")
@@ -109,7 +155,14 @@ if (!user) {
       .maybeSingle()
 
     if (testError || !testData) {
-      console.error("Error loading VR test:", testError)
+      console.error("Error loading VR test:", {
+        message: testError?.message,
+        details: testError?.details,
+        hint: testError?.hint,
+        code: testError?.code,
+        full: testError,
+      })
+
       setTest(null)
       setQuestions([])
       setErrorMessage("This sequence patterns test is not available yet.")
@@ -117,28 +170,59 @@ if (!user) {
       return
     }
 
+    const loadedTest = testData as VRTest
+    setTest(loadedTest)
+
+    const currentAccess = await loadCurrentUserAndPlan()
+
+    setUserId(currentAccess.userId)
+
+    if (!currentAccess.userId) {
+      setAccessBlocked("guest")
+      setLoading(false)
+      return
+    }
+
+    const canStart =
+      hasFullAccess(currentAccess.plan) ||
+      (currentAccess.plan === "free" && isFreeTest(loadedTest))
+
+    if (!canStart) {
+      setAccessBlocked("upgrade")
+      setLoading(false)
+      return
+    }
+
     const { data: questionData, error: questionError } = await supabase
       .from("vr_questions")
       .select("*")
-      .eq("test_id", testData.id)
+      .eq("test_id", loadedTest.id)
       .order("question_order", { ascending: true })
 
     if (questionError) {
-      console.error("Error loading VR questions:", questionError)
-      setTest(testData)
+      console.error("Error loading VR questions:", {
+        message: questionError.message,
+        details: questionError.details,
+        hint: questionError.hint,
+        code: questionError.code,
+        full: questionError,
+      })
+
+      setTest(loadedTest)
       setQuestions([])
       setErrorMessage("Could not load the questions for this test.")
       setLoading(false)
       return
     }
 
-    setTest(testData)
-    setQuestions(questionData || [])
+    setTest(loadedTest)
+    setQuestions((questionData || []) as VRQuestion[])
     setLoading(false)
   }
 
   function handleSelectAnswer(answer: "A" | "B" | "C" | "D") {
     if (showFeedback) return
+
     setSelectedAnswer(answer)
   }
 
@@ -181,49 +265,54 @@ if (!user) {
   }
 
   async function saveResults(finalScore: number) {
+    if (!userId || !test) return
+
     setSavingResults(true)
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      setSavingResults(false)
-      return
-    }
 
     const totalQuestions = questions.length
     const successRate =
       totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
 
     const { error: progressError } = await supabase.from("vr_progress").insert({
-      user_id: user.id,
-      test_id: test?.id,
+      user_id: userId,
+      test_id: test.id,
       total_questions: totalQuestions,
       correct_answers: finalScore,
       success_rate: successRate,
-      difficulty: test?.difficulty,
+      difficulty: test.difficulty ?? null,
     })
 
     if (progressError) {
-      console.error("Error saving VR progress:", progressError)
+      console.error("Error saving VR progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+      })
     }
 
     const reviewRows = questions
       .filter((question) => userAnswers[question.id] !== question.correct_answer)
       .map((question) => ({
-        user_id: user.id,
+        user_id: userId,
         question_id: question.id,
         question_text: question.question_text,
         knew_it: false,
-        difficulty: question.difficulty ?? test?.difficulty,
+        difficulty: question.difficulty ?? test.difficulty ?? null,
       }))
 
     if (reviewRows.length > 0) {
       const { error: reviewError } = await supabase.from("vr_review").insert(reviewRows)
 
       if (reviewError) {
-        console.error("Error saving VR review:", reviewError)
+        console.error("Error saving VR review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
       }
     }
 
@@ -252,12 +341,15 @@ if (!user) {
     if (difficulty === 1) {
       return { background: "#ecfdf5", color: "#065f46" }
     }
+
     if (difficulty === 2) {
       return { background: "#eff6ff", color: "#1d4ed8" }
     }
+
     if (difficulty === 3) {
       return { background: "#fef2f2", color: "#b91c1c" }
     }
+
     return { background: "#f3f4f6", color: "#374151" }
   }
 
@@ -288,6 +380,70 @@ if (!user) {
     )
   }
 
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>Please sign in</h2>
+
+              <p style={styles.subtitle}>
+                Guests can browse the tests, but you need to sign in before starting a test.
+              </p>
+
+              <div style={styles.finishButtons}>
+                <button onClick={() => router.push("/login")} style={styles.startButton}>
+                  Sign In
+                </button>
+
+                <button
+                  onClick={() => router.push("/vr/sequence-patterns")}
+                  style={styles.retryButton}
+                >
+                  Back to Topic
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>Members-only test</h2>
+
+              <p style={styles.subtitle}>
+                This test is not included in the free plan. Upgrade your plan to unlock it.
+              </p>
+
+              <div style={styles.finishButtons}>
+                <button onClick={() => router.push("/profile")} style={styles.startButton}>
+                  View Upgrade Options
+                </button>
+
+                <button
+                  onClick={() => router.push("/vr/sequence-patterns")}
+                  style={styles.retryButton}
+                >
+                  Back to Topic
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (errorMessage) {
     return (
       <>
@@ -296,7 +452,9 @@ if (!user) {
           <div style={styles.container}>
             <div style={styles.emptyCard}>
               <h2 style={styles.cardTitle}>Could not open test</h2>
+
               <p style={styles.subtitle}>{errorMessage}</p>
+
               <button
                 onClick={() => router.push("/vr/sequence-patterns")}
                 style={styles.startButton}
@@ -318,7 +476,9 @@ if (!user) {
           <div style={styles.container}>
             <div style={styles.emptyCard}>
               <h2 style={styles.cardTitle}>No test found</h2>
+
               <p style={styles.subtitle}>This sequence patterns test is not available yet.</p>
+
               <button
                 onClick={() => router.push("/vr/sequence-patterns")}
                 style={styles.startButton}
@@ -336,7 +496,6 @@ if (!user) {
     const totalQuestions = questions.length
     const percentage =
       totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
-
     const badgeColors = getDifficultyColors(test.difficulty)
 
     return (
@@ -352,6 +511,7 @@ if (!user) {
             <div style={styles.summaryCard}>
               <div style={styles.cardTop}>
                 <h2 style={styles.cardTitle}>Your Results</h2>
+
                 <span
                   style={{
                     ...styles.badge,
@@ -367,12 +527,15 @@ if (!user) {
                 <p style={styles.resultText}>
                   <strong>Score:</strong> {score} / {totalQuestions}
                 </p>
+
                 <p style={styles.resultText}>
                   <strong>Success Rate:</strong> {percentage}%
                 </p>
+
                 <p style={styles.resultText}>
                   <strong>Category:</strong> Sequence Patterns
                 </p>
+
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
               </div>
 
@@ -380,6 +543,7 @@ if (!user) {
                 <button onClick={restartTest} style={styles.startButton}>
                   Try Again
                 </button>
+
                 <button
                   onClick={() => router.push("/vr/sequence-patterns")}
                   style={styles.retryButton}
@@ -406,10 +570,12 @@ if (!user) {
             <div style={styles.cardTop}>
               <div>
                 <h1 style={styles.titleLeft}>{test.title}</h1>
+
                 <p style={styles.subtitleLeft}>
                   Work through each question and check your answer before moving on.
                 </p>
               </div>
+
               <span
                 style={{
                   ...styles.badge,
@@ -427,6 +593,7 @@ if (!user) {
               <span style={styles.progressText}>
                 Question {currentIndex + 1} / {questions.length}
               </span>
+
               <span style={styles.progressText}>Score: {score}</span>
             </div>
 
@@ -463,7 +630,12 @@ if (!user) {
                     key={answerKey}
                     onClick={() => handleSelectAnswer(answerKey)}
                     disabled={showFeedback}
-                    style={{ ...styles.optionButton, background, border }}
+                    style={{
+                      ...styles.optionButton,
+                      background,
+                      border,
+                      cursor: showFeedback ? "default" : "pointer",
+                    }}
                   >
                     <strong>{answerKey}.</strong> {optionText}
                   </button>
@@ -496,8 +668,7 @@ if (!user) {
 
                   {!isCorrect && (
                     <p style={styles.feedbackText}>
-                      <strong>Correct answer:</strong>{" "}
-                      {currentQuestion.correct_answer}.{" "}
+                      <strong>Correct answer:</strong> {currentQuestion.correct_answer}.{" "}
                       {getOptionText(currentQuestion, currentQuestion.correct_answer)}
                     </p>
                   )}
@@ -632,7 +803,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "16px",
     borderRadius: "14px",
     textAlign: "left",
-    cursor: "pointer",
     fontSize: "16px",
     lineHeight: 1.5,
   },
@@ -664,6 +834,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     justifyContent: "center",
     flexWrap: "wrap",
+    marginTop: "20px",
   },
   startButton: {
     display: "inline-block",

@@ -1,15 +1,18 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
+import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
+import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
+
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
 type VRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
+  access_level?: string | null
   created_at: string
 }
 
@@ -32,15 +35,36 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function canUserAccessTest(plan: UserPlan, test: VRTest | null) {
+  if (!test) return false
+
+  if (plan === "admin" || plan === "monthly" || plan === "annual") {
+    return true
+  }
+
+  const accessLevel = test.access_level ?? "free"
+
+  if (plan === "free") {
+    return accessLevel === "free"
+  }
+
+  return false
+}
+
 export default function VRCodesLogicTestPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+
   const rawId = params?.id
   const testId = rawId ? Number(rawId) : null
 
   const [loading, setLoading] = useState(true)
   const [test, setTest] = useState<VRTest | null>(null)
   const [questions, setQuestions] = useState<VRQuestion[]>([])
+
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userPlan, setUserPlan] = useState<UserPlan>("guest")
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<UserAnswerMap>({})
   const [selectedAnswer, setSelectedAnswer] = useState<"A" | "B" | "C" | "D" | null>(null)
@@ -51,6 +75,7 @@ export default function VRCodesLogicTestPage() {
   const [errorMessage, setErrorMessage] = useState("")
 
   const currentQuestion = questions[currentIndex]
+  const hasAccess = canUserAccessTest(userPlan, test)
 
   const selectedAnswerText = useMemo(() => {
     if (!currentQuestion || !selectedAnswer) return ""
@@ -62,13 +87,55 @@ export default function VRCodesLogicTestPage() {
 
   useEffect(() => {
     if (!rawId) return
+
     if (testId === null || Number.isNaN(testId)) {
       setLoading(false)
       setErrorMessage("Invalid test id.")
       return
     }
+
     loadVRTest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawId, testId])
+
+  async function loadUserPlan(userIdToLoad: string | null) {
+    if (!userIdToLoad) {
+      setUserPlan("guest")
+      return
+    }
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", userIdToLoad)
+      .maybeSingle()
+
+    if (error) {
+      console.error("Error loading profile plan:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        full: error,
+      })
+      setUserPlan("free")
+      return
+    }
+
+    const dbPlan = profile?.plan
+
+    if (
+      dbPlan === "free" ||
+      dbPlan === "monthly" ||
+      dbPlan === "annual" ||
+      dbPlan === "admin"
+    ) {
+      setUserPlan(dbPlan)
+      return
+    }
+
+    setUserPlan("free")
+  }
 
   async function loadVRTest() {
     if (testId === null || Number.isNaN(testId)) return
@@ -83,21 +150,21 @@ export default function VRCodesLogicTestPage() {
     setErrorMessage("")
 
     const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
+    if (sessionError) {
+      console.error("Error getting auth session:", {
+        message: sessionError.message,
+        name: sessionError.name,
+        full: sessionError,
+      })
+    }
 
-const user = session?.user ?? null
-
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+    const user = session?.user ?? null
+    setUserId(user?.id ?? null)
+    await loadUserPlan(user?.id ?? null)
 
     const { data: testData, error: testError } = await supabase
       .from("vr_tests")
@@ -107,7 +174,13 @@ if (!user) {
       .maybeSingle()
 
     if (testError || !testData) {
-      console.error("Error loading VR test:", testError)
+      console.error("Error loading VR test:", {
+        message: testError?.message,
+        details: testError?.details,
+        hint: testError?.hint,
+        code: testError?.code,
+        full: testError,
+      })
       setTest(null)
       setQuestions([])
       setErrorMessage("This codes & logic test is not available yet.")
@@ -115,33 +188,90 @@ if (!user) {
       return
     }
 
+    const loadedTest = testData as VRTest
+    setTest(loadedTest)
+
+    const planToCheck = user
+      ? await getCurrentPlanValue(user.id)
+      : "guest"
+
+    if (!canUserAccessTest(planToCheck, loadedTest)) {
+      setQuestions([])
+      setLoading(false)
+      return
+    }
+
     const { data: questionData, error: questionError } = await supabase
       .from("vr_questions")
       .select("*")
-      .eq("test_id", testData.id)
+      .eq("test_id", loadedTest.id)
       .order("question_order", { ascending: true })
 
     if (questionError) {
-      console.error("Error loading VR questions:", questionError)
-      setTest(testData)
+      console.error("Error loading VR questions:", {
+        message: questionError.message,
+        details: questionError.details,
+        hint: questionError.hint,
+        code: questionError.code,
+        full: questionError,
+      })
       setQuestions([])
       setErrorMessage("Could not load the questions for this test.")
       setLoading(false)
       return
     }
 
-    setTest(testData)
-    setQuestions(questionData || [])
+    setQuestions((questionData || []) as VRQuestion[])
     setLoading(false)
   }
 
+  async function getCurrentPlanValue(userIdToLoad: string | null): Promise<UserPlan> {
+    if (!userIdToLoad) {
+      setUserPlan("guest")
+      return "guest"
+    }
+
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", userIdToLoad)
+      .maybeSingle()
+
+    if (error) {
+      console.error("Error loading current plan:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        full: error,
+      })
+      setUserPlan("free")
+      return "free"
+    }
+
+    const dbPlan = profile?.plan
+
+    if (
+      dbPlan === "free" ||
+      dbPlan === "monthly" ||
+      dbPlan === "annual" ||
+      dbPlan === "admin"
+    ) {
+      setUserPlan(dbPlan)
+      return dbPlan
+    }
+
+    setUserPlan("free")
+    return "free"
+  }
+
   function handleSelectAnswer(answer: "A" | "B" | "C" | "D") {
-    if (showFeedback) return
+    if (showFeedback || !hasAccess) return
     setSelectedAnswer(answer)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer) return
+    if (!currentQuestion || !selectedAnswer || !hasAccess) return
 
     const isCorrect = selectedAnswer === currentQuestion.correct_answer
 
@@ -158,7 +288,7 @@ if (!user) {
   }
 
   async function handleNext() {
-    if (!currentQuestion) return
+    if (!currentQuestion || !hasAccess) return
 
     const isLastQuestion = currentIndex === questions.length - 1
 
@@ -179,49 +309,54 @@ if (!user) {
   }
 
   async function saveResults(finalScore: number) {
+    if (!userId || !test) return
+
     setSavingResults(true)
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      setSavingResults(false)
-      return
-    }
 
     const totalQuestions = questions.length
     const successRate =
       totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
 
     const { error: progressError } = await supabase.from("vr_progress").insert({
-      user_id: user.id,
-      test_id: test?.id,
+      user_id: userId,
+      test_id: test.id,
       total_questions: totalQuestions,
       correct_answers: finalScore,
       success_rate: successRate,
-      difficulty: test?.difficulty,
+      difficulty: test.difficulty,
     })
 
     if (progressError) {
-      console.error("Error saving VR progress:", progressError)
+      console.error("Error saving VR progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+      })
     }
 
     const reviewRows = questions
       .filter((question) => userAnswers[question.id] !== question.correct_answer)
       .map((question) => ({
-        user_id: user.id,
+        user_id: userId,
         question_id: question.id,
         question_text: question.question_text,
         knew_it: false,
-        difficulty: question.difficulty ?? test?.difficulty,
+        difficulty: question.difficulty ?? test.difficulty,
       }))
 
     if (reviewRows.length > 0) {
       const { error: reviewError } = await supabase.from("vr_review").insert(reviewRows)
 
       if (reviewError) {
-        console.error("Error saving VR review:", reviewError)
+        console.error("Error saving VR review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
       }
     }
 
@@ -257,6 +392,11 @@ if (!user) {
       return { background: "#fef2f2", color: "#b91c1c" }
     }
     return { background: "#f3f4f6", color: "#374151" }
+  }
+
+  function getAccessLabel(accessLevel: string | null | undefined) {
+    if (accessLevel === "paid") return "Paid"
+    return "Free"
   }
 
   if (!rawId) {
@@ -305,7 +445,7 @@ if (!user) {
     )
   }
 
-  if (!test || questions.length === 0) {
+  if (!test) {
     return (
       <>
         <Header />
@@ -314,6 +454,76 @@ if (!user) {
             <div style={styles.emptyCard}>
               <h2 style={styles.cardTitle}>No test found</h2>
               <p style={styles.subtitle}>This codes & logic test is not available yet.</p>
+              <button onClick={() => router.push("/vr/code-logic")} style={styles.startButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (!hasAccess) {
+    const isGuest = userPlan === "guest"
+    const accessLevel = getAccessLabel(test.access_level)
+
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>
+                {isGuest ? "Please sign in to start this test" : "Upgrade needed"}
+              </h2>
+
+              <p style={styles.subtitle}>
+                {isGuest
+                  ? "Guests can browse the portal, but you need an account to start tests and save progress."
+                  : `This is a ${accessLevel} test. Your current plan is ${userPlan}.`}
+              </p>
+
+              <div style={styles.finishButtons}>
+                {isGuest ? (
+                  <>
+                    <button onClick={() => router.push("/login")} style={styles.startButton}>
+                      Login
+                    </button>
+                    <button onClick={() => router.push("/signup")} style={styles.retryButton}>
+                      Sign Up
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => router.push("/pricing")} style={styles.startButton}>
+                      View Pricing
+                    </button>
+                    <button
+                      onClick={() => router.push("/vr/code-logic")}
+                      style={styles.retryButton}
+                    >
+                      Back to Topic
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (questions.length === 0) {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>No questions found</h2>
+              <p style={styles.subtitle}>Add questions in Supabase for this test.</p>
               <button onClick={() => router.push("/vr/code-logic")} style={styles.startButton}>
                 Back to Topic
               </button>
@@ -402,6 +612,7 @@ if (!user) {
                   Work through each question and check your answer before moving on.
                 </p>
               </div>
+
               <span
                 style={{
                   ...styles.badge,
@@ -435,10 +646,12 @@ if (!user) {
                   background = "#dbeafe"
                   border = "1px solid #60a5fa"
                 }
+
                 if (showFeedback && currentQuestion.correct_answer === answerKey) {
                   background = "#d1fae5"
                   border = "1px solid #34d399"
                 }
+
                 if (
                   showFeedback &&
                   selectedAnswer === answerKey &&
@@ -482,7 +695,9 @@ if (!user) {
                     borderColor: isCorrect ? "#34d399" : "#f87171",
                   }}
                 >
-                  <p style={styles.feedbackText}>{isCorrect ? "Correct!" : "Not quite."}</p>
+                  <p style={styles.feedbackText}>
+                    {isCorrect ? "Correct!" : "Not quite."}
+                  </p>
 
                   {!isCorrect && (
                     <p style={styles.feedbackText}>
@@ -654,6 +869,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     justifyContent: "center",
     flexWrap: "wrap",
+    marginTop: "20px",
   },
   startButton: {
     display: "inline-block",

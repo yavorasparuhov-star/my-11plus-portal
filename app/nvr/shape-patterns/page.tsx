@@ -10,12 +10,16 @@ const hoverCardStyle = {
   cursor: "pointer",
 }
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type NVRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
+  access_level: string | null
   created_at: string
+  is_free: boolean
 }
 
 type NVRProgress = {
@@ -32,37 +36,89 @@ type TestWithProgress = NVRTest & {
   isCompleted: boolean
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
 export default function NVRShapePatternsPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
+  const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
 
   useEffect(() => {
     fetchTests()
   }, [])
 
+  async function loadCurrentUserAndPlan() {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error("Error getting auth session:", sessionError)
+    }
+
+    const sessionUser = session?.user ?? null
+
+    if (!sessionUser) {
+      return {
+        userId: null,
+        plan: "guest" as UserPlan,
+      }
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", sessionUser.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Error loading profile plan:", profileError)
+    }
+
+    const dbPlan = profile?.plan
+
+    const safePlan: UserPlan =
+      dbPlan === "monthly" ||
+      dbPlan === "annual" ||
+      dbPlan === "admin" ||
+      dbPlan === "free"
+        ? dbPlan
+        : "free"
+
+    return {
+      userId: sessionUser.id,
+      plan: safePlan,
+    }
+  }
+
   async function fetchTests() {
     setLoading(true)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const currentAccess = await loadCurrentUserAndPlan()
+    setUserId(currentAccess.userId)
+    setPlan(currentAccess.plan)
 
     const { data: testsData, error: testsError } = await supabase
       .from("nvr_tests")
-      .select("*")
+      .select("id, title, category, difficulty, access_level, created_at, is_free")
       .eq("category", "shape-patterns")
       .order("created_at", { ascending: false })
 
     if (testsError) {
       console.error("Error loading NVR shape pattern tests:", testsError)
+      setTests([])
       setLoading(false)
       return
     }
 
     const allTests = (testsData || []) as NVRTest[]
 
-    if (!user) {
+    if (!currentAccess.userId) {
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
         ...test,
         score: 0,
@@ -75,10 +131,19 @@ export default function NVRShapePatternsPage() {
       return
     }
 
+    const testIds = allTests.map((test) => test.id)
+
+    if (testIds.length === 0) {
+      setTests([])
+      setLoading(false)
+      return
+    }
+
     const { data: progressData, error: progressError } = await supabase
       .from("nvr_progress")
       .select("id, user_id, test_id, success_rate, created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", currentAccess.userId)
+      .in("test_id", testIds)
 
     if (progressError) {
       console.error("Error loading NVR progress:", progressError)
@@ -102,7 +167,6 @@ export default function NVRShapePatternsPage() {
       if (row.test_id === null) continue
 
       const existing = latestProgressMap.get(row.test_id)
-
       const rowDate = new Date(row.created_at || 0).getTime()
       const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
 
@@ -133,6 +197,13 @@ export default function NVRShapePatternsPage() {
     return "Not set"
   }
 
+  function getDifficultyBadgeStyle(difficulty: number | null): React.CSSProperties {
+    if (difficulty === 1) return { backgroundColor: "#d1fae5", color: "#065f46" }
+    if (difficulty === 2) return { backgroundColor: "#fef3c7", color: "#92400e" }
+    if (difficulty === 3) return { backgroundColor: "#fee2e2", color: "#991b1b" }
+    return { backgroundColor: "#e5e7eb", color: "#374151" }
+  }
+
   function getCompletedPercentage(items: TestWithProgress[]) {
     if (items.length === 0) return 0
     const completedCount = items.filter((item) => item.isCompleted).length
@@ -157,6 +228,51 @@ export default function NVRShapePatternsPage() {
     if (percentage >= 50) return "😐"
     if (percentage >= 30) return "😕"
     return "☹️"
+  }
+
+  function canStartTest(test: TestWithProgress) {
+    if (hasFullAccess(plan)) return true
+    if (plan === "free" && test.is_free) return true
+    return false
+  }
+
+  function getTestAccessLabel(test: TestWithProgress) {
+    if (hasFullAccess(plan)) return "Full access"
+    if (test.is_free) return "Free test"
+    return "Members only"
+  }
+
+  function getTestButton(test: TestWithProgress) {
+    const href = `/nvr/shape-patterns/${test.id}`
+
+    if (plan === "guest") {
+      return (
+        <Link href="/login" style={styles.signInButton}>
+          Sign in to start →
+        </Link>
+      )
+    }
+
+    if (!canStartTest(test)) {
+      return (
+        <Link href="/profile" style={styles.upgradeButton}>
+          Upgrade to unlock →
+        </Link>
+      )
+    }
+
+    return (
+      <Link
+        href={href}
+        style={test.isCompleted ? styles.startButton : styles.retryButton}
+      >
+        {test.isCompleted
+          ? "Retry Test →"
+          : test.is_free && plan === "free"
+            ? "Start Free Test →"
+            : "Start Test →"}
+      </Link>
+    )
   }
 
   const easyTests = tests.filter((test) => test.difficulty === 1)
@@ -193,6 +309,20 @@ export default function NVRShapePatternsPage() {
               Choose a non-verbal reasoning test and practise visual patterns,
               missing shapes, odd one out, and rule-based sequences.
             </p>
+
+            <div style={styles.accessInfo}>
+              {plan === "guest"
+                ? "Guests can browse the tests. Sign in to start the free tests."
+                : plan === "free"
+                  ? "Free members can start tests marked as Free test."
+                  : "Your membership unlocks all Shape Patterns tests."}
+            </div>
+
+            <div style={styles.heroActions}>
+              <Link href="/nvr" style={styles.backLink}>
+                ← Back to Non-Verbal Reasoning
+              </Link>
+            </div>
           </div>
 
           {tests.length === 0 ? (
@@ -272,13 +402,30 @@ export default function NVRShapePatternsPage() {
                     >
                       <div style={styles.cardTop}>
                         <h2 style={styles.cardTitle}>{test.title}</h2>
-                        <span style={styles.badge}>
-                          {getDifficultyLabel(test.difficulty)}
-                        </span>
+
+                        <div style={styles.badgeStack}>
+                          <span
+                            style={{
+                              ...styles.badge,
+                              ...getDifficultyBadgeStyle(test.difficulty),
+                            }}
+                          >
+                            {getDifficultyLabel(test.difficulty)}
+                          </span>
+
+                          <span
+                            style={{
+                              ...styles.accessBadge,
+                              ...(test.is_free ? styles.freeBadge : styles.lockedBadge),
+                            }}
+                          >
+                            {getTestAccessLabel(test)}
+                          </span>
+                        </div>
                       </div>
 
                       <p style={styles.preview}>
-                        Practice NVR shape pattern questions in this test.
+                        Practise NVR shape pattern questions in this test.
                       </p>
 
                       <div style={styles.metaRow}>
@@ -301,12 +448,7 @@ export default function NVRShapePatternsPage() {
                         </p>
                       </div>
 
-                      <Link
-                        href={`/nvr/shape-patterns/${test.id}`}
-                        style={test.isCompleted ? styles.startButton : styles.retryButton}
-                      >
-                        {test.isCompleted ? "Retry Test →" : "Start Test →"}
-                      </Link>
+                      {getTestButton(test)}
                     </div>
                   ))}
                 </div>
@@ -347,6 +489,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
+  },
+  accessInfo: {
+    marginTop: "18px",
+    display: "inline-block",
+    padding: "10px 14px",
+    borderRadius: "999px",
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    color: "#374151",
+    fontWeight: 600,
+    fontSize: "14px",
+  },
+  heroActions: {
+    marginTop: "16px",
+  },
+  backLink: {
+    display: "inline-block",
+    textDecoration: "none",
+    color: "#3730a3",
+    fontWeight: 600,
   },
   summaryCard: {
     background: "white",
@@ -399,14 +561,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "24px",
     lineHeight: 1.3,
   },
+  badgeStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    alignItems: "flex-end",
+  },
   badge: {
     padding: "8px 12px",
     borderRadius: "999px",
-    background: "#eef2ff",
-    color: "#3730a3",
     fontWeight: 600,
     fontSize: "14px",
     whiteSpace: "nowrap",
+  },
+  accessBadge: {
+    padding: "7px 10px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "12px",
+    whiteSpace: "nowrap",
+  },
+  freeBadge: {
+    background: "#dcfce7",
+    color: "#166534",
+    border: "1px solid #86efac",
+  },
+  lockedBadge: {
+    background: "#fff7ed",
+    color: "#9a3412",
+    border: "1px solid #fed7aa",
   },
   preview: {
     margin: 0,
@@ -444,6 +627,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     textDecoration: "none",
     fontWeight: 600,
     textAlign: "center",
+  },
+  signInButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#eef2ff",
+    color: "#3730a3",
+    textDecoration: "none",
+    fontWeight: 700,
+    textAlign: "center",
+    border: "1px solid #c7d2fe",
+  },
+  upgradeButton: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#fff7ed",
+    color: "#9a3412",
+    textDecoration: "none",
+    fontWeight: 700,
+    textAlign: "center",
+    border: "1px solid #fed7aa",
   },
   message: {
     textAlign: "center",

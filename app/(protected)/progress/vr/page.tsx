@@ -1,3 +1,4 @@
+// app/(protected)/progress/vr/page.tsx
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
@@ -48,8 +49,8 @@ type DifficultyFilter = "all" | "1" | "2" | "3"
 type CategoryFilter =
   | "all"
   | "word-relationships"
-  | "code-logic"
-  | "sequences-patterns"
+  | "codes-logic"
+  | "sequence-pattern"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -68,8 +69,8 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
   { value: "word-relationships", label: "Word Relationships" },
-  { value: "code-logic", label: "Codes & Logic" },
-  { value: "sequences-patterns", label: "Sequences & Patterns" },
+  { value: "codes-logic", label: "Codes & Logic" },
+  { value: "sequence-pattern", label: "Sequence & Patterns" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -95,8 +96,8 @@ function getLevelLabel(level: number | null | undefined) {
 
 function getCategoryLabel(category: string | null | undefined) {
   if (category === "word-relationships") return "Word Relationships"
-  if (category === "code-logic") return "Codes & Logic"
-  if (category === "sequences-patterns") return "Sequences & Patterns"
+  if (category === "codes-logic") return "Codes & Logic"
+  if (category === "sequence-pattern") return "Sequence & Patterns"
   return "Not set"
 }
 
@@ -124,19 +125,18 @@ function toSafeNumber(value: unknown) {
   return Number.isFinite(num) ? num : 0
 }
 
+function toNumericValue(value: ValueType | undefined) {
+  if (typeof value === "number") return value
+  if (typeof value === "string") return Number(value)
+  if (Array.isArray(value)) return Number(value[0])
+  return 0
+}
+
 function successTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
 ): [string, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
+  const numericValue = toNumericValue(value)
   return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Success"]
 }
 
@@ -144,16 +144,16 @@ function averageSuccessTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
 ): [string, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
+  const numericValue = toNumericValue(value)
   return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Average Success"]
+}
+
+function attemptsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [string, string] {
+  const numericValue = toNumericValue(value)
+  return [`${toSafeNumber(numericValue)}`, "Attempts"]
 }
 
 function StatCard({
@@ -179,12 +179,25 @@ function StatCard({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.1,
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -221,6 +234,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -233,6 +247,7 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
@@ -274,16 +289,31 @@ export default function VRProgressPage() {
         .order("created_at", { ascending: false })
 
       if (progressError) {
-        console.error("Error loading VR progress:", progressError)
+        console.error("Error loading VR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+        })
+
         setRows([])
-        if (mounted) setLoadingData(false)
+
+        if (mounted) {
+          setLoadingData(false)
+        }
+
         return
       }
 
       const progressRows = (progressData ?? []) as VRProgressRow[]
 
       const testIds = Array.from(
-        new Set(progressRows.map((row) => row.test_id).filter((id): id is number => id !== null))
+        new Set(
+          progressRows
+            .map((row) => row.test_id)
+            .filter((id): id is number => id !== null)
+        )
       )
 
       let testMap = new Map<number, VRTestRow>()
@@ -295,9 +325,17 @@ export default function VRProgressPage() {
           .in("id", testIds)
 
         if (testsError) {
-          console.error("Error loading VR tests:", testsError)
+          console.error("Error loading VR tests:", {
+            message: testsError.message,
+            details: testsError.details,
+            hint: testsError.hint,
+            code: testsError.code,
+            full: testsError,
+          })
         } else {
-          testMap = new Map(((testsData ?? []) as VRTestRow[]).map((test) => [test.id, test]))
+          testMap = new Map(
+            ((testsData ?? []) as VRTestRow[]).map((test) => [test.id, test])
+          )
         }
       }
 
@@ -312,9 +350,8 @@ export default function VRProgressPage() {
         }
       })
 
-      setRows(mergedRows)
-
       if (mounted) {
+        setRows(mergedRows)
         setLoadingData(false)
       }
     }
@@ -331,10 +368,15 @@ export default function VRProgressPage() {
 
     return rows.filter((row) => {
       const matchesTime =
-        cutoff && row.created_at ? new Date(row.created_at) >= cutoff : cutoff ? false : true
+        cutoff && row.created_at
+          ? new Date(row.created_at) >= cutoff
+          : cutoff
+          ? false
+          : true
 
       const matchesDifficulty =
-        difficultyFilter === "all" || String(row.resolved_difficulty ?? "") === difficultyFilter
+        difficultyFilter === "all" ||
+        String(row.resolved_difficulty ?? "") === difficultyFilter
 
       const matchesCategory =
         categoryFilter === "all" || (row.category ?? "") === categoryFilter
@@ -345,10 +387,12 @@ export default function VRProgressPage() {
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
+
     const questionsPractised = filteredRows.reduce(
       (sum, row) => sum + toSafeNumber(row.total_questions),
       0
     )
+
     const totalCorrect = filteredRows.reduce(
       (sum, row) => sum + toSafeNumber(row.correct_answers),
       0
@@ -368,11 +412,14 @@ export default function VRProgressPage() {
     const byCategory = Object.entries(
       filteredRows.reduce((acc, row) => {
         const key = getCategoryLabel(row.category)
+
         if (!acc[key]) {
           acc[key] = { attempts: 0, totalSuccess: 0 }
         }
+
         acc[key].attempts += 1
         acc[key].totalSuccess += toSafeNumber(row.success_rate)
+
         return acc
       }, {} as Record<string, { attempts: number; totalSuccess: number }>)
     ).map(([category, data]) => ({
@@ -407,14 +454,18 @@ export default function VRProgressPage() {
 
   const performanceTrendData = useMemo(() => {
     const sorted = [...filteredRows].sort(
-      (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
+      (a, b) =>
+        new Date(a.created_at ?? 0).getTime() -
+        new Date(b.created_at ?? 0).getTime()
     )
 
     return sorted.map((row, index) => ({
       attempt: index + 1,
       date: row.created_at ? formatShortDate(row.created_at) : "—",
       success: toSafeNumber(row.success_rate),
-      scoreLabel: `${toSafeNumber(row.correct_answers)}/${toSafeNumber(row.total_questions)}`,
+      scoreLabel: `${toSafeNumber(row.correct_answers)}/${toSafeNumber(
+        row.total_questions
+      )}`,
       difficulty: getLevelLabel(row.resolved_difficulty),
       category: getCategoryLabel(row.category),
     }))
@@ -434,10 +485,16 @@ export default function VRProgressPage() {
 
       acc[key].attempts += 1
       acc[key].totalSuccess += toSafeNumber(row.success_rate)
+
       return acc
     }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
 
-    const order = ["Word Relationships", "Codes & Logic", "Sequences & Patterns", "Not set"]
+    const order = [
+      "Word Relationships",
+      "Codes & Logic",
+      "Sequence & Patterns",
+      "Not set",
+    ]
 
     return Object.values(grouped)
       .map((item) => ({
@@ -461,6 +518,7 @@ export default function VRProgressPage() {
 
       acc[key].attempts += 1
       acc[key].questions += toSafeNumber(row.total_questions)
+
       return acc
     }, {} as Record<string, { difficulty: string; attempts: number; questions: number }>)
 
@@ -477,7 +535,11 @@ export default function VRProgressPage() {
 
   const recentAttempts = useMemo(() => {
     return [...filteredRows]
-      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at ?? 0).getTime() -
+          new Date(a.created_at ?? 0).getTime()
+      )
       .slice(0, 12)
   }, [filteredRows])
 
@@ -487,11 +549,15 @@ export default function VRProgressPage() {
     }
 
     const strongest = overallStats.strongestCategory
-      ? `${overallStats.strongestCategory.category} (${overallStats.strongestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${overallStats.strongestCategory.category} (${overallStats.strongestCategory.avgSuccess.toFixed(
+          1
+        )}%)`
       : "N/A"
 
     const weakest = overallStats.weakestCategory
-      ? `${overallStats.weakestCategory.category} (${overallStats.weakestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${overallStats.weakestCategory.category} (${overallStats.weakestCategory.avgSuccess.toFixed(
+          1
+        )}%)`
       : "N/A"
 
     return `You answered ${overallStats.totalCorrect} verbal reasoning questions correctly across ${overallStats.testsCompleted} completed tests. Your strongest category is ${strongest}, while your weakest category is ${weakest}.`
@@ -537,6 +603,7 @@ export default function VRProgressPage() {
             >
               🧠 Verbal Reasoning Progress
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -606,24 +673,44 @@ export default function VRProgressPage() {
           }}
         >
           <StatCard title="Tests Completed" value={String(overallStats.testsCompleted)} />
-          <StatCard title="Questions Practised" value={String(overallStats.questionsPractised)} />
-          <StatCard title="Average Success" value={`${overallStats.averageSuccess.toFixed(1)}%`} />
+          <StatCard
+            title="Questions Practised"
+            value={String(overallStats.questionsPractised)}
+          />
+          <StatCard
+            title="Average Success"
+            value={`${overallStats.averageSuccess.toFixed(1)}%`}
+          />
           <StatCard title="Best Score" value={`${overallStats.bestScore.toFixed(1)}%`} />
+
           <StatCard
             title="Strongest Category"
-            value={overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+            value={
+              overallStats.strongestCategory
+                ? overallStats.strongestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.strongestCategory
-                ? `${overallStats.strongestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.strongestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
+
           <StatCard
             title="Weakest Category"
-            value={overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+            value={
+              overallStats.weakestCategory
+                ? overallStats.weakestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.weakestCategory
-                ? `${overallStats.weakestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.weakestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
@@ -642,9 +729,9 @@ export default function VRProgressPage() {
             title="Performance Trend"
             subtitle="Track success rate across recent verbal reasoning attempts."
           >
-            <div style={{ width: "100%", height: "340px", minWidth: 0 }}>
+            <div style={chartContainerStyle}>
               {performanceTrendData.length ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height={340}>
                   <LineChart data={performanceTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -707,7 +794,9 @@ export default function VRProgressPage() {
                   Best Category
                 </div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+                  {overallStats.strongestCategory
+                    ? overallStats.strongestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -723,7 +812,9 @@ export default function VRProgressPage() {
                   Needs Focus
                 </div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+                  {overallStats.weakestCategory
+                    ? overallStats.weakestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -759,9 +850,9 @@ export default function VRProgressPage() {
             title="Average Success by Category"
             subtitle="Compare performance across verbal reasoning categories."
           >
-            <div style={{ width: "100%", height: "340px", minWidth: 0 }}>
+            <div style={chartContainerStyle}>
               {successByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={successByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
@@ -780,14 +871,14 @@ export default function VRProgressPage() {
             title="Practice Volume by Difficulty"
             subtitle="See which verbal reasoning levels have been practised the most."
           >
-            <div style={{ width: "100%", height: "340px", minWidth: 0 }}>
+            <div style={chartContainerStyle}>
               {attemptsByDifficultyData.length ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={attemptsByDifficultyData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="difficulty" />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip formatter={attemptsTooltipFormatter} />
                     <Bar dataKey="attempts" fill="#3b82f6" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -822,15 +913,13 @@ export default function VRProgressPage() {
                     <th style={thStyle}>Success</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentAttempts.map((row) => (
-                    <tr
-                      key={row.id}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                      }}
-                    >
-                      <td style={tdStyle}>{row.created_at ? formatDateTime(row.created_at) : "—"}</td>
+                    <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={tdStyle}>
+                        {row.created_at ? formatDateTime(row.created_at) : "—"}
+                      </td>
                       <td style={tdStyle}>{row.test_title}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.resolved_difficulty)}</td>
@@ -895,6 +984,13 @@ export default function VRProgressPage() {
   )
 }
 
+const chartContainerStyle: React.CSSProperties = {
+  width: "100%",
+  height: "340px",
+  minWidth: 0,
+  minHeight: "340px",
+}
+
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
@@ -909,6 +1005,7 @@ const selectStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "240px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

@@ -5,11 +5,15 @@ import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type NVRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
+  access_level?: string | null
+  is_free?: boolean | null
   created_at: string
 }
 
@@ -37,6 +41,14 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
+function isFreeTest(test: NVRTest) {
+  return test.is_free === true || test.access_level === "free"
+}
+
 export default function NVRCodesSpatialLogicTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -45,6 +57,7 @@ export default function NVRCodesSpatialLogicTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<NVRTest | null>(null)
   const [questions, setQuestions] = useState<NVRQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -54,36 +67,64 @@ export default function NVRCodesSpatialLogicTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(null)
 
   useEffect(() => {
+    async function loadCurrentUserAndPlan() {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
+
+      const sessionUser = session?.user ?? null
+
+      if (!sessionUser) {
+        return {
+          userId: null,
+          plan: "guest" as UserPlan,
+        }
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", sessionUser.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      return {
+        userId: sessionUser.id,
+        plan: safePlan,
+      }
+    }
+
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setAccessBlocked(null)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid NVR test ID.")
         setLoading(false)
         return
       }
-
-      const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
-
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
-
-const user = session?.user ?? null
-
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
-
-      setUserId(user.id)
 
       const { data: testData, error: testError } = await supabase
         .from("nvr_tests")
@@ -92,9 +133,38 @@ if (!user) {
         .eq("category", "codes-spatial-logic")
         .single()
 
-      if (testError) {
-        console.error("Error loading NVR test:", testError)
+      if (testError || !testData) {
+        console.error("Error loading NVR test:", {
+          message: testError?.message,
+          details: testError?.details,
+          hint: testError?.hint,
+          code: testError?.code,
+          full: testError,
+        })
         setErrorMessage("Could not load this Codes & Spatial Logic test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as NVRTest
+      setTest(loadedTest)
+
+      const currentAccess = await loadCurrentUserAndPlan()
+      setUserId(currentAccess.userId)
+      setPlan(currentAccess.plan)
+
+      if (!currentAccess.userId) {
+        setAccessBlocked("guest")
+        setLoading(false)
+        return
+      }
+
+      const canStart =
+        hasFullAccess(currentAccess.plan) ||
+        (currentAccess.plan === "free" && isFreeTest(loadedTest))
+
+      if (!canStart) {
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -106,19 +176,24 @@ if (!user) {
         .order("question_order", { ascending: true })
 
       if (questionError) {
-        console.error("Error loading NVR questions:", questionError)
+        console.error("Error loading NVR questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
       }
 
-      setTest(testData as NVRTest)
       setQuestions((questionData || []) as NVRQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router])
+  }, [rawId, testId])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -127,6 +202,7 @@ if (!user) {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
+
       e.preventDefault()
       e.returnValue = ""
     }
@@ -149,6 +225,7 @@ if (!user) {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
+
     router.push("/nvr/codes-spatial-logic")
   }
 
@@ -167,66 +244,82 @@ if (!user) {
 
     setSubmitting(true)
 
-    let correctAnswers = 0
-   const wrongAnswersForReview: {
-  user_id: string
-  question_id: number
-  question_text: string
-  knew_it: boolean
-  difficulty: number | null
-}[] = []
+    try {
+      let correctAnswers = 0
 
-    for (const question of questions) {
-      const selected = answers[question.id]
+      const wrongAnswersForReview: {
+        user_id: string
+        question_id: number
+        question_text: string
+        knew_it: boolean
+        difficulty: number | null
+      }[] = []
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-      } else {
-      wrongAnswersForReview.push({
-  user_id: userId,
-  question_id: question.id,
-  question_text: question.question_text,
-  knew_it: false,
-  difficulty: question.difficulty ?? test.difficulty ?? null,
-})
+      for (const question of questions) {
+        const selected = answers[question.id]
+
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
+        } else {
+          wrongAnswersForReview.push({
+            user_id: userId,
+            question_id: question.id,
+            question_text: question.question_text,
+            knew_it: false,
+            difficulty: question.difficulty ?? test.difficulty ?? null,
+          })
+        }
       }
-    }
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-  const { error: progressError } = await supabase.from("nvr_progress").insert([
-  {
-    user_id: userId,
-    test_id: test.id,
-    total_questions: totalQuestions,
-    correct_answers: correctAnswers,
-    success_rate: successRate,
-    difficulty: test.difficulty ?? null,
-  },
-])
+      const { error: progressError } = await supabase.from("nvr_progress").insert([
+        {
+          user_id: userId,
+          test_id: test.id,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          success_rate: successRate,
+          difficulty: test.difficulty ?? null,
+        },
+      ])
 
-    if (progressError) {
-      console.error("Error saving NVR progress:", progressError)
-    }
-
-    if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("nvr_review")
-        .insert(wrongAnswersForReview)
-
-      if (reviewError) {
-        console.error("Error saving NVR review:", reviewError)
+      if (progressError) {
+        console.error("Error saving NVR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+        })
       }
+
+      if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("nvr_review")
+          .insert(wrongAnswersForReview)
+
+        if (reviewError) {
+          console.error("Error saving NVR review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
+      }
+
+      setScore(correctAnswers)
+      setSubmitted(true)
+      setShowIncompleteModal(false)
+
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } finally {
+      setSubmitting(false)
     }
-
-    setScore(correctAnswers)
-    setSubmitted(true)
-    setSubmitting(false)
-    setShowIncompleteModal(false)
-
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function handleSubmit() {
@@ -262,6 +355,7 @@ if (!user) {
     setSubmitted(false)
     setScore(0)
     setShowIncompleteModal(false)
+
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -272,6 +366,56 @@ if (!user) {
       <>
         <Header />
         <p style={styles.message}>Loading Codes & Spatial Logic test...</p>
+      </>
+    )
+  }
+
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Upgrade Options
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -329,19 +473,22 @@ if (!user) {
                 {test.difficulty === 1
                   ? "Easy"
                   : test.difficulty === 2
-                  ? "Medium"
-                  : test.difficulty === 3
-                  ? "Hard"
-                  : "Not set"}
+                    ? "Medium"
+                    : test.difficulty === 3
+                      ? "Hard"
+                      : "Not set"}
               </div>
             </div>
 
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
@@ -495,11 +642,14 @@ if (!user) {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
@@ -579,6 +729,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
+    justifyContent: "center",
   },
   questionsCard: {
     background: "white",

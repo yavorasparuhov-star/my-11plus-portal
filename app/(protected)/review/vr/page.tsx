@@ -1,6 +1,7 @@
+// app/(protected)/review/vr/page.tsx
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
@@ -22,7 +23,6 @@ type VRReviewRow = {
   user_id: string
   question_id: number | null
   question_text: string
-  knew_it: boolean | null
   difficulty: number | null
   created_at: string
   explanation?: string
@@ -47,8 +47,8 @@ type DifficultyFilter = "all" | "1" | "2" | "3"
 type CategoryFilter =
   | "all"
   | "word-relationships"
-  | "code-logic"
-  | "sequences-patterns"
+  | "codes-logic"
+  | "sequence-pattern"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -67,8 +67,8 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
   { value: "word-relationships", label: "Word Relationships" },
-  { value: "code-logic", label: "Codes & Logic" },
-  { value: "sequences-patterns", label: "Sequences & Patterns" },
+  { value: "codes-logic", label: "Codes & Logic" },
+  { value: "sequence-pattern", label: "Sequence & Patterns" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -94,8 +94,8 @@ function getLevelLabel(level: number | null | undefined) {
 
 function getCategoryLabel(category: string | null | undefined) {
   if (category === "word-relationships") return "Word Relationships"
-  if (category === "code-logic") return "Codes & Logic"
-  if (category === "sequences-patterns") return "Sequences & Patterns"
+  if (category === "codes-logic") return "Codes & Logic"
+  if (category === "sequence-pattern") return "Sequence & Patterns"
   return "Not set"
 }
 
@@ -113,6 +113,26 @@ function formatDateTime(value: string) {
 function truncateText(text: string, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function toSafeNumber(value: unknown) {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+function toNumericValue(value: ValueType | undefined) {
+  if (typeof value === "number") return value
+  if (typeof value === "string") return Number(value)
+  if (Array.isArray(value)) return Number(value[0])
+  return 0
+}
+
+function questionsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [number, string] {
+  const numericValue = toNumericValue(value)
+  return [toSafeNumber(numericValue), "Questions"]
 }
 
 function StatCard({
@@ -138,12 +158,25 @@ function StatCard({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.1,
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -180,6 +213,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -192,31 +226,26 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
-}
-
-function questionsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [number, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
-  return [numericValue, "Questions"]
 }
 
 export default function VRReviewPage() {
   const router = useRouter()
 
   const [loadingUser, setLoadingUser] = useState(true)
+const [chartsReady, setChartsReady] = useState(false)
+
+useEffect(() => {
+  const timer = window.setTimeout(() => {
+    setChartsReady(true)
+  }, 100)
+
+  return () => window.clearTimeout(timer)
+}, [])
+
   const [loadingData, setLoadingData] = useState(true)
   const [reviewQuestions, setReviewQuestions] = useState<VRReviewRow[]>([])
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
@@ -252,9 +281,15 @@ export default function VRReviewPage() {
           details: error.details,
           hint: error.hint,
           code: error.code,
+          full: error,
         })
+
         setReviewQuestions([])
-        setLoadingData(false)
+
+        if (mounted) {
+          setLoadingData(false)
+        }
+
         return
       }
 
@@ -280,7 +315,13 @@ export default function VRReviewPage() {
           .in("id", questionIds)
 
         if (questionsError) {
-          console.error("Error loading VR explanations/questions:", questionsError)
+          console.error("Error loading VR explanations/questions:", {
+            message: questionsError.message,
+            details: questionsError.details,
+            hint: questionsError.hint,
+            code: questionsError.code,
+            full: questionsError,
+          })
         } else {
           questionMap = new Map(
             ((questionsData || []) as VRQuestionRow[]).map((question) => [
@@ -312,15 +353,24 @@ export default function VRReviewPage() {
           .in("id", testIds)
 
         if (testsError) {
-          console.error("Error loading VR test categories:", testsError)
+          console.error("Error loading VR test categories:", {
+            message: testsError.message,
+            details: testsError.details,
+            hint: testsError.hint,
+            code: testsError.code,
+            full: testsError,
+          })
         } else {
-          testMap = new Map(((testsData || []) as VRTestRow[]).map((test) => [test.id, test]))
+          testMap = new Map(
+            ((testsData || []) as VRTestRow[]).map((test) => [test.id, test])
+          )
         }
       }
 
       const mergedData = reviewData.map((row) => {
         const questionInfo =
           row.question_id !== null ? questionMap.get(row.question_id) : undefined
+
         const linkedTest =
           questionInfo?.test_id !== null && questionInfo?.test_id !== undefined
             ? testMap.get(questionInfo.test_id)
@@ -362,7 +412,13 @@ export default function VRReviewPage() {
       .ilike("question_text", questionText)
 
     if (error) {
-      console.error("Error deleting VR review question:", error)
+      console.error("Error deleting VR review question:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        full: error,
+      })
       return
     }
 
@@ -373,7 +429,9 @@ export default function VRReviewPage() {
 
   const uniqueQuestions = useMemo(() => {
     return Array.from(
-      new Map(reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])).values()
+      new Map(
+        reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])
+      ).values()
     )
   }, [reviewQuestions])
 
@@ -383,7 +441,9 @@ export default function VRReviewPage() {
     return uniqueQuestions.filter((q) => {
       const matchesDifficulty =
         difficultyFilter === "all" || String(q.difficulty ?? "") === difficultyFilter
+
       const matchesTime = cutoff ? new Date(q.created_at) >= cutoff : true
+
       const matchesCategory =
         categoryFilter === "all" || (q.category ?? "") === categoryFilter
 
@@ -409,10 +469,13 @@ export default function VRReviewPage() {
     const byCategory = Object.entries(
       filteredQuestions.reduce((acc, row) => {
         const key = getCategoryLabel(row.category)
+
         if (!acc[key]) {
           acc[key] = 0
         }
+
         acc[key] += 1
+
         return acc
       }, {} as Record<string, number>)
     ).map(([category, count]) => ({
@@ -422,12 +485,15 @@ export default function VRReviewPage() {
 
     const mostCommonCategory =
       byCategory.length > 0
-        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
+        ? byCategory.reduce((max, current) =>
+            current.count > max.count ? current : max
+          )
         : null
 
     const mostRecentItem = filteredQuestions.length
       ? [...filteredQuestions].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0]
       : null
 
@@ -456,10 +522,16 @@ export default function VRReviewPage() {
       }
 
       acc[key].count += 1
+
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
-    const order = ["Word Relationships", "Codes & Logic", "Sequences & Patterns", "Not set"]
+    const order = [
+      "Word Relationships",
+      "Codes & Logic",
+      "Sequence & Patterns",
+      "Not set",
+    ]
 
     return Object.values(grouped).sort(
       (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
@@ -468,7 +540,10 @@ export default function VRReviewPage() {
 
   const recentQuestions = useMemo(() => {
     return [...filteredQuestions]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       .slice(0, 12)
   }, [filteredQuestions])
 
@@ -524,6 +599,7 @@ export default function VRReviewPage() {
             >
               🧠 VR Review
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -607,15 +683,21 @@ export default function VRReviewPage() {
           <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
           <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
           <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
+
           <StatCard
             title="Most Common Category"
-            value={reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+            value={
+              reviewStats.mostCommonCategory
+                ? reviewStats.mostCommonCategory.category
+                : "—"
+            }
             subtitle={
               reviewStats.mostCommonCategory
                 ? `${reviewStats.mostCommonCategory.count} questions`
                 : undefined
             }
           />
+
           <StatCard
             title="Most Recent Item"
             value={
@@ -629,10 +711,13 @@ export default function VRReviewPage() {
                 : undefined
             }
           />
+
           <StatCard
             title="Current Filter"
             value={
-              categoryFilter === "all" ? "All Categories" : getCategoryLabel(categoryFilter)
+              categoryFilter === "all"
+                ? "All Categories"
+                : getCategoryLabel(categoryFilter)
             }
             subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
           />
@@ -651,9 +736,9 @@ export default function VRReviewPage() {
             title="Review Questions by Category"
             subtitle="See which VR categories need the most revision."
           >
-            <div style={{ width: "100%", height: "340px", minWidth: 0 }}>
-              {reviewByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <div style={chartContainerStyle}>
+{chartsReady && reviewByCategoryData.length ? (
+  <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={reviewByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
@@ -717,7 +802,9 @@ export default function VRReviewPage() {
                   Main Focus
                 </div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+                  {reviewStats.mostCommonCategory
+                    ? reviewStats.mostCommonCategory.category
+                    : "—"}
                 </div>
               </div>
             </div>
@@ -747,14 +834,10 @@ export default function VRReviewPage() {
                     <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentQuestions.map((row) => (
-                    <tr
-                      key={row.id}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                      }}
-                    >
+                    <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
@@ -876,6 +959,7 @@ export default function VRReviewPage() {
                   >
                     Explanation
                   </div>
+
                   <div
                     style={{
                       color: "#334155",
@@ -932,6 +1016,13 @@ export default function VRReviewPage() {
   )
 }
 
+const chartContainerStyle: React.CSSProperties = {
+  width: "100%",
+  height: "340px",
+  minWidth: "320px",
+  minHeight: "340px",
+}
+
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
@@ -966,6 +1057,7 @@ const removeButtonStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "240px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

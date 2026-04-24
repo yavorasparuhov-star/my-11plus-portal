@@ -5,11 +5,15 @@ import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type NVRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
+  access_level: string | null
+  is_free: boolean
   created_at: string
 }
 
@@ -37,6 +41,10 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
 export default function NVRShapePatternsTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -45,6 +53,7 @@ export default function NVRShapePatternsTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<NVRTest | null>(null)
   const [questions, setQuestions] = useState<NVRQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -54,11 +63,58 @@ export default function NVRShapePatternsTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(null)
 
   useEffect(() => {
+    async function loadCurrentUserAndPlan() {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
+
+      const sessionUser = session?.user ?? null
+
+      if (!sessionUser) {
+        return {
+          userId: null,
+          plan: "guest" as UserPlan,
+        }
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", sessionUser.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      return {
+        userId: sessionUser.id,
+        plan: safePlan,
+      }
+    }
+
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setAccessBlocked(null)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid NVR test ID.")
@@ -66,35 +122,39 @@ export default function NVRShapePatternsTestPage() {
         return
       }
 
-      const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
-
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
-
-const user = session?.user ?? null
-
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
-
-      setUserId(user.id)
-
       const { data: testData, error: testError } = await supabase
         .from("nvr_tests")
-        .select("*")
+        .select("id, title, category, difficulty, access_level, is_free, created_at")
         .eq("id", testId)
         .eq("category", "shape-patterns")
         .single()
 
-      if (testError) {
+      if (testError || !testData) {
         console.error("Error loading NVR test:", testError)
         setErrorMessage("Could not load this Shape Patterns test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as NVRTest
+      setTest(loadedTest)
+
+      const currentAccess = await loadCurrentUserAndPlan()
+      setUserId(currentAccess.userId)
+      setPlan(currentAccess.plan)
+
+      if (!currentAccess.userId) {
+        setAccessBlocked("guest")
+        setLoading(false)
+        return
+      }
+
+      const canStart =
+        hasFullAccess(currentAccess.plan) ||
+        (currentAccess.plan === "free" && loadedTest.is_free)
+
+      if (!canStart) {
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -112,13 +172,12 @@ if (!user) {
         return
       }
 
-      setTest(testData as NVRTest)
       setQuestions((questionData || []) as NVRQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router])
+  }, [rawId, testId])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -205,8 +264,6 @@ if (!user) {
       difficulty: test.difficulty,
     }
 
-    console.log("Saving NVR progress payload:", progressPayload)
-
     const { error: progressError } = await supabase
       .from("nvr_progress")
       .insert([progressPayload])
@@ -222,8 +279,6 @@ if (!user) {
     }
 
     if (wrongAnswersForReview.length > 0) {
-      console.log("Saving NVR review payload:", wrongAnswersForReview)
-
       const { error: reviewError } = await supabase
         .from("nvr_review")
         .insert(wrongAnswersForReview)
@@ -294,6 +349,56 @@ if (!user) {
     )
   }
 
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Upgrade Options
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (errorMessage) {
     return (
       <>
@@ -346,10 +451,10 @@ if (!user) {
                 {test.difficulty === 1
                   ? "Easy"
                   : test.difficulty === 2
-                  ? "Medium"
-                  : test.difficulty === 3
-                  ? "Hard"
-                  : "Not set"}
+                    ? "Medium"
+                    : test.difficulty === 3
+                      ? "Hard"
+                      : "Not set"}
               </div>
             </div>
 
@@ -357,7 +462,8 @@ if (!user) {
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
                 <p style={styles.resultText}>
                   Success rate:{" "}
@@ -596,6 +702,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
+    justifyContent: "center",
   },
   questionsCard: {
     background: "white",

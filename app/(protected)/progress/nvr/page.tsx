@@ -23,6 +23,7 @@ type NVRProgressRow = {
   id: number
   user_id: string
   test_id: number | null
+  category: string | null
   total_questions: number | null
   correct_answers: number | null
   success_rate: number | null
@@ -40,7 +41,7 @@ type NVRTestRow = {
 type EnrichedNVRProgressRow = NVRProgressRow & {
   resolved_difficulty: number | null
   test_title: string
-  category: string | null
+  resolved_category: string | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
@@ -102,6 +103,7 @@ function getCategoryLabel(category: string | null | undefined) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -113,6 +115,7 @@ function formatDateTime(value: string) {
 
 function formatShortDate(value: string) {
   const date = new Date(value)
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -120,23 +123,22 @@ function formatShortDate(value: string) {
 }
 
 function toSafeNumber(value: unknown) {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : 0
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function toNumericValue(value: ValueType | undefined) {
+  if (typeof value === "number") return value
+  if (typeof value === "string") return Number(value)
+  if (Array.isArray(value)) return Number(value[0])
+  return 0
 }
 
 function successTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
 ): [string, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
+  const numericValue = toNumericValue(value)
   return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Success"]
 }
 
@@ -144,16 +146,16 @@ function averageSuccessTooltipFormatter(
   value: ValueType | undefined,
   _name: NameType | undefined
 ): [string, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? Number(value)
-      : Array.isArray(value)
-      ? Number(value[0])
-      : 0
-
+  const numericValue = toNumericValue(value)
   return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Average Success"]
+}
+
+function attemptsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [string, string] {
+  const numericValue = toNumericValue(value)
+  return [`${toSafeNumber(numericValue)}`, "Attempts"]
 }
 
 function StatCard({
@@ -179,12 +181,25 @@ function StatCard({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.1,
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -220,6 +235,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -232,6 +248,7 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
@@ -266,21 +283,38 @@ export default function NVRProgressPage() {
 
       const { data: progressData, error: progressError } = await supabase
         .from("nvr_progress")
-        .select("id, user_id, test_id, total_questions, correct_answers, success_rate, difficulty, created_at")
+        .select(
+          "id, user_id, test_id, category, total_questions, correct_answers, success_rate, difficulty, created_at"
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
       if (progressError) {
-        console.error("Error loading NVR progress:", progressError)
+        console.error("Error loading NVR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+        })
+
         setRows([])
-        if (mounted) setLoadingData(false)
+
+        if (mounted) {
+          setLoadingData(false)
+        }
+
         return
       }
 
       const progressRows = (progressData ?? []) as NVRProgressRow[]
 
       const testIds = Array.from(
-        new Set(progressRows.map((row) => row.test_id).filter((id): id is number => id !== null))
+        new Set(
+          progressRows
+            .map((row) => row.test_id)
+            .filter((id): id is number => id !== null)
+        )
       )
 
       let testMap = new Map<number, NVRTestRow>()
@@ -292,9 +326,17 @@ export default function NVRProgressPage() {
           .in("id", testIds)
 
         if (testsError) {
-          console.error("Error loading NVR tests:", testsError)
+          console.error("Error loading NVR tests:", {
+            message: testsError.message,
+            details: testsError.details,
+            hint: testsError.hint,
+            code: testsError.code,
+            full: testsError,
+          })
         } else {
-          testMap = new Map(((testsData ?? []) as NVRTestRow[]).map((test) => [test.id, test]))
+          testMap = new Map(
+            ((testsData ?? []) as NVRTestRow[]).map((test) => [test.id, test])
+          )
         }
       }
 
@@ -305,13 +347,12 @@ export default function NVRProgressPage() {
           ...row,
           resolved_difficulty: row.difficulty ?? linkedTest?.difficulty ?? null,
           test_title: linkedTest?.title ?? "NVR Test",
-          category: linkedTest?.category ?? null,
+          resolved_category: row.category ?? linkedTest?.category ?? null,
         }
       })
 
-      setRows(mergedRows)
-
       if (mounted) {
+        setRows(mergedRows)
         setLoadingData(false)
       }
     }
@@ -328,13 +369,18 @@ export default function NVRProgressPage() {
 
     return rows.filter((row) => {
       const matchesTime =
-        cutoff && row.created_at ? new Date(row.created_at) >= cutoff : cutoff ? false : true
+        cutoff && row.created_at
+          ? new Date(row.created_at) >= cutoff
+          : cutoff
+          ? false
+          : true
 
       const matchesDifficulty =
-        difficultyFilter === "all" || String(row.resolved_difficulty ?? "") === difficultyFilter
+        difficultyFilter === "all" ||
+        String(row.resolved_difficulty ?? "") === difficultyFilter
 
       const matchesCategory =
-        categoryFilter === "all" || (row.category ?? "") === categoryFilter
+        categoryFilter === "all" || (row.resolved_category ?? "") === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
@@ -342,10 +388,12 @@ export default function NVRProgressPage() {
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
+
     const questionsPractised = filteredRows.reduce(
       (sum, row) => sum + toSafeNumber(row.total_questions),
       0
     )
+
     const totalCorrect = filteredRows.reduce(
       (sum, row) => sum + toSafeNumber(row.correct_answers),
       0
@@ -364,12 +412,15 @@ export default function NVRProgressPage() {
 
     const byCategory = Object.entries(
       filteredRows.reduce((acc, row) => {
-        const key = getCategoryLabel(row.category)
+        const key = getCategoryLabel(row.resolved_category)
+
         if (!acc[key]) {
           acc[key] = { attempts: 0, totalSuccess: 0 }
         }
+
         acc[key].attempts += 1
         acc[key].totalSuccess += toSafeNumber(row.success_rate)
+
         return acc
       }, {} as Record<string, { attempts: number; totalSuccess: number }>)
     ).map(([category, data]) => ({
@@ -404,22 +455,26 @@ export default function NVRProgressPage() {
 
   const performanceTrendData = useMemo(() => {
     const sorted = [...filteredRows].sort(
-      (a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
+      (a, b) =>
+        new Date(a.created_at ?? 0).getTime() -
+        new Date(b.created_at ?? 0).getTime()
     )
 
     return sorted.map((row, index) => ({
       attempt: index + 1,
       date: row.created_at ? formatShortDate(row.created_at) : "—",
       success: toSafeNumber(row.success_rate),
-      scoreLabel: `${toSafeNumber(row.correct_answers)}/${toSafeNumber(row.total_questions)}`,
+      scoreLabel: `${toSafeNumber(row.correct_answers)}/${toSafeNumber(
+        row.total_questions
+      )}`,
       difficulty: getLevelLabel(row.resolved_difficulty),
-      category: getCategoryLabel(row.category),
+      category: getCategoryLabel(row.resolved_category),
     }))
   }, [filteredRows])
 
   const successByCategoryData = useMemo(() => {
     const grouped = filteredRows.reduce((acc, row) => {
-      const key = getCategoryLabel(row.category)
+      const key = getCategoryLabel(row.resolved_category)
 
       if (!acc[key]) {
         acc[key] = {
@@ -431,10 +486,16 @@ export default function NVRProgressPage() {
 
       acc[key].attempts += 1
       acc[key].totalSuccess += toSafeNumber(row.success_rate)
+
       return acc
     }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
 
-    const order = ["Shape Patterns", "Rotations & Reflections", "Codes & Spatial Logic", "Not set"]
+    const order = [
+      "Shape Patterns",
+      "Rotations & Reflections",
+      "Codes & Spatial Logic",
+      "Not set",
+    ]
 
     return Object.values(grouped)
       .map((item) => ({
@@ -458,6 +519,7 @@ export default function NVRProgressPage() {
 
       acc[key].attempts += 1
       acc[key].questions += toSafeNumber(row.total_questions)
+
       return acc
     }, {} as Record<string, { difficulty: string; attempts: number; questions: number }>)
 
@@ -474,7 +536,11 @@ export default function NVRProgressPage() {
 
   const recentAttempts = useMemo(() => {
     return [...filteredRows]
-      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at ?? 0).getTime() -
+          new Date(a.created_at ?? 0).getTime()
+      )
       .slice(0, 12)
   }, [filteredRows])
 
@@ -484,11 +550,15 @@ export default function NVRProgressPage() {
     }
 
     const strongest = overallStats.strongestCategory
-      ? `${overallStats.strongestCategory.category} (${overallStats.strongestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${overallStats.strongestCategory.category} (${overallStats.strongestCategory.avgSuccess.toFixed(
+          1
+        )}%)`
       : "N/A"
 
     const weakest = overallStats.weakestCategory
-      ? `${overallStats.weakestCategory.category} (${overallStats.weakestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${overallStats.weakestCategory.category} (${overallStats.weakestCategory.avgSuccess.toFixed(
+          1
+        )}%)`
       : "N/A"
 
     return `You answered ${overallStats.totalCorrect} non-verbal reasoning questions correctly across ${overallStats.testsCompleted} completed tests. Your strongest category is ${strongest}, while your weakest category is ${weakest}.`
@@ -534,6 +604,7 @@ export default function NVRProgressPage() {
             >
               🔷 Non-Verbal Reasoning Progress
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -543,8 +614,8 @@ export default function NVRProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore non-verbal reasoning performance with live filters, trend tracking,
-              category insights, and recent test history.
+              Explore non-verbal reasoning performance with live filters, trend
+              tracking, category insights, and recent test history.
             </p>
           </div>
 
@@ -558,7 +629,9 @@ export default function NVRProgressPage() {
           >
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -570,7 +643,9 @@ export default function NVRProgressPage() {
 
             <select
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -582,7 +657,7 @@ export default function NVRProgressPage() {
 
             <select
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -602,25 +677,54 @@ export default function NVRProgressPage() {
             marginBottom: "24px",
           }}
         >
-          <StatCard title="Tests Completed" value={String(overallStats.testsCompleted)} />
-          <StatCard title="Questions Practised" value={String(overallStats.questionsPractised)} />
-          <StatCard title="Average Success" value={`${overallStats.averageSuccess.toFixed(1)}%`} />
-          <StatCard title="Best Score" value={`${overallStats.bestScore.toFixed(1)}%`} />
+          <StatCard
+            title="Tests Completed"
+            value={String(overallStats.testsCompleted)}
+          />
+
+          <StatCard
+            title="Questions Practised"
+            value={String(overallStats.questionsPractised)}
+          />
+
+          <StatCard
+            title="Average Success"
+            value={`${overallStats.averageSuccess.toFixed(1)}%`}
+          />
+
+          <StatCard
+            title="Best Score"
+            value={`${overallStats.bestScore.toFixed(1)}%`}
+          />
+
           <StatCard
             title="Strongest Category"
-            value={overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+            value={
+              overallStats.strongestCategory
+                ? overallStats.strongestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.strongestCategory
-                ? `${overallStats.strongestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.strongestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
+
           <StatCard
             title="Weakest Category"
-            value={overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+            value={
+              overallStats.weakestCategory
+                ? overallStats.weakestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.weakestCategory
-                ? `${overallStats.weakestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.weakestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
@@ -640,7 +744,7 @@ export default function NVRProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {performanceTrendData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <LineChart data={performanceTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
@@ -649,6 +753,7 @@ export default function NVRProgressPage() {
                       formatter={successTooltipFormatter}
                       labelFormatter={(label, payload) => {
                         const point = payload?.[0]?.payload
+
                         return point
                           ? `${point.date} • ${point.category} • ${point.difficulty} • ${point.scoreLabel}`
                           : label
@@ -670,7 +775,10 @@ export default function NVRProgressPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Quick Insights" subtitle="A snapshot of current NVR performance.">
+          <SectionCard
+            title="Quick Insights"
+            subtitle="A snapshot of current NVR performance."
+          >
             <div style={{ display: "grid", gap: "14px" }}>
               <div
                 style={{
@@ -683,6 +791,7 @@ export default function NVRProgressPage() {
                 <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Accuracy
                 </div>
+
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
                   {overallStats.averageSuccess.toFixed(1)}%
                 </div>
@@ -699,8 +808,11 @@ export default function NVRProgressPage() {
                 <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
                   Best Category
                 </div>
+
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+                  {overallStats.strongestCategory
+                    ? overallStats.strongestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -715,8 +827,11 @@ export default function NVRProgressPage() {
                 <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
                   Needs Focus
                 </div>
+
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
-                  {overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+                  {overallStats.weakestCategory
+                    ? overallStats.weakestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -731,6 +846,7 @@ export default function NVRProgressPage() {
                 <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
                   Questions Correct
                 </div>
+
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
                   {overallStats.totalCorrect}
                 </div>
@@ -753,7 +869,7 @@ export default function NVRProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {successByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={successByCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
@@ -774,12 +890,12 @@ export default function NVRProgressPage() {
           >
             <div style={{ width: "100%", height: "340px" }}>
               {attemptsByDifficultyData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={attemptsByDifficultyData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="difficulty" />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip formatter={attemptsTooltipFormatter} />
                     <Bar dataKey="attempts" fill="#3b82f6" radius={[10, 10, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -814,6 +930,7 @@ export default function NVRProgressPage() {
                     <th style={thStyle}>Success</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentAttempts.map((row) => (
                     <tr
@@ -822,9 +939,11 @@ export default function NVRProgressPage() {
                         borderBottom: "1px solid #f1f5f9",
                       }}
                     >
-                      <td style={tdStyle}>{row.created_at ? formatDateTime(row.created_at) : "—"}</td>
+                      <td style={tdStyle}>
+                        {row.created_at ? formatDateTime(row.created_at) : "—"}
+                      </td>
                       <td style={tdStyle}>{row.test_title}</td>
-                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
+                      <td style={tdStyle}>{getCategoryLabel(row.resolved_category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.resolved_difficulty)}</td>
                       <td style={tdStyle}>{toSafeNumber(row.correct_answers)}</td>
                       <td style={tdStyle}>{toSafeNumber(row.total_questions)}</td>
@@ -878,6 +997,7 @@ export default function NVRProgressPage() {
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
+
           <div style={{ color: "#d1fae5", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>

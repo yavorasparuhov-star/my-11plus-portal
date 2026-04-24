@@ -62,21 +62,21 @@ export default function DataHandlingTestPage() {
       }
 
       const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
 
-const user = session?.user ?? null
+      const user = session?.user ?? null
 
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+      if (!user) {
+        setErrorMessage("Please sign in to start this test.")
+        setLoading(false)
+        return
+      }
 
       setUserId(user.id)
 
@@ -88,7 +88,13 @@ if (!user) {
         .single()
 
       if (testError) {
-        console.error("Error loading math test:", testError)
+        console.error("Error loading math test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+          full: testError,
+        })
         setErrorMessage("Could not load this Data Handling test.")
         setLoading(false)
         return
@@ -101,7 +107,13 @@ if (!user) {
         .order("question_order", { ascending: true })
 
       if (questionError) {
-        console.error("Error loading math questions:", questionError)
+        console.error("Error loading math questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
@@ -113,7 +125,7 @@ if (!user) {
     }
 
     loadPage()
-  }, [rawId, testId, router])
+  }, [rawId, testId])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -122,6 +134,7 @@ if (!user) {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
+
       e.preventDefault()
       e.returnValue = ""
     }
@@ -144,6 +157,7 @@ if (!user) {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
+
     router.push("/math/data-handling")
   }
 
@@ -161,71 +175,100 @@ if (!user) {
     if (questions.length === 0) return
 
     setSubmitting(true)
+    setErrorMessage("")
 
-    let correctAnswers = 0
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      category: string
-      question_text: string
-      user_answer: string | null
-      correct_answer: string
-    }[] = []
+    try {
+      let correctAnswers = 0
 
-    for (const question of questions) {
-      const selected = answers[question.id]
+      const wrongAnswersForReview: {
+  user_id: string
+  test_id: number
+  question_id: number
+  category: string
+  question_text: string
+  user_answer: string | null
+  correct_answer: string
+  difficulty: number | null
+}[] = []
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          category: test.category,
-          question_text: question.question_text,
-          user_answer: selected ?? null,
-          correct_answer: question.correct_answer,
+      for (const question of questions) {
+        const selected = answers[question.id]
+
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
+        } else {
+          wrongAnswersForReview.push({
+  user_id: userId,
+  test_id: test.id,
+  question_id: question.id,
+  category: test.category,
+  question_text: question.question_text,
+  user_answer: selected ?? null,
+  correct_answer: question.correct_answer,
+  difficulty: test.difficulty ?? null,
+})
+        }
+      }
+
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0
+
+     const progressPayload = {
+  user_id: userId,
+  test_id: test.id,
+  category: test.category,
+  total_questions: totalQuestions,
+  correct_answers: correctAnswers,
+  success_rate: successRate,
+  difficulty: test.difficulty ?? null,
+}
+
+      const { error: progressError } = await supabase
+        .from("math_progress")
+        .insert([progressPayload])
+
+      if (progressError) {
+        console.error("Error saving math progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
         })
+
+        setErrorMessage(
+          progressError.message || "Could not save your progress. Please try again."
+        )
+        return
       }
-    }
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+      if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("math_review")
+          .insert(wrongAnswersForReview)
 
-    const { error: progressError } = await supabase.from("math_progress").insert([
-      {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category,
-        score: correctAnswers,
-        total_questions: totalQuestions,
-        success_rate: successRate,
-      },
-    ])
-
-    if (progressError) {
-      console.error("Error saving math progress:", progressError)
-    }
-
-    if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("math_review")
-        .insert(wrongAnswersForReview)
-
-      if (reviewError) {
-        console.error("Error saving math review:", reviewError)
+        if (reviewError) {
+          console.error("Error saving math review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
       }
+
+      setScore(correctAnswers)
+      setSubmitted(true)
+      setShowIncompleteModal(false)
+
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } finally {
+      setSubmitting(false)
     }
-
-    setScore(correctAnswers)
-    setSubmitted(true)
-    setSubmitting(false)
-    setShowIncompleteModal(false)
-
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function handleSubmit() {
@@ -254,6 +297,7 @@ if (!user) {
     setSubmitted(false)
     setScore(0)
     setShowIncompleteModal(false)
+    setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -268,7 +312,7 @@ if (!user) {
     )
   }
 
-  if (errorMessage) {
+  if (errorMessage && !test) {
     return (
       <>
         <Header />
@@ -311,7 +355,7 @@ if (!user) {
               <div>
                 <h1 style={styles.title}>📊 {test.title}</h1>
                 <p style={styles.subtitle}>
-                  Answer all 10 multiple-choice questions carefully.
+                  Answer all multiple-choice questions carefully.
                 </p>
               </div>
 
@@ -320,23 +364,29 @@ if (!user) {
                 {test.difficulty === 1
                   ? "Easy"
                   : test.difficulty === 2
-                  ? "Medium"
-                  : test.difficulty === 3
-                  ? "Hard"
-                  : "Not set"}
+                    ? "Medium"
+                    : test.difficulty === 3
+                      ? "Hard"
+                      : "Not set"}
               </div>
             </div>
 
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
-                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                    {questions.length > 0
+                      ? Math.round((score / questions.length) * 100)
+                      : 0}
+                    %
                   </strong>
                 </p>
 
@@ -344,6 +394,7 @@ if (!user) {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Test
                   </button>
+
                   <button
                     onClick={() => router.push("/math/data-handling")}
                     style={styles.primaryButton}
@@ -353,101 +404,118 @@ if (!user) {
                 </div>
               </div>
             ) : (
-              <div style={styles.progressInfo}>
-                Answered: <strong>{answeredCount}</strong> / {questions.length}
-              </div>
+              <>
+                <div style={styles.progressInfo}>
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
+                </div>
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+              </>
             )}
           </div>
 
           <div style={styles.questionsCard}>
             <h2 style={styles.sectionTitle}>Questions</h2>
 
-            {questions.map((question, index) => {
-              const selected = answers[question.id]
-              const isCorrect = selected === question.correct_answer
+            {questions.length === 0 ? (
+              <div style={styles.centerCard}>
+                <h2>No questions found</h2>
+                <p>Add questions in Supabase for this test.</p>
+              </div>
+            ) : (
+              questions.map((question, index) => {
+                const selected = answers[question.id]
+                const isCorrect = selected === question.correct_answer
 
-              return (
-                <div key={question.id} style={styles.questionBlock}>
-                  <h3 style={styles.questionTitle}>
-                    {index + 1}. {question.question_text}
-                  </h3>
+                return (
+                  <div key={question.id} style={styles.questionBlock}>
+                    <h3 style={styles.questionTitle}>
+                      {index + 1}. {question.question_text}
+                    </h3>
 
-                  <div style={styles.optionsGrid}>
-                    {(["A", "B", "C", "D"] as const).map((option) => {
-                      const optionText = getOptionText(question, option)
+                    <div style={styles.optionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const optionText = getOptionText(question, option)
 
-                      let backgroundColor = "#f3f4f6"
-                      let borderColor = "transparent"
+                        let backgroundColor = "#f3f4f6"
+                        let borderColor = "transparent"
 
-                      if (selected === option) {
-                        backgroundColor = "#e0e7ff"
-                        borderColor = "#4f46e5"
-                      }
-
-                      if (submitted) {
-                        if (option === question.correct_answer) {
-                          backgroundColor = "#dcfce7"
-                          borderColor = "#16a34a"
-                        } else if (selected === option && option !== question.correct_answer) {
-                          backgroundColor = "#fee2e2"
-                          borderColor = "#dc2626"
+                        if (selected === option) {
+                          backgroundColor = "#e0e7ff"
+                          borderColor = "#4f46e5"
                         }
-                      }
 
-                      return (
-                        <button
-                          key={option}
-                          onClick={() => handleSelect(question.id, option)}
-                          disabled={submitted}
-                          style={{
-                            ...styles.optionButton,
-                            backgroundColor,
-                            borderColor,
-                            cursor: submitted ? "default" : "pointer",
-                          }}
-                        >
-                          <span style={styles.optionLetter}>{option}</span>
-                          <span>{optionText}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                        if (submitted) {
+                          if (option === question.correct_answer) {
+                            backgroundColor = "#dcfce7"
+                            borderColor = "#16a34a"
+                          } else if (
+                            selected === option &&
+                            option !== question.correct_answer
+                          ) {
+                            backgroundColor = "#fee2e2"
+                            borderColor = "#dc2626"
+                          }
+                        }
 
-                  {submitted && (
-                    <div
-                      style={{
-                        ...styles.feedbackBox,
-                        backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                        borderColor: isCorrect ? "#86efac" : "#fecaca",
-                      }}
-                    >
-                      <p style={{ margin: 0 }}>
-                        <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
-                      </p>
-                      {!isCorrect && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          Correct answer:{" "}
-                          <strong>
-                            {question.correct_answer} —{" "}
-                            {getOptionText(
-                              question,
-                              question.correct_answer as "A" | "B" | "C" | "D"
-                            )}
-                          </strong>
-                        </p>
-                      )}
-                      {question.explanation && question.explanation.trim() !== "" && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          <strong>Explanation:</strong> {question.explanation}
-                        </p>
-                      )}
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => handleSelect(question.id, option)}
+                            disabled={submitted}
+                            style={{
+                              ...styles.optionButton,
+                              backgroundColor,
+                              borderColor,
+                              cursor: submitted ? "default" : "pointer",
+                            }}
+                          >
+                            <span style={styles.optionLetter}>{option}</span>
+                            <span>{optionText}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
-              )
-            })}
 
-            {!submitted && (
+                    {submitted && (
+                      <div
+                        style={{
+                          ...styles.feedbackBox,
+                          backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                          borderColor: isCorrect ? "#86efac" : "#fecaca",
+                        }}
+                      >
+                        <p style={{ margin: 0 }}>
+                          <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
+                        </p>
+
+                        {!isCorrect && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            Correct answer:{" "}
+                            <strong>
+                              {question.correct_answer} —{" "}
+                              {getOptionText(
+                                question,
+                                question.correct_answer as "A" | "B" | "C" | "D"
+                              )}
+                            </strong>
+                          </p>
+                        )}
+
+                        {question.explanation &&
+                          question.explanation.trim() !== "" && (
+                            <p style={{ margin: "8px 0 0 0" }}>
+                              <strong>Explanation:</strong> {question.explanation}
+                            </p>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+
+            {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
                   onClick={handleSubmit}
@@ -483,6 +551,7 @@ if (!user) {
               >
                 Go Back
               </button>
+
               <button onClick={submitTest} style={styles.primaryButton}>
                 Submit Anyway
               </button>
@@ -536,6 +605,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   progressInfo: {
     marginTop: "20px",
     color: "#444",
+  },
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
   },
   resultBanner: {
     marginTop: "20px",

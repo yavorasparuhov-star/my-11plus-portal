@@ -13,6 +13,10 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts"
+import type {
+  NameType,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent"
 
 type MathReviewRow = {
   id: number
@@ -23,19 +27,21 @@ type MathReviewRow = {
   question_text: string
   correct_answer: string
   user_answer: string | null
+  difficulty: number | null
   created_at: string
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
+type DifficultyFilter = "all" | "1" | "2" | "3"
 
 const CATEGORY_LABELS: Record<string, string> = {
-  number_place_value: "Number Place Value",
+  number_place_value: "Number & Place Value",
   four_operations: "Four Operations",
   fractions_decimals_percentages: "Fractions, Decimals & Percentages",
   shape_space: "Shape & Space",
   measurement: "Measurement",
   data_handling: "Data Handling",
-  algebra_reasoning: "Algebra Reasoning",
+  algebra_reasoning: "Algebra & Reasoning",
 }
 
 const categoryOptions = [
@@ -48,6 +54,13 @@ const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "30d", label: "Last 30 days" },
   { value: "90d", label: "Last 90 days" },
   { value: "all", label: "All time" },
+]
+
+const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
+  { value: "all", label: "All Difficulties" },
+  { value: "1", label: "Easy" },
+  { value: "2", label: "Medium" },
+  { value: "3", label: "Hard" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -66,6 +79,13 @@ function getCutoffDate(filter: TimeFilter) {
 
 function formatCategory(category: string) {
   return CATEGORY_LABELS[category] ?? category
+}
+
+function formatDifficulty(difficulty: number | null) {
+  if (difficulty === 1) return "Easy"
+  if (difficulty === 2) return "Medium"
+  if (difficulty === 3) return "Hard"
+  return "Not set"
 }
 
 function formatDateTime(value: string) {
@@ -87,7 +107,20 @@ function truncateText(text: string, maxLength = 120) {
 function formatAnswer(answer: string | null) {
   return answer && answer.trim() ? answer : "No answer"
 }
+function toNumericValue(value: ValueType | undefined) {
+  if (typeof value === "number") return value
+  if (typeof value === "string") return Number(value)
+  if (Array.isArray(value)) return Number(value[0])
+  return 0
+}
 
+function reviewItemsTooltipFormatter(
+  value: ValueType | undefined,
+  _name: NameType | undefined
+): [string, string] {
+  const numericValue = toNumericValue(value)
+  return [`${numericValue}`, "Review Items"]
+}
 function StatCard({
   title,
   value,
@@ -111,12 +144,25 @@ function StatCard({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.1,
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -152,6 +198,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -164,6 +211,7 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
@@ -177,7 +225,10 @@ export default function MathReviewPage() {
   const [rows, setRows] = useState<MathReviewRow[]>([])
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [answerFilter, setAnswerFilter] = useState<"all" | "wrong" | "unanswered">("all")
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
+  const [answerFilter, setAnswerFilter] = useState<"all" | "wrong" | "unanswered">(
+    "all"
+  )
 
   useEffect(() => {
     let mounted = true
@@ -203,7 +254,13 @@ export default function MathReviewPage() {
         .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("Error loading math review:", error)
+        console.error("Error loading math review:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          full: error,
+        })
         setRows([])
       } else {
         setRows((data ?? []) as MathReviewRow[])
@@ -228,6 +285,9 @@ export default function MathReviewPage() {
       const matchesCategory = categoryFilter === "all" || row.category === categoryFilter
       const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
 
+      const matchesDifficulty =
+        difficultyFilter === "all" || String(row.difficulty) === difficultyFilter
+
       const isUnanswered = !row.user_answer || !row.user_answer.trim()
       const isWrong = !isUnanswered && row.user_answer !== row.correct_answer
 
@@ -236,9 +296,9 @@ export default function MathReviewPage() {
         (answerFilter === "wrong" && isWrong) ||
         (answerFilter === "unanswered" && isUnanswered)
 
-      return matchesCategory && matchesTime && matchesAnswerType
+      return matchesCategory && matchesTime && matchesDifficulty && matchesAnswerType
     })
-  }, [rows, categoryFilter, timeFilter, answerFilter])
+  }, [rows, categoryFilter, timeFilter, difficultyFilter, answerFilter])
 
   const reviewStats = useMemo(() => {
     const totalQuestions = filteredRows.length
@@ -258,6 +318,7 @@ export default function MathReviewPage() {
         if (!acc[row.category]) {
           acc[row.category] = 0
         }
+
         acc[row.category] += 1
         return acc
       }, {} as Record<string, number>)
@@ -265,7 +326,9 @@ export default function MathReviewPage() {
 
     const mostMissedCategory =
       byCategory.length > 0
-        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
+        ? byCategory.reduce((max, current) =>
+            current.count > max.count ? current : max
+          )
         : null
 
     const mostRecentMistake = filteredRows.length
@@ -303,6 +366,28 @@ export default function MathReviewPage() {
         mistakes: item.count,
       }))
       .sort((a, b) => b.mistakes - a.mistakes)
+  }, [filteredRows])
+
+  const mistakesByDifficultyData = useMemo(() => {
+    const grouped = filteredRows.reduce((acc, row) => {
+      const label = formatDifficulty(row.difficulty)
+
+      if (!acc[label]) {
+        acc[label] = 0
+      }
+
+      acc[label] += 1
+      return acc
+    }, {} as Record<string, number>)
+
+    const order = ["Easy", "Medium", "Hard", "Not set"]
+
+    return order
+      .filter((difficulty) => grouped[difficulty])
+      .map((difficulty) => ({
+        difficulty,
+        mistakes: grouped[difficulty],
+      }))
   }, [filteredRows])
 
   const recentMistakes = useMemo(() => {
@@ -363,6 +448,7 @@ export default function MathReviewPage() {
             >
               📝 Math Review
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -372,8 +458,8 @@ export default function MathReviewPage() {
                 lineHeight: 1.6,
               }}
             >
-              Review mistakes across all seven maths categories, spot common problem areas,
-              and focus revision where it matters most.
+              Review mistakes across all seven maths categories, spot common problem
+              areas, and focus revision where it matters most.
             </p>
           </div>
 
@@ -410,6 +496,18 @@ export default function MathReviewPage() {
             </select>
 
             <select
+              value={difficultyFilter}
+              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              style={selectStyle}
+            >
+              {difficultyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={answerFilter}
               onChange={(e) =>
                 setAnswerFilter(e.target.value as "all" | "wrong" | "unanswered")
@@ -435,6 +533,7 @@ export default function MathReviewPage() {
           <StatCard title="Wrong Answers" value={String(reviewStats.wrongAnsweredCount)} />
           <StatCard title="Unanswered" value={String(reviewStats.unansweredCount)} />
           <StatCard title="Categories with Mistakes" value={String(reviewStats.uniqueCategories)} />
+
           <StatCard
             title="Most Missed Category"
             value={
@@ -448,6 +547,7 @@ export default function MathReviewPage() {
                 : undefined
             }
           />
+
           <StatCard
             title="Most Recent Mistake"
             value={
@@ -477,17 +577,17 @@ export default function MathReviewPage() {
           >
             <div style={{ width: "100%", height: "360px" }}>
               {mistakesByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={340}>
                   <BarChart data={mistakesByCategoryData} layout="vertical" margin={{ left: 24 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={170}
+                      width={180}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(value: number) => [value, "Review Items"]} />
+                    <Tooltip formatter={reviewItemsTooltipFormatter} />
                     <Bar dataKey="mistakes" fill="#f97316" radius={[0, 10, 10, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -571,6 +671,29 @@ export default function MathReviewPage() {
           </SectionCard>
         </div>
 
+        <div style={{ marginBottom: "20px" }}>
+          <SectionCard
+            title="Mistakes by Difficulty"
+            subtitle="See whether Easy, Medium, or Hard questions are creating the most review items."
+          >
+            <div style={{ width: "100%", height: "280px" }}>
+              {mistakesByDifficultyData.length ? (
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={mistakesByDifficultyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="difficulty" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip formatter={reviewItemsTooltipFormatter} />
+                    <Bar dataKey="mistakes" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={emptyStateStyle}>No data available for this filter.</div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+
         <SectionCard
           title="Recent Review Items"
           subtitle="Your latest maths questions to revisit for the selected filters."
@@ -581,19 +704,21 @@ export default function MathReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "1100px",
+                  minWidth: "1200px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Category</th>
+                    <th style={thStyle}>Difficulty</th>
                     <th style={thStyle}>Question</th>
                     <th style={thStyle}>Your Answer</th>
                     <th style={thStyle}>Correct Answer</th>
                     <th style={thStyle}>Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentMistakes.map((row) => {
                     const unanswered = !row.user_answer || !row.user_answer.trim()
@@ -607,11 +732,15 @@ export default function MathReviewPage() {
                       >
                         <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                         <td style={tdStyle}>{formatCategory(row.category)}</td>
+                        <td style={tdStyle}>{formatDifficulty(row.difficulty)}</td>
+
                         <td style={{ ...tdStyle, maxWidth: "420px" }}>
                           {truncateText(row.question_text, 160)}
                         </td>
+
                         <td style={tdStyle}>{formatAnswer(row.user_answer)}</td>
                         <td style={tdStyle}>{row.correct_answer}</td>
+
                         <td style={tdStyle}>
                           <span
                             style={{
@@ -651,7 +780,10 @@ export default function MathReviewPage() {
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>{summaryText}</div>
+
+          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>
+            {summaryText}
+          </div>
         </div>
       </div>
     </div>
