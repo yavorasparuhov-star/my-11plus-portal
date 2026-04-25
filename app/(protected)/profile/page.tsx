@@ -63,6 +63,7 @@ export default function ProfilePage() {
       if (profileError) {
         console.error("Error loading profile:", profileError)
         setMessage("There was a problem loading your profile.")
+
         setFormData({
           first_name: "",
           last_name: "",
@@ -70,6 +71,7 @@ export default function ProfilePage() {
           phone: "",
           email: user.email || "",
         })
+
         setLoading(false)
         return
       }
@@ -166,6 +168,10 @@ export default function ProfilePage() {
     setSaving(false)
   }
 
+  function handleChangePassword() {
+    router.push("/forgot-password")
+  }
+
   if (loading) {
     return (
       <main style={styles.page}>
@@ -202,28 +208,53 @@ export default function ProfilePage() {
         </section>
 
         <section style={styles.contentGrid}>
-          <div style={styles.infoCard}>
-            <h2 style={styles.cardTitle}>Your account</h2>
-            <p style={styles.cardText}>
-              These details help personalise the YanBo Learning experience across
-              tests, progress tracking and review pages.
-            </p>
+          <div style={styles.leftColumn}>
+            <div style={styles.infoCard}>
+              <h2 style={styles.cardTitle}>Your account</h2>
+              <p style={styles.cardText}>
+                These details help personalise the YanBo Learning experience across
+                tests, progress tracking and review pages.
+              </p>
 
-            <div style={styles.brandMiniCard}>
-              <div style={styles.miniLogoWrap}>
-                <Image
-                  src="/logo.png"
-                  alt="YanBo Learning logo"
-                  width={42}
-                  height={42}
-                  style={styles.miniLogo}
-                />
-              </div>
+              <div style={styles.brandMiniCard}>
+                <div style={styles.miniLogoWrap}>
+                  <Image
+                    src="/logo.png"
+                    alt="YanBo Learning logo"
+                    width={42}
+                    height={42}
+                    style={styles.miniLogo}
+                  />
+                </div>
 
-              <div>
-                <p style={styles.miniBrandName}>YanBo Learning</p>
-                <p style={styles.miniBrandText}>11+ Practice Portal</p>
+                <div>
+                  <p style={styles.miniBrandName}>YanBo Learning</p>
+                  <p style={styles.miniBrandText}>11+ Practice Portal</p>
+                </div>
               </div>
+            </div>
+
+            <div style={styles.securityCard}>
+              <div style={styles.securityIcon}>🔐</div>
+
+              <h2 style={styles.cardTitle}>Account security</h2>
+
+              <p style={styles.cardText}>
+                Need to change your password? We will send a secure password reset
+                link to your email address.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleChangePassword}
+                style={styles.passwordButton}
+              >
+                Change password
+              </button>
+
+              <p style={styles.securityNote}>
+                You will be taken to the password reset page.
+              </p>
             </div>
           </div>
 
@@ -399,13 +430,60 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
   },
 
+  leftColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 24,
+  },
+
   infoCard: {
     background: "#ffffff",
     borderRadius: 24,
     padding: 24,
     boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
     border: "1px solid rgba(226, 232, 240, 0.9)",
-    alignSelf: "start",
+    alignSelf: "stretch",
+  },
+
+  securityCard: {
+    background: "#ffffff",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
+    border: "1px solid rgba(226, 232, 240, 0.9)",
+  },
+
+  securityIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    background: "#eef2ff",
+    color: "#3730a3",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+    marginBottom: 14,
+  },
+
+  securityNote: {
+    margin: "12px 0 0",
+    color: "#6b7280",
+    fontSize: "0.85rem",
+    lineHeight: 1.5,
+  },
+
+  passwordButton: {
+    marginTop: 18,
+    border: "none",
+    borderRadius: 999,
+    padding: "11px 18px",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 800,
+    fontSize: "0.95rem",
+    cursor: "pointer",
+    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.16)",
   },
 
   formCard: {
