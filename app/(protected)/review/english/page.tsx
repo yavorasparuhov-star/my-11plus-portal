@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -211,7 +210,9 @@ function mapSharedReviewCategory(
     if (row.subcategory === "advanced_punctuation") return "advanced_punctuation"
     if (row.subcategory === "apostrophes") return "apostrophes"
     if (row.subcategory === "comma") return "comma"
-    if (row.subcategory === "direct_speech_punctuation") return "direct_speech_punctuation"
+    if (row.subcategory === "direct_speech_punctuation") {
+      return "direct_speech_punctuation"
+    }
     if (row.subcategory === "sentence_punctuation") return "sentence_punctuation"
   }
 
@@ -332,8 +333,8 @@ function StatCard({
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
         borderRadius: "24px",
         padding: "22px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -341,14 +342,48 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -366,8 +401,8 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -385,6 +420,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -397,10 +433,62 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
 }
+
+function ChartBox({
+  children,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height: 340 })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.max(0, Math.floor(rect.width))
+      const height = Math.max(0, Math.floor(rect.height))
+      setSize({ width, height })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "340px",
+        minWidth: 0,
+      }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div style={emptyStateStyle}>Loading chart...</div>
+      )}
+    </div>
+  )
+}
+
 export default function EnglishReviewPage() {
   const router = useRouter()
 
@@ -429,33 +517,36 @@ export default function EnglishReviewPage() {
 
         setLoadingUser(false)
 
-        const [vocabularyResult, spellingResult, englishSharedReviewResult] = await Promise.all([
-          supabase
-            .from("vocabulary_review")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("knew_it", false)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("spelling_review")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("knew_it", false)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("english_review")
-            .select("*")
-            .eq("user_id", user.id)
-            .in("main_category", ["comprehension", "grammar", "punctuation"])
-            .order("created_at", { ascending: false }),
-        ])
+        const [vocabularyResult, spellingResult, englishSharedReviewResult] =
+          await Promise.all([
+            supabase
+              .from("vocabulary_review")
+              .select("*")
+              .eq("user_id", user.id)
+              .eq("knew_it", false)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("spelling_review")
+              .select("*")
+              .eq("user_id", user.id)
+              .eq("knew_it", false)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("english_review")
+              .select("*")
+              .eq("user_id", user.id)
+              .in("main_category", ["comprehension", "grammar", "punctuation"])
+              .order("created_at", { ascending: false }),
+          ])
 
         if (vocabularyResult.error) {
           console.error("Error loading vocabulary review:", vocabularyResult.error)
         }
+
         if (spellingResult.error) {
           console.error("Error loading spelling review:", spellingResult.error)
         }
+
         if (englishSharedReviewResult.error) {
           console.error("Error loading shared English review:", englishSharedReviewResult.error)
         }
@@ -826,12 +917,13 @@ export default function EnglishReviewPage() {
       </div>
     )
   }
-    return (
+
+  return (
     <div
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(59,130,246,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
       }}
     >
@@ -881,8 +973,8 @@ export default function EnglishReviewPage() {
             }}
           >
             <select
-             id="english-review-category-filter"
-  name="englishReviewCategoryFilter"
+              id="english-review-category-filter"
+              name="englishReviewCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
               style={selectStyle}
@@ -895,8 +987,8 @@ export default function EnglishReviewPage() {
             </select>
 
             <select
-             id="english-review-difficulty-filter"
-  name="englishReviewDifficultyFilter"
+              id="english-review-difficulty-filter"
+              name="englishReviewDifficultyFilter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
               style={selectStyle}
@@ -910,7 +1002,7 @@ export default function EnglishReviewPage() {
 
             <select
               id="english-review-time-filter"
-  name="englishReviewTimeFilter"
+              name="englishReviewTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -988,10 +1080,12 @@ export default function EnglishReviewPage() {
             title="Review Items by Category"
             subtitle="See which English categories currently need the most revision."
           >
-            <div style={{ width: "100%", minWidth: 0 }}>
-              {reviewByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height={340} minWidth={0}>
+            <ChartBox>
+              {({ width, height }) =>
+                reviewByCategoryData.length ? (
                   <BarChart
+                    width={width}
+                    height={height}
                     data={reviewByCategoryData}
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
@@ -999,15 +1093,13 @@ export default function EnglishReviewPage() {
                     <XAxis dataKey="category" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[10, 10, 0, 0]} />
+                    <Bar dataKey="count" fill="#16a34a" radius={[10, 10, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ ...emptyStateStyle, height: "340px" }}>
-                  No data available for this filter.
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
@@ -1019,11 +1111,11 @@ export default function EnglishReviewPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Review Queue
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -1058,7 +1150,15 @@ export default function EnglishReviewPage() {
                 <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
                   Main Focus
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
                 </div>
               </div>
@@ -1152,11 +1252,13 @@ export default function EnglishReviewPage() {
               <div
                 key={row.id}
                 style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
-                  border: "1px solid #e5e7eb",
+                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                  border: "1px solid #dcfce7",
                   borderRadius: "24px",
                   padding: "20px",
                   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                  minWidth: 0,
+                  overflow: "hidden",
                 }}
               >
                 <div
@@ -1164,11 +1266,13 @@ export default function EnglishReviewPage() {
                     display: "inline-block",
                     padding: "6px 10px",
                     borderRadius: "999px",
-                    background: "#dbeafe",
-                    color: "#1d4ed8",
+                    background: "#dcfce7",
+                    color: "#166534",
                     fontSize: "12px",
                     fontWeight: 700,
                     marginBottom: "10px",
+                    maxWidth: "100%",
+                    overflowWrap: "break-word",
                   }}
                 >
                   {getCategoryLabel(row.category)}
@@ -1179,8 +1283,8 @@ export default function EnglishReviewPage() {
                     display: "inline-block",
                     padding: "6px 10px",
                     borderRadius: "999px",
-                    background: "#eff6ff",
-                    color: "#1e40af",
+                    background: "#ecfdf5",
+                    color: "#15803d",
                     fontSize: "12px",
                     fontWeight: 700,
                     marginBottom: "14px",
@@ -1207,6 +1311,7 @@ export default function EnglishReviewPage() {
                     color: "#0f172a",
                     lineHeight: 1.6,
                     fontWeight: 500,
+                    overflowWrap: "break-word",
                   }}
                 >
                   {row.item_text}
@@ -1236,6 +1341,7 @@ export default function EnglishReviewPage() {
                       color: "#334155",
                       lineHeight: 1.6,
                       fontSize: "14px",
+                      overflowWrap: "break-word",
                     }}
                   >
                     {row.explanation && row.explanation.trim()
@@ -1265,17 +1371,17 @@ export default function EnglishReviewPage() {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(30, 58, 138, 0.22)",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div style={{ color: "#dbeafe", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -1287,7 +1393,7 @@ export default function EnglishReviewPage() {
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
   fontWeight: 600,
@@ -1300,10 +1406,10 @@ const actionButtonStyle: React.CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
-  background: "#3b82f6",
+  background: "#16a34a",
   color: "white",
   fontWeight: 700,
-  boxShadow: "0 10px 24px rgba(59, 130, 246, 0.25)",
+  boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
 }
 
 const removeButtonStyle: React.CSSProperties = {
@@ -1318,11 +1424,13 @@ const removeButtonStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#94a3b8",
   fontSize: "15px",
+  textAlign: "center",
 }
 
 const thStyle: React.CSSProperties = {
