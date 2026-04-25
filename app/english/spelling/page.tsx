@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 
 type WordRow = {
   id: number
@@ -18,9 +18,28 @@ const LEGACY_REVIEW_STORAGE_KEY = "spelling_review_word_ids"
 const TOTAL_QUESTIONS = 10
 
 export default function SpellingPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Header />
+          <p style={styles.message}>Loading Spelling tests...</p>
+        </>
+      }
+    >
+      <SpellingContent />
+    </Suspense>
+  )
+}
+
+function SpellingContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const reviewMode = searchParams.get("mode") === "review"
+  const [reviewMode, setReviewMode] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setReviewMode(params.get("mode") === "review")
+  }, [])
 
   const [userId, setUserId] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)

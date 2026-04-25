@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
@@ -51,6 +51,21 @@ function hasFullAccess(plan: UserPlan) {
 }
 
 export default function SentencePunctuationPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Header />
+          <p style={styles.message}>Loading Sentence Punctuation tests...</p>
+        </>
+      }
+    >
+      <SentencePunctuationContent />
+    </Suspense>
+  )
+}
+
+function SentencePunctuationContent() {
   const searchParams = useSearchParams()
   const mode = searchParams.get("mode")
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
@@ -51,6 +51,21 @@ function hasFullAccess(plan: UserPlan) {
 }
 
 export default function SentenceStructureSyntaxPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Header />
+          <p style={styles.message}>Loading Sentence Structure & Syntax tests...</p>
+        </>
+      }
+    >
+      <SentenceStructureSyntaxContent />
+    </Suspense>
+  )
+}
+
+function SentenceStructureSyntaxContent() {
   const searchParams = useSearchParams()
   const mode = searchParams.get("mode")
 
@@ -251,7 +266,9 @@ export default function SentenceStructureSyntaxPage() {
     for (const row of progressRows) {
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+      const existingDate = existing
+        ? new Date(existing.created_at || 0).getTime()
+        : 0
 
       if (!existing || rowDate > existingDate) {
         latestProgressMap.set(row.test_id, row)
@@ -382,6 +399,7 @@ export default function SentenceStructureSyntaxPage() {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -390,6 +408,7 @@ export default function SentenceStructureSyntaxPage() {
                 ? "🧩 Sentence Structure & Syntax Review"
                 : "🧩 Sentence Structure & Syntax Tests"}
             </h1>
+
             <p style={styles.subtitle}>
               {mode === "review"
                 ? "Revise your saved grammar mistakes and strengthen sentence-building skills."
@@ -418,6 +437,7 @@ export default function SentenceStructureSyntaxPage() {
                   ? "No Sentence Structure & Syntax review items found"
                   : "No Sentence Structure & Syntax tests yet"}
               </h2>
+
               <p>
                 {mode === "review"
                   ? "Try another category or make a few mistakes first so they can appear here for revision."
@@ -444,7 +464,8 @@ export default function SentenceStructureSyntaxPage() {
                     onClick={() => setDifficultyFilter(1)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 1 ? "white" : "black",
                     }}
                   >
@@ -455,7 +476,8 @@ export default function SentenceStructureSyntaxPage() {
                     onClick={() => setDifficultyFilter(2)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 2 ? "white" : "black",
                     }}
                   >
@@ -466,7 +488,8 @@ export default function SentenceStructureSyntaxPage() {
                     onClick={() => setDifficultyFilter(3)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 3 ? "white" : "black",
                     }}
                   >
@@ -494,11 +517,13 @@ export default function SentenceStructureSyntaxPage() {
                         style={{ ...styles.card, ...hoverCardStyle }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = "translateY(-6px)"
-                          e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                          e.currentTarget.style.boxShadow =
+                            "0 20px 40px rgba(0,0,0,0.12)"
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = "translateY(0)"
-                          e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                          e.currentTarget.style.boxShadow =
+                            "0 10px 30px rgba(0,0,0,0.08)"
                         }}
                       >
                         <div style={styles.cardTop}>
@@ -508,6 +533,7 @@ export default function SentenceStructureSyntaxPage() {
                             <span style={styles.badge}>
                               {getDifficultyLabel(test.difficulty)}
                             </span>
+
                             <span
                               style={{
                                 ...styles.accessBadge,
@@ -538,11 +564,14 @@ export default function SentenceStructureSyntaxPage() {
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
                             {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                })
+                              ? new Date(test.completed_at).toLocaleDateString(
+                                  "en-GB",
+                                  {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  }
+                                )
                               : "Not yet"}
                           </p>
 

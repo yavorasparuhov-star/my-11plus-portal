@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import Header from "../../../../components/Header"
@@ -51,6 +51,21 @@ function hasFullAccess(plan: UserPlan) {
 }
 
 export default function DirectSpeechPunctuationPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Header />
+          <p style={styles.message}>Loading Direct Speech Punctuation tests...</p>
+        </>
+      }
+    >
+      <DirectSpeechPunctuationContent />
+    </Suspense>
+  )
+}
+
+function DirectSpeechPunctuationContent() {
   const searchParams = useSearchParams()
   const mode = searchParams.get("mode")
 
