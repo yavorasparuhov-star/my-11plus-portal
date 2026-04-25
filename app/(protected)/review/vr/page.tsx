@@ -1,11 +1,10 @@
 // app/(protected)/review/vr/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -135,6 +134,50 @@ function questionsTooltipFormatter(
   return [toSafeNumber(numericValue), "Questions"]
 }
 
+function ChartBox({
+  children,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const element = containerRef.current
+
+    if (!element) return
+
+    function updateSize() {
+      if (!element) return
+
+      const rect = element.getBoundingClientRect()
+
+      setSize({
+        width: Math.max(0, Math.floor(rect.width)),
+        height: Math.max(0, Math.floor(rect.height)),
+      })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div ref={containerRef} style={chartContainerStyle}>
+      {size.width > 0 && size.height > 0 ? children(size) : null}
+    </div>
+  )
+}
+
 function StatCard({
   title,
   value,
@@ -144,37 +187,62 @@ function StatCard({
   value: string
   subtitle?: string
 }) {
+  const valueFontSize = value.length > 18 ? "22px" : "34px"
+
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "24px",
         padding: "22px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        boxShadow: "0 10px 30px rgba(22, 163, 74, 0.08)",
         minHeight: "132px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
+        overflowWrap: "break-word",
+        whiteSpace: "normal",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#15803d",
+          fontWeight: 700,
+          overflowWrap: "break-word",
+          lineHeight: 1.25,
+        }}
+      >
         {title}
       </div>
 
       <div
         style={{
-          fontSize: "34px",
-          fontWeight: 800,
-          color: "#0f172a",
+          fontSize: valueFontSize,
+          fontWeight: 900,
+          color: "#064e3b",
           lineHeight: 1.1,
+          overflowWrap: "break-word",
+          whiteSpace: "normal",
+          minWidth: 0,
         }}
       >
         {value}
       </div>
 
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            overflowWrap: "break-word",
+            lineHeight: 1.35,
+          }}
+        >
           {subtitle}
         </div>
       ) : null}
@@ -194,21 +262,24 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        boxShadow: "0 10px 30px rgba(22, 163, 74, 0.08)",
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
-      <div style={{ marginBottom: "18px" }}>
+      <div style={{ marginBottom: "18px", minWidth: 0 }}>
         <h2
           style={{
             margin: 0,
             fontSize: "22px",
-            fontWeight: 800,
-            color: "#0f172a",
+            fontWeight: 900,
+            color: "#064e3b",
+            overflowWrap: "break-word",
+            lineHeight: 1.2,
           }}
         >
           {title}
@@ -218,8 +289,10 @@ function SectionCard({
           <p
             style={{
               margin: "8px 0 0 0",
-              color: "#64748b",
+              color: "#475569",
               fontSize: "14px",
+              overflowWrap: "break-word",
+              lineHeight: 1.5,
             }}
           >
             {subtitle}
@@ -236,19 +309,10 @@ export default function VRReviewPage() {
   const router = useRouter()
 
   const [loadingUser, setLoadingUser] = useState(true)
-const [chartsReady, setChartsReady] = useState(false)
-
-useEffect(() => {
-  const timer = window.setTimeout(() => {
-    setChartsReady(true)
-  }, 100)
-
-  return () => window.clearTimeout(timer)
-}, [])
-
   const [loadingData, setLoadingData] = useState(true)
   const [reviewQuestions, setReviewQuestions] = useState<VRReviewRow[]>([])
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
@@ -423,7 +487,9 @@ useEffect(() => {
     }
 
     setReviewQuestions((prev) =>
-      prev.filter((row) => row.question_text.toLowerCase() !== questionText.toLowerCase())
+      prev.filter(
+        (row) => row.question_text.toLowerCase() !== questionText.toLowerCase()
+      )
     )
   }
 
@@ -440,7 +506,8 @@ useEffect(() => {
 
     return uniqueQuestions.filter((q) => {
       const matchesDifficulty =
-        difficultyFilter === "all" || String(q.difficulty ?? "") === difficultyFilter
+        difficultyFilter === "all" ||
+        String(q.difficulty ?? "") === difficultyFilter
 
       const matchesTime = cutoff ? new Date(q.created_at) >= cutoff : true
 
@@ -458,7 +525,10 @@ useEffect(() => {
 
     if (reviewQuestionIds.length === 0) return
 
-    localStorage.setItem("vr_review_question_ids", JSON.stringify(reviewQuestionIds))
+    localStorage.setItem(
+      "vr_review_question_ids",
+      JSON.stringify(reviewQuestionIds)
+    )
     router.push("/vr-test?mode=review")
   }
 
@@ -493,7 +563,8 @@ useEffect(() => {
     const mostRecentItem = filteredQuestions.length
       ? [...filteredQuestions].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
         )[0]
       : null
 
@@ -561,7 +632,17 @@ useEffect(() => {
 
   if (loadingUser || loadingData) {
     return (
-      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background:
+            "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
+          padding: "32px",
+          color: "#064e3b",
+          fontSize: "18px",
+          fontWeight: 700,
+        }}
+      >
         Loading VR review...
       </div>
     )
@@ -572,11 +653,11 @@ useEffect(() => {
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(124,58,237,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #f5f3ff 100%)",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "1320px", margin: "0 auto", minWidth: 0 }}>
         <div
           style={{
             display: "flex",
@@ -585,16 +666,19 @@ useEffect(() => {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
                 fontSize: "42px",
                 fontWeight: 900,
-                color: "#0f172a",
+                color: "#064e3b",
                 letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
+                lineHeight: 1.1,
               }}
             >
               🧠 VR Review
@@ -607,10 +691,12 @@ useEffect(() => {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
+                overflowWrap: "break-word",
               }}
             >
-              Review verbal reasoning questions that need more practice, filter by category
-              and difficulty, and jump straight into a focused retry session.
+              Review verbal reasoning questions that need more practice, filter
+              by category and difficulty, and jump straight into a focused retry
+              session.
             </p>
           </div>
 
@@ -620,11 +706,16 @@ useEffect(() => {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              minWidth: 0,
             }}
           >
             <select
+              id="vr-review-category-filter"
+              name="vrReviewCategoryFilter"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(e) =>
+                setCategoryFilter(e.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -635,8 +726,12 @@ useEffect(() => {
             </select>
 
             <select
+              id="vr-review-difficulty-filter"
+              name="vrReviewDifficultyFilter"
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              onChange={(e) =>
+                setDifficultyFilter(e.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -647,6 +742,8 @@ useEffect(() => {
             </select>
 
             <select
+              id="vr-review-time-filter"
+              name="vrReviewTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -664,7 +761,8 @@ useEffect(() => {
               style={{
                 ...actionButtonStyle,
                 opacity: filteredQuestions.length === 0 ? 0.5 : 1,
-                cursor: filteredQuestions.length === 0 ? "not-allowed" : "pointer",
+                cursor:
+                  filteredQuestions.length === 0 ? "not-allowed" : "pointer",
               }}
             >
               Retry filtered questions
@@ -678,11 +776,23 @@ useEffect(() => {
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: "18px",
             marginBottom: "24px",
+            minWidth: 0,
           }}
         >
-          <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
-          <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
-          <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
+          <StatCard
+            title="Questions to Review"
+            value={String(reviewStats.totalQuestions)}
+          />
+
+          <StatCard
+            title="Total Review Bank"
+            value={String(reviewStats.allUnique)}
+          />
+
+          <StatCard
+            title="With Explanations"
+            value={String(reviewStats.withExplanation)}
+          />
 
           <StatCard
             title="Most Common Category"
@@ -719,7 +829,9 @@ useEffect(() => {
                 ? "All Categories"
                 : getCategoryLabel(categoryFilter)
             }
-            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
+            subtitle={
+              timeOptions.find((option) => option.value === timeFilter)?.label
+            }
           />
         </div>
 
@@ -730,78 +842,68 @@ useEffect(() => {
             gap: "20px",
             marginBottom: "20px",
             alignItems: "stretch",
+            minWidth: 0,
           }}
         >
           <SectionCard
             title="Review Questions by Category"
             subtitle="See which VR categories need the most revision."
           >
-            <div style={chartContainerStyle}>
-{chartsReady && reviewByCategoryData.length ? (
-  <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={reviewByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
-                    <YAxis allowDecimals={false} />
+            {reviewByCategoryData.length ? (
+              <ChartBox>
+                {({ width, height }) => (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={reviewByCategoryData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 44 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#dcfce7" />
+                    <XAxis
+                      dataKey="category"
+                      tick={{ fill: "#475569", fontSize: 12 }}
+                      interval={0}
+                      angle={-18}
+                      textAnchor="end"
+                      height={70}
+                    />
+                    <YAxis allowDecimals={false} tick={{ fill: "#475569" }} />
                     <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="count"
+                      fill="#16a34a"
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                )}
+              </ChartBox>
+            ) : (
+              <div style={emptyStateStyle}>No data available for this filter.</div>
+            )}
           </SectionCard>
 
           <SectionCard
             title="Quick Insights"
             subtitle="A snapshot of current revision needs."
           >
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f3e8ff",
-                  border: "1px solid #e9d5ff",
-                }}
-              >
-                <div style={{ color: "#7e22ce", fontWeight: 700, marginBottom: "6px" }}>
-                  Review Queue
-                </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+            <div style={{ display: "grid", gap: "14px", minWidth: 0 }}>
+              <div style={insightCardStyle}>
+                <div style={insightLabelStyle}>Review Queue</div>
+                <div style={insightBigValueStyle}>
                   {reviewStats.totalQuestions}
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
-                }}
-              >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
-                  Explanations Ready
-                </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+              <div style={insightCardStyle}>
+                <div style={insightLabelStyle}>Explanations Ready</div>
+                <div style={insightBigValueStyle}>
                   {reviewStats.withExplanation}
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fff7ed",
-                  border: "1px solid #fed7aa",
-                }}
-              >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
-                  Main Focus
-                </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+              <div style={insightCardStyle}>
+                <div style={insightLabelStyle}>Main Focus</div>
+                <div style={insightTextValueStyle}>
                   {reviewStats.mostCommonCategory
                     ? reviewStats.mostCommonCategory.category
                     : "—"}
@@ -816,7 +918,7 @@ useEffect(() => {
           subtitle="Your latest verbal reasoning questions to revisit."
         >
           {recentQuestions.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "auto", minWidth: 0 }}>
               <table
                 style={{
                   width: "100%",
@@ -825,7 +927,7 @@ useEffect(() => {
                 }}
               >
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                  <tr style={{ borderBottom: "1px solid #dcfce7" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Category</th>
                     <th style={thStyle}>Level</th>
@@ -837,7 +939,10 @@ useEffect(() => {
 
                 <tbody>
                   {recentQuestions.map((row) => (
-                    <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <tr
+                      key={row.id}
+                      style={{ borderBottom: "1px solid #ecfdf5" }}
+                    >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
@@ -863,7 +968,9 @@ useEffect(() => {
               </table>
             </div>
           ) : (
-            <div style={emptyStateStyle}>No review items found for the selected filters.</div>
+            <div style={emptyStateStyle}>
+              No review items found for the selected filters.
+            </div>
           )}
         </SectionCard>
 
@@ -874,17 +981,22 @@ useEffect(() => {
               gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
               gap: "18px",
               marginTop: "20px",
+              minWidth: 0,
             }}
           >
             {filteredQuestions.slice(0, 9).map((row) => (
               <div
                 key={row.id}
                 style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #fafaff 100%)",
-                  border: "1px solid #e5e7eb",
+                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                  border: "1px solid #dcfce7",
                   borderRadius: "24px",
                   padding: "20px",
-                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 10px 30px rgba(22, 163, 74, 0.08)",
+                  minWidth: 0,
+                  overflow: "hidden",
+                  overflowWrap: "break-word",
+                  whiteSpace: "normal",
                 }}
               >
                 <div
@@ -892,11 +1004,13 @@ useEffect(() => {
                     display: "inline-block",
                     padding: "6px 10px",
                     borderRadius: "999px",
-                    background: "#ede9fe",
-                    color: "#6d28d9",
+                    background: "#dcfce7",
+                    color: "#166534",
                     fontSize: "12px",
-                    fontWeight: 700,
+                    fontWeight: 800,
                     marginBottom: "10px",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
                   }}
                 >
                   {getCategoryLabel(row.category)}
@@ -907,12 +1021,14 @@ useEffect(() => {
                     display: "inline-block",
                     padding: "6px 10px",
                     borderRadius: "999px",
-                    background: "#f5f3ff",
-                    color: "#7c3aed",
+                    background: "#ecfdf5",
+                    color: "#047857",
                     fontSize: "12px",
-                    fontWeight: 700,
+                    fontWeight: 800,
                     marginBottom: "14px",
                     marginLeft: "8px",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
                   }}
                 >
                   {getLevelLabel(row.difficulty)}
@@ -921,9 +1037,11 @@ useEffect(() => {
                 <h3
                   style={{
                     margin: "0 0 10px 0",
-                    color: "#0f172a",
+                    color: "#064e3b",
                     fontSize: "18px",
-                    fontWeight: 800,
+                    fontWeight: 900,
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
                   }}
                 >
                   Question
@@ -935,6 +1053,7 @@ useEffect(() => {
                     color: "#0f172a",
                     lineHeight: 1.6,
                     fontWeight: 500,
+                    overflowWrap: "break-word",
                   }}
                 >
                   {row.question_text}
@@ -944,17 +1063,21 @@ useEffect(() => {
                   style={{
                     padding: "14px",
                     borderRadius: "16px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
                     marginBottom: "14px",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    overflowWrap: "break-word",
                   }}
                 >
                   <div
                     style={{
                       fontSize: "13px",
-                      fontWeight: 700,
-                      color: "#475569",
+                      fontWeight: 800,
+                      color: "#15803d",
                       marginBottom: "6px",
+                      overflowWrap: "break-word",
                     }}
                   >
                     Explanation
@@ -965,6 +1088,7 @@ useEffect(() => {
                       color: "#334155",
                       lineHeight: 1.6,
                       fontSize: "14px",
+                      overflowWrap: "break-word",
                     }}
                   >
                     {row.explanation && row.explanation.trim()
@@ -978,6 +1102,8 @@ useEffect(() => {
                     fontSize: "13px",
                     color: "#64748b",
                     marginBottom: "14px",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.35,
                   }}
                 >
                   Added: {formatDateTime(row.created_at)}
@@ -997,17 +1123,34 @@ useEffect(() => {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(15, 23, 42, 0.22)",
+            boxShadow: "0 12px 34px rgba(22, 163, 74, 0.22)",
+            minWidth: 0,
+            overflow: "hidden",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 900,
+              marginBottom: "8px",
+              overflowWrap: "break-word",
+              lineHeight: 1.25,
+            }}
+          >
             Overall Summary
           </div>
-          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
             {summaryText}
           </div>
         </div>
@@ -1019,30 +1162,30 @@ useEffect(() => {
 const chartContainerStyle: React.CSSProperties = {
   width: "100%",
   height: "340px",
-  minWidth: "320px",
+  minWidth: 0,
   minHeight: "340px",
 }
 
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
-  fontWeight: 600,
-  color: "#0f172a",
+  fontWeight: 700,
+  color: "#064e3b",
   minWidth: "180px",
-  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxShadow: "0 4px 14px rgba(22, 163, 74, 0.08)",
 }
 
 const actionButtonStyle: React.CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
-  background: "#7c3aed",
+  background: "#16a34a",
   color: "white",
-  fontWeight: 700,
-  boxShadow: "0 10px 24px rgba(124, 58, 237, 0.25)",
+  fontWeight: 800,
+  boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
 }
 
 const removeButtonStyle: React.CSSProperties = {
@@ -1051,26 +1194,68 @@ const removeButtonStyle: React.CSSProperties = {
   border: "none",
   background: "#e11d48",
   color: "white",
-  fontWeight: 700,
+  fontWeight: 800,
   cursor: "pointer",
+  overflowWrap: "break-word",
 }
 
 const emptyStateStyle: React.CSSProperties = {
-  height: "100%",
   minHeight: "240px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#94a3b8",
+  color: "#64748b",
   fontSize: "15px",
+  background: "#f7fff8",
+  border: "1px dashed #bbf7d0",
+  borderRadius: "18px",
+  textAlign: "center",
+  padding: "20px",
+}
+
+const insightCardStyle: React.CSSProperties = {
+  padding: "16px",
+  borderRadius: "18px",
+  background: "linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)",
+  border: "1px solid #bbf7d0",
+  minWidth: 0,
+  overflow: "hidden",
+  overflowWrap: "break-word",
+  whiteSpace: "normal",
+}
+
+const insightLabelStyle: React.CSSProperties = {
+  color: "#15803d",
+  fontWeight: 800,
+  marginBottom: "6px",
+  overflowWrap: "break-word",
+  lineHeight: 1.25,
+}
+
+const insightBigValueStyle: React.CSSProperties = {
+  fontSize: "28px",
+  fontWeight: 900,
+  color: "#064e3b",
+  overflowWrap: "break-word",
+  lineHeight: 1.15,
+}
+
+const insightTextValueStyle: React.CSSProperties = {
+  fontSize: "18px",
+  fontWeight: 900,
+  color: "#064e3b",
+  overflowWrap: "break-word",
+  lineHeight: 1.25,
+  minWidth: 0,
 }
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "14px 12px",
   fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
+  color: "#15803d",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1078,4 +1263,6 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  overflowWrap: "break-word",
+  lineHeight: 1.35,
 }
