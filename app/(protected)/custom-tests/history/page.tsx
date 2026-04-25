@@ -32,6 +32,8 @@ type AttemptConfig = {
   selectedDifficulty?: DifficultyFilter
 }
 
+type TimeFilter = "all" | "7d" | "30d" | "90d"
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—"
 
@@ -117,10 +119,61 @@ function formatTopics(config: AttemptConfig) {
     .join(", ")
 }
 
+function getAttemptDate(attempt: CustomTestAttemptRow) {
+  return attempt.completed_at ?? attempt.created_at ?? attempt.started_at ?? null
+}
+
+function matchesTimeFilter(
+  attempt: CustomTestAttemptRow,
+  timeFilter: TimeFilter
+) {
+  if (timeFilter === "all") return true
+
+  const attemptDateValue = getAttemptDate(attempt)
+  if (!attemptDateValue) return false
+
+  const attemptDate = new Date(attemptDateValue)
+  if (Number.isNaN(attemptDate.getTime())) return false
+
+  const now = new Date()
+  const days = timeFilter === "7d" ? 7 : timeFilter === "30d" ? 30 : 90
+
+  const fromDate = new Date()
+  fromDate.setDate(now.getDate() - days)
+
+  return attemptDate >= fromDate
+}
+
+function matchesDifficultyFilter(
+  attempt: CustomTestAttemptRow,
+  difficultyFilter: DifficultyFilter
+) {
+  if (difficultyFilter === "all") return true
+
+  const config = parseAttemptConfig(attempt.config)
+
+  return config.selectedDifficulty === difficultyFilter
+}
+
+const selectStyle = {
+  width: "100%",
+  padding: "11px 12px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  background: "#ffffff",
+  color: "#111827",
+  fontWeight: 600,
+  outline: "none",
+}
+
 export default function CustomTestHistoryPage() {
   const [attempts, setAttempts] = useState<CustomTestAttemptRow[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
 
   useEffect(() => {
     async function loadAttempts() {
@@ -180,8 +233,17 @@ export default function CustomTestHistoryPage() {
     void loadAttempts()
   }, [])
 
+  const filteredAttempts = useMemo(() => {
+    return attempts.filter((attempt) => {
+      return (
+        matchesTimeFilter(attempt, timeFilter) &&
+        matchesDifficultyFilter(attempt, difficultyFilter)
+      )
+    })
+  }, [attempts, timeFilter, difficultyFilter])
+
   const summary = useMemo(() => {
-    if (attempts.length === 0) {
+    if (filteredAttempts.length === 0) {
       return {
         totalAttempts: 0,
         averageScore: 0,
@@ -189,13 +251,14 @@ export default function CustomTestHistoryPage() {
       }
     }
 
-    const totalAttempts = attempts.length
-    const totalQuestions = attempts.reduce(
+    const totalAttempts = filteredAttempts.length
+
+    const totalQuestions = filteredAttempts.reduce(
       (sum, item) => sum + (item.question_count ?? 0),
       0
     )
 
-    const scoredAttempts = attempts.filter(
+    const scoredAttempts = filteredAttempts.filter(
       (item) => typeof item.score_percent === "number"
     )
 
@@ -214,9 +277,16 @@ export default function CustomTestHistoryPage() {
       averageScore,
       totalQuestions,
     }
-  }, [attempts])
-    return (
-    <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
+  }, [filteredAttempts])
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#f6f8fb",
+        padding: "32px 16px",
+      }}
+    >
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div
           style={{
@@ -229,7 +299,13 @@ export default function CustomTestHistoryPage() {
           }}
         >
           <div>
-            <p style={{ margin: "0 0 6px 0", color: "#6b7280", fontSize: "0.95rem" }}>
+            <p
+              style={{
+                margin: "0 0 6px 0",
+                color: "#6b7280",
+                fontSize: "0.95rem",
+              }}
+            >
               <Link
                 href="/custom-tests"
                 style={{ color: "#6b7280", textDecoration: "none" }}
@@ -261,6 +337,137 @@ export default function CustomTestHistoryPage() {
           </Link>
         </div>
 
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 20,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              marginBottom: 18,
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: "0 0 6px 0",
+                  color: "#111827",
+                  fontSize: "1.2rem",
+                }}
+              >
+                Filters
+              </h2>
+              <p
+                style={{
+                  margin: 0,
+                  color: "#6b7280",
+                  fontSize: "0.95rem",
+                  lineHeight: 1.5,
+                }}
+              >
+                Filter your custom test history by time and difficulty.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTimeFilter("all")
+                setDifficultyFilter("all")
+              }}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+                background: "#ffffff",
+                color: "#111827",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Reset filters
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 16,
+            }}
+          >
+            <div>
+              <label
+                htmlFor="time-filter"
+                style={{
+                  display: "block",
+                  color: "#374151",
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Time
+              </label>
+
+              <select
+                id="time-filter"
+                value={timeFilter}
+                onChange={(event) =>
+                  setTimeFilter(event.target.value as TimeFilter)
+                }
+                style={selectStyle}
+              >
+                <option value="all">All time</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="difficulty-filter"
+                style={{
+                  display: "block",
+                  color: "#374151",
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Difficulty
+              </label>
+
+              <select
+                id="difficulty-filter"
+                value={String(difficultyFilter)}
+                onChange={(event) => {
+                  const value = event.target.value
+
+                  setDifficultyFilter(
+                    value === "all" ? "all" : (Number(value) as 1 | 2 | 3)
+                  )
+                }}
+                style={selectStyle}
+              >
+                <option value="all">All difficulties</option>
+                <option value="1">Easy</option>
+                <option value="2">Medium</option>
+                <option value="3">Hard</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
         <div
           style={{
             display: "grid",
@@ -278,11 +485,18 @@ export default function CustomTestHistoryPage() {
               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
             }}
           >
-            <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
-              Total custom tests
+            <div
+              style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}
+            >
+              Filtered custom tests
             </div>
-            <div style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}>
+            <div
+              style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}
+            >
               {summary.totalAttempts}
+            </div>
+            <div style={{ color: "#6b7280", fontSize: "0.85rem", marginTop: 6 }}>
+              From {attempts.length} total loaded attempts
             </div>
           </div>
 
@@ -295,10 +509,14 @@ export default function CustomTestHistoryPage() {
               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
             }}
           >
-            <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
+            <div
+              style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}
+            >
               Average score
             </div>
-            <div style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}>
+            <div
+              style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}
+            >
               {summary.averageScore}%
             </div>
           </div>
@@ -312,10 +530,14 @@ export default function CustomTestHistoryPage() {
               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
             }}
           >
-            <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
+            <div
+              style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}
+            >
               Total questions completed
             </div>
-            <div style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}>
+            <div
+              style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}
+            >
               {summary.totalQuestions}
             </div>
           </div>
@@ -330,7 +552,13 @@ export default function CustomTestHistoryPage() {
             boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
           }}
         >
-          <h2 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "1.25rem" }}>
+          <h2
+            style={{
+              margin: "0 0 16px 0",
+              color: "#111827",
+              fontSize: "1.25rem",
+            }}
+          >
             Attempts
           </h2>
 
@@ -361,9 +589,22 @@ export default function CustomTestHistoryPage() {
             >
               No custom tests have been completed yet.
             </div>
+          ) : filteredAttempts.length === 0 ? (
+            <div
+              style={{
+                padding: "18px 16px",
+                borderRadius: 12,
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                color: "#4b5563",
+                lineHeight: 1.6,
+              }}
+            >
+              No custom tests match the selected filters.
+            </div>
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
-              {attempts.map((attempt) => {
+              {filteredAttempts.map((attempt) => {
                 const config = parseAttemptConfig(attempt.config)
 
                 return (
@@ -397,7 +638,10 @@ export default function CustomTestHistoryPage() {
                           {formatMainCategory(attempt.main_category)} Custom Test
                         </div>
                         <div style={{ color: "#6b7280", fontSize: "0.92rem" }}>
-                          Completed: {formatDateTime(attempt.completed_at ?? attempt.created_at)}
+                          Completed:{" "}
+                          {formatDateTime(
+                            attempt.completed_at ?? attempt.created_at
+                          )}
                         </div>
                       </div>
 
@@ -420,12 +664,19 @@ export default function CustomTestHistoryPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(180px, 1fr))",
                         gap: 12,
                       }}
                     >
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Topics
                         </div>
                         <div style={{ color: "#111827", lineHeight: 1.6 }}>
@@ -434,7 +685,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Difficulty
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -443,7 +700,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Questions
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -452,7 +715,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Correct answers
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -464,7 +733,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Time taken
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -473,7 +748,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Time limit
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -482,7 +763,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Status
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
@@ -491,7 +778,13 @@ export default function CustomTestHistoryPage() {
                       </div>
 
                       <div>
-                        <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Started
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
