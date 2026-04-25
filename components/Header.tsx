@@ -139,7 +139,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const vrHref = "/vr"
   const nvrHref = "/nvr"
   const customTestsHref = "/custom-tests"
-  const pricingHref = "/pricing"
+  const pricingHref = "/profile"
 
   const isActivePath = (path: string) => {
     if (path === "/") return pathname === "/"
@@ -334,7 +334,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
           {isGuest && (
             <Link href={pricingHref} style={linkStyle(pricingHref)}>
-              💎 Pricing
+              💎 Membership
             </Link>
           )}
 
@@ -577,14 +577,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               </Link>
 
               {isGuest && (
-                <Link
-                  href={pricingHref}
-                  style={linkStyle(pricingHref)}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  💎 Pricing
-                </Link>
-              )}
+  <Link
+    href={pricingHref}
+    style={linkStyle(pricingHref)}
+    onClick={() => setMenuOpen(false)}
+  >
+    💎 Membership
+  </Link>
+)}
 
               {!isGuest && (
                 <>

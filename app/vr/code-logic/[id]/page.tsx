@@ -496,9 +496,9 @@ export default function VRCodesLogicTestPage() {
                   </>
                 ) : (
                   <>
-                    <button onClick={() => router.push("/pricing")} style={styles.startButton}>
-                      View Pricing
-                    </button>
+                   <button onClick={() => router.push("/profile")} style={styles.startButton}>
+  View Membership
+</button>
                     <button
                       onClick={() => router.push("/vr/code-logic")}
                       style={styles.retryButton}
