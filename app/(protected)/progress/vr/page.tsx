@@ -1,7 +1,7 @@
 // app/(protected)/progress/vr/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
@@ -102,6 +102,7 @@ function getCategoryLabel(category: string | null | undefined) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -113,6 +114,7 @@ function formatDateTime(value: string) {
 
 function formatShortDate(value: string) {
   const date = new Date(value)
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -120,8 +122,8 @@ function formatShortDate(value: string) {
 }
 
 function toSafeNumber(value: unknown) {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : 0
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
 }
 
 function toNumericValue(value: ValueType | undefined) {
@@ -155,50 +157,6 @@ function attemptsTooltipFormatter(
   return [`${toSafeNumber(numericValue)}`, "Attempts"]
 }
 
-function ChartBox({
-  children,
-}: {
-  children: (size: { width: number; height: number }) => React.ReactNode
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
-
-  useEffect(() => {
-    const element = containerRef.current
-
-    if (!element) return
-
-    function updateSize() {
-      if (!element) return
-
-      const rect = element.getBoundingClientRect()
-
-      setSize({
-        width: Math.max(0, Math.floor(rect.width)),
-        height: Math.max(0, Math.floor(rect.height)),
-      })
-    }
-
-    updateSize()
-
-    const observer = new ResizeObserver(() => {
-      updateSize()
-    })
-
-    observer.observe(element)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  return (
-    <div ref={containerRef} style={chartContainerStyle}>
-      {size.width > 0 && size.height > 0 ? children(size) : null}
-    </div>
-  )
-}
-
 function StatCard({
   title,
   value,
@@ -208,33 +166,28 @@ function StatCard({
   value: string
   subtitle?: string
 }) {
-  const valueFontSize = value.length > 18 ? "22px" : "34px"
-
   return (
     <div
       style={{
         background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-        border: "1px solid #dcfce7",
+        border: "1px solid #d9f99d",
         borderRadius: "24px",
         padding: "22px",
-        boxShadow: "0 10px 30px rgba(22, 163, 74, 0.08)",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minHeight: "132px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
         overflow: "hidden",
-        overflowWrap: "break-word",
-        whiteSpace: "normal",
       }}
     >
       <div
         style={{
           fontSize: "14px",
-          color: "#15803d",
-          fontWeight: 700,
-          overflowWrap: "break-word",
-          lineHeight: 1.25,
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
         }}
       >
         {title}
@@ -242,13 +195,14 @@ function StatCard({
 
       <div
         style={{
-          fontSize: valueFontSize,
-          fontWeight: 900,
-          color: "#064e3b",
-          lineHeight: 1.1,
+          fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
           overflowWrap: "break-word",
+          wordBreak: "normal",
           whiteSpace: "normal",
-          minWidth: 0,
+          maxWidth: "100%",
         }}
       >
         {value}
@@ -260,8 +214,8 @@ function StatCard({
             fontSize: "13px",
             color: "#64748b",
             marginTop: "8px",
+            lineHeight: 1.45,
             overflowWrap: "break-word",
-            lineHeight: 1.35,
           }}
         >
           {subtitle}
@@ -287,20 +241,17 @@ function SectionCard({
         border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
-        boxShadow: "0 10px 30px rgba(22, 163, 74, 0.08)",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minWidth: 0,
-        overflow: "hidden",
       }}
     >
-      <div style={{ marginBottom: "18px", minWidth: 0 }}>
+      <div style={{ marginBottom: "18px" }}>
         <h2
           style={{
             margin: 0,
             fontSize: "22px",
-            fontWeight: 900,
-            color: "#064e3b",
-            overflowWrap: "break-word",
-            lineHeight: 1.2,
+            fontWeight: 800,
+            color: "#0f172a",
           }}
         >
           {title}
@@ -310,10 +261,8 @@ function SectionCard({
           <p
             style={{
               margin: "8px 0 0 0",
-              color: "#475569",
+              color: "#64748b",
               fontSize: "14px",
-              overflowWrap: "break-word",
-              lineHeight: 1.5,
             }}
           >
             {subtitle}
@@ -323,6 +272,58 @@ function SectionCard({
 
       {children}
     </section>
+  )
+}
+
+function ChartBox({
+  children,
+  height = 340,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+  height?: number
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.max(0, Math.floor(rect.width))
+      const measuredHeight = Math.max(0, Math.floor(rect.height))
+      setSize({ width, height: measuredHeight })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height,
+        minWidth: 0,
+      }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div style={emptyStateStyle}>Loading chart...</div>
+      )}
+    </div>
   )
 }
 
@@ -445,8 +446,8 @@ export default function VRProgressPage() {
         cutoff && row.created_at
           ? new Date(row.created_at) >= cutoff
           : cutoff
-          ? false
-          : true
+            ? false
+            : true
 
       const matchesDifficulty =
         difficultyFilter === "all" ||
@@ -641,17 +642,7 @@ export default function VRProgressPage() {
 
   if (loadingUser || loadingData) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background:
-            "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-          padding: "32px",
-          color: "#064e3b",
-          fontSize: "18px",
-          fontWeight: 700,
-        }}
-      >
+      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
         Loading VR progress...
       </div>
     )
@@ -666,7 +657,7 @@ export default function VRProgressPage() {
         padding: "28px 20px 50px",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto", minWidth: 0 }}>
+      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
         <div
           style={{
             display: "flex",
@@ -675,22 +666,19 @@ export default function VRProgressPage() {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
-            minWidth: 0,
           }}
         >
-          <div style={{ minWidth: 0 }}>
+          <div>
             <h1
               style={{
                 margin: 0,
                 fontSize: "42px",
                 fontWeight: 900,
-                color: "#064e3b",
+                color: "#0f172a",
                 letterSpacing: "-0.02em",
-                overflowWrap: "break-word",
-                lineHeight: 1.1,
               }}
             >
-              🧠 Verbal Reasoning Progress
+              🧠 VR Progress
             </h1>
 
             <p
@@ -700,7 +688,6 @@ export default function VRProgressPage() {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
-                overflowWrap: "break-word",
               }}
             >
               Explore verbal reasoning performance with live filters, trend
@@ -714,15 +701,14 @@ export default function VRProgressPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
-              minWidth: 0,
             }}
           >
             <select
               id="vr-progress-category-filter"
               name="vrProgressCategoryFilter"
               value={categoryFilter}
-              onChange={(e) =>
-                setCategoryFilter(e.target.value as CategoryFilter)
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
               }
               style={selectStyle}
             >
@@ -737,8 +723,8 @@ export default function VRProgressPage() {
               id="vr-progress-difficulty-filter"
               name="vrProgressDifficultyFilter"
               value={difficultyFilter}
-              onChange={(e) =>
-                setDifficultyFilter(e.target.value as DifficultyFilter)
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
               }
               style={selectStyle}
             >
@@ -753,7 +739,7 @@ export default function VRProgressPage() {
               id="vr-progress-time-filter"
               name="vrProgressTimeFilter"
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -771,7 +757,6 @@ export default function VRProgressPage() {
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: "18px",
             marginBottom: "24px",
-            minWidth: 0,
           }}
         >
           <StatCard
@@ -830,36 +815,27 @@ export default function VRProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
-            alignItems: "stretch",
-            minWidth: 0,
           }}
         >
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent verbal reasoning attempts."
           >
-            {performanceTrendData.length ? (
-              <ChartBox>
-                {({ width, height }) => (
-                  <LineChart
-                    width={width}
-                    height={height}
-                    data={performanceTrendData}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#dcfce7" />
-                    <XAxis dataKey="date" tick={{ fill: "#475569" }} />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fill: "#475569" }}
-                      tickFormatter={(value) => `${value}%`}
-                    />
+            <ChartBox>
+              {({ width, height }) =>
+                performanceTrendData.length ? (
+                  <LineChart width={width} height={height} data={performanceTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis domain={[0, 100]} />
                     <Tooltip
                       formatter={successTooltipFormatter}
                       labelFormatter={(label, payload) => {
                         const point = payload?.[0]?.payload
+
                         return point
                           ? `${point.date} • ${point.category} • ${point.difficulty} • ${point.scoreLabel}`
                           : label
@@ -870,50 +846,106 @@ export default function VRProgressPage() {
                       dataKey="success"
                       stroke="#16a34a"
                       strokeWidth={3}
-                      dot={{ r: 4, fill: "#16a34a" }}
+                      dot={{ r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                   </LineChart>
-                )}
-              </ChartBox>
-            ) : (
-              <div style={emptyStateStyle}>No data available for this filter.</div>
-            )}
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
             title="Quick Insights"
-            subtitle="A snapshot of current verbal reasoning performance."
+            subtitle="A snapshot of current VR performance."
           >
-            <div style={{ display: "grid", gap: "14px", minWidth: 0 }}>
-              <div style={insightCardStyle}>
-                <div style={insightLabelStyle}>Accuracy</div>
-                <div style={insightBigValueStyle}>
+            <div style={{ display: "grid", gap: "14px" }}>
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                  Accuracy
+                </div>
+
+                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
                   {overallStats.averageSuccess.toFixed(1)}%
                 </div>
               </div>
 
-              <div style={insightCardStyle}>
-                <div style={insightLabelStyle}>Best Category</div>
-                <div style={insightTextValueStyle}>
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                  Best Category
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {overallStats.strongestCategory
                     ? overallStats.strongestCategory.category
                     : "—"}
                 </div>
               </div>
 
-              <div style={insightCardStyle}>
-                <div style={insightLabelStyle}>Needs Focus</div>
-                <div style={insightTextValueStyle}>
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#fff7ed",
+                  border: "1px solid #fed7aa",
+                }}
+              >
+                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                  Needs Focus
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {overallStats.weakestCategory
                     ? overallStats.weakestCategory.category
                     : "—"}
                 </div>
               </div>
 
-              <div style={insightCardStyle}>
-                <div style={insightLabelStyle}>Questions Correct</div>
-                <div style={insightBigValueStyle}>
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                  Questions Correct
+                </div>
+
+                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
                   {overallStats.totalCorrect}
                 </div>
               </div>
@@ -924,90 +956,70 @@ export default function VRProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
-            alignItems: "stretch",
-            minWidth: 0,
           }}
         >
           <SectionCard
             title="Average Success by Category"
-            subtitle="Compare performance across verbal reasoning categories."
+            subtitle="Compare performance across VR categories."
           >
-            {successByCategoryData.length ? (
-              <ChartBox>
-                {({ width, height }) => (
+            <ChartBox>
+              {({ width, height }) =>
+                successByCategoryData.length ? (
                   <BarChart
                     width={width}
                     height={height}
                     data={successByCategoryData}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 44 }}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#dcfce7" />
-                    <XAxis
-                      dataKey="category"
-                      tick={{ fill: "#475569", fontSize: 12 }}
-                      interval={0}
-                      angle={-18}
-                      textAnchor="end"
-                      height={70}
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      tick={{ fill: "#475569" }}
-                      tickFormatter={(value) => `${value}%`}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar
-                      dataKey="avgSuccess"
-                      fill="#10b981"
-                      radius={[10, 10, 0, 0]}
-                    />
+                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[10, 10, 0, 0]} />
                   </BarChart>
-                )}
-              </ChartBox>
-            ) : (
-              <div style={emptyStateStyle}>No data available for this filter.</div>
-            )}
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
             title="Practice Volume by Difficulty"
-            subtitle="See which verbal reasoning levels have been practised the most."
+            subtitle="See which VR levels have been practised the most."
           >
-            {attemptsByDifficultyData.length ? (
-              <ChartBox>
-                {({ width, height }) => (
+            <ChartBox>
+              {({ width, height }) =>
+                attemptsByDifficultyData.length ? (
                   <BarChart
                     width={width}
                     height={height}
                     data={attemptsByDifficultyData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#dcfce7" />
-                    <XAxis dataKey="difficulty" tick={{ fill: "#475569" }} />
-                    <YAxis allowDecimals={false} tick={{ fill: "#475569" }} />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="difficulty" />
+                    <YAxis allowDecimals={false} />
                     <Tooltip formatter={attemptsTooltipFormatter} />
-                    <Bar
-                      dataKey="attempts"
-                      fill="#16a34a"
-                      radius={[10, 10, 0, 0]}
-                    />
+                    <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
                   </BarChart>
-                )}
-              </ChartBox>
-            ) : (
-              <div style={emptyStateStyle}>No data available for this filter.</div>
-            )}
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Attempts"
-          subtitle="Your most recent verbal reasoning test results for the selected filters."
+          subtitle="Your most recent VR test results for the selected filters."
         >
           {recentAttempts.length ? (
-            <div style={{ overflowX: "auto", minWidth: 0 }}>
+            <div style={{ overflowX: "auto" }}>
               <table
                 style={{
                   width: "100%",
@@ -1016,7 +1028,7 @@ export default function VRProgressPage() {
                 }}
               >
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #dcfce7" }}>
+                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Test</th>
                     <th style={thStyle}>Category</th>
@@ -1031,22 +1043,18 @@ export default function VRProgressPage() {
                   {recentAttempts.map((row) => (
                     <tr
                       key={row.id}
-                      style={{ borderBottom: "1px solid #ecfdf5" }}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                      }}
                     >
                       <td style={tdStyle}>
                         {row.created_at ? formatDateTime(row.created_at) : "—"}
                       </td>
                       <td style={tdStyle}>{row.test_title}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                      <td style={tdStyle}>
-                        {getLevelLabel(row.resolved_difficulty)}
-                      </td>
-                      <td style={tdStyle}>
-                        {toSafeNumber(row.correct_answers)}
-                      </td>
-                      <td style={tdStyle}>
-                        {toSafeNumber(row.total_questions)}
-                      </td>
+                      <td style={tdStyle}>{getLevelLabel(row.resolved_difficulty)}</td>
+                      <td style={tdStyle}>{toSafeNumber(row.correct_answers)}</td>
+                      <td style={tdStyle}>{toSafeNumber(row.total_questions)}</td>
                       <td style={tdStyle}>
                         <span
                           style={{
@@ -1057,15 +1065,15 @@ export default function VRProgressPage() {
                               toSafeNumber(row.success_rate) >= 70
                                 ? "#dcfce7"
                                 : toSafeNumber(row.success_rate) >= 50
-                                ? "#fef3c7"
-                                : "#fee2e2",
+                                  ? "#fef3c7"
+                                  : "#fee2e2",
                             color:
                               toSafeNumber(row.success_rate) >= 70
                                 ? "#166534"
                                 : toSafeNumber(row.success_rate) >= 50
-                                ? "#92400e"
-                                : "#991b1b",
-                            fontWeight: 800,
+                                  ? "#92400e"
+                                  : "#991b1b",
+                            fontWeight: 700,
                             fontSize: "13px",
                           }}
                         >
@@ -1091,30 +1099,14 @@ export default function VRProgressPage() {
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(22, 163, 74, 0.22)",
-            minWidth: 0,
-            overflow: "hidden",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
-          <div
-            style={{
-              fontSize: "22px",
-              fontWeight: 900,
-              marginBottom: "8px",
-              overflowWrap: "break-word",
-              lineHeight: 1.25,
-            }}
-          >
+          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div
-            style={{
-              color: "#dcfce7",
-              fontSize: "16px",
-              lineHeight: 1.7,
-              overflowWrap: "break-word",
-            }}
-          >
+
+          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -1123,82 +1115,35 @@ export default function VRProgressPage() {
   )
 }
 
-const chartContainerStyle: React.CSSProperties = {
-  width: "100%",
-  height: "340px",
-  minWidth: 0,
-  minHeight: "340px",
-}
-
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
   border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
-  fontWeight: 700,
-  color: "#064e3b",
+  fontWeight: 600,
+  color: "#0f172a",
   minWidth: "180px",
-  boxShadow: "0 4px 14px rgba(22, 163, 74, 0.08)",
+  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
 }
 
 const emptyStateStyle: React.CSSProperties = {
-  minHeight: "240px",
+  height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#64748b",
+  color: "#94a3b8",
   fontSize: "15px",
-  background: "#f7fff8",
-  border: "1px dashed #bbf7d0",
-  borderRadius: "18px",
   textAlign: "center",
-  padding: "20px",
-}
-
-const insightCardStyle: React.CSSProperties = {
-  padding: "16px",
-  borderRadius: "18px",
-  background: "linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)",
-  border: "1px solid #bbf7d0",
-  minWidth: 0,
-  overflow: "hidden",
-  overflowWrap: "break-word",
-  whiteSpace: "normal",
-}
-
-const insightLabelStyle: React.CSSProperties = {
-  color: "#15803d",
-  fontWeight: 800,
-  marginBottom: "6px",
-  overflowWrap: "break-word",
-  lineHeight: 1.25,
-}
-
-const insightBigValueStyle: React.CSSProperties = {
-  fontSize: "28px",
-  fontWeight: 900,
-  color: "#064e3b",
-  overflowWrap: "break-word",
-  lineHeight: 1.15,
-}
-
-const insightTextValueStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 900,
-  color: "#064e3b",
-  overflowWrap: "break-word",
-  lineHeight: 1.25,
-  minWidth: 0,
 }
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "14px 12px",
   fontSize: "13px",
-  color: "#15803d",
-  fontWeight: 800,
-  whiteSpace: "nowrap",
+  color: "#64748b",
+  fontWeight: 700,
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1206,6 +1151,4 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
-  overflowWrap: "break-word",
-  lineHeight: 1.35,
 }
