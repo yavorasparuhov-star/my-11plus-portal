@@ -12,24 +12,37 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const handleResetPassword = async () => {
-    setLoading(true)
-    setError(null)
-    setMessage(null)
-    setSuccess(null)
+const handleResetPassword = async () => {
+  setError(null)
+  setMessage(null)
+  setSuccess(null)
 
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: `${window.location.origin}/reset-password`,
-})
+  const trimmedEmail = email.trim()
 
-    if (error) {
-      setError(error.message)
-    } else {
-      setSuccess("Email sent! Please check your inbox (and spam folder).")
-    }
-
-    setLoading(false)
+  if (!trimmedEmail) {
+    setError("Please enter your email address.")
+    return
   }
+
+  if (!trimmedEmail.includes("@")) {
+    setError("Please enter a valid email address.")
+    return
+  }
+
+  setLoading(true)
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+
+  if (error) {
+    setError(error.message)
+  } else {
+    setSuccess("Email sent! Please check your inbox (and spam folder).")
+  }
+
+  setLoading(false)
+}
 
   return (
     <>
