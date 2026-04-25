@@ -16,23 +16,41 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
 
-  const handleLogin = async () => {
-    setLoading(true)
-    setError(null)
+const handleLogin = async () => {
+  setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  const trimmedEmail = email.trim()
 
-    if (error) {
-      setError(error.message)
-    } else {
-      router.push("/home")
-    }
-
-    setLoading(false)
+  if (!trimmedEmail) {
+    setError("Please enter your email address.")
+    return
   }
+
+  if (!trimmedEmail.includes("@")) {
+    setError("Please enter a valid email address.")
+    return
+  }
+
+  if (!password) {
+    setError("Please enter your password.")
+    return
+  }
+
+  setLoading(true)
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: trimmedEmail,
+    password,
+  })
+
+  if (error) {
+    setError("Invalid email or password.")
+  } else {
+    router.push("/home")
+  }
+
+  setLoading(false)
+}
 
   return (
     <>
