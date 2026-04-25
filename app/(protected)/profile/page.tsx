@@ -13,6 +13,14 @@ type ProfileFormData = {
   email: string
 }
 
+type ProfileRow = {
+  first_name: string | null
+  last_name: string | null
+  nickname: string | null
+  phone: string | null
+  email: string | null
+}
+
 export default function ProfilePage() {
   const router = useRouter()
 
@@ -50,19 +58,68 @@ export default function ProfilePage() {
         .from("profiles")
         .select("first_name, last_name, nickname, phone, email")
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
 
-      if (profileError && profileError.code !== "PGRST116") {
+      if (profileError) {
         console.error("Error loading profile:", profileError)
         setMessage("There was a problem loading your profile.")
+        setFormData({
+          first_name: "",
+          last_name: "",
+          nickname: "",
+          phone: "",
+          email: user.email || "",
+        })
+        setLoading(false)
+        return
+      }
+
+      let safeProfile = profile as ProfileRow | null
+
+      if (!safeProfile) {
+        const { data: createdProfile, error: createProfileError } =
+          await supabase
+            .from("profiles")
+            .insert({
+              id: user.id,
+              email: user.email || "",
+              plan: "free",
+              first_name: "",
+              last_name: "",
+              nickname: "",
+              phone: "",
+              updated_at: new Date().toISOString(),
+            })
+            .select("first_name, last_name, nickname, phone, email")
+            .single()
+
+        if (createProfileError) {
+          console.error("Error creating profile row:", createProfileError)
+          setMessage(
+            "Your account is active, but there was a problem creating your profile."
+          )
+
+          setFormData({
+            first_name: "",
+            last_name: "",
+            nickname: "",
+            phone: "",
+            email: user.email || "",
+          })
+
+          setLoading(false)
+          return
+        }
+
+        safeProfile = createdProfile as ProfileRow
       }
 
       setFormData({
-        first_name: profile?.first_name || "",
-        last_name: profile?.last_name || "",
-        nickname: profile?.nickname || "",
-        phone: profile?.phone || "",
-        email: profile?.email || user.email || "",
+        first_name: safeProfile?.first_name || "",
+        last_name: safeProfile?.last_name || "",
+        nickname: safeProfile?.nickname || "",
+        phone: safeProfile?.phone || "",
+        email: safeProfile?.email || user.email || "",
       })
 
       setLoading(false)
@@ -90,11 +147,12 @@ export default function ProfilePage() {
 
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      nickname: formData.nickname,
-      phone: formData.phone,
-      email: formData.email,
+      first_name: formData.first_name.trim(),
+      last_name: formData.last_name.trim(),
+      nickname: formData.nickname.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim() || user.email || "",
+      plan: "free",
       updated_at: new Date().toISOString(),
     })
 
