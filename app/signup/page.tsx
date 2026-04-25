@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { supabase } from "../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
 import Header from "../../components/Header"
+import { supabase } from "../../lib/supabaseClient"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -13,57 +13,65 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
- const handleSignup = async () => {
-  setError(null)
+  const handleSignup = async () => {
+    setError(null)
+    setSuccess(null)
 
-  const trimmedEmail = email.trim()
+    const trimmedEmail = email.trim()
 
-  if (!trimmedEmail) {
-    setError("Please enter your email address.")
-    return
-  }
-
-  if (!trimmedEmail.includes("@")) {
-    setError("Please enter a valid email address.")
-    return
-  }
-
-  if (!password) {
-    setError("Please create a password.")
-    return
-  }
-
-  if (password.length < 6) {
-    setError("Password must be at least 6 characters long.")
-    return
-  }
-
-  setLoading(true)
-
-  const { error } = await supabase.auth.signUp({
-    email: trimmedEmail,
-    password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/login`,
-    },
-  })
-
-  setLoading(false)
-
-  if (error) {
-    if (error.message.toLowerCase().includes("already")) {
-      setError("An account with this email may already exist. Try logging in instead.")
-    } else {
-      setError(error.message)
+    if (!trimmedEmail) {
+      setError("Please enter your email address.")
+      return
     }
-    return
-  }
 
-  alert("Account created! Please check your email if confirmation is required, then log in.")
-  router.push("/login")
-}
+    if (!trimmedEmail.includes("@")) {
+      setError("Please enter a valid email address.")
+      return
+    }
+
+    if (!password) {
+      setError("Please create a password.")
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.")
+      return
+    }
+
+    setLoading(true)
+
+    const { error } = await supabase.auth.signUp({
+      email: trimmedEmail,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
+    })
+
+    setLoading(false)
+
+    if (error) {
+      const lowerMessage = error.message.toLowerCase()
+
+      if (lowerMessage.includes("already")) {
+        setError("An account with this email may already exist. Try logging in instead.")
+      } else {
+        setError(error.message)
+      }
+
+      return
+    }
+
+    setSuccess("Account created! Please check your email if confirmation is required, then log in.")
+
+    setTimeout(() => {
+      router.push("/login")
+    }, 1200)
+  }
 
   return (
     <>
@@ -98,6 +106,7 @@ export default function SignupPage() {
             >
               Create Account
             </h1>
+
             <p
               style={{
                 fontSize: "22px",
@@ -121,11 +130,17 @@ export default function SignupPage() {
             >
               Email <span style={{ color: "red" }}>*</span>
             </label>
+
             <input
               type="email"
               placeholder="Enter Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void handleSignup()
+                }
+              }}
               style={{
                 width: "100%",
                 padding: "16px",
@@ -158,6 +173,11 @@ export default function SignupPage() {
                 placeholder="Create Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void handleSignup()
+                  }
+                }}
                 style={{
                   width: "100%",
                   padding: "16px",
@@ -194,6 +214,9 @@ export default function SignupPage() {
             <p
               style={{
                 color: "#dc2626",
+                background: "#fee2e2",
+                padding: "10px",
+                borderRadius: "8px",
                 marginBottom: "16px",
                 fontSize: "15px",
               }}
@@ -202,21 +225,40 @@ export default function SignupPage() {
             </p>
           )}
 
+          {success && (
+            <p
+              style={{
+                color: "#065f46",
+                background: "#d1fae5",
+                padding: "10px",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                fontSize: "15px",
+              }}
+            >
+              {success}
+            </p>
+          )}
+
           <button
             onClick={handleSignup}
             disabled={loading}
-            onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-            onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
+            onMouseOver={(e) => {
+              if (!loading) e.currentTarget.style.background = "#bbf7d0"
+            }}
+            onMouseOut={(e) => {
+              if (!loading) e.currentTarget.style.background = "#d4f5d0"
+            }}
             style={{
               width: "100%",
               padding: "16px",
               borderRadius: "10px",
               border: "none",
-              background: "#d4f5d0",
-              color: "#065f46",
+              background: loading ? "#e5e7eb" : "#d4f5d0",
+              color: loading ? "#6b7280" : "#065f46",
               fontSize: "28px",
               fontWeight: "500",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               marginBottom: "22px",
             }}
           >
@@ -227,6 +269,7 @@ export default function SignupPage() {
             <span style={{ color: "#111827", fontSize: "18px" }}>
               Already have an account?{" "}
             </span>
+
             <Link
               href="/login"
               style={{
