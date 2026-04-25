@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  ResponsiveContainer,
   LineChart,
   Line,
   XAxis,
@@ -65,7 +64,10 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
   { value: "number_place_value", label: "Number & Place Value" },
   { value: "four_operations", label: "Four Operations" },
-  { value: "fractions_decimals_percentages", label: "Fractions, Decimals & Percentages" },
+  {
+    value: "fractions_decimals_percentages",
+    label: "Fractions, Decimals & Percentages",
+  },
   { value: "shape_space", label: "Shape & Space" },
   { value: "measurement", label: "Measurement" },
   { value: "data_handling", label: "Data Handling" },
@@ -159,8 +161,8 @@ function StatCard({
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
         borderRadius: "24px",
         padding: "22px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -168,14 +170,48 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -193,11 +229,12 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -211,6 +248,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -223,8 +261,59 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
+  )
+}
+
+function ChartBox({
+  children,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height: 340 })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.max(0, Math.floor(rect.width))
+      const height = Math.max(0, Math.floor(rect.height))
+      setSize({ width, height })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "340px",
+        minWidth: 0,
+      }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div style={emptyStateStyle}>Loading chart...</div>
+      )}
+    </div>
   )
 }
 
@@ -291,12 +380,19 @@ export default function MathProgressPage() {
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
-    const questionsPractised = filteredRows.reduce((sum, row) => sum + row.total_questions, 0)
-    const totalCorrect = filteredRows.reduce((sum, row) => sum + row.correct_answers, 0)
+    const questionsPractised = filteredRows.reduce(
+      (sum, row) => sum + row.total_questions,
+      0
+    )
+    const totalCorrect = filteredRows.reduce(
+      (sum, row) => sum + row.correct_answers,
+      0
+    )
 
     const averageSuccess =
       testsCompleted > 0
-        ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) / testsCompleted
+        ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) /
+          testsCompleted
         : 0
 
     const bestScore =
@@ -372,14 +468,12 @@ export default function MathProgressPage() {
       return acc
     }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
 
-    return CATEGORY_ORDER
-      .filter((category) => grouped[category])
-      .map((category) => ({
-        category: formatCategory(category),
-        avgSuccess: Number(
-          (grouped[category].totalSuccess / grouped[category].attempts).toFixed(1)
-        ),
-      }))
+    return CATEGORY_ORDER.filter((category) => grouped[category]).map((category) => ({
+      category: formatCategory(category),
+      avgSuccess: Number(
+        (grouped[category].totalSuccess / grouped[category].attempts).toFixed(1)
+      ),
+    }))
   }, [filteredRows])
 
   const attemptsByCategoryData = useMemo(() => {
@@ -397,13 +491,11 @@ export default function MathProgressPage() {
       return acc
     }, {} as Record<string, { category: string; attempts: number; questions: number }>)
 
-    return CATEGORY_ORDER
-      .filter((category) => grouped[category])
-      .map((category) => ({
-        category: formatCategory(category),
-        attempts: grouped[category].attempts,
-        questions: grouped[category].questions,
-      }))
+    return CATEGORY_ORDER.filter((category) => grouped[category]).map((category) => ({
+      category: formatCategory(category),
+      attempts: grouped[category].attempts,
+      questions: grouped[category].questions,
+    }))
   }, [filteredRows])
 
   const recentAttempts = useMemo(() => {
@@ -441,7 +533,7 @@ export default function MathProgressPage() {
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(59,130,246,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
       }}
     >
@@ -466,8 +558,9 @@ export default function MathProgressPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              📘 Maths Progress
+              ➗ Maths Progress
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -491,6 +584,8 @@ export default function MathProgressPage() {
             }}
           >
             <select
+              id="math-progress-category-filter"
+              name="mathProgressCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
               style={selectStyle}
@@ -503,6 +598,8 @@ export default function MathProgressPage() {
             </select>
 
             <select
+              id="math-progress-time-filter"
+              name="mathProgressTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -559,7 +656,7 @@ export default function MathProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
           }}
@@ -568,10 +665,10 @@ export default function MathProgressPage() {
             title="Performance Trend"
             subtitle="Track success rate across recent maths attempts."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {performanceTrendData.length ? (
-                <ResponsiveContainer width="100%" height={340}>
-                  <LineChart data={performanceTrendData}>
+            <ChartBox>
+              {({ width, height }) =>
+                performanceTrendData.length ? (
+                  <LineChart width={width} height={height} data={performanceTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
@@ -587,17 +684,17 @@ export default function MathProgressPage() {
                     <Line
                       type="monotone"
                       dataKey="success"
-                      stroke="#2563eb"
+                      stroke="#16a34a"
                       strokeWidth={3}
                       dot={{ r: 4 }}
                       activeDot={{ r: 6 }}
                     />
                   </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
@@ -609,11 +706,11 @@ export default function MathProgressPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Accuracy
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -632,7 +729,15 @@ export default function MathProgressPage() {
                 <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Best Area
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {overallStats.strongestCategory
                     ? formatCategory(overallStats.strongestCategory.category)
                     : "—"}
@@ -650,7 +755,15 @@ export default function MathProgressPage() {
                 <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
                   Needs Focus
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {overallStats.weakestCategory
                     ? formatCategory(overallStats.weakestCategory.category)
                     : "—"}
@@ -661,11 +774,11 @@ export default function MathProgressPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#faf5ff",
-                  border: "1px solid #e9d5ff",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ color: "#7e22ce", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
                   Questions Correct
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -679,7 +792,7 @@ export default function MathProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
           }}
@@ -688,10 +801,16 @@ export default function MathProgressPage() {
             title="Average Success by Category"
             subtitle="Compare performance across the seven maths categories."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {successByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={successByCategoryData} layout="vertical" margin={{ left: 24 }}>
+            <ChartBox>
+              {({ width, height }) =>
+                successByCategoryData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={successByCategoryData}
+                    layout="vertical"
+                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" domain={[0, 100]} />
                     <YAxis
@@ -701,23 +820,29 @@ export default function MathProgressPage() {
                       tick={{ fontSize: 12 }}
                     />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" fill="#10b981" radius={[0, 10, 10, 0]} />
+                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[0, 10, 10, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
             title="Practice Volume by Category"
             subtitle="See which maths areas have been practised the most."
           >
-            <div style={{ width: "100%", height: "340px" }}>
-              {attemptsByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={attemptsByCategoryData} layout="vertical" margin={{ left: 24 }}>
+            <ChartBox>
+              {({ width, height }) =>
+                attemptsByCategoryData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={attemptsByCategoryData}
+                    layout="vertical"
+                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis
@@ -727,13 +852,13 @@ export default function MathProgressPage() {
                       tick={{ fontSize: 12 }}
                     />
                     <Tooltip formatter={attemptsTooltipFormatter} />
-                    <Bar dataKey="attempts" fill="#8b5cf6" radius={[0, 10, 10, 0]} />
+                    <Bar dataKey="attempts" fill="#10b981" radius={[0, 10, 10, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
         </div>
 
@@ -811,17 +936,17 @@ export default function MathProgressPage() {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(15, 23, 42, 0.22)",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -833,7 +958,7 @@ export default function MathProgressPage() {
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
   fontWeight: 600,
@@ -844,11 +969,13 @@ const selectStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#94a3b8",
   fontSize: "15px",
+  textAlign: "center",
 }
 
 const thStyle: React.CSSProperties = {
