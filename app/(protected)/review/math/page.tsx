@@ -1,11 +1,10 @@
 // app/(protected)/review/math/page.tsx
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
@@ -107,6 +106,7 @@ function truncateText(text: string, maxLength = 120) {
 function formatAnswer(answer: string | null) {
   return answer && answer.trim() ? answer : "No answer"
 }
+
 function toNumericValue(value: ValueType | undefined) {
   if (typeof value === "number") return value
   if (typeof value === "string") return Number(value)
@@ -121,6 +121,7 @@ function reviewItemsTooltipFormatter(
   const numericValue = toNumericValue(value)
   return [`${numericValue}`, "Review Items"]
 }
+
 function StatCard({
   title,
   value,
@@ -133,8 +134,8 @@ function StatCard({
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
         borderRadius: "24px",
         padding: "22px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -142,25 +143,46 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
+        }}
+      >
         {title}
       </div>
 
       <div
         style={{
-          fontSize: "34px",
+          fontSize: value.length > 18 ? "22px" : "34px",
           fontWeight: 800,
           color: "#0f172a",
-          lineHeight: 1.1,
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
         }}
       >
         {value}
       </div>
 
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
           {subtitle}
         </div>
       ) : null}
@@ -180,11 +202,12 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -214,6 +237,58 @@ function SectionCard({
 
       {children}
     </section>
+  )
+}
+
+function ChartBox({
+  children,
+  height = 340,
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode
+  height?: number
+}) {
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height })
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.max(0, Math.floor(rect.width))
+      const measuredHeight = Math.max(0, Math.floor(rect.height))
+      setSize({ width, height: measuredHeight })
+    }
+
+    updateSize()
+
+    const observer = new ResizeObserver(() => {
+      updateSize()
+    })
+
+    observer.observe(element)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height,
+        minWidth: 0,
+      }}
+    >
+      {size.width > 0 && size.height > 0 ? (
+        children(size)
+      ) : (
+        <div style={emptyStateStyle}>Loading chart...</div>
+      )}
+    </div>
   )
 }
 
@@ -421,7 +496,7 @@ export default function MathReviewPage() {
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(16,185,129,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #ecfeff 100%)",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
       }}
     >
@@ -446,7 +521,7 @@ export default function MathReviewPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              📝 Math Review
+              📝 Maths Review
             </h1>
 
             <p
@@ -472,6 +547,8 @@ export default function MathReviewPage() {
             }}
           >
             <select
+              id="math-review-category-filter"
+              name="mathReviewCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               style={selectStyle}
@@ -484,6 +561,8 @@ export default function MathReviewPage() {
             </select>
 
             <select
+              id="math-review-time-filter"
+              name="mathReviewTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -496,6 +575,8 @@ export default function MathReviewPage() {
             </select>
 
             <select
+              id="math-review-difficulty-filter"
+              name="mathReviewDifficultyFilter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
               style={selectStyle}
@@ -508,6 +589,8 @@ export default function MathReviewPage() {
             </select>
 
             <select
+              id="math-review-answer-filter"
+              name="mathReviewAnswerFilter"
               value={answerFilter}
               onChange={(e) =>
                 setAnswerFilter(e.target.value as "all" | "wrong" | "unanswered")
@@ -566,7 +649,7 @@ export default function MathReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
             gap: "20px",
             marginBottom: "20px",
           }}
@@ -575,26 +658,32 @@ export default function MathReviewPage() {
             title="Mistakes by Category"
             subtitle="See which maths topics are producing the most review items."
           >
-            <div style={{ width: "100%", height: "360px" }}>
-              {mistakesByCategoryData.length ? (
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={mistakesByCategoryData} layout="vertical" margin={{ left: 24 }}>
+            <ChartBox height={360}>
+              {({ width, height }) =>
+                mistakesByCategoryData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={mistakesByCategoryData}
+                    layout="vertical"
+                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={180}
+                      width={190}
                       tick={{ fontSize: 12 }}
                     />
                     <Tooltip formatter={reviewItemsTooltipFormatter} />
-                    <Bar dataKey="mistakes" fill="#f97316" radius={[0, 10, 10, 0]} />
+                    <Bar dataKey="mistakes" fill="#16a34a" radius={[0, 10, 10, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
@@ -606,11 +695,11 @@ export default function MathReviewPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#fff7ed",
-                  border: "1px solid #fed7aa",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Review Queue
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -654,14 +743,22 @@ export default function MathReviewPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#ecfeff",
-                  border: "1px solid #a5f3fc",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#0f766e", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Main Focus
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
                   {reviewStats.mostMissedCategory
                     ? formatCategory(reviewStats.mostMissedCategory.category)
                     : "—"}
@@ -676,21 +773,26 @@ export default function MathReviewPage() {
             title="Mistakes by Difficulty"
             subtitle="See whether Easy, Medium, or Hard questions are creating the most review items."
           >
-            <div style={{ width: "100%", height: "280px" }}>
-              {mistakesByDifficultyData.length ? (
-                <ResponsiveContainer width="100%" height={340}>
-                  <BarChart data={mistakesByDifficultyData}>
+            <ChartBox height={300}>
+              {({ width, height }) =>
+                mistakesByDifficultyData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={mistakesByDifficultyData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="difficulty" />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={reviewItemsTooltipFormatter} />
-                    <Bar dataKey="mistakes" fill="#8b5cf6" radius={[10, 10, 0, 0]} />
+                    <Bar dataKey="mistakes" fill="#10b981" radius={[10, 10, 0, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={emptyStateStyle}>No data available for this filter.</div>
-              )}
-            </div>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
         </div>
 
@@ -770,18 +872,18 @@ export default function MathReviewPage() {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(15, 23, 42, 0.22)",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
 
-          <div style={{ color: "#cbd5e1", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -793,7 +895,7 @@ export default function MathReviewPage() {
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
   fontWeight: 600,
@@ -804,11 +906,13 @@ const selectStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#94a3b8",
   fontSize: "15px",
+  textAlign: "center",
 }
 
 const thStyle: React.CSSProperties = {
