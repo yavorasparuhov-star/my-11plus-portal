@@ -237,8 +237,8 @@ function StatCard({
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
         borderRadius: "24px",
         padding: "22px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -246,14 +246,48 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        minWidth: 0,
+        overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: "14px", color: "#64748b", fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
+        }}
+      >
         {value}
       </div>
+
       {subtitle ? (
-        <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{subtitle}</div>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
+          {subtitle}
+        </div>
       ) : null}
     </div>
   )
@@ -271,8 +305,8 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-        border: "1px solid #e5e7eb",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
@@ -290,6 +324,7 @@ function SectionCard({
         >
           {title}
         </h2>
+
         {subtitle ? (
           <p
             style={{
@@ -302,10 +337,12 @@ function SectionCard({
           </p>
         ) : null}
       </div>
+
       {children}
     </section>
   )
 }
+
 function ChartBox({
   children,
 }: {
@@ -355,6 +392,7 @@ function ChartBox({
     </div>
   )
 }
+
 export default function EnglishProgressPage() {
   const router = useRouter()
 
@@ -405,9 +443,11 @@ export default function EnglishProgressPage() {
         if (vocabularyResult.error) {
           console.error("Error loading vocabulary progress:", vocabularyResult.error)
         }
+
         if (spellingResult.error) {
           console.error("Error loading spelling progress:", spellingResult.error)
         }
+
         if (englishSharedProgressResult.error) {
           console.error("Error loading shared English progress:", englishSharedProgressResult.error)
         }
@@ -501,9 +541,11 @@ export default function EnglishProgressPage() {
     const byCategory = Object.entries(
       filteredRows.reduce((acc, row) => {
         const key = getCategoryLabel(row.category)
+
         if (!acc[key]) {
           acc[key] = { attempts: 0, totalSuccess: 0 }
         }
+
         acc[key].attempts += 1
         acc[key].totalSuccess += Number(row.success_rate)
         return acc
@@ -661,12 +703,13 @@ export default function EnglishProgressPage() {
       </div>
     )
   }
-    return (
+
+  return (
     <div
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(59,130,246,0.10) 0%, rgba(255,255,255,1) 32%), linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%)",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
       }}
     >
@@ -693,6 +736,7 @@ export default function EnglishProgressPage() {
             >
               📘 English Progress
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -718,7 +762,7 @@ export default function EnglishProgressPage() {
           >
             <select
               id="english-progress-category-filter"
-  name="englishProgressCategoryFilter"
+              name="englishProgressCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
               style={selectStyle}
@@ -732,7 +776,7 @@ export default function EnglishProgressPage() {
 
             <select
               id="english-progress-difficulty-filter"
-  name="englishProgressDifficultyFilter"
+              name="englishProgressDifficultyFilter"
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
               style={selectStyle}
@@ -746,7 +790,7 @@ export default function EnglishProgressPage() {
 
             <select
               id="english-progress-time-filter"
-  name="englishProgressTimeFilter"
+              name="englishProgressTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
               style={selectStyle}
@@ -792,48 +836,48 @@ export default function EnglishProgressPage() {
           />
         </div>
 
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-    gap: "20px",
-    marginBottom: "20px",
-  }}
->
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
+            gap: "20px",
+            marginBottom: "20px",
+          }}
+        >
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent English attempts."
           >
             <ChartBox>
-  {({ width, height }) =>
-    performanceTrendData.length ? (
-      <LineChart width={width} height={height} data={performanceTrendData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis domain={[0, 100]} />
-        <Tooltip
-          formatter={successTooltipFormatter}
-          labelFormatter={(label, payload) => {
-            const point = payload?.[0]?.payload
-            return point
-              ? `${point.date} • ${point.category} • ${point.scoreLabel}`
-              : label
-          }}
-        />
-        <Line
-          type="monotone"
-          dataKey="success"
-          stroke="#3b82f6"
-          strokeWidth={3}
-          dot={{ r: 4 }}
-          activeDot={{ r: 6 }}
-        />
-      </LineChart>
-    ) : (
-      <div style={emptyStateStyle}>No data available for this filter.</div>
-    )
-  }
-</ChartBox>
+              {({ width, height }) =>
+                performanceTrendData.length ? (
+                  <LineChart width={width} height={height} data={performanceTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip
+                      formatter={successTooltipFormatter}
+                      labelFormatter={(label, payload) => {
+                        const point = payload?.[0]?.payload
+                        return point
+                          ? `${point.date} • ${point.category} • ${point.scoreLabel}`
+                          : label
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="success"
+                      stroke="#16a34a"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
@@ -845,11 +889,11 @@ export default function EnglishProgressPage() {
                 style={{
                   padding: "16px",
                   borderRadius: "18px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#1d4ed8", fontWeight: 700, marginBottom: "6px" }}>
+                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Accuracy
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
@@ -868,7 +912,14 @@ export default function EnglishProgressPage() {
                 <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
                   Best Category
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                  }}
+                >
                   {overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
                 </div>
               </div>
@@ -884,7 +935,14 @@ export default function EnglishProgressPage() {
                 <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
                   Needs Focus
                 </div>
-                <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                  }}
+                >
                   {overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
                 </div>
               </div>
@@ -908,54 +966,54 @@ export default function EnglishProgressPage() {
           </SectionCard>
         </div>
 
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-    gap: "20px",
-    marginBottom: "20px",
-  }}
->
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+            gap: "20px",
+            marginBottom: "20px",
+          }}
+        >
           <SectionCard
             title="Average Success by Category"
             subtitle="Compare performance across English categories."
           >
-<ChartBox>
-  {({ width, height }) =>
-    successByCategoryData.length ? (
-      <BarChart width={width} height={height} data={successByCategoryData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="category" />
-        <YAxis domain={[0, 100]} />
-        <Tooltip formatter={averageSuccessTooltipFormatter} />
-        <Bar dataKey="avgSuccess" fill="#3b82f6" radius={[10, 10, 0, 0]} />
-      </BarChart>
-    ) : (
-      <div style={emptyStateStyle}>No data available for this filter.</div>
-    )
-  }
-</ChartBox>
+            <ChartBox>
+              {({ width, height }) =>
+                successByCategoryData.length ? (
+                  <BarChart width={width} height={height} data={successByCategoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip formatter={averageSuccessTooltipFormatter} />
+                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
             title="Practice Volume by Category"
             subtitle="See which English areas have been practised the most."
           >
-<ChartBox>
-  {({ width, height }) =>
-    attemptsByCategoryData.length ? (
-      <BarChart width={width} height={height} data={attemptsByCategoryData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="category" />
-        <YAxis allowDecimals={false} />
-        <Tooltip />
-        <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
-      </BarChart>
-    ) : (
-      <div style={emptyStateStyle}>No data available for this filter.</div>
-    )
-  }
-</ChartBox>
+            <ChartBox>
+              {({ width, height }) =>
+                attemptsByCategoryData.length ? (
+                  <BarChart width={width} height={height} data={attemptsByCategoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                ) : (
+                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
         </div>
 
@@ -1035,17 +1093,17 @@ export default function EnglishProgressPage() {
         <div
           style={{
             marginTop: "20px",
-            background: "linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
             color: "white",
             borderRadius: "28px",
             padding: "26px",
-            boxShadow: "0 12px 34px rgba(30, 58, 138, 0.22)",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
           <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
-          <div style={{ color: "#dbeafe", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
@@ -1057,7 +1115,7 @@ export default function EnglishProgressPage() {
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
+  border: "1px solid #bbf7d0",
   backgroundColor: "white",
   fontSize: "14px",
   fontWeight: 600,
@@ -1068,11 +1126,13 @@ const selectStyle: React.CSSProperties = {
 
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#94a3b8",
   fontSize: "15px",
+  textAlign: "center",
 }
 
 const thStyle: React.CSSProperties = {
