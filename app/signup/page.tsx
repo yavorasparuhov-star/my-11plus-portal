@@ -15,24 +15,55 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleSignup = async () => {
-    setLoading(true)
-    setError(null)
+ const handleSignup = async () => {
+  setError(null)
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+  const trimmedEmail = email.trim()
 
-    setLoading(false)
-
-    if (error) {
-      setError(error.message)
-    } else {
-      alert("Account created! You can now log in.")
-      router.push("/login")
-    }
+  if (!trimmedEmail) {
+    setError("Please enter your email address.")
+    return
   }
+
+  if (!trimmedEmail.includes("@")) {
+    setError("Please enter a valid email address.")
+    return
+  }
+
+  if (!password) {
+    setError("Please create a password.")
+    return
+  }
+
+  if (password.length < 6) {
+    setError("Password must be at least 6 characters long.")
+    return
+  }
+
+  setLoading(true)
+
+  const { error } = await supabase.auth.signUp({
+    email: trimmedEmail,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+    },
+  })
+
+  setLoading(false)
+
+  if (error) {
+    if (error.message.toLowerCase().includes("already")) {
+      setError("An account with this email may already exist. Try logging in instead.")
+    } else {
+      setError(error.message)
+    }
+    return
+  }
+
+  alert("Account created! Please check your email if confirmation is required, then log in.")
+  router.push("/login")
+}
 
   return (
     <>
