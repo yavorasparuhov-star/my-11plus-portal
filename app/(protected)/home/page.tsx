@@ -50,79 +50,30 @@ export default function HomePage() {
     },
   ]
 
-  const memberships = [
+  const learningTools = [
     {
-      title: "Free Membership",
-      badge: "Start here",
-      price: "Free",
-      text: "Create a free account and try selected practice tests before upgrading.",
-      features: [
-        "Register for free",
-        "Try selected free tests",
-        "Explore the learning areas",
-        "Good for first-time users",
-      ],
-      button: "Register for free",
-      path: "/signup",
-      highlighted: false,
+      title: "Custom Tests",
+      badge: "Practice",
+      icon: "📝",
+      text: "Build your own test by subject, topic, difficulty and time limit.",
+      button: "Build test",
+      path: "/custom-tests",
     },
     {
-      title: "Monthly Membership",
-      badge: "Popular",
-      price: "Monthly",
-      text: "Best for families who want flexible access to regular 11+ practice.",
-      features: [
-        "Full subject access",
-        "Progress tracking",
-        "Review mistakes",
-        "Custom test builder",
-      ],
-      button: "Choose monthly",
-      path: "/signup",
-      highlighted: true,
+      title: "Track Progress",
+      badge: "Progress",
+      icon: "📈",
+      text: "See recent scores, success rates and areas that need more practice.",
+      button: "View progress",
+      path: "/progress",
     },
     {
-      title: "Annual Membership",
-      badge: "Best value",
-      price: "Annual",
-      text: "Ideal for steady long-term preparation throughout the school year.",
-      features: [
-        "Everything in monthly",
-        "Better long-term value",
-        "Great for regular practice",
-        "Full 11+ preparation access",
-      ],
-      button: "Choose annual",
-      path: "/signup",
-      highlighted: false,
-    },
-  ]
-
-  const faqs = [
-    {
-      question: "What is YanBo Learning?",
-      answer:
-        "YanBo Learning is an 11+ practice platform covering English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
-    },
-    {
-      question: "Can I start for free?",
-      answer:
-        "Yes. The free membership lets you register and try selected practice areas before choosing a paid membership.",
-    },
-    {
-      question: "What do paid members get?",
-      answer:
-        "Paid members get wider access to tests, progress pages, review pages and the custom test builder.",
-    },
-    {
-      question: "Can students review mistakes?",
-      answer:
-        "Yes. Review pages help students practise questions they previously answered incorrectly.",
-    },
-    {
-      question: "Does YanBo Learning track progress?",
-      answer:
-        "Yes. The progress pages show recent scores, success rates and areas that may need more practice.",
+      title: "Review Mistakes",
+      badge: "Review",
+      icon: "🔁",
+      text: "Practise previous mistakes and strengthen weaker topics step by step.",
+      button: "Open review",
+      path: "/review",
     },
   ]
 
@@ -137,29 +88,28 @@ export default function HomePage() {
     <div style={styles.page}>
       {/* HERO */}
       <section style={styles.hero}>
-        <div style={styles.heroBadge}>11+ practice made simple</div>
+        <div style={styles.heroBadge}>Member dashboard</div>
 
-        <h1 style={styles.title}>Welcome to YanBo Learning</h1>
+        <h1 style={styles.title}>Welcome back</h1>
 
         <p style={styles.subtitle}>
-          Build confidence for the 11+ with focused practice in English, Maths,
-          Verbal Reasoning and Non-Verbal Reasoning. Choose a subject, track
-          progress, review mistakes and keep improving step by step.
+          Choose a subject to continue practising, build a custom test, review
+          mistakes, or check your latest progress.
         </p>
 
         <div style={styles.heroActions}>
           <button
             style={styles.primaryButton}
-            onClick={() => router.push("/signup")}
+            onClick={() => router.push("/custom-tests")}
           >
-            Start free
+            Build a custom test
           </button>
 
           <button
             style={styles.secondaryButton}
-            onClick={() => router.push("/custom-tests")}
+            onClick={() => router.push("/progress")}
           >
-            Build a custom test
+            View progress
           </button>
         </div>
       </section>
@@ -201,144 +151,61 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* MEMBERSHIP CARDS */}
+      {/* MEMBER QUICK ACTIONS */}
       <section style={styles.section}>
         <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Choose your membership</h2>
+          <h2 style={styles.sectionTitle}>Your learning tools</h2>
           <p style={styles.sectionText}>
-            Start with a free account, then upgrade when you are ready for full
-            access to practice tests, review tools, progress tracking and custom
-            tests.
+            Use these tools to create focused practice, review mistakes and
+            track improvement.
           </p>
         </div>
 
-        <div style={styles.membershipGrid}>
-          {memberships.map((membership) => (
+        <div style={styles.toolsGrid}>
+          {learningTools.map((tool) => (
             <div
-              key={membership.title}
-              style={{
-                ...styles.membershipCard,
-                ...(membership.highlighted ? styles.highlightedMembership : {}),
-                ...cardHover,
-              }}
-              onClick={() => router.push(membership.path)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)"
-                e.currentTarget.style.boxShadow = membership.highlighted
-                  ? "0 24px 46px rgba(6,78,59,0.28)"
-                  : "0 20px 40px rgba(0,0,0,0.12)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)"
-                e.currentTarget.style.boxShadow = membership.highlighted
-                  ? "0 18px 40px rgba(6,78,59,0.22)"
-                  : "0 10px 25px rgba(0,0,0,0.08)"
-              }}
+              key={tool.title}
+              style={{ ...styles.toolCard, ...cardHover }}
+              onClick={() => router.push(tool.path)}
+              onMouseEnter={(e) => handleCardHover(e, true)}
+              onMouseLeave={(e) => handleCardHover(e, false)}
             >
-              <div
-                style={{
-                  ...styles.membershipBadge,
-                  ...(membership.highlighted
-                    ? styles.highlightedMembershipBadge
-                    : {}),
-                }}
-              >
-                {membership.badge}
+              <div style={styles.toolTopRow}>
+                <span style={styles.toolBadge}>{tool.badge}</span>
+                <span style={styles.toolIcon}>{tool.icon}</span>
               </div>
 
-              <h3
-                style={{
-                  ...styles.membershipTitle,
-                  color: membership.highlighted ? "white" : "#111827",
-                }}
-              >
-                {membership.title}
-              </h3>
+              <h3 style={styles.toolTitle}>{tool.title}</h3>
 
-              <p
-                style={{
-                  ...styles.membershipPrice,
-                  color: membership.highlighted ? "#bbf7d0" : "#065f46",
-                }}
-              >
-                {membership.price}
-              </p>
-
-              <p
-                style={{
-                  ...styles.membershipText,
-                  color: membership.highlighted ? "#d1fae5" : "#4b5563",
-                }}
-              >
-                {membership.text}
-              </p>
-
-              <ul
-                style={{
-                  ...styles.featureList,
-                  color: membership.highlighted ? "#ecfdf5" : "#374151",
-                }}
-              >
-                {membership.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
+              <p style={styles.toolText}>{tool.text}</p>
 
               <button
-                style={{
-                  ...styles.membershipButton,
-                  ...(membership.highlighted
-                    ? styles.highlightedMembershipButton
-                    : {}),
-                }}
+                style={styles.toolButton}
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(membership.path)
+                  router.push(tool.path)
                 }}
               >
-                {membership.button}
+                {tool.button}
               </button>
             </div>
           ))}
         </div>
       </section>
 
-      {/* TRUSTPILOT STYLE SECTION */}
-      <section style={styles.trustSection}>
-        <div style={styles.trustCard}>
-          <div style={styles.stars}>★★★★★</div>
+      {/* STUDY TIP */}
+      <section style={styles.tipSection}>
+        <div style={styles.tipCard}>
+          <div style={styles.tipIcon}>💡</div>
 
-          <h2 style={styles.trustTitle}>Trusted by families preparing for the 11+</h2>
-
-          <p style={styles.trustText}>
-            Add your real Trustpilot widget here later when your Trustpilot
-            profile is ready. For now, this section gives the home page a more
-            professional trust area.
-          </p>
-
-          <div style={styles.trustPlaceholder}>
-            Trustpilot reviews coming soon
+          <div>
+            <h2 style={styles.tipTitle}>Today’s study idea</h2>
+            <p style={styles.tipText}>
+              Try one short practice session, then spend a few minutes reviewing
+              mistakes. Small regular sessions are better than rushing through
+              lots of questions at once.
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section style={styles.faqSection}>
-        <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Frequently Asked Questions</h2>
-          <p style={styles.sectionText}>
-            Simple answers for parents and students getting started with YanBo
-            Learning.
-          </p>
-        </div>
-
-        <div style={styles.faqGrid}>
-          {faqs.map((faq) => (
-            <div key={faq.question} style={styles.faqCard}>
-              <h3 style={styles.faqQuestion}>{faq.question}</h3>
-              <p style={styles.faqAnswer}>{faq.answer}</p>
-            </div>
-          ))}
         </div>
       </section>
     </div>
@@ -384,7 +251,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   subtitle: {
     fontSize: "18px",
     color: "#4b5563",
-    maxWidth: "820px",
+    maxWidth: "760px",
     margin: "0 auto",
     lineHeight: 1.7,
   },
@@ -493,13 +360,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "140px",
   },
 
-  membershipGrid: {
+  toolsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "20px",
   },
 
-  membershipCard: {
+  toolCard: {
     background: "white",
     borderRadius: "24px",
     padding: "28px",
@@ -509,55 +376,43 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
   },
 
-  highlightedMembership: {
-    background: "#064e3b",
-    border: "1px solid #064e3b",
-    boxShadow: "0 18px 40px rgba(6,78,59,0.22)",
+  toolTopRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "18px",
   },
 
-  membershipBadge: {
+  toolBadge: {
     display: "inline-block",
-    alignSelf: "flex-start",
     background: "#dcfce7",
     color: "#166534",
     padding: "7px 12px",
     borderRadius: "999px",
     fontSize: "13px",
     fontWeight: 800,
-    marginBottom: "16px",
   },
 
-  highlightedMembershipBadge: {
-    background: "#fef3c7",
-    color: "#92400e",
+  toolIcon: {
+    fontSize: "34px",
   },
 
-  membershipTitle: {
+  toolTitle: {
     fontSize: "24px",
-    margin: "0 0 8px",
+    margin: "0 0 10px",
+    color: "#111827",
     fontWeight: 800,
   },
 
-  membershipPrice: {
-    fontSize: "20px",
-    fontWeight: 800,
-    margin: "0 0 14px",
-  },
-
-  membershipText: {
+  toolText: {
     fontSize: "16px",
+    color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
-  },
-
-  featureList: {
-    lineHeight: 1.9,
-    paddingLeft: "20px",
-    margin: "0 0 24px",
+    marginBottom: "22px",
     flexGrow: 1,
   },
 
-  membershipButton: {
+  toolButton: {
     padding: "13px 18px",
     borderRadius: "14px",
     border: "none",
@@ -569,83 +424,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
   },
 
-  highlightedMembershipButton: {
-    background: "white",
-    color: "#064e3b",
-  },
-
-  trustSection: {
-    marginBottom: "56px",
-  },
-
-  trustCard: {
-    background: "white",
-    borderRadius: "26px",
-    padding: "34px 24px",
-    textAlign: "center",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    border: "1px solid #e5e7eb",
-  },
-
-  stars: {
-    color: "#16a34a",
-    fontSize: "26px",
-    letterSpacing: "3px",
-    marginBottom: "12px",
-  },
-
-  trustTitle: {
-    fontSize: "30px",
-    color: "#064e3b",
-    margin: "0 0 12px",
-    fontWeight: 800,
-  },
-
-  trustText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    maxWidth: "760px",
-    margin: "0 auto 20px",
-    lineHeight: 1.7,
-  },
-
-  trustPlaceholder: {
-    display: "inline-block",
-    background: "#f0fdf4",
-    color: "#166534",
-    border: "1px solid #bbf7d0",
-    padding: "12px 18px",
-    borderRadius: "14px",
-    fontWeight: 800,
-  },
-
-  faqSection: {
+  tipSection: {
     marginBottom: "20px",
   },
 
-  faqGrid: {
-    display: "grid",
-    gap: "16px",
+  tipCard: {
+    background: "#064e3b",
+    color: "white",
+    borderRadius: "26px",
+    padding: "28px",
+    boxShadow: "0 14px 34px rgba(6,78,59,0.22)",
+    display: "flex",
+    gap: "20px",
+    alignItems: "flex-start",
   },
 
-  faqCard: {
-    background: "white",
-    borderRadius: "18px",
-    padding: "22px",
-    boxShadow: "0 8px 22px rgba(0,0,0,0.06)",
-    border: "1px solid #e5e7eb",
+  tipIcon: {
+    fontSize: "38px",
+    lineHeight: 1,
   },
 
-  faqQuestion: {
+  tipTitle: {
     margin: "0 0 8px",
-    color: "#065f46",
-    fontSize: "19px",
+    fontSize: "26px",
     fontWeight: 800,
   },
 
-  faqAnswer: {
+  tipText: {
     margin: 0,
-    color: "#4b5563",
+    color: "#d1fae5",
     fontSize: "16px",
     lineHeight: 1.7,
   },
