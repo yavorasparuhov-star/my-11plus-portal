@@ -11,12 +11,15 @@ const REVIEW_STORAGE_KEY = "primary_word_classes_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type PrimaryWordClassesTest = {
   id: number
   title: string
   description: string | null
   difficulty: number | null
   created_at: string
+  is_free: boolean
 }
 
 type PrimaryWordClassesQuestion = {
@@ -38,6 +41,10 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
 export default function PrimaryWordClassesTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -48,6 +55,7 @@ export default function PrimaryWordClassesTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<PrimaryWordClassesTest | null>(null)
   const [questions, setQuestions] = useState<PrimaryWordClassesQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -66,6 +74,7 @@ export default function PrimaryWordClassesTestPage() {
     }
 
     const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
     if (!raw) {
       setReviewIds([])
       return
@@ -73,6 +82,7 @@ export default function PrimaryWordClassesTestPage() {
 
     try {
       const parsed = JSON.parse(raw)
+
       if (Array.isArray(parsed)) {
         setReviewIds(parsed.filter((id) => typeof id === "number"))
       } else {
@@ -94,28 +104,51 @@ export default function PrimaryWordClassesTestPage() {
         return
       }
 
-    const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
 
-const user = session?.user ?? null
+      const user = session?.user ?? null
 
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+      if (!user) {
+        setPlan("guest")
+        setErrorMessage("Please sign in to start this test.")
+        setLoading(false)
+        return
+      }
 
       setUserId(user.id)
 
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
+
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
-        .select("id, title, description, difficulty, created_at")
+        .select("id, title, description, difficulty, created_at, is_free")
         .eq("id", testId)
         .eq("main_category", MAIN_CATEGORY)
         .eq("subcategory", SUBCATEGORY)
@@ -128,7 +161,21 @@ if (!user) {
           hint: testError.hint,
           code: testError.code,
         })
+
         setErrorMessage("Could not load this Primary Word Classes test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as PrimaryWordClassesTest
+
+      const canOpenTest =
+        hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
+
+      if (!canOpenTest) {
+        setErrorMessage(
+          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
+        )
         setLoading(false)
         return
       }
@@ -145,7 +192,7 @@ if (!user) {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(testData as PrimaryWordClassesTest)
+          setTest(loadedTest)
           setQuestions([])
           setLoading(false)
           return
@@ -163,12 +210,13 @@ if (!user) {
           hint: questionError.hint,
           code: questionError.code,
         })
+
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
       }
 
-      setTest(testData as PrimaryWordClassesTest)
+      setTest(loadedTest)
       setQuestions((questionData || []) as PrimaryWordClassesQuestion[])
       setLoading(false)
     }
@@ -183,6 +231,7 @@ if (!user) {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
+
       e.preventDefault()
       e.returnValue = ""
     }
@@ -204,6 +253,7 @@ if (!user) {
 
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
+
     if (!confirmed) return
 
     if (mode === "review") {
@@ -297,7 +347,10 @@ if (!user) {
         code: progressError.code,
         payload: progressPayload,
       })
-      setErrorMessage(progressError.message || "Could not save your progress. Please try again.")
+
+      setErrorMessage(
+        progressError.message || "Could not save your progress. Please try again."
+      )
       setSubmitting(false)
       return
     }
@@ -313,12 +366,15 @@ if (!user) {
           .in("question_id", correctlyAnsweredReviewQuestionIds)
 
         if (deleteReviewError) {
-          console.error("Error removing correctly answered primary word classes review items:", {
-            message: deleteReviewError.message,
-            details: deleteReviewError.details,
-            hint: deleteReviewError.hint,
-            code: deleteReviewError.code,
-          })
+          console.error(
+            "Error removing correctly answered primary word classes review items:",
+            {
+              message: deleteReviewError.message,
+              details: deleteReviewError.details,
+              hint: deleteReviewError.hint,
+              code: deleteReviewError.code,
+            }
+          )
         }
       }
     } else if (wrongAnswersForReview.length > 0) {
@@ -338,6 +394,7 @@ if (!user) {
       const existingReviewIds = Array.from(new Set(reviewIds))
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
       setReviewIds(updatedReviewIds)
     }
@@ -346,6 +403,7 @@ if (!user) {
       const remainingIds = reviewIds.filter(
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
+
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
       setReviewIds(remainingIds)
     }
@@ -439,6 +497,7 @@ if (!user) {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -447,6 +506,7 @@ if (!user) {
                 <h1 style={styles.title}>
                   {mode === "review" ? "📝 Review:" : "📝"} {test.title}
                 </h1>
+
                 <p style={styles.subtitle}>
                   {mode === "review"
                     ? "Answer your saved review questions carefully, then submit."
@@ -459,23 +519,29 @@ if (!user) {
                 {test.difficulty === 1
                   ? "Easy"
                   : test.difficulty === 2
-                  ? "Medium"
-                  : test.difficulty === 3
-                  ? "Hard"
-                  : "Not set"}
+                    ? "Medium"
+                    : test.difficulty === 3
+                      ? "Hard"
+                      : "Not set"}
               </div>
             </div>
 
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
-                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                    {questions.length > 0
+                      ? Math.round((score / questions.length) * 100)
+                      : 0}
+                    %
                   </strong>
                 </p>
 
@@ -483,6 +549,7 @@ if (!user) {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Set
                   </button>
+
                   <button onClick={goBackSafely} style={styles.primaryButton}>
                     Back to Primary Word Classes
                   </button>
@@ -509,6 +576,7 @@ if (!user) {
                 <h2>
                   {mode === "review" ? "No review questions found" : "No questions found"}
                 </h2>
+
                 <p>
                   {mode === "review"
                     ? "There are no saved review questions for this test."
@@ -623,11 +691,14 @@ if (!user) {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
@@ -637,6 +708,7 @@ if (!user) {
               >
                 Go Back
               </button>
+
               <button onClick={submitTest} style={styles.primaryButton}>
                 Submit Anyway
               </button>
@@ -652,10 +724,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -663,6 +737,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   heroTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -670,15 +745,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     flexWrap: "wrap",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   badge: {
     padding: "10px 14px",
     borderRadius: "999px",
@@ -687,10 +765,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
+
   progressInfo: {
     marginTop: "20px",
     color: "#444",
   },
+
   inlineError: {
     marginTop: "12px",
     marginBottom: 0,
@@ -698,6 +778,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     fontWeight: 600,
   },
+
   resultBanner: {
     marginTop: "20px",
     background: "#f8fafc",
@@ -705,41 +786,49 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     border: "1px solid #e5e7eb",
   },
+
   resultText: {
     margin: "8px 0",
     fontSize: "18px",
   },
+
   resultButtons: {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
   },
+
   questionsCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   sectionTitle: {
     marginTop: 0,
     marginBottom: "20px",
     fontSize: "28px",
   },
+
   questionBlock: {
     padding: "22px 0",
     borderBottom: "1px solid #e5e7eb",
   },
+
   questionTitle: {
     marginTop: 0,
     marginBottom: "16px",
     fontSize: "22px",
     lineHeight: 1.5,
   },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
   },
+
   optionButton: {
     width: "100%",
     textAlign: "left",
@@ -752,10 +841,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     transition: "all 0.2s ease",
   },
+
   optionLetter: {
     fontWeight: 700,
     minWidth: "22px",
   },
+
   feedbackBox: {
     marginTop: "14px",
     padding: "14px",
@@ -763,11 +854,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid",
     lineHeight: 1.5,
   },
+
   submitRow: {
     marginTop: "28px",
     display: "flex",
     justifyContent: "center",
   },
+
   primaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -778,6 +871,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -788,6 +882,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   centerCard: {
     maxWidth: "700px",
     margin: "80px auto",
@@ -797,6 +892,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -804,11 +900,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
   },
+
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -819,6 +917,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     zIndex: 1000,
   },
+
   modalCard: {
     background: "white",
     borderRadius: "20px",
@@ -827,17 +926,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "480px",
     boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
   },
+
   modalTitle: {
     marginTop: 0,
     marginBottom: "14px",
     fontSize: "28px",
   },
+
   modalText: {
     margin: "8px 0",
     color: "#374151",
     lineHeight: 1.6,
     fontSize: "16px",
   },
+
   modalButtons: {
     display: "flex",
     justifyContent: "flex-end",

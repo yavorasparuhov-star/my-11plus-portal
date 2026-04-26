@@ -245,7 +245,7 @@ export default function ProfilePage() {
           </div>
 
           <div style={styles.heroTextWrap}>
-            <p style={styles.eyebrow}>Student profile</p>
+            <p style={styles.eyebrow}>Your Profile</p>
             <h1 style={styles.brandTitle}>YanBo Learning</h1>
             <p style={styles.brandSubtitle}>
               Manage your learning details and keep your 11+ progress connected
