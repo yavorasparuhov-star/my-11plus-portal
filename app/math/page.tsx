@@ -199,7 +199,9 @@ export default function MathPage() {
                   <span
                     style={{
                       ...styles.scoreBadge,
-                      ...getScoreBadgeStyle(loadingStats ? null : stats.mathScore),
+                      ...getScoreBadgeStyle(
+                        loadingStats ? null : stats.mathScore
+                      ),
                     }}
                   >
                     {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
@@ -231,22 +233,6 @@ export default function MathPage() {
               </button>
             </div>
           ))}
-        </div>
-
-        <div style={styles.bottomButtons}>
-          <button
-            onClick={() => router.push("/review/math")}
-            style={styles.secondaryButton}
-          >
-            Math Review
-          </button>
-
-          <button
-            onClick={() => router.push("/progress/math")}
-            style={styles.secondaryButton}
-          >
-            Math Progress
-          </button>
         </div>
       </div>
     </>
@@ -343,24 +329,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
-  },
-  bottomButtons: {
-    display: "flex",
-    gap: "16px",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    marginTop: "30px",
-  },
-  secondaryButton: {
-    padding: "12px 24px",
-    borderRadius: "12px",
-    border: "1px solid #90ee90",
-    background: "white",
     color: "#065f46",
     cursor: "pointer",
     fontWeight: 600,
