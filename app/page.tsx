@@ -54,7 +54,7 @@ export default function LandingPage() {
     },
     {
       title: "Monthly",
-      badge: "Most popular",
+      badge: "Flexible option",
       icon: "⭐",
       price: "£9.99 / month",
       text: "Flexible monthly access for regular 11+ practice and progress building.",
@@ -66,11 +66,11 @@ export default function LandingPage() {
       ],
       button: "Choose monthly",
       path: "/signup",
-      featured: true,
+      featured: false,
     },
     {
       title: "Yearly",
-      badge: "Best value",
+      badge: "Preferred choice",
       icon: "🏆",
       price: "£99 / year",
       text: "Best value for families who want long-term preparation and steady practice.",
@@ -82,7 +82,7 @@ export default function LandingPage() {
       ],
       button: "Choose yearly",
       path: "/signup",
-      featured: false,
+      featured: true,
     },
   ]
 
@@ -267,7 +267,9 @@ export default function LandingPage() {
                 <div
                   style={{
                     ...styles.featuresBox,
-                    background: plan.featured ? "rgba(255,255,255,0.08)" : "#f9fafb",
+                    background: plan.featured
+                      ? "rgba(255,255,255,0.08)"
+                      : "#f9fafb",
                   }}
                 >
                   {plan.features.map((feature) => (
@@ -565,6 +567,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#064e3b",
     border: "1px solid #064e3b",
     boxShadow: "0 18px 40px rgba(6,78,59,0.22)",
+    transform: "scale(1.03)",
   },
 
   planBadge: {
