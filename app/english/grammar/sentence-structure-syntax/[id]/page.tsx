@@ -18,7 +18,7 @@ type SentenceStructureSyntaxTest = {
   description: string | null
   difficulty: number | null
   created_at: string
-  is_free: boolean
+  is_free: boolean | null
 }
 
 type SentenceStructureSyntaxQuestion = {
@@ -44,6 +44,10 @@ function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
+function isFreeTest(test: SentenceStructureSyntaxTest) {
+  return test.is_free === true
+}
+
 export default function SentenceStructureSyntaxTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -54,7 +58,6 @@ export default function SentenceStructureSyntaxTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<SentenceStructureSyntaxTest | null>(null)
   const [questions, setQuestions] = useState<SentenceStructureSyntaxQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -65,6 +68,9 @@ export default function SentenceStructureSyntaxTestPage() {
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [reviewIds, setReviewIds] = useState<number[]>([])
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
   useEffect(() => {
     if (mode !== "review") {
@@ -94,6 +100,7 @@ export default function SentenceStructureSyntaxTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setAccessBlocked(null)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Sentence Structure & Syntax test ID.")
@@ -113,8 +120,7 @@ export default function SentenceStructureSyntaxTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
-        setPlan("guest")
-        setErrorMessage("Please sign in to start this test.")
+        setAccessBlocked("guest")
         setLoading(false)
         return
       }
@@ -141,8 +147,6 @@ export default function SentenceStructureSyntaxTestPage() {
           ? dbPlan
           : "free"
 
-      setPlan(safePlan)
-
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
         .select("id, title, description, difficulty, created_at, is_free")
@@ -157,6 +161,8 @@ export default function SentenceStructureSyntaxTestPage() {
           details: testError.details,
           hint: testError.hint,
           code: testError.code,
+          full: testError,
+          testId,
         })
 
         setErrorMessage("Could not load this Sentence Structure & Syntax test.")
@@ -165,14 +171,13 @@ export default function SentenceStructureSyntaxTestPage() {
       }
 
       const loadedTest = testData as SentenceStructureSyntaxTest
+      setTest(loadedTest)
 
       const canOpenTest =
-        hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
+        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
 
       if (!canOpenTest) {
-        setErrorMessage(
-          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
-        )
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -189,7 +194,6 @@ export default function SentenceStructureSyntaxTestPage() {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(loadedTest)
           setQuestions([])
           setLoading(false)
           return
@@ -206,6 +210,7 @@ export default function SentenceStructureSyntaxTestPage() {
           details: questionError.details,
           hint: questionError.hint,
           code: questionError.code,
+          full: questionError,
         })
 
         setErrorMessage("Could not load the questions for this test.")
@@ -213,13 +218,12 @@ export default function SentenceStructureSyntaxTestPage() {
         return
       }
 
-      setTest(loadedTest)
       setQuestions((questionData || []) as SentenceStructureSyntaxQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router, mode, reviewIds.join(",")])
+  }, [rawId, testId, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
@@ -384,13 +388,22 @@ export default function SentenceStructureSyntaxTestPage() {
           code: reviewError.code,
         })
       }
+
+      const existingReviewIds = Array.from(new Set(reviewIds))
+      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+      setReviewIds(updatedReviewIds)
     }
 
     if (mode === "review") {
       const remainingIds = reviewIds.filter(
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
+
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+      setReviewIds(remainingIds)
     }
 
     setScore(correctAnswers)
@@ -445,6 +458,56 @@ export default function SentenceStructureSyntaxTestPage() {
             ? "Loading Sentence Structure & Syntax review..."
             : "Loading Sentence Structure & Syntax test..."}
         </p>
+      </>
+    )
+  }
+
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Structure & Syntax
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Membership
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Structure & Syntax
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }

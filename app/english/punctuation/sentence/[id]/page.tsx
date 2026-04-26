@@ -94,12 +94,41 @@ export default function SentencePunctuationTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setQuestions([])
+      setAnswers({})
+      setSubmitted(false)
+      setScore(0)
+      setShowIncompleteModal(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Sentence Punctuation test ID.")
         setLoading(false)
         return
       }
+
+      const { data: testData, error: testError } = await supabase
+        .from("english_tests")
+        .select("id, title, description, difficulty, created_at, is_free")
+        .eq("id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
+        .single()
+
+      if (testError) {
+        console.error("Error loading sentence punctuation test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+        })
+
+        setErrorMessage("Could not load this Sentence Punctuation test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as SentencePunctuationTest
+      setTest(loadedTest)
 
       const {
         data: { session },
@@ -113,8 +142,8 @@ export default function SentencePunctuationTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
+        setUserId(null)
         setPlan("guest")
-        setErrorMessage("Please sign in to start this test.")
         setLoading(false)
         return
       }
@@ -143,36 +172,10 @@ export default function SentencePunctuationTestPage() {
 
       setPlan(safePlan)
 
-      const { data: testData, error: testError } = await supabase
-        .from("english_tests")
-        .select("id, title, description, difficulty, created_at, is_free")
-        .eq("id", testId)
-        .eq("main_category", MAIN_CATEGORY)
-        .eq("subcategory", SUBCATEGORY)
-        .single()
-
-      if (testError) {
-        console.error("Error loading sentence punctuation test:", {
-          message: testError.message,
-          details: testError.details,
-          hint: testError.hint,
-          code: testError.code,
-        })
-
-        setErrorMessage("Could not load this Sentence Punctuation test.")
-        setLoading(false)
-        return
-      }
-
-      const loadedTest = testData as SentencePunctuationTest
-
       const canOpenTest =
         hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
 
       if (!canOpenTest) {
-        setErrorMessage(
-          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
-        )
         setLoading(false)
         return
       }
@@ -189,7 +192,6 @@ export default function SentencePunctuationTestPage() {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(loadedTest)
           setQuestions([])
           setLoading(false)
           return
@@ -213,13 +215,17 @@ export default function SentencePunctuationTestPage() {
         return
       }
 
-      setTest(loadedTest)
       setQuestions((questionData || []) as SentencePunctuationQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router, mode, reviewIds.join(",")])
+  }, [rawId, testId, mode, reviewIds.join(",")])
+
+  const canAccessTest = useMemo(() => {
+    if (!test) return false
+    return hasFullAccess(plan) || (plan === "free" && test.is_free)
+  }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
@@ -485,6 +491,62 @@ export default function SentencePunctuationTestPage() {
     )
   }
 
+  if (plan === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Sign in to start this test</h1>
+
+            <p style={styles.subtitle}>
+              Please sign in or create a free account to access YanBo Learning
+              tests.
+            </p>
+
+            <div style={styles.accessButtonRow}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Punctuation
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (!canAccessTest) {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>This test is for paid members</h1>
+
+            <p style={styles.subtitle}>
+              Free members can access free tests only. Monthly and annual members
+              can access all YanBo Learning tests.
+            </p>
+
+            <div style={styles.accessButtonRow}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Membership Options
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Punctuation
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <Header />
@@ -564,7 +626,9 @@ export default function SentencePunctuationTestPage() {
 
             {questions.length === 0 ? (
               <div style={styles.emptyCard}>
-                <h2>{mode === "review" ? "No review questions found" : "No questions found"}</h2>
+                <h2>
+                  {mode === "review" ? "No review questions found" : "No questions found"}
+                </h2>
 
                 <p>
                   {mode === "review"
@@ -857,6 +921,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "32px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
+  },
+  accessButtonRow: {
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
   },
   emptyCard: {
     background: "white",

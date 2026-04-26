@@ -69,60 +69,16 @@ export default function NVRRotationsReflectionsTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
-  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
-    null
-  )
 
   useEffect(() => {
-    async function loadCurrentUserAndPlan() {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error("Error getting auth session:", sessionError)
-      }
-
-      const sessionUser = session?.user ?? null
-
-      if (!sessionUser) {
-        return {
-          userId: null,
-          plan: "guest" as UserPlan,
-        }
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("plan")
-        .eq("id", sessionUser.id)
-        .maybeSingle()
-
-      if (profileError) {
-        console.error("Error loading profile plan:", profileError)
-      }
-
-      const dbPlan = profile?.plan
-
-      const safePlan: UserPlan =
-        dbPlan === "monthly" ||
-        dbPlan === "annual" ||
-        dbPlan === "admin" ||
-        dbPlan === "free"
-          ? dbPlan
-          : "free"
-
-      return {
-        userId: sessionUser.id,
-        plan: safePlan,
-      }
-    }
-
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
-      setAccessBlocked(null)
+      setQuestions([])
+      setAnswers({})
+      setSubmitted(false)
+      setScore(0)
+      setShowIncompleteModal(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid NVR test ID.")
@@ -154,22 +110,53 @@ export default function NVRRotationsReflectionsTestPage() {
       const loadedTest = testData as NVRTest
       setTest(loadedTest)
 
-      const currentAccess = await loadCurrentUserAndPlan()
-      setUserId(currentAccess.userId)
-      setPlan(currentAccess.plan)
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-      if (!currentAccess.userId) {
-        setAccessBlocked("guest")
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
+
+      const user = session?.user ?? null
+
+      if (!user) {
+        setUserId(null)
+        setPlan("guest")
         setLoading(false)
         return
       }
 
-      const canStart =
-        hasFullAccess(currentAccess.plan) ||
-        (currentAccess.plan === "free" && isFreeTest(loadedTest))
+      setUserId(user.id)
 
-      if (!canStart) {
-        setAccessBlocked("upgrade")
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
+
+      const canOpenTest =
+        hasFullAccess(safePlan) ||
+        (safePlan === "free" && isFreeTest(loadedTest))
+
+      if (!canOpenTest) {
         setLoading(false)
         return
       }
@@ -201,8 +188,16 @@ export default function NVRRotationsReflectionsTestPage() {
     loadPage()
   }, [rawId, testId])
 
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+  const canAccessTest = useMemo(() => {
+    if (!test) return false
 
+    return (
+      hasFullAccess(plan) ||
+      (plan === "free" && isFreeTest(test))
+    )
+  }, [plan, test])
+
+  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
 
   useEffect(() => {
@@ -393,58 +388,6 @@ export default function NVRRotationsReflectionsTestPage() {
     )
   }
 
-  if (accessBlocked === "guest") {
-    return (
-      <>
-        <Header />
-        <div style={styles.page}>
-          <div style={styles.centerCard}>
-            <h1 style={styles.title}>Please sign in</h1>
-            <p style={styles.subtitle}>
-              Guests can browse the tests, but you need to sign in before starting a test.
-            </p>
-
-            <div style={styles.resultButtons}>
-              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
-                Sign In
-              </button>
-
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  if (accessBlocked === "upgrade") {
-    return (
-      <>
-        <Header />
-        <div style={styles.page}>
-          <div style={styles.centerCard}>
-            <h1 style={styles.title}>Members-only test</h1>
-            <p style={styles.subtitle}>
-              This test is not included in the free plan. Upgrade your plan to unlock it.
-            </p>
-
-            <div style={styles.resultButtons}>
-              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
-                View Upgrade Options
-              </button>
-
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    )
-  }
-
   if (errorMessage && !test) {
     return (
       <>
@@ -474,6 +417,62 @@ export default function NVRRotationsReflectionsTestPage() {
             <button onClick={goBackSafely} style={styles.primaryButton}>
               Back to Topic
             </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (plan === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Sign in to start this test</h1>
+
+            <p style={styles.subtitle}>
+              Please sign in or create a free account to access YanBo Learning
+              NVR tests.
+            </p>
+
+            <div style={styles.accessButtonRow}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (!canAccessTest) {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>This test is for paid members</h1>
+
+            <p style={styles.subtitle}>
+              Free members can access free tests only. Monthly and annual members
+              can access all YanBo Learning NVR tests.
+            </p>
+
+            <div style={styles.accessButtonRow}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Membership Options
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Topic
+              </button>
+            </div>
           </div>
         </div>
       </>
@@ -917,6 +916,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "32px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
+  },
+
+  accessButtonRow: {
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
   },
 
   message: {

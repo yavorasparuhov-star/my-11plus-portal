@@ -5,6 +5,8 @@ import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type WordRow = {
   id: number
   word: string
@@ -42,6 +44,7 @@ function SpellingContent() {
   }, [])
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [authChecked, setAuthChecked] = useState(false)
 
   const [words, setWords] = useState<WordRow[]>([])
@@ -73,19 +76,48 @@ function SpellingContent() {
     async function getUser() {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser()
 
+      if (userError) {
+        console.error("Error getting user:", userError)
+      }
+
       if (!user) {
-        router.push("/login")
+        setUserId(null)
+        setPlan("guest")
+        setAuthChecked(true)
         return
       }
 
       setUserId(user.id)
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
       setAuthChecked(true)
     }
 
     getUser()
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const savedTimer = localStorage.getItem("spelling_timer_enabled")
@@ -464,7 +496,42 @@ function SpellingContent() {
     return (
       <>
         <Header />
-        <div>Loading...</div>
+        <p style={styles.message}>Loading Spelling tests...</p>
+      </>
+    )
+  }
+
+  if (plan === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.center}>
+          <div style={styles.card}>
+            <h1>Sign in to start spelling practice</h1>
+
+            <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
+              Please sign in or create a free account to access YanBo Learning
+              spelling tests.
+            </p>
+
+            <div style={styles.accessButtonRow}>
+              <button onClick={() => router.push("/login")} style={styles.button}>
+                Sign In
+              </button>
+
+              <button
+                onClick={() => router.push("/english")}
+                style={{
+                  ...styles.button,
+                  backgroundColor: "#e5e7eb",
+                  color: "#111827",
+                }}
+              >
+                Back to English
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -760,6 +827,13 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontSize: "16px",
   },
+  accessButtonRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "10px",
+  },
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -834,5 +908,10 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     fontSize: "22px",
     fontWeight: "bold",
+  },
+  message: {
+    textAlign: "center",
+    marginTop: "40px",
+    fontSize: "18px",
   },
 }

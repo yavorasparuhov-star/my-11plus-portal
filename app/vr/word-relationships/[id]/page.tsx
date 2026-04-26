@@ -63,6 +63,10 @@ export default function VRWordRelationshipsTestPage() {
   const [loading, setLoading] = useState(true)
   const [test, setTest] = useState<VRTest | null>(null)
   const [questions, setQuestions] = useState<VRQuestion[]>([])
+
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userPlan, setUserPlan] = useState<UserPlan>("guest")
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<UserAnswerMap>({})
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
@@ -71,11 +75,6 @@ export default function VRWordRelationshipsTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [userId, setUserId] = useState<string | null>(null)
-  const [userPlan, setUserPlan] = useState<UserPlan>("guest")
-  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
-    null
-  )
 
   const currentQuestion = questions[currentIndex]
   const hasAccess = canUserAccessTest(userPlan, test)
@@ -94,51 +93,6 @@ export default function VRWordRelationshipsTestPage() {
   }, [currentQuestion, selectedAnswer])
 
   useEffect(() => {
-    async function loadCurrentUserAndPlan() {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error("Error getting auth session:", sessionError)
-      }
-
-      const sessionUser = session?.user ?? null
-
-      if (!sessionUser) {
-        return {
-          userId: null,
-          plan: "guest" as UserPlan,
-        }
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("plan")
-        .eq("id", sessionUser.id)
-        .maybeSingle()
-
-      if (profileError) {
-        console.error("Error loading profile plan:", profileError)
-      }
-
-      const dbPlan = profile?.plan
-
-      const safePlan: UserPlan =
-        dbPlan === "monthly" ||
-        dbPlan === "annual" ||
-        dbPlan === "admin" ||
-        dbPlan === "free"
-          ? dbPlan
-          : "free"
-
-      return {
-        userId: sessionUser.id,
-        plan: safePlan,
-      }
-    }
-
     async function loadVRTest() {
       setLoading(true)
       setFinished(false)
@@ -148,7 +102,6 @@ export default function VRWordRelationshipsTestPage() {
       setShowFeedback(false)
       setScore(0)
       setErrorMessage("")
-      setAccessBlocked(null)
       setQuestions([])
 
       if (!rawId || Number.isNaN(testId)) {
@@ -182,18 +135,49 @@ export default function VRWordRelationshipsTestPage() {
       const loadedTest = testData as VRTest
       setTest(loadedTest)
 
-      const currentAccess = await loadCurrentUserAndPlan()
-      setUserId(currentAccess.userId)
-      setUserPlan(currentAccess.plan)
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-      if (!currentAccess.userId) {
-        setAccessBlocked("guest")
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
+
+      const user = session?.user ?? null
+
+      if (!user) {
+        setUserId(null)
+        setUserPlan("guest")
         setLoading(false)
         return
       }
 
-      if (!canUserAccessTest(currentAccess.plan, loadedTest)) {
-        setAccessBlocked("upgrade")
+      setUserId(user.id)
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setUserPlan(safePlan)
+
+      if (!canUserAccessTest(safePlan, loadedTest)) {
         setLoading(false)
         return
       }
@@ -279,14 +263,14 @@ export default function VRWordRelationshipsTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion || !hasAccess) return
+    if (!currentQuestion || !hasAccess || !selectedAnswer) return
 
     const isLastQuestion = currentIndex === questions.length - 1
 
     if (isLastQuestion) {
       const finalAnswers = {
         ...userAnswers,
-        [currentQuestion.id]: selectedAnswer as AnswerOption,
+        [currentQuestion.id]: selectedAnswer,
       }
 
       const finalScore = questions.reduce((total, question) => {
@@ -477,18 +461,18 @@ export default function VRWordRelationshipsTestPage() {
     )
   }
 
-  if (accessBlocked === "guest") {
+  if (userPlan === "guest") {
     return (
       <>
         <Header />
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.emptyCard}>
-              <h2 style={styles.cardTitle}>Please sign in to start this test</h2>
+              <h2 style={styles.cardTitle}>Sign in to start this test</h2>
 
               <p style={styles.subtitle}>
-                Guests can browse the portal, but you need an account to start tests
-                and save progress.
+                Please sign in or create a free account to access YanBo Learning
+                VR tests and save progress.
               </p>
 
               <div style={styles.finishButtons}>
@@ -511,18 +495,18 @@ export default function VRWordRelationshipsTestPage() {
     )
   }
 
-  if (accessBlocked === "upgrade") {
+  if (!hasAccess) {
     return (
       <>
         <Header />
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.emptyCard}>
-              <h2 style={styles.cardTitle}>Members-only test</h2>
+              <h2 style={styles.cardTitle}>This test is for paid members</h2>
 
               <p style={styles.subtitle}>
-                This test is not included in the free plan. Your current plan is{" "}
-                <strong>{userPlan}</strong>. Upgrade your plan to unlock it.
+                Free members can access free tests only. Monthly and annual members
+                can access all YanBo Learning VR tests.
               </p>
 
               <div style={styles.finishButtons}>

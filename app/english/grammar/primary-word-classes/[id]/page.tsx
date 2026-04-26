@@ -19,7 +19,7 @@ type PrimaryWordClassesTest = {
   description: string | null
   difficulty: number | null
   created_at: string
-  is_free: boolean
+  is_free: boolean | null
 }
 
 type PrimaryWordClassesQuestion = {
@@ -45,6 +45,10 @@ function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
+function isFreeTest(test: PrimaryWordClassesTest) {
+  return test.is_free === true
+}
+
 export default function PrimaryWordClassesTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -65,6 +69,9 @@ export default function PrimaryWordClassesTestPage() {
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [reviewIds, setReviewIds] = useState<number[]>([])
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
   useEffect(() => {
     if (mode !== "review") {
@@ -96,6 +103,7 @@ export default function PrimaryWordClassesTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setAccessBlocked(null)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Primary Word Classes test ID.")
@@ -115,7 +123,7 @@ export default function PrimaryWordClassesTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
-        setErrorMessage("Please sign in to start this test.")
+        setAccessBlocked("guest")
         setLoading(false)
         return
       }
@@ -156,6 +164,8 @@ export default function PrimaryWordClassesTestPage() {
           details: testError.details,
           hint: testError.hint,
           code: testError.code,
+          full: testError,
+          testId,
         })
 
         setErrorMessage("Could not load this Primary Word Classes test.")
@@ -164,14 +174,13 @@ export default function PrimaryWordClassesTestPage() {
       }
 
       const loadedTest = testData as PrimaryWordClassesTest
+      setTest(loadedTest)
 
       const canOpenTest =
-        hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
+        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
 
       if (!canOpenTest) {
-        setErrorMessage(
-          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
-        )
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -188,7 +197,6 @@ export default function PrimaryWordClassesTestPage() {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(loadedTest)
           setQuestions([])
           setLoading(false)
           return
@@ -205,6 +213,7 @@ export default function PrimaryWordClassesTestPage() {
           details: questionError.details,
           hint: questionError.hint,
           code: questionError.code,
+          full: questionError,
         })
 
         setErrorMessage("Could not load the questions for this test.")
@@ -212,13 +221,12 @@ export default function PrimaryWordClassesTestPage() {
         return
       }
 
-      setTest(loadedTest)
       setQuestions((questionData || []) as PrimaryWordClassesQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router, mode, reviewIds.join(",")])
+  }, [rawId, testId, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -453,6 +461,56 @@ export default function PrimaryWordClassesTestPage() {
             ? "Loading Primary Word Classes review..."
             : "Loading Primary Word Classes test..."}
         </p>
+      </>
+    )
+  }
+
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Primary Word Classes
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Membership
+              </button>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Primary Word Classes
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -720,12 +778,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
-
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
-
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -733,7 +789,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
-
   heroTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -741,18 +796,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     flexWrap: "wrap",
   },
-
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
-
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
-
   badge: {
     padding: "10px 14px",
     borderRadius: "999px",
@@ -761,12 +813,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
-
   progressInfo: {
     marginTop: "20px",
     color: "#444",
   },
-
   inlineError: {
     marginTop: "12px",
     marginBottom: 0,
@@ -774,7 +824,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     fontWeight: 600,
   },
-
   resultBanner: {
     marginTop: "20px",
     background: "#f8fafc",
@@ -782,49 +831,41 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     border: "1px solid #e5e7eb",
   },
-
   resultText: {
     margin: "8px 0",
     fontSize: "18px",
   },
-
   resultButtons: {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
   },
-
   questionsCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
-
   sectionTitle: {
     marginTop: 0,
     marginBottom: "20px",
     fontSize: "28px",
   },
-
   questionBlock: {
     padding: "22px 0",
     borderBottom: "1px solid #e5e7eb",
   },
-
   questionTitle: {
     marginTop: 0,
     marginBottom: "16px",
     fontSize: "22px",
     lineHeight: 1.5,
   },
-
   optionsGrid: {
     display: "grid",
     gap: "12px",
   },
-
   optionButton: {
     width: "100%",
     textAlign: "left",
@@ -837,12 +878,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     transition: "all 0.2s ease",
   },
-
   optionLetter: {
     fontWeight: 700,
     minWidth: "22px",
   },
-
   feedbackBox: {
     marginTop: "14px",
     padding: "14px",
@@ -850,13 +889,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid",
     lineHeight: 1.5,
   },
-
   submitRow: {
     marginTop: "28px",
     display: "flex",
     justifyContent: "center",
   },
-
   primaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -867,7 +904,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
-
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -878,7 +914,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
-
   centerCard: {
     maxWidth: "700px",
     margin: "80px auto",
@@ -888,7 +923,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
-
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -896,13 +930,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
-
   message: {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
   },
-
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -913,7 +945,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     zIndex: 1000,
   },
-
   modalCard: {
     background: "white",
     borderRadius: "20px",
@@ -922,20 +953,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "480px",
     boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
   },
-
   modalTitle: {
     marginTop: 0,
     marginBottom: "14px",
     fontSize: "28px",
   },
-
   modalText: {
     margin: "8px 0",
     color: "#374151",
     lineHeight: 1.6,
     fontSize: "16px",
   },
-
   modalButtons: {
     display: "flex",
     justifyContent: "flex-end",
