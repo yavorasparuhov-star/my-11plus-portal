@@ -175,7 +175,7 @@ export default function ComprehensionTestPage() {
 
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
-        .select("id, title, passage, difficulty, access_level, is_free, created_at")
+        .select("id, title, passage, difficulty, created_at, is_free")
         .eq("id", testId)
         .eq("main_category", "comprehension")
         .eq("subcategory", "comprehension")
