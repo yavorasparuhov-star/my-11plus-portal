@@ -187,10 +187,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     transition: "all 0.2s ease",
   })
 
-  const displayName =
-    activeUser?.user_metadata?.nickname ||
-    activeUser?.user_metadata?.first_name ||
-    "Profile"
+const displayName =
+  activeUser?.user_metadata?.nickname ||
+  activeUser?.user_metadata?.first_name ||
+  activeUser?.email ||
+  "Profile"
 
   const initial = (
     activeUser?.user_metadata?.nickname?.[0] ||
