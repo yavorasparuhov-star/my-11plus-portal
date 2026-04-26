@@ -55,7 +55,6 @@ export default function PrimaryWordClassesTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<PrimaryWordClassesTest | null>(null)
   const [questions, setQuestions] = useState<PrimaryWordClassesQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -116,7 +115,6 @@ export default function PrimaryWordClassesTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
-        setPlan("guest")
         setErrorMessage("Please sign in to start this test.")
         setLoading(false)
         return
@@ -143,8 +141,6 @@ export default function PrimaryWordClassesTestPage() {
         dbPlan === "free"
           ? dbPlan
           : "free"
-
-      setPlan(safePlan)
 
       const { data: testData, error: testError } = await supabase
         .from("english_tests")

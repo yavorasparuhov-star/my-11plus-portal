@@ -7,6 +7,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
+type AnswerOption = "A" | "B" | "C" | "D"
+
 type EnglishComprehensionTest = {
   id: number
   title: string
@@ -24,7 +26,7 @@ type EnglishComprehensionQuestion = {
   option_b: string
   option_c: string
   option_d: string
-  correct_answer: string
+  correct_answer: AnswerOption
   explanation: string | null
   difficulty: number | null
   question_order: number
@@ -32,8 +34,12 @@ type EnglishComprehensionQuestion = {
 }
 
 type UserAnswerMap = {
-  [questionId: number]: "A" | "B" | "C" | "D"
+  [questionId: number]: AnswerOption
 }
+
+const MAIN_CATEGORY = "comprehension"
+const SUBCATEGORY = "comprehension"
+const REVIEW_STORAGE_KEY = "comprehension_review_ids"
 
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
@@ -53,7 +59,6 @@ export default function ComprehensionTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<EnglishComprehensionTest | null>(null)
   const [questions, setQuestions] = useState<EnglishComprehensionQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -75,7 +80,8 @@ export default function ComprehensionTestPage() {
         return
       }
 
-      const raw = localStorage.getItem("comprehension_review_ids")
+      const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
       if (!raw) {
         setReviewIds([])
         return
@@ -83,6 +89,7 @@ export default function ComprehensionTestPage() {
 
       try {
         const parsed = JSON.parse(raw)
+
         if (!Array.isArray(parsed)) {
           setReviewIds([])
           return
@@ -99,8 +106,8 @@ export default function ComprehensionTestPage() {
           .from("english_questions")
           .select("id")
           .in("id", rawIds)
-          .eq("main_category", "comprehension")
-          .eq("subcategory", "comprehension")
+          .eq("main_category", MAIN_CATEGORY)
+          .eq("subcategory", SUBCATEGORY)
 
         if (directRowsError) {
           console.error("Error loading comprehension review IDs:", directRowsError)
@@ -124,6 +131,7 @@ export default function ComprehensionTestPage() {
       setLoading(true)
       setErrorMessage("")
       setAccessBlocked(null)
+      setQuestions([])
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid comprehension test ID.")
@@ -143,6 +151,7 @@ export default function ComprehensionTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
+        setUserId(null)
         setAccessBlocked("guest")
         setLoading(false)
         return
@@ -170,32 +179,30 @@ export default function ComprehensionTestPage() {
           ? dbPlan
           : "free"
 
-      setPlan(safePlan)
-
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
         .select("id, title, passage, difficulty, created_at, is_free")
         .eq("id", testId)
-        .eq("main_category", "comprehension")
-        .eq("subcategory", "comprehension")
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .single()
 
-if (testError) {
-  console.error("Error loading comprehension test:", {
-    message: testError.message,
-    details: testError.details,
-    hint: testError.hint,
-    code: testError.code,
-    full: testError,
-    testId,
-  })
+      if (testError) {
+        console.error("Error loading comprehension test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+          full: testError,
+          testId,
+        })
 
-  setErrorMessage(
-    testError.message || "Could not load this comprehension test."
-  )
-  setLoading(false)
-  return
-}
+        setErrorMessage(
+          testError.message || "Could not load this comprehension test."
+        )
+        setLoading(false)
+        return
+      }
 
       const loadedTest = testData as EnglishComprehensionTest
       setTest(loadedTest)
@@ -211,10 +218,12 @@ if (testError) {
 
       let questionQuery = supabase
         .from("english_questions")
-        .select("*")
+        .select(
+          "id, test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, question_order, created_at"
+        )
         .eq("test_id", testId)
-        .eq("main_category", "comprehension")
-        .eq("subcategory", "comprehension")
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
         .order("question_order", { ascending: true })
 
       if (mode === "review") {
@@ -230,7 +239,14 @@ if (testError) {
       const { data: questionData, error: questionError } = await questionQuery
 
       if (questionError) {
-        console.error("Error loading comprehension questions:", questionError)
+        console.error("Error loading comprehension questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
+
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
@@ -272,6 +288,7 @@ if (testError) {
 
   function goHomeSafely() {
     const confirmed = confirmLeaveIfNeeded()
+
     if (!confirmed) return
 
     if (mode === "review") {
@@ -282,7 +299,7 @@ if (testError) {
     router.push("/english/comprehension")
   }
 
-  function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
+  function handleSelect(questionId: number, option: AnswerOption) {
     if (submitted) return
 
     setAnswers((prev) => ({
@@ -307,8 +324,8 @@ if (testError) {
       main_category: string
       subcategory: string | null
       question_text: string
-      user_answer: string | null
-      correct_answer: string
+      user_answer: AnswerOption | null
+      correct_answer: AnswerOption
       difficulty: number | null
     }[] = []
 
@@ -328,8 +345,8 @@ if (testError) {
           user_id: userId,
           test_id: test.id,
           question_id: question.id,
-          main_category: "comprehension",
-          subcategory: "comprehension",
+          main_category: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
           question_text: question.question_text,
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
@@ -345,8 +362,8 @@ if (testError) {
     const progressPayload = {
       user_id: userId,
       test_id: test.id,
-      main_category: "comprehension",
-      subcategory: "comprehension",
+      main_category: MAIN_CATEGORY,
+      subcategory: SUBCATEGORY,
       total_questions: totalQuestions,
       correct_answers: correctAnswers,
       success_rate: successRate,
@@ -358,7 +375,14 @@ if (testError) {
       .insert([progressPayload])
 
     if (progressError) {
-      console.error("Error saving comprehension progress:", progressError)
+      console.error("Error saving comprehension progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        payload: progressPayload,
+      })
+
       setErrorMessage(
         progressError.message || "Could not save your progress. Please try again."
       )
@@ -372,14 +396,19 @@ if (testError) {
           .from("english_review")
           .delete()
           .eq("user_id", userId)
-          .eq("main_category", "comprehension")
-          .eq("subcategory", "comprehension")
+          .eq("main_category", MAIN_CATEGORY)
+          .eq("subcategory", SUBCATEGORY)
           .in("question_id", correctlyAnsweredReviewQuestionIds)
 
         if (deleteReviewError) {
           console.error(
             "Error removing correctly answered comprehension review items:",
-            deleteReviewError
+            {
+              message: deleteReviewError.message,
+              details: deleteReviewError.details,
+              hint: deleteReviewError.hint,
+              code: deleteReviewError.code,
+            }
           )
         }
       }
@@ -389,14 +418,19 @@ if (testError) {
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
-        console.error("Error saving comprehension review:", reviewError)
+        console.error("Error saving comprehension review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+        })
       }
 
       const existingReviewIds = Array.from(new Set(reviewIds))
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
 
-      localStorage.setItem("comprehension_review_ids", JSON.stringify(updatedReviewIds))
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
       setReviewIds(updatedReviewIds)
     }
 
@@ -405,7 +439,7 @@ if (testError) {
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
 
-      localStorage.setItem("comprehension_review_ids", JSON.stringify(remainingIds))
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
       setReviewIds(remainingIds)
     }
 
@@ -433,7 +467,7 @@ if (testError) {
 
   function getOptionText(
     question: EnglishComprehensionQuestion,
-    option: "A" | "B" | "C" | "D"
+    option: AnswerOption
   ) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
@@ -551,6 +585,7 @@ if (testError) {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -559,6 +594,7 @@ if (testError) {
                 <h1 style={styles.title}>
                   {mode === "review" ? "📖 Review:" : "📖"} {test.title}
                 </h1>
+
                 <p style={styles.subtitle}>
                   {mode === "review"
                     ? "Answer your saved review questions carefully, then submit."
@@ -581,14 +617,19 @@ if (testError) {
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
                   You scored <strong>{score}</strong> out of{" "}
                   <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
-                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                    {questions.length > 0
+                      ? Math.round((score / questions.length) * 100)
+                      : 0}
+                    %
                   </strong>
                 </p>
 
@@ -596,6 +637,7 @@ if (testError) {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Test
                   </button>
+
                   <button onClick={goHomeSafely} style={styles.primaryButton}>
                     Back to Comprehension
                   </button>
@@ -614,6 +656,7 @@ if (testError) {
 
           <div style={styles.passageCard}>
             <h2 style={styles.sectionTitle}>Passage</h2>
+
             <div style={styles.passageText}>
               {(test.passage || "No passage available.")
                 .split("\n")
@@ -635,6 +678,7 @@ if (testError) {
                 <h2>
                   {mode === "review" ? "No review questions found" : "No questions found"}
                 </h2>
+
                 <p>
                   {mode === "review"
                     ? "There are no saved review questions for this test."
@@ -710,10 +754,7 @@ if (testError) {
                             Correct answer:{" "}
                             <strong>
                               {question.correct_answer} —{" "}
-                              {getOptionText(
-                                question,
-                                question.correct_answer as "A" | "B" | "C" | "D"
-                              )}
+                              {getOptionText(question, question.correct_answer)}
                             </strong>
                           </p>
                         )}
@@ -752,11 +793,14 @@ if (testError) {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
@@ -766,6 +810,7 @@ if (testError) {
               >
                 Go Back
               </button>
+
               <button onClick={submitTest} style={styles.primaryButton}>
                 Submit Anyway
               </button>
@@ -781,10 +826,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -792,6 +839,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   heroTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -799,15 +847,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     flexWrap: "wrap",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   badge: {
     padding: "10px 14px",
     borderRadius: "999px",
@@ -816,10 +867,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
+
   progressInfo: {
     marginTop: "20px",
     color: "#444",
   },
+
   inlineError: {
     marginTop: "12px",
     marginBottom: 0,
@@ -827,6 +880,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     fontWeight: 600,
   },
+
   resultBanner: {
     marginTop: "20px",
     background: "#f8fafc",
@@ -834,16 +888,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     border: "1px solid #e5e7eb",
   },
+
   resultText: {
     margin: "8px 0",
     fontSize: "18px",
   },
+
   resultButtons: {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
   },
+
   passageCard: {
     background: "white",
     borderRadius: "20px",
@@ -851,39 +908,47 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   questionsCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   sectionTitle: {
     marginTop: 0,
     marginBottom: "20px",
     fontSize: "28px",
   },
+
   passageText: {
     lineHeight: 1.8,
     fontSize: "17px",
     color: "#1f2937",
   },
+
   paragraph: {
     marginBottom: "18px",
   },
+
   questionBlock: {
     padding: "22px 0",
     borderBottom: "1px solid #e5e7eb",
   },
+
   questionTitle: {
     marginTop: 0,
     marginBottom: "16px",
     fontSize: "22px",
     lineHeight: 1.5,
   },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
   },
+
   optionButton: {
     width: "100%",
     textAlign: "left",
@@ -896,10 +961,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     transition: "all 0.2s ease",
   },
+
   optionLetter: {
     fontWeight: 700,
     minWidth: "22px",
   },
+
   feedbackBox: {
     marginTop: "14px",
     padding: "14px",
@@ -907,11 +974,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid",
     lineHeight: 1.5,
   },
+
   submitRow: {
     marginTop: "28px",
     display: "flex",
     justifyContent: "center",
   },
+
   primaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -922,6 +991,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -932,6 +1002,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   centerCard: {
     maxWidth: "700px",
     margin: "40px auto",
@@ -941,11 +1012,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
   },
+
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -956,6 +1029,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     zIndex: 1000,
   },
+
   modalCard: {
     background: "white",
     borderRadius: "20px",
@@ -964,17 +1038,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "480px",
     boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
   },
+
   modalTitle: {
     marginTop: 0,
     marginBottom: "14px",
     fontSize: "28px",
   },
+
   modalText: {
     margin: "8px 0",
     color: "#374151",
     lineHeight: 1.6,
     fontSize: "16px",
   },
+
   modalButtons: {
     display: "flex",
     justifyContent: "flex-end",
