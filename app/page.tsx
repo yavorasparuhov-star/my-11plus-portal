@@ -70,7 +70,7 @@ export default function LandingPage() {
     },
     {
       title: "Yearly",
-      badge: "Preferred choice / best value",
+      badge: "Preferred choice",
       icon: "🏆",
       price: "£99 / year",
       text: "Best value for families who want long-term preparation and steady practice.",
