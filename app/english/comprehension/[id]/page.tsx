@@ -12,9 +12,8 @@ type EnglishComprehensionTest = {
   title: string
   passage: string | null
   difficulty: number | null
-  access_level?: string | null
-  is_free?: boolean | null
   created_at: string
+  is_free: boolean | null
 }
 
 type EnglishComprehensionQuestion = {
@@ -41,7 +40,7 @@ function hasFullAccess(plan: UserPlan) {
 }
 
 function isFreeTest(test: EnglishComprehensionTest) {
-  return test.is_free === true || test.access_level === "free"
+  return test.is_free === true
 }
 
 export default function ComprehensionTestPage() {
