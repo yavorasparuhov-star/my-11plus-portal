@@ -181,12 +181,22 @@ export default function ComprehensionTestPage() {
         .eq("subcategory", "comprehension")
         .single()
 
-      if (testError || !testData) {
-        console.error("Error loading comprehension test:", testError)
-        setErrorMessage("Could not load this comprehension test.")
-        setLoading(false)
-        return
-      }
+if (testError) {
+  console.error("Error loading comprehension test:", {
+    message: testError.message,
+    details: testError.details,
+    hint: testError.hint,
+    code: testError.code,
+    full: testError,
+    testId,
+  })
+
+  setErrorMessage(
+    testError.message || "Could not load this comprehension test."
+  )
+  setLoading(false)
+  return
+}
 
       const loadedTest = testData as EnglishComprehensionTest
       setTest(loadedTest)
