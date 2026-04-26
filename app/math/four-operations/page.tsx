@@ -39,7 +39,14 @@ type TestWithProgress = MathTest & {
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
+function sortFreeTestsFirst(items: TestWithProgress[]) {
+  return [...items].sort((a, b) => {
+    if (a.is_free && !b.is_free) return -1
+    if (!a.is_free && b.is_free) return 1
 
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+}
 export default function FourOperationsPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,7 +132,7 @@ export default function FourOperationsPage() {
         isCompleted: false,
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -154,7 +161,7 @@ export default function FourOperationsPage() {
         isCompleted: false,
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -185,7 +192,7 @@ export default function FourOperationsPage() {
       }
     })
 
-    setTests(mergedTests)
+    setTests(sortFreeTestsFirst(mergedTests))
     setLoading(false)
   }
 

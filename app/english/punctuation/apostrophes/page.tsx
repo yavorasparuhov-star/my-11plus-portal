@@ -50,6 +50,15 @@ function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
+function sortFreeTestsFirst(items: TestWithProgress[]) {
+  return [...items].sort((a, b) => {
+    if (a.is_free && !b.is_free) return -1
+    if (!a.is_free && b.is_free) return 1
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
+}
+
 export default function ApostrophesPage() {
   return (
     <Suspense
@@ -218,7 +227,7 @@ function ApostrophesContent() {
         reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -250,7 +259,7 @@ function ApostrophesContent() {
         reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -280,7 +289,7 @@ function ApostrophesContent() {
       }
     })
 
-    setTests(mergedTests)
+    setTests(sortFreeTestsFirst(mergedTests))
     setLoading(false)
   }
 
