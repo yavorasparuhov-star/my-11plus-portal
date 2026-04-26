@@ -5,6 +5,8 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabaseClient"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type ProfileFormData = {
   first_name: string
   last_name: string
@@ -19,6 +21,7 @@ type ProfileRow = {
   nickname: string | null
   phone: string | null
   email: string | null
+  plan: string | null
 }
 
 export default function ProfilePage() {
@@ -28,6 +31,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
+  const [plan, setPlan] = useState<UserPlan>("free")
 
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: "",
@@ -37,7 +41,22 @@ export default function ProfilePage() {
     email: "",
   })
 
+  function normalisePlan(value: string | null | undefined): UserPlan {
+    if (
+      value === "free" ||
+      value === "monthly" ||
+      value === "annual" ||
+      value === "admin"
+    ) {
+      return value
+    }
+
+    return "free"
+  }
+
   useEffect(() => {
+    let mounted = true
+
     async function loadProfile() {
       setLoading(true)
       setMessage("")
@@ -47,8 +66,10 @@ export default function ProfilePage() {
         error: userError,
       } = await supabase.auth.getUser()
 
+      if (!mounted) return
+
       if (userError || !user) {
-        router.push("/login")
+        router.replace("/login")
         return
       }
 
@@ -56,9 +77,11 @@ export default function ProfilePage() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("first_name, last_name, nickname, phone, email")
+        .select("first_name, last_name, nickname, phone, email, plan")
         .eq("id", user.id)
         .maybeSingle()
+
+      if (!mounted) return
 
       if (profileError) {
         console.error("Error loading profile:", profileError)
@@ -72,6 +95,7 @@ export default function ProfilePage() {
           email: user.email || "",
         })
 
+        setPlan("free")
         setLoading(false)
         return
       }
@@ -92,8 +116,10 @@ export default function ProfilePage() {
               phone: "",
               updated_at: new Date().toISOString(),
             })
-            .select("first_name, last_name, nickname, phone, email")
+            .select("first_name, last_name, nickname, phone, email, plan")
             .single()
+
+        if (!mounted) return
 
         if (createProfileError) {
           console.error("Error creating profile row:", createProfileError)
@@ -109,6 +135,7 @@ export default function ProfilePage() {
             email: user.email || "",
           })
 
+          setPlan("free")
           setLoading(false)
           return
         }
@@ -124,10 +151,15 @@ export default function ProfilePage() {
         email: safeProfile?.email || user.email || "",
       })
 
+      setPlan(normalisePlan(safeProfile?.plan))
       setLoading(false)
     }
 
     loadProfile()
+
+    return () => {
+      mounted = false
+    }
   }, [router])
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -154,7 +186,6 @@ export default function ProfilePage() {
       nickname: formData.nickname.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim() || user.email || "",
-      plan: "free",
       updated_at: new Date().toISOString(),
     })
 
@@ -162,7 +193,7 @@ export default function ProfilePage() {
       console.error("Error saving profile:", error)
       setMessage("There was a problem saving your profile. Please try again.")
     } else {
-      setMessage("Profile saved successfully.")
+      setMessage("Profile saved successfully. Refresh the page if the header name has not updated yet.")
     }
 
     setSaving(false)
@@ -171,6 +202,22 @@ export default function ProfilePage() {
   function handleChangePassword() {
     router.push("/forgot-password")
   }
+
+  const planLabel =
+    plan === "admin"
+      ? "Admin"
+      : plan === "monthly"
+        ? "Monthly"
+        : plan === "annual"
+          ? "Annual"
+          : "Free"
+
+  const planStyle =
+    plan === "admin"
+      ? styles.adminPlanBadge
+      : plan === "monthly" || plan === "annual"
+        ? styles.paidPlanBadge
+        : styles.freePlanBadge
 
   if (loading) {
     return (
@@ -197,13 +244,17 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div>
+          <div style={styles.heroTextWrap}>
             <p style={styles.eyebrow}>Student profile</p>
             <h1 style={styles.brandTitle}>YanBo Learning</h1>
             <p style={styles.brandSubtitle}>
               Manage your learning details and keep your 11+ progress connected
               to your account.
             </p>
+          </div>
+
+          <div style={{ ...styles.planBadge, ...planStyle }}>
+            {planLabel}
           </div>
         </section>
 
@@ -212,9 +263,23 @@ export default function ProfilePage() {
             <div style={styles.infoCard}>
               <h2 style={styles.cardTitle}>Your account</h2>
               <p style={styles.cardText}>
-                These details help personalise the YanBo Learning experience across
-                tests, progress tracking and review pages.
+                These details help personalise the YanBo Learning experience
+                across tests, progress tracking and review pages.
               </p>
+
+              <div style={styles.accountSummary}>
+                <div>
+                  <p style={styles.summaryLabel}>Current plan</p>
+                  <p style={styles.summaryValue}>{planLabel}</p>
+                </div>
+
+                <div>
+                  <p style={styles.summaryLabel}>Account email</p>
+                  <p style={styles.summaryValue}>
+                    {formData.email || user?.email || "Not set"}
+                  </p>
+                </div>
+              </div>
 
               <div style={styles.brandMiniCard}>
                 <div style={styles.miniLogoWrap}>
@@ -240,8 +305,8 @@ export default function ProfilePage() {
               <h2 style={styles.cardTitle}>Account security</h2>
 
               <p style={styles.cardText}>
-                Need to change your password? We will send a secure password reset
-                link to your email address.
+                Need to change your password? We will send a secure password
+                reset link to your email address.
               </p>
 
               <button
@@ -263,7 +328,7 @@ export default function ProfilePage() {
               <div>
                 <h2 style={styles.cardTitle}>Profile details</h2>
                 <p style={styles.cardText}>
-                  Update your personal details below.
+                  Update the details shown in your account and header menu.
                 </p>
               </div>
             </div>
@@ -324,6 +389,20 @@ export default function ProfilePage() {
                   type="email"
                 />
               </label>
+
+              <label style={{ ...styles.label, ...styles.fullWidth }}>
+                Membership plan
+                <input
+                  value={planLabel}
+                  readOnly
+                  style={{
+                    ...styles.input,
+                    background: "#f9fafb",
+                    color: "#6b7280",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </label>
             </div>
 
             {message && (
@@ -380,6 +459,11 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
     border: "1px solid rgba(226, 232, 240, 0.9)",
     marginBottom: 24,
+    position: "relative",
+  },
+
+  heroTextWrap: {
+    flex: 1,
   },
 
   logoWrap: {
@@ -422,6 +506,33 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "1rem",
     lineHeight: 1.6,
     color: "#4b5563",
+  },
+
+  planBadge: {
+    padding: "9px 14px",
+    borderRadius: 999,
+    fontSize: "0.85rem",
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+    border: "1px solid",
+  },
+
+  freePlanBadge: {
+    background: "#eef2ff",
+    color: "#3730a3",
+    borderColor: "#c7d2fe",
+  },
+
+  paidPlanBadge: {
+    background: "#dcfce7",
+    color: "#166534",
+    borderColor: "#86efac",
+  },
+
+  adminPlanBadge: {
+    background: "#fef3c7",
+    color: "#92400e",
+    borderColor: "#fcd34d",
   },
 
   contentGrid: {
@@ -484,6 +595,29 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.95rem",
     cursor: "pointer",
     boxShadow: "0 8px 18px rgba(79, 70, 229, 0.16)",
+  },
+
+  accountSummary: {
+    marginTop: 20,
+    display: "grid",
+    gap: 12,
+  },
+
+  summaryLabel: {
+    margin: "0 0 4px",
+    fontSize: "0.8rem",
+    color: "#6b7280",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+
+  summaryValue: {
+    margin: 0,
+    color: "#111827",
+    fontWeight: 800,
+    fontSize: "0.95rem",
+    wordBreak: "break-word",
   },
 
   formCard: {

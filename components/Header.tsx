@@ -13,6 +13,13 @@ type HeaderProps = {
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
+type HeaderProfile = {
+  plan: UserPlan
+  nickname: string
+  first_name: string
+  email: string
+}
+
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -23,6 +30,12 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
   const [loadingUser, setLoadingUser] = useState(!propUser)
   const [plan, setPlan] = useState<UserPlan>("guest")
+  const [profile, setProfile] = useState<HeaderProfile>({
+    plan: "guest",
+    nickname: "",
+    first_name: "",
+    email: "",
+  })
 
   useEffect(() => {
     setMenuOpen(false)
@@ -49,32 +62,45 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   useEffect(() => {
     let mounted = true
 
-    async function loadProfilePlan(userToLoad: any) {
-      const { data: profile, error } = await supabase
+    function normalisePlan(value: string | null | undefined): UserPlan {
+      if (
+        value === "monthly" ||
+        value === "annual" ||
+        value === "admin" ||
+        value === "free"
+      ) {
+        return value
+      }
+
+      return "free"
+    }
+
+    async function loadProfile(userToLoad: any) {
+      const { data, error } = await supabase
         .from("profiles")
-        .select("plan")
+        .select("plan, nickname, first_name, email")
         .eq("id", userToLoad.id)
         .maybeSingle()
 
       if (error) {
-        console.error("Error loading profile plan:", error)
+        console.error("Error loading header profile:", error)
       }
 
       if (!mounted) return
 
-      const dbPlan = profile?.plan
+      const safePlan = normalisePlan(data?.plan)
 
-      setPlan(
-        dbPlan === "monthly" ||
-          dbPlan === "annual" ||
-          dbPlan === "admin" ||
-          dbPlan === "free"
-          ? dbPlan
-          : "free"
-      )
+      setPlan(safePlan)
+
+      setProfile({
+        plan: safePlan,
+        nickname: data?.nickname || "",
+        first_name: data?.first_name || "",
+        email: data?.email || userToLoad.email || "",
+      })
     }
 
-    async function loadUserAndPlan(sessionUser?: any) {
+    async function loadUserAndProfile(sessionUser?: any) {
       try {
         const userToLoad = propUser ?? sessionUser
 
@@ -82,7 +108,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           if (!mounted) return
 
           setCurrentUser(userToLoad)
-          await loadProfilePlan(userToLoad)
+          await loadProfile(userToLoad)
 
           if (!mounted) return
           setLoadingUser(false)
@@ -105,11 +131,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
         if (!sessionUserFromClient) {
           setPlan("guest")
+          setProfile({
+            plan: "guest",
+            nickname: "",
+            first_name: "",
+            email: "",
+          })
           setLoadingUser(false)
           return
         }
 
-        await loadProfilePlan(sessionUserFromClient)
+        await loadProfile(sessionUserFromClient)
 
         if (!mounted) return
         setLoadingUser(false)
@@ -120,17 +152,23 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
         setCurrentUser(null)
         setPlan("guest")
+        setProfile({
+          plan: "guest",
+          nickname: "",
+          first_name: "",
+          email: "",
+        })
         setLoadingUser(false)
       }
     }
 
-    loadUserAndPlan()
+    loadUserAndProfile()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
-      loadUserAndPlan(session?.user ?? null)
+      loadUserAndProfile(session?.user ?? null)
     })
 
     return () => {
@@ -163,6 +201,12 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
     setCurrentUser(null)
     setPlan("guest")
+    setProfile({
+      plan: "guest",
+      nickname: "",
+      first_name: "",
+      email: "",
+    })
 
     router.replace("/login")
     router.refresh()
@@ -187,15 +231,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     transition: "all 0.2s ease",
   })
 
-const displayName =
-  activeUser?.user_metadata?.nickname ||
-  activeUser?.user_metadata?.first_name ||
-  activeUser?.email ||
-  "Profile"
+  const displayName =
+    profile.nickname ||
+    profile.first_name ||
+    profile.email ||
+    activeUser?.email ||
+    "Profile"
 
   const initial = (
-    activeUser?.user_metadata?.nickname?.[0] ||
-    activeUser?.user_metadata?.first_name?.[0] ||
+    profile.nickname?.[0] ||
+    profile.first_name?.[0] ||
+    profile.email?.[0] ||
     activeUser?.email?.[0] ||
     "U"
   ).toUpperCase()
@@ -413,6 +459,7 @@ const displayName =
                   type="button"
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                   aria-label="Open profile menu"
+                  title={displayName}
                   style={{
                     width: "38px",
                     height: "38px",
@@ -438,7 +485,7 @@ const displayName =
                       position: "absolute",
                       right: 0,
                       top: "48px",
-                      width: "210px",
+                      width: "230px",
                       background: "white",
                       border: "1px solid #e5e7eb",
                       borderRadius: "16px",
@@ -771,10 +818,14 @@ const displayName =
                   </div>
 
                   <span
+                    title={displayName}
                     style={{
                       fontSize: "14px",
                       color: "#1f2937",
                       fontWeight: 700,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {displayName}

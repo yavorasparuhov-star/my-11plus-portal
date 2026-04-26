@@ -69,7 +69,7 @@ export default function SignupPage() {
     setSuccess("Account created! Please check your email if confirmation is required, then log in.")
 
     setTimeout(() => {
-      router.push("/login")
+      router.replace("/login")
     }, 1200)
   }
 

@@ -130,7 +130,7 @@ if (!user) {
 
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
-        .select("id, title, passage, difficulty, created_at")
+        .select("id, title, passage, difficulty, created_at, is_free")
         .eq("id", testId)
         .eq("main_category", "comprehension")
         .eq("subcategory", "comprehension")

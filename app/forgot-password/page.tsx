@@ -9,12 +9,10 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+    const [success, setSuccess] = useState<string | null>(null)
 
 const handleResetPassword = async () => {
   setError(null)
-  setMessage(null)
   setSuccess(null)
 
   const trimmedEmail = email.trim()
@@ -130,18 +128,7 @@ const handleResetPassword = async () => {
             </p>
           )}
 
-          {message && (
-            <p
-              style={{
-                color: "#065f46",
-                marginBottom: "16px",
-                fontSize: "15px",
-              }}
-            >
-              {message}
-            </p>
-          )}
-
+         
           {success && (
             <p
               style={{
@@ -158,26 +145,30 @@ const handleResetPassword = async () => {
           )}
 
           <button
-            onClick={handleResetPassword}
-            disabled={loading}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#d4f5d0")}
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "10px",
-              border: "none",
-              background: "#d4f5d0",
-              color: "#065f46",
-              fontSize: "16px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              marginBottom: "12px",
-            }}
-          >
-            {loading ? "Sending..." : "Send Reset Link"}
-          </button>
+  onClick={handleResetPassword}
+  disabled={loading}
+  onMouseEnter={(e) => {
+    if (!loading) e.currentTarget.style.background = "#bbf7d0"
+  }}
+  onMouseLeave={(e) => {
+    if (!loading) e.currentTarget.style.background = "#d4f5d0"
+  }}
+  style={{
+    width: "100%",
+    padding: "14px",
+    borderRadius: "10px",
+    border: "none",
+    background: loading ? "#e5e7eb" : "#d4f5d0",
+    color: loading ? "#6b7280" : "#065f46",
+    fontSize: "16px",
+    fontWeight: "600",
+    cursor: loading ? "not-allowed" : "pointer",
+    transition: "all 0.2s ease",
+    marginBottom: "12px",
+  }}
+>
+  {loading ? "Sending..." : "Send Reset Link"}
+</button>
 
           <div style={{ textAlign: "center" }}>
             <Link
