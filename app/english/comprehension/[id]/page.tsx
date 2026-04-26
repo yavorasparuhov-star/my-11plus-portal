@@ -431,7 +431,8 @@ export default function ComprehensionTestPage() {
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-      setReviewIds(updatedReviewIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     if (mode === "review") {
@@ -440,7 +441,8 @@ export default function ComprehensionTestPage() {
       )
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-      setReviewIds(remainingIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     setScore(correctAnswers)
@@ -811,9 +813,18 @@ export default function ComprehensionTestPage() {
                 Go Back
               </button>
 
-              <button onClick={submitTest} style={styles.primaryButton}>
-                Submit Anyway
-              </button>
+              <button
+  type="button"
+  onClick={submitTest}
+  disabled={submitting}
+  style={{
+    ...styles.primaryButton,
+    opacity: submitting ? 0.7 : 1,
+    cursor: submitting ? "not-allowed" : "pointer",
+  }}
+>
+  {submitting ? "Submitting..." : "Submit Anyway"}
+</button>
             </div>
           </div>
         </div>

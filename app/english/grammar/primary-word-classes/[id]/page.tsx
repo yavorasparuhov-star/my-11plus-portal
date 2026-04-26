@@ -269,7 +269,7 @@ export default function PrimaryWordClassesTestPage() {
   }
 
   function handleSelect(questionId: number, option: AnswerOption) {
-    if (submitted) return
+  if (submitted || submitting) return
 
     setAnswers((prev) => ({
       ...prev,
@@ -277,11 +277,12 @@ export default function PrimaryWordClassesTestPage() {
     }))
   }
 
-  async function submitTest() {
-    if (!userId || !test) return
-    if (questions.length === 0) return
+async function submitTest() {
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
-    setSubmitting(true)
+  setSubmitting(true)
     setErrorMessage("")
 
     let correctAnswers = 0
@@ -400,7 +401,8 @@ export default function PrimaryWordClassesTestPage() {
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-      setReviewIds(updatedReviewIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     if (mode === "review") {
@@ -409,7 +411,8 @@ export default function PrimaryWordClassesTestPage() {
       )
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-      setReviewIds(remainingIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     setScore(correctAnswers)
@@ -421,8 +424,9 @@ export default function PrimaryWordClassesTestPage() {
   }
 
   async function handleSubmit() {
-    if (!userId || !test) return
-    if (questions.length === 0) return
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
     const unansweredCount = questions.length - answeredCount
 
@@ -726,8 +730,9 @@ export default function PrimaryWordClassesTestPage() {
             {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
+  type="button"
+  onClick={handleSubmit}
+  disabled={submitting}
                   style={{
                     ...styles.primaryButton,
                     opacity: submitting ? 0.7 : 1,
@@ -763,9 +768,18 @@ export default function PrimaryWordClassesTestPage() {
                 Go Back
               </button>
 
-              <button onClick={submitTest} style={styles.primaryButton}>
-                Submit Anyway
-              </button>
+              <button
+  type="button"
+  onClick={submitTest}
+  disabled={submitting}
+  style={{
+    ...styles.primaryButton,
+    opacity: submitting ? 0.7 : 1,
+    cursor: submitting ? "not-allowed" : "pointer",
+  }}
+>
+  {submitting ? "Submitting..." : "Submit Anyway"}
+</button>
             </div>
           </div>
         </div>

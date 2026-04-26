@@ -265,7 +265,7 @@ export default function DirectSpeechPunctuationTestPage() {
   }
 
   function handleSelect(questionId: number, option: AnswerOption) {
-    if (submitted) return
+  if (submitted || submitting) return
 
     setAnswers((prev) => ({
       ...prev,
@@ -396,7 +396,8 @@ export default function DirectSpeechPunctuationTestPage() {
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-      setReviewIds(updatedReviewIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     if (mode === "review") {
@@ -405,7 +406,8 @@ export default function DirectSpeechPunctuationTestPage() {
       )
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-      setReviewIds(remainingIds)
+// Do not call setReviewIds here.
+// It reloads the page after submit and clears the result screen.
     }
 
     setScore(correctAnswers)
@@ -417,8 +419,9 @@ export default function DirectSpeechPunctuationTestPage() {
   }
 
   async function handleSubmit() {
-    if (!userId || !test) return
-    if (questions.length === 0) return
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
     const unansweredCount = questions.length - answeredCount
 
@@ -731,8 +734,9 @@ export default function DirectSpeechPunctuationTestPage() {
             {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
+  type="button"
+  onClick={handleSubmit}
+  disabled={submitting}
                   style={{
                     ...styles.primaryButton,
                     opacity: submitting ? 0.7 : 1,
@@ -768,9 +772,18 @@ export default function DirectSpeechPunctuationTestPage() {
                 Go Back
               </button>
 
-              <button onClick={submitTest} style={styles.primaryButton}>
-                Submit Anyway
-              </button>
+              <button
+  type="button"
+  onClick={submitTest}
+  disabled={submitting}
+  style={{
+    ...styles.primaryButton,
+    opacity: submitting ? 0.7 : 1,
+    cursor: submitting ? "not-allowed" : "pointer",
+  }}
+>
+  {submitting ? "Submitting..." : "Submit Anyway"}
+</button>
             </div>
           </div>
         </div>
