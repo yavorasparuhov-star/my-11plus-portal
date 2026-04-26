@@ -265,7 +265,7 @@ export default function SentencePunctuationTestPage() {
   }
 
   function handleSelect(questionId: number, option: AnswerOption) {
-    if (submitted) return
+    if (submitted || submitting) return
 
     setAnswers((prev) => ({
       ...prev,
@@ -274,146 +274,176 @@ export default function SentencePunctuationTestPage() {
   }
 
   async function submitTest() {
+    if (submitting) return
     if (!userId || !test) return
     if (questions.length === 0) return
 
     setSubmitting(true)
     setErrorMessage("")
 
-    let correctAnswers = 0
+    try {
+      let correctAnswers = 0
 
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      main_category: string
-      subcategory: string
-      question_text: string
-      user_answer: AnswerOption | null
-      correct_answer: AnswerOption
-      difficulty: number | null
-    }[] = []
+      const wrongAnswersForReview: {
+        user_id: string
+        test_id: number
+        question_id: number
+        main_category: string
+        subcategory: string
+        question_text: string
+        user_answer: AnswerOption | null
+        correct_answer: AnswerOption
+        difficulty: number | null
+      }[] = []
 
-    const correctlyAnsweredReviewQuestionIds: number[] = []
+      const correctlyAnsweredReviewQuestionIds: number[] = []
 
-    for (const question of questions) {
-      const selected = answers[question.id]
+      for (const question of questions) {
+        const selected = answers[question.id]
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
 
-        if (mode === "review") {
-          correctlyAnsweredReviewQuestionIds.push(question.id)
-        }
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          main_category: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
-          question_text: question.question_text,
-          user_answer: selected ?? null,
-          correct_answer: question.correct_answer,
-          difficulty: question.difficulty ?? test.difficulty ?? null,
-        })
-      }
-    }
-
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
-    const progressPayload = {
-      user_id: userId,
-      test_id: test.id,
-      main_category: MAIN_CATEGORY,
-      subcategory: SUBCATEGORY,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: test.difficulty ?? null,
-    }
-
-    const { error: progressError } = await supabase
-      .from("english_progress")
-      .insert([progressPayload])
-
-    if (progressError) {
-      console.error("Error saving sentence punctuation progress:", {
-        message: progressError.message,
-        details: progressError.details,
-        hint: progressError.hint,
-        code: progressError.code,
-        payload: progressPayload,
-      })
-
-      setErrorMessage(
-        progressError.message || "Could not save your progress. Please try again."
-      )
-      setSubmitting(false)
-      return
-    }
-
-    if (mode === "review") {
-      if (correctlyAnsweredReviewQuestionIds.length > 0) {
-        const { error: deleteReviewError } = await supabase
-          .from("english_review")
-          .delete()
-          .eq("user_id", userId)
-          .eq("main_category", MAIN_CATEGORY)
-          .eq("subcategory", SUBCATEGORY)
-          .in("question_id", correctlyAnsweredReviewQuestionIds)
-
-        if (deleteReviewError) {
-          console.error("Error removing correctly answered sentence punctuation review items:", {
-            message: deleteReviewError.message,
-            details: deleteReviewError.details,
-            hint: deleteReviewError.hint,
-            code: deleteReviewError.code,
+          if (mode === "review") {
+            correctlyAnsweredReviewQuestionIds.push(question.id)
+          }
+        } else {
+          wrongAnswersForReview.push({
+            user_id: userId,
+            test_id: test.id,
+            question_id: question.id,
+            main_category: MAIN_CATEGORY,
+            subcategory: SUBCATEGORY,
+            question_text: question.question_text,
+            user_answer: selected ?? null,
+            correct_answer: question.correct_answer,
+            difficulty: question.difficulty ?? test.difficulty ?? null,
           })
         }
       }
-    } else if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("english_review")
-        .insert(wrongAnswersForReview)
 
-      if (reviewError) {
-        console.error("Error saving sentence punctuation review:", {
-          message: reviewError.message,
-          details: reviewError.details,
-          hint: reviewError.hint,
-          code: reviewError.code,
-        })
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0
+
+      const progressPayload = {
+        user_id: userId,
+        test_id: test.id,
+        main_category: MAIN_CATEGORY,
+        subcategory: SUBCATEGORY,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
       }
 
-      const existingReviewIds = Array.from(new Set(reviewIds))
-      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
-      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+      const { error: progressError } = await supabase
+        .from("english_progress")
+        .insert([progressPayload])
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-      setReviewIds(updatedReviewIds)
+      if (progressError) {
+        console.error("Error saving sentence punctuation progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          payload: progressPayload,
+        })
+
+        setErrorMessage(
+          progressError.message ||
+            "Could not save your progress. Please try again."
+        )
+        setSubmitting(false)
+        return
+      }
+
+      if (mode === "review") {
+        if (correctlyAnsweredReviewQuestionIds.length > 0) {
+          const { error: deleteReviewError } = await supabase
+            .from("english_review")
+            .delete()
+            .eq("user_id", userId)
+            .eq("main_category", MAIN_CATEGORY)
+            .eq("subcategory", SUBCATEGORY)
+            .in("question_id", correctlyAnsweredReviewQuestionIds)
+
+          if (deleteReviewError) {
+            console.error(
+              "Error removing correctly answered sentence punctuation review items:",
+              {
+                message: deleteReviewError.message,
+                details: deleteReviewError.details,
+                hint: deleteReviewError.hint,
+                code: deleteReviewError.code,
+              }
+            )
+          }
+        }
+
+        const remainingIds = reviewIds.filter(
+          (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+        )
+
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+
+        /*
+          Important:
+          Do NOT call setReviewIds(remainingIds) here.
+
+          This page has a loadPage() effect that depends on reviewIds.
+          Updating reviewIds immediately after submit reloads the page,
+          clears answers, clears submitted state, and makes it look like
+          the test reset instead of submitting.
+        */
+      } else if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("english_review")
+          .insert(wrongAnswersForReview)
+
+        if (reviewError) {
+          console.error("Error saving sentence punctuation review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+          })
+        }
+
+        const existingReviewIds = Array.from(new Set(reviewIds))
+        const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+        const updatedReviewIds = Array.from(
+          new Set([...existingReviewIds, ...newWrongIds])
+        )
+
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+
+        /*
+          Important:
+          Do NOT call setReviewIds(updatedReviewIds) here.
+
+          Updating reviewIds after normal submit triggers the page-loading
+          effect again and wipes the result screen.
+        */
+      }
+
+      setScore(correctAnswers)
+      setSubmitted(true)
+      setShowIncompleteModal(false)
+      setSubmitting(false)
+
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch (error) {
+      console.error("Unexpected sentence punctuation submit error:", error)
+      setErrorMessage("Something went wrong while submitting. Please try again.")
+      setSubmitting(false)
     }
-
-    if (mode === "review") {
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
-      )
-
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-      setReviewIds(remainingIds)
-    }
-
-    setScore(correctAnswers)
-    setSubmitted(true)
-    setSubmitting(false)
-    setShowIncompleteModal(false)
-
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function handleSubmit() {
+    if (submitting) return
     if (!userId || !test) return
     if (questions.length === 0) return
 
@@ -427,7 +457,10 @@ export default function SentencePunctuationTestPage() {
     await submitTest()
   }
 
-  function getOptionText(question: SentencePunctuationQuestion, option: AnswerOption) {
+  function getOptionText(
+    question: SentencePunctuationQuestion,
+    option: AnswerOption
+  ) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -466,7 +499,7 @@ export default function SentencePunctuationTestPage() {
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Could not open test</h1>
             <p>{errorMessage}</p>
-            <button onClick={goBackSafely} style={styles.primaryButton}>
+            <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
               Back to Sentence Punctuation
             </button>
           </div>
@@ -482,7 +515,7 @@ export default function SentencePunctuationTestPage() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Sentence Punctuation test not found</h1>
-            <button onClick={goBackSafely} style={styles.primaryButton}>
+            <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
               Back to Sentence Punctuation
             </button>
           </div>
@@ -505,11 +538,15 @@ export default function SentencePunctuationTestPage() {
             </p>
 
             <div style={styles.accessButtonRow}>
-              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                style={styles.primaryButton}
+              >
                 Sign In
               </button>
 
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
+              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Sentence Punctuation
               </button>
             </div>
@@ -533,11 +570,15 @@ export default function SentencePunctuationTestPage() {
             </p>
 
             <div style={styles.accessButtonRow}>
-              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+              <button
+                type="button"
+                onClick={() => router.push("/profile")}
+                style={styles.primaryButton}
+              >
                 View Membership Options
               </button>
 
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
+              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Sentence Punctuation
               </button>
             </div>
@@ -599,11 +640,19 @@ export default function SentencePunctuationTestPage() {
                 </p>
 
                 <div style={styles.resultButtons}>
-                  <button onClick={restartSameTest} style={styles.secondaryButton}>
+                  <button
+                    type="button"
+                    onClick={restartSameTest}
+                    style={styles.secondaryButton}
+                  >
                     Retry This Set
                   </button>
 
-                  <button onClick={goBackSafely} style={styles.primaryButton}>
+                  <button
+                    type="button"
+                    onClick={goBackSafely}
+                    style={styles.primaryButton}
+                  >
                     Back to Sentence Punctuation
                   </button>
                 </div>
@@ -627,7 +676,9 @@ export default function SentencePunctuationTestPage() {
             {questions.length === 0 ? (
               <div style={styles.emptyCard}>
                 <h2>
-                  {mode === "review" ? "No review questions found" : "No questions found"}
+                  {mode === "review"
+                    ? "No review questions found"
+                    : "No questions found"}
                 </h2>
 
                 <p>
@@ -663,7 +714,10 @@ export default function SentencePunctuationTestPage() {
                           if (option === question.correct_answer) {
                             backgroundColor = "#dcfce7"
                             borderColor = "#16a34a"
-                          } else if (selected === option && option !== question.correct_answer) {
+                          } else if (
+                            selected === option &&
+                            option !== question.correct_answer
+                          ) {
                             backgroundColor = "#fee2e2"
                             borderColor = "#dc2626"
                           }
@@ -672,13 +726,15 @@ export default function SentencePunctuationTestPage() {
                         return (
                           <button
                             key={option}
+                            type="button"
                             onClick={() => handleSelect(question.id, option)}
-                            disabled={submitted}
+                            disabled={submitted || submitting}
                             style={{
                               ...styles.optionButton,
                               backgroundColor,
                               borderColor,
-                              cursor: submitted ? "default" : "pointer",
+                              cursor:
+                                submitted || submitting ? "default" : "pointer",
                             }}
                           >
                             <span style={styles.optionLetter}>{option}</span>
@@ -710,11 +766,13 @@ export default function SentencePunctuationTestPage() {
                           </p>
                         )}
 
-                        {question.explanation && question.explanation.trim() !== "" && (
-                          <p style={{ margin: "8px 0 0 0" }}>
-                            <strong>Explanation:</strong> {question.explanation}
-                          </p>
-                        )}
+                        {question.explanation &&
+                          question.explanation.trim() !== "" && (
+                            <p style={{ margin: "8px 0 0 0" }}>
+                              <strong>Explanation:</strong>{" "}
+                              {question.explanation}
+                            </p>
+                          )}
                       </div>
                     )}
                   </div>
@@ -725,11 +783,13 @@ export default function SentencePunctuationTestPage() {
             {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={submitting}
                   style={{
                     ...styles.primaryButton,
                     opacity: submitting ? 0.7 : 1,
+                    cursor: submitting ? "not-allowed" : "pointer",
                   }}
                 >
                   {submitting ? "Submitting..." : "Submit Answers"}
@@ -748,22 +808,37 @@ export default function SentencePunctuationTestPage() {
             <p style={styles.modalText}>Not all questions have been answered.</p>
 
             <p style={styles.modalText}>
-              You still have <strong>{unansweredCount}</strong> unanswered question
-              {unansweredCount === 1 ? "" : "s"}.
+              You still have <strong>{unansweredCount}</strong> unanswered
+              question{unansweredCount === 1 ? "" : "s"}.
             </p>
 
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
               <button
+                type="button"
                 onClick={() => setShowIncompleteModal(false)}
-                style={styles.secondaryButton}
+                disabled={submitting}
+                style={{
+                  ...styles.secondaryButton,
+                  opacity: submitting ? 0.7 : 1,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
               >
                 Go Back
               </button>
 
-              <button onClick={submitTest} style={styles.primaryButton}>
-                Submit Anyway
+              <button
+                type="button"
+                onClick={submitTest}
+                disabled={submitting}
+                style={{
+                  ...styles.primaryButton,
+                  opacity: submitting ? 0.7 : 1,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Submitting..." : "Submit Anyway"}
               </button>
             </div>
           </div>
