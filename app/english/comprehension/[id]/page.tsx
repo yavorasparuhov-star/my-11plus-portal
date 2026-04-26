@@ -5,11 +5,15 @@ import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type EnglishComprehensionTest = {
   id: number
   title: string
   passage: string | null
   difficulty: number | null
+  access_level?: string | null
+  is_free?: boolean | null
   created_at: string
 }
 
@@ -32,6 +36,14 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
+function isFreeTest(test: EnglishComprehensionTest) {
+  return test.is_free === true || test.access_level === "free"
+}
+
 export default function ComprehensionTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -42,6 +54,7 @@ export default function ComprehensionTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<EnglishComprehensionTest | null>(null)
   const [questions, setQuestions] = useState<EnglishComprehensionQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -52,6 +65,9 @@ export default function ComprehensionTestPage() {
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [reviewIds, setReviewIds] = useState<number[]>([])
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
   useEffect(() => {
     async function loadReviewIds() {
@@ -80,12 +96,18 @@ export default function ComprehensionTestPage() {
           return
         }
 
-        const { data: directRows } = await supabase
+        const { data: directRows, error: directRowsError } = await supabase
           .from("english_questions")
           .select("id")
           .in("id", rawIds)
           .eq("main_category", "comprehension")
           .eq("subcategory", "comprehension")
+
+        if (directRowsError) {
+          console.error("Error loading comprehension review IDs:", directRowsError)
+          setReviewIds([])
+          return
+        }
 
         const directIds = (directRows ?? []).map((row) => row.id)
 
@@ -102,6 +124,7 @@ export default function ComprehensionTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setAccessBlocked(null)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid comprehension test ID.")
@@ -109,36 +132,70 @@ export default function ComprehensionTestPage() {
         return
       }
 
-const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
 
-const user = session?.user ?? null
+      const user = session?.user ?? null
 
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+      if (!user) {
+        setAccessBlocked("guest")
+        setLoading(false)
+        return
+      }
 
       setUserId(user.id)
 
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
+
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
-        .select("id, title, passage, difficulty, created_at, is_free")
+        .select("id, title, passage, difficulty, access_level, is_free, created_at")
         .eq("id", testId)
         .eq("main_category", "comprehension")
         .eq("subcategory", "comprehension")
         .single()
 
-      if (testError) {
+      if (testError || !testData) {
         console.error("Error loading comprehension test:", testError)
         setErrorMessage("Could not load this comprehension test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as EnglishComprehensionTest
+      setTest(loadedTest)
+
+      const canStart =
+        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
+
+      if (!canStart) {
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -153,7 +210,6 @@ if (!user) {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(testData as EnglishComprehensionTest)
           setQuestions([])
           setLoading(false)
           return
@@ -171,13 +227,12 @@ if (!user) {
         return
       }
 
-      setTest(testData as EnglishComprehensionTest)
       setQuestions((questionData || []) as EnglishComprehensionQuestion[])
       setLoading(false)
     }
 
     loadPage()
-  }, [rawId, testId, router, mode, reviewIds.join(",")])
+  }, [rawId, testId, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -235,17 +290,18 @@ if (!user) {
     setErrorMessage("")
 
     let correctAnswers = 0
-const wrongAnswersForReview: {
-  user_id: string
-  test_id: number
-  question_id: number
-  main_category: string
-  subcategory: string | null
-  question_text: string
-  user_answer: string | null
-  correct_answer: string
-  difficulty: number | null
-}[] = []
+
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      main_category: string
+      subcategory: string | null
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+    }[] = []
 
     const correctlyAnsweredReviewQuestionIds: number[] = []
 
@@ -294,7 +350,9 @@ const wrongAnswersForReview: {
 
     if (progressError) {
       console.error("Error saving comprehension progress:", progressError)
-      setErrorMessage(progressError.message || "Could not save your progress. Please try again.")
+      setErrorMessage(
+        progressError.message || "Could not save your progress. Please try again."
+      )
       setSubmitting(false)
       return
     }
@@ -324,13 +382,22 @@ const wrongAnswersForReview: {
       if (reviewError) {
         console.error("Error saving comprehension review:", reviewError)
       }
+
+      const existingReviewIds = Array.from(new Set(reviewIds))
+      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+
+      localStorage.setItem("comprehension_review_ids", JSON.stringify(updatedReviewIds))
+      setReviewIds(updatedReviewIds)
     }
 
     if (mode === "review") {
       const remainingIds = reviewIds.filter(
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
+
       localStorage.setItem("comprehension_review_ids", JSON.stringify(remainingIds))
+      setReviewIds(remainingIds)
     }
 
     setScore(correctAnswers)
@@ -355,7 +422,10 @@ const wrongAnswersForReview: {
     await submitTest()
   }
 
-  function getOptionText(question: EnglishComprehensionQuestion, option: "A" | "B" | "C" | "D") {
+  function getOptionText(
+    question: EnglishComprehensionQuestion,
+    option: "A" | "B" | "C" | "D"
+  ) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -382,6 +452,56 @@ const wrongAnswersForReview: {
             ? "Loading comprehension review..."
             : "Loading comprehension test..."}
         </p>
+      </>
+    )
+  }
+
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+                Sign In
+              </button>
+              <button onClick={goHomeSafely} style={styles.secondaryButton}>
+                Back to Comprehension
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+                View Membership
+              </button>
+              <button onClick={goHomeSafely} style={styles.secondaryButton}>
+                Back to Comprehension
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -453,7 +573,8 @@ const wrongAnswersForReview: {
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
                 <p style={styles.resultText}>
                   Success rate:{" "}
@@ -502,7 +623,9 @@ const wrongAnswersForReview: {
 
             {questions.length === 0 ? (
               <div style={styles.centerCard}>
-                <h2>{mode === "review" ? "No review questions found" : "No questions found"}</h2>
+                <h2>
+                  {mode === "review" ? "No review questions found" : "No questions found"}
+                </h2>
                 <p>
                   {mode === "review"
                     ? "There are no saved review questions for this test."

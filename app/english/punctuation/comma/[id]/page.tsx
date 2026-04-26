@@ -10,6 +10,7 @@ const SUBCATEGORY = "comma"
 const REVIEW_STORAGE_KEY = "comma_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
 type CommaTest = {
   id: number
@@ -17,6 +18,7 @@ type CommaTest = {
   description: string | null
   difficulty: number | null
   created_at: string
+  is_free: boolean
 }
 
 type CommaQuestion = {
@@ -38,6 +40,10 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
 export default function CommaTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -48,6 +54,7 @@ export default function CommaTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<CommaTest | null>(null)
   const [questions, setQuestions] = useState<CommaQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -95,27 +102,50 @@ export default function CommaTestPage() {
       }
 
       const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-if (sessionError) {
-  console.error("Error getting auth session:", sessionError)
-}
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
 
-const user = session?.user ?? null
+      const user = session?.user ?? null
 
-if (!user) {
-  setErrorMessage("Please sign in to start this test.")
-  setLoading(false)
-  return
-}
+      if (!user) {
+        setPlan("guest")
+        setErrorMessage("Please sign in to start this test.")
+        setLoading(false)
+        return
+      }
 
       setUserId(user.id)
 
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
+
       const { data: testData, error: testError } = await supabase
         .from("english_tests")
-        .select("id, title, description, difficulty, created_at")
+        .select("id, title, description, difficulty, created_at, is_free")
         .eq("id", testId)
         .eq("main_category", MAIN_CATEGORY)
         .eq("subcategory", SUBCATEGORY)
@@ -128,7 +158,21 @@ if (!user) {
           hint: testError.hint,
           code: testError.code,
         })
+
         setErrorMessage("Could not load this Comma test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as CommaTest
+
+      const canOpenTest =
+        hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
+
+      if (!canOpenTest) {
+        setErrorMessage(
+          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
+        )
         setLoading(false)
         return
       }
@@ -145,7 +189,7 @@ if (!user) {
 
       if (mode === "review") {
         if (reviewIds.length === 0) {
-          setTest(testData as CommaTest)
+          setTest(loadedTest)
           setQuestions([])
           setLoading(false)
           return
@@ -163,12 +207,13 @@ if (!user) {
           hint: questionError.hint,
           code: questionError.code,
         })
+
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
       }
 
-      setTest(testData as CommaTest)
+      setTest(loadedTest)
       setQuestions((questionData || []) as CommaQuestion[])
       setLoading(false)
     }
@@ -177,7 +222,6 @@ if (!user) {
   }, [rawId, testId, router, mode, reviewIds.join(",")])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
 
   useEffect(() => {
@@ -298,7 +342,9 @@ if (!user) {
         payload: progressPayload,
       })
 
-      setErrorMessage(progressError.message || "Could not save your progress. Please try again.")
+      setErrorMessage(
+        progressError.message || "Could not save your progress. Please try again."
+      )
       setSubmitting(false)
       return
     }
@@ -339,6 +385,7 @@ if (!user) {
       const existingReviewIds = Array.from(new Set(reviewIds))
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
       setReviewIds(updatedReviewIds)
     }
@@ -347,6 +394,7 @@ if (!user) {
       const remainingIds = reviewIds.filter(
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
+
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
       setReviewIds(remainingIds)
     }
@@ -438,6 +486,7 @@ if (!user) {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -446,6 +495,7 @@ if (!user) {
                 <h1 style={styles.title}>
                   {mode === "review" ? "🔹 Review:" : "🔹"} {test.title}
                 </h1>
+
                 <p style={styles.subtitle}>
                   {mode === "review"
                     ? "Answer your saved review questions carefully, then submit."
@@ -468,13 +518,19 @@ if (!user) {
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of <strong>{questions.length}</strong>
+                  You scored <strong>{score}</strong> out of{" "}
+                  <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
-                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                    {questions.length > 0
+                      ? Math.round((score / questions.length) * 100)
+                      : 0}
+                    %
                   </strong>
                 </p>
 
@@ -482,6 +538,7 @@ if (!user) {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Set
                   </button>
+
                   <button onClick={goBackSafely} style={styles.primaryButton}>
                     Back to Comma
                   </button>
@@ -506,6 +563,7 @@ if (!user) {
             {questions.length === 0 ? (
               <div style={styles.emptyCard}>
                 <h2>{mode === "review" ? "No review questions found" : "No questions found"}</h2>
+
                 <p>
                   {mode === "review"
                     ? "There are no saved review questions for this test."
@@ -620,17 +678,24 @@ if (!user) {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
-              <button onClick={() => setShowIncompleteModal(false)} style={styles.secondaryButton}>
+              <button
+                onClick={() => setShowIncompleteModal(false)}
+                style={styles.secondaryButton}
+              >
                 Go Back
               </button>
+
               <button onClick={submitTest} style={styles.primaryButton}>
                 Submit Anyway
               </button>

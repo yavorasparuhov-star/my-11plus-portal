@@ -5,12 +5,14 @@ import { useParams, useRouter } from "next/navigation"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
 type MathTest = {
   id: number
   title: string
   category: string
   difficulty: number | null
-  access_level: string
+  access_level: string | null
   created_at: string
 }
 
@@ -32,6 +34,14 @@ type UserAnswerMap = {
   [questionId: number]: "A" | "B" | "C" | "D"
 }
 
+function hasFullAccess(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
+function isFreeTest(accessLevel: string | null) {
+  return accessLevel === "free"
+}
+
 export default function FourOperationsTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -40,6 +50,7 @@ export default function FourOperationsTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<MathTest | null>(null)
   const [questions, setQuestions] = useState<MathQuestion[]>([])
   const [answers, setAnswers] = useState<UserAnswerMap>({})
@@ -73,12 +84,35 @@ export default function FourOperationsTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
+        setPlan("guest")
         setErrorMessage("Please sign in to start this test.")
         setLoading(false)
         return
       }
 
       setUserId(user.id)
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
 
       const { data: testData, error: testError } = await supabase
         .from("math_tests")
@@ -95,7 +129,22 @@ export default function FourOperationsTestPage() {
           code: testError.code,
           full: testError,
         })
+
         setErrorMessage("Could not load this Four Operations test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as MathTest
+
+      const canOpenTest =
+        hasFullAccess(safePlan) ||
+        (safePlan === "free" && isFreeTest(loadedTest.access_level))
+
+      if (!canOpenTest) {
+        setErrorMessage(
+          "This test is for monthly and annual members. Please upgrade your membership to unlock it."
+        )
         setLoading(false)
         return
       }
@@ -114,12 +163,13 @@ export default function FourOperationsTestPage() {
           code: questionError.code,
           full: questionError,
         })
+
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
       }
 
-      setTest(testData as MathTest)
+      setTest(loadedTest)
       setQuestions((questionData || []) as MathQuestion[])
       setLoading(false)
     }
@@ -128,7 +178,6 @@ export default function FourOperationsTestPage() {
   }, [rawId, testId])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
 
   useEffect(() => {
@@ -180,16 +229,16 @@ export default function FourOperationsTestPage() {
     try {
       let correctAnswers = 0
 
-     const wrongAnswersForReview: {
-  user_id: string
-  test_id: number
-  question_id: number
-  category: string
-  question_text: string
-  user_answer: string | null
-  correct_answer: string
-  difficulty: number | null
-}[] = []
+      const wrongAnswersForReview: {
+        user_id: string
+        test_id: number
+        question_id: number
+        category: string
+        question_text: string
+        user_answer: string | null
+        correct_answer: string
+        difficulty: number | null
+      }[] = []
 
       for (const question of questions) {
         const selected = answers[question.id]
@@ -197,16 +246,16 @@ export default function FourOperationsTestPage() {
         if (selected === question.correct_answer) {
           correctAnswers += 1
         } else {
-wrongAnswersForReview.push({
-  user_id: userId,
-  test_id: test.id,
-  question_id: question.id,
-  category: test.category,
-  question_text: question.question_text,
-  user_answer: selected ?? null,
-  correct_answer: question.correct_answer,
-  difficulty: test.difficulty ?? null,
-})
+          wrongAnswersForReview.push({
+            user_id: userId,
+            test_id: test.id,
+            question_id: question.id,
+            category: test.category,
+            question_text: question.question_text,
+            user_answer: selected ?? null,
+            correct_answer: question.correct_answer,
+            difficulty: test.difficulty ?? null,
+          })
         }
       }
 
@@ -217,14 +266,14 @@ wrongAnswersForReview.push({
           : 0
 
       const progressPayload = {
-  user_id: userId,
-  test_id: test.id,
-  category: test.category,
-  total_questions: totalQuestions,
-  correct_answers: correctAnswers,
-  success_rate: successRate,
-  difficulty: test.difficulty ?? null,
-}
+        user_id: userId,
+        test_id: test.id,
+        category: test.category,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+      }
 
       const { error: progressError } = await supabase
         .from("math_progress")
@@ -350,6 +399,7 @@ wrongAnswersForReview.push({
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -539,11 +589,14 @@ wrongAnswersForReview.push({
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>

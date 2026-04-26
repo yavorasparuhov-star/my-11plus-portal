@@ -1,11 +1,13 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
+type AnswerOption = "A" | "B" | "C" | "D"
 
 type VRTest = {
   id: number
@@ -25,7 +27,7 @@ type VRQuestion = {
   option_b: string
   option_c: string
   option_d: string
-  correct_answer: "A" | "B" | "C" | "D"
+  correct_answer: AnswerOption
   explanation: string | null
   difficulty: number | null
   question_order: number
@@ -33,7 +35,7 @@ type VRQuestion = {
 }
 
 type UserAnswerMap = {
-  [questionId: number]: "A" | "B" | "C" | "D"
+  [questionId: number]: AnswerOption
 }
 
 function hasFullAccess(plan: UserPlan) {
@@ -44,192 +46,223 @@ function isFreeTest(test: VRTest) {
   return test.is_free === true || test.access_level === "free"
 }
 
+function canUserAccessTest(plan: UserPlan, test: VRTest | null) {
+  if (!test) return false
+  if (hasFullAccess(plan)) return true
+  if (plan === "free" && isFreeTest(test)) return true
+  return false
+}
+
 export default function VRWordRelationshipsTestPage() {
-  const params = useParams<{ id: string }>()
+  const params = useParams()
   const router = useRouter()
 
-  const rawId = params?.id
-  const testId = rawId ? Number(rawId) : null
+  const rawId = Array.isArray(params.id) ? params.id[0] : params.id
+  const testId = Number(rawId)
 
   const [loading, setLoading] = useState(true)
   const [test, setTest] = useState<VRTest | null>(null)
   const [questions, setQuestions] = useState<VRQuestion[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<UserAnswerMap>({})
-  const [selectedAnswer, setSelectedAnswer] = useState<"A" | "B" | "C" | "D" | null>(null)
+  const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
-  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(null)
+  const [userPlan, setUserPlan] = useState<UserPlan>("guest")
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
   const currentQuestion = questions[currentIndex]
+  const hasAccess = canUserAccessTest(userPlan, test)
+
+  const answeredCount = useMemo(
+    () => Object.keys(userAnswers).length,
+    [userAnswers]
+  )
+
+  const shouldWarnBeforeLeaving =
+    answeredCount > 0 && !finished && !savingResults
 
   const selectedAnswerText = useMemo(() => {
     if (!currentQuestion || !selectedAnswer) return ""
-
-    if (selectedAnswer === "A") return currentQuestion.option_a
-    if (selectedAnswer === "B") return currentQuestion.option_b
-    if (selectedAnswer === "C") return currentQuestion.option_c
-    return currentQuestion.option_d
+    return getOptionText(currentQuestion, selectedAnswer)
   }, [currentQuestion, selectedAnswer])
 
   useEffect(() => {
-    if (!rawId) return
+    async function loadCurrentUserAndPlan() {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    if (testId === null || Number.isNaN(testId)) {
-      setLoading(false)
-      setErrorMessage("Invalid test id.")
-      return
-    }
+      if (sessionError) {
+        console.error("Error getting auth session:", sessionError)
+      }
 
-    loadVRTest()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawId, testId])
+      const sessionUser = session?.user ?? null
 
-  async function loadCurrentUserAndPlan() {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+      if (!sessionUser) {
+        return {
+          userId: null,
+          plan: "guest" as UserPlan,
+        }
+      }
 
-    if (sessionError) {
-      console.error("Error getting auth session:", sessionError)
-    }
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", sessionUser.id)
+        .maybeSingle()
 
-    const sessionUser = session?.user ?? null
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
 
-    if (!sessionUser) {
+      const dbPlan = profile?.plan
+
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
       return {
-        userId: null,
-        plan: "guest" as UserPlan,
+        userId: sessionUser.id,
+        plan: safePlan,
       }
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", sessionUser.id)
-      .maybeSingle()
-
-    if (profileError) {
-      console.error("Error loading profile plan:", profileError)
-    }
-
-    const dbPlan = profile?.plan
-
-    const safePlan: UserPlan =
-      dbPlan === "monthly" ||
-      dbPlan === "annual" ||
-      dbPlan === "admin" ||
-      dbPlan === "free"
-        ? dbPlan
-        : "free"
-
-    return {
-      userId: sessionUser.id,
-      plan: safePlan,
-    }
-  }
-
-  async function loadVRTest() {
-    if (testId === null || Number.isNaN(testId)) return
-
-    setLoading(true)
-    setFinished(false)
-    setCurrentIndex(0)
-    setUserAnswers({})
-    setSelectedAnswer(null)
-    setShowFeedback(false)
-    setScore(0)
-    setErrorMessage("")
-    setAccessBlocked(null)
-
-    const { data: testData, error: testError } = await supabase
-      .from("vr_tests")
-      .select("*")
-      .eq("id", testId)
-      .eq("category", "word-relationships")
-      .maybeSingle()
-
-    if (testError || !testData) {
-      console.error("Error loading VR test:", {
-        message: testError?.message,
-        details: testError?.details,
-        hint: testError?.hint,
-        code: testError?.code,
-        full: testError,
-      })
-
-      setTest(null)
+    async function loadVRTest() {
+      setLoading(true)
+      setFinished(false)
+      setCurrentIndex(0)
+      setUserAnswers({})
+      setSelectedAnswer(null)
+      setShowFeedback(false)
+      setScore(0)
+      setErrorMessage("")
+      setAccessBlocked(null)
       setQuestions([])
-      setErrorMessage("This word relationships test is not available yet.")
-      setLoading(false)
-      return
-    }
 
-    const loadedTest = testData as VRTest
-    setTest(loadedTest)
+      if (!rawId || Number.isNaN(testId)) {
+        setErrorMessage("Invalid test ID.")
+        setLoading(false)
+        return
+      }
 
-    const currentAccess = await loadCurrentUserAndPlan()
+      const { data: testData, error: testError } = await supabase
+        .from("vr_tests")
+        .select("*")
+        .eq("id", testId)
+        .eq("category", "word-relationships")
+        .maybeSingle()
 
-    setUserId(currentAccess.userId)
-    setPlan(currentAccess.plan)
+      if (testError || !testData) {
+        console.error("Error loading VR test:", {
+          message: testError?.message,
+          details: testError?.details,
+          hint: testError?.hint,
+          code: testError?.code,
+          full: testError,
+        })
 
-    if (!currentAccess.userId) {
-      setAccessBlocked("guest")
-      setLoading(false)
-      return
-    }
+        setTest(null)
+        setErrorMessage("This Word Relationships test is not available yet.")
+        setLoading(false)
+        return
+      }
 
-    const canStart =
-      hasFullAccess(currentAccess.plan) ||
-      (currentAccess.plan === "free" && isFreeTest(loadedTest))
-
-    if (!canStart) {
-      setAccessBlocked("upgrade")
-      setLoading(false)
-      return
-    }
-
-    const { data: questionData, error: questionError } = await supabase
-      .from("vr_questions")
-      .select("*")
-      .eq("test_id", loadedTest.id)
-      .order("question_order", { ascending: true })
-
-    if (questionError) {
-      console.error("Error loading VR questions:", {
-        message: questionError.message,
-        details: questionError.details,
-        hint: questionError.hint,
-        code: questionError.code,
-        full: questionError,
-      })
-
+      const loadedTest = testData as VRTest
       setTest(loadedTest)
-      setQuestions([])
-      setErrorMessage("Could not load the questions for this test.")
+
+      const currentAccess = await loadCurrentUserAndPlan()
+      setUserId(currentAccess.userId)
+      setUserPlan(currentAccess.plan)
+
+      if (!currentAccess.userId) {
+        setAccessBlocked("guest")
+        setLoading(false)
+        return
+      }
+
+      if (!canUserAccessTest(currentAccess.plan, loadedTest)) {
+        setAccessBlocked("upgrade")
+        setLoading(false)
+        return
+      }
+
+      const { data: questionData, error: questionError } = await supabase
+        .from("vr_questions")
+        .select("*")
+        .eq("test_id", loadedTest.id)
+        .order("question_order", { ascending: true })
+
+      if (questionError) {
+        console.error("Error loading VR questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
+
+        setQuestions([])
+        setErrorMessage("Could not load the questions for this test.")
+        setLoading(false)
+        return
+      }
+
+      setQuestions((questionData || []) as VRQuestion[])
       setLoading(false)
-      return
     }
 
-    setTest(loadedTest)
-    setQuestions((questionData || []) as VRQuestion[])
-    setLoading(false)
+    loadVRTest()
+  }, [rawId, testId])
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!shouldWarnBeforeLeaving) return
+
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [shouldWarnBeforeLeaving])
+
+  function confirmLeaveIfNeeded() {
+    if (!shouldWarnBeforeLeaving) return true
+
+    return window.confirm(
+      "Not all questions have been answered. Are you sure you want to leave this test?"
+    )
   }
 
-  function handleSelectAnswer(answer: "A" | "B" | "C" | "D") {
-    if (showFeedback) return
+  function goBackSafely() {
+    const confirmed = confirmLeaveIfNeeded()
+    if (!confirmed) return
 
+    router.push("/vr/word-relationships")
+  }
+
+  function handleSelectAnswer(answer: AnswerOption) {
+    if (showFeedback || !hasAccess) return
     setSelectedAnswer(answer)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer) return
+    if (!currentQuestion || !selectedAnswer || !hasAccess) return
 
     const isCorrect = selectedAnswer === currentQuestion.correct_answer
 
@@ -246,18 +279,26 @@ export default function VRWordRelationshipsTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion) return
+    if (!currentQuestion || !hasAccess) return
 
     const isLastQuestion = currentIndex === questions.length - 1
 
     if (isLastQuestion) {
-      const finalScore =
-        score +
-        (selectedAnswer === currentQuestion.correct_answer ? 1 : 0) -
-        (showFeedback && selectedAnswer === currentQuestion.correct_answer ? 1 : 0)
+      const finalAnswers = {
+        ...userAnswers,
+        [currentQuestion.id]: selectedAnswer as AnswerOption,
+      }
 
-      await saveResults(finalScore)
+      const finalScore = questions.reduce((total, question) => {
+        return finalAnswers[question.id] === question.correct_answer
+          ? total + 1
+          : total
+      }, 0)
+
+      await saveResults(finalScore, finalAnswers)
+      setScore(finalScore)
       setFinished(true)
+      window.scrollTo({ top: 0, behavior: "smooth" })
       return
     }
 
@@ -266,23 +307,29 @@ export default function VRWordRelationshipsTestPage() {
     setShowFeedback(false)
   }
 
-  async function saveResults(finalScore: number) {
+  async function saveResults(finalScore: number, finalAnswers: UserAnswerMap) {
     if (!userId || !test) return
 
     setSavingResults(true)
+    setErrorMessage("")
 
     const totalQuestions = questions.length
     const successRate =
       totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
 
-    const { error: progressError } = await supabase.from("vr_progress").insert({
+    const progressPayload = {
       user_id: userId,
       test_id: test.id,
+      category: test.category || "word-relationships",
       total_questions: totalQuestions,
       correct_answers: finalScore,
       success_rate: successRate,
       difficulty: test.difficulty ?? null,
-    })
+    }
+
+    const { error: progressError } = await supabase
+      .from("vr_progress")
+      .insert([progressPayload])
 
     if (progressError) {
       console.error("Error saving VR progress:", {
@@ -291,21 +338,33 @@ export default function VRWordRelationshipsTestPage() {
         hint: progressError.hint,
         code: progressError.code,
         full: progressError,
+        payload: progressPayload,
       })
+
+      setErrorMessage(
+        progressError.message || "Could not save your progress. Please try again."
+      )
+      setSavingResults(false)
+      return
     }
 
     const reviewRows = questions
-      .filter((question) => userAnswers[question.id] !== question.correct_answer)
+      .filter((question) => finalAnswers[question.id] !== question.correct_answer)
       .map((question) => ({
         user_id: userId,
+        test_id: test.id,
         question_id: question.id,
+        category: test.category || "word-relationships",
         question_text: question.question_text,
-        knew_it: false,
+        user_answer: finalAnswers[question.id] ?? null,
+        correct_answer: question.correct_answer,
         difficulty: question.difficulty ?? test.difficulty ?? null,
       }))
 
     if (reviewRows.length > 0) {
-      const { error: reviewError } = await supabase.from("vr_review").insert(reviewRows)
+      const { error: reviewError } = await supabase
+        .from("vr_review")
+        .insert(reviewRows)
 
       if (reviewError) {
         console.error("Error saving VR review:", {
@@ -322,10 +381,17 @@ export default function VRWordRelationshipsTestPage() {
   }
 
   function restartTest() {
-    loadVRTest()
+    setFinished(false)
+    setCurrentIndex(0)
+    setUserAnswers({})
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setScore(0)
+    setErrorMessage("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function getOptionText(question: VRQuestion, answer: "A" | "B" | "C" | "D") {
+  function getOptionText(question: VRQuestion, answer: AnswerOption) {
     if (answer === "A") return question.option_a
     if (answer === "B") return question.option_b
     if (answer === "C") return question.option_c
@@ -355,29 +421,58 @@ export default function VRWordRelationshipsTestPage() {
     return { background: "#f3f4f6", color: "#374151" }
   }
 
-  if (!rawId) {
-    return (
-      <>
-        <Header />
-        <p style={styles.message}>Loading test...</p>
-      </>
-    )
+  function getAccessLabel(testToCheck: VRTest) {
+    if (isFreeTest(testToCheck)) return "Free"
+    return "Members only"
   }
 
   if (loading) {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading word relationships test...</p>
+        <p style={styles.message}>Loading Word Relationships test...</p>
       </>
     )
   }
 
-  if (testId === null || Number.isNaN(testId)) {
+  if (errorMessage && !test) {
     return (
       <>
         <Header />
-        <p style={styles.message}>Invalid test id.</p>
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>Could not open test</h2>
+              <p style={styles.subtitle}>{errorMessage}</p>
+
+              <button onClick={goBackSafely} style={styles.startButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (!test) {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2 style={styles.cardTitle}>No test found</h2>
+              <p style={styles.subtitle}>
+                This Word Relationships test is not available yet.
+              </p>
+
+              <button onClick={goBackSafely} style={styles.startButton}>
+                Back to Topic
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -389,21 +484,23 @@ export default function VRWordRelationshipsTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.emptyCard}>
-              <h2 style={styles.cardTitle}>Please sign in</h2>
+              <h2 style={styles.cardTitle}>Please sign in to start this test</h2>
 
               <p style={styles.subtitle}>
-                Guests can browse the tests, but you need to sign in before starting a test.
+                Guests can browse the portal, but you need an account to start tests
+                and save progress.
               </p>
 
               <div style={styles.finishButtons}>
                 <button onClick={() => router.push("/login")} style={styles.startButton}>
-                  Sign In
+                  Login
                 </button>
 
-                <button
-                  onClick={() => router.push("/vr/word-relationships")}
-                  style={styles.retryButton}
-                >
+                <button onClick={() => router.push("/signup")} style={styles.retryButton}>
+                  Sign Up
+                </button>
+
+                <button onClick={goBackSafely} style={styles.retryButton}>
                   Back to Topic
                 </button>
               </div>
@@ -424,18 +521,16 @@ export default function VRWordRelationshipsTestPage() {
               <h2 style={styles.cardTitle}>Members-only test</h2>
 
               <p style={styles.subtitle}>
-                This test is not included in the free plan. Upgrade your plan to unlock it.
+                This test is not included in the free plan. Your current plan is{" "}
+                <strong>{userPlan}</strong>. Upgrade your plan to unlock it.
               </p>
 
               <div style={styles.finishButtons}>
                 <button onClick={() => router.push("/profile")} style={styles.startButton}>
-                  View Upgrade Options
+                  View Membership
                 </button>
 
-                <button
-                  onClick={() => router.push("/vr/word-relationships")}
-                  style={styles.retryButton}
-                >
+                <button onClick={goBackSafely} style={styles.retryButton}>
                   Back to Topic
                 </button>
               </div>
@@ -446,45 +541,17 @@ export default function VRWordRelationshipsTestPage() {
     )
   }
 
-  if (errorMessage) {
+  if (questions.length === 0) {
     return (
       <>
         <Header />
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.emptyCard}>
-              <h2 style={styles.cardTitle}>Could not open test</h2>
+              <h2 style={styles.cardTitle}>No questions found</h2>
+              <p style={styles.subtitle}>Add questions in Supabase for this test.</p>
 
-              <p style={styles.subtitle}>{errorMessage}</p>
-
-              <button
-                onClick={() => router.push("/vr/word-relationships")}
-                style={styles.startButton}
-              >
-                Back to Topic
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  if (!test || questions.length === 0) {
-    return (
-      <>
-        <Header />
-        <div style={styles.page}>
-          <div style={styles.container}>
-            <div style={styles.emptyCard}>
-              <h2 style={styles.cardTitle}>No test found</h2>
-
-              <p style={styles.subtitle}>This word relationships test is not available yet.</p>
-
-              <button
-                onClick={() => router.push("/vr/word-relationships")}
-                style={styles.startButton}
-              >
+              <button onClick={goBackSafely} style={styles.startButton}>
                 Back to Topic
               </button>
             </div>
@@ -498,11 +565,13 @@ export default function VRWordRelationshipsTestPage() {
     const totalQuestions = questions.length
     const percentage =
       totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
+
     const badgeColors = getDifficultyColors(test.difficulty)
 
     return (
       <>
         <Header />
+
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
@@ -539,6 +608,8 @@ export default function VRWordRelationshipsTestPage() {
                 </p>
 
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </div>
 
               <div style={styles.finishButtons}>
@@ -546,10 +617,7 @@ export default function VRWordRelationshipsTestPage() {
                   Try Again
                 </button>
 
-                <button
-                  onClick={() => router.push("/vr/word-relationships")}
-                  style={styles.retryButton}
-                >
+                <button onClick={goBackSafely} style={styles.retryButton}>
                   Back to Topic
                 </button>
               </div>
@@ -566,6 +634,7 @@ export default function VRWordRelationshipsTestPage() {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -579,15 +648,19 @@ export default function VRWordRelationshipsTestPage() {
                 </p>
               </div>
 
-              <span
-                style={{
-                  ...styles.badge,
-                  background: badgeColors.background,
-                  color: badgeColors.color,
-                }}
-              >
-                {getDifficultyLabel(test.difficulty)}
-              </span>
+              <div style={styles.badgeStack}>
+                <span
+                  style={{
+                    ...styles.badge,
+                    background: badgeColors.background,
+                    color: badgeColors.color,
+                  }}
+                >
+                  {getDifficultyLabel(test.difficulty)}
+                </span>
+
+                <span style={styles.accessBadge}>{getAccessLabel(test)}</span>
+              </div>
             </div>
           </div>
 
@@ -667,30 +740,37 @@ export default function VRWordRelationshipsTestPage() {
                     borderColor: isCorrect ? "#34d399" : "#f87171",
                   }}
                 >
-                  <p style={styles.feedbackText}>{isCorrect ? "Correct!" : "Not quite."}</p>
+                  <p style={styles.feedbackText}>
+                    <strong>{isCorrect ? "Correct!" : "Not quite."}</strong>
+                  </p>
 
                   {!isCorrect && (
                     <p style={styles.feedbackText}>
-                      <strong>Correct answer:</strong> {currentQuestion.correct_answer}.{" "}
+                      <strong>Correct answer:</strong>{" "}
+                      {currentQuestion.correct_answer}.{" "}
                       {getOptionText(currentQuestion, currentQuestion.correct_answer)}
                     </p>
                   )}
 
                   {selectedAnswer && (
                     <p style={styles.feedbackText}>
-                      <strong>Your answer:</strong> {selectedAnswer}. {selectedAnswerText}
+                      <strong>Your answer:</strong> {selectedAnswer}.{" "}
+                      {selectedAnswerText}
                     </p>
                   )}
 
-                  {currentQuestion.explanation && (
-                    <p style={styles.feedbackText}>
-                      <strong>Explanation:</strong> {currentQuestion.explanation}
-                    </p>
-                  )}
+                  {currentQuestion.explanation &&
+                    currentQuestion.explanation.trim() !== "" && (
+                      <p style={styles.feedbackText}>
+                        <strong>Explanation:</strong> {currentQuestion.explanation}
+                      </p>
+                    )}
                 </div>
 
                 <button onClick={handleNext} style={styles.startButton}>
-                  {currentIndex === questions.length - 1 ? "Finish Test" : "Next Question"}
+                  {currentIndex === questions.length - 1
+                    ? "Finish Test"
+                    : "Next Question"}
                 </button>
               </>
             )}
@@ -707,10 +787,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#f9fafb",
     minHeight: "calc(100vh - 70px)",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -718,18 +800,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   summaryCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   questionCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -737,28 +822,33 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
     textAlign: "center",
     color: "#111827",
   },
+
   titleLeft: {
     fontSize: "32px",
     margin: "0 0 8px 0",
     color: "#111827",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
     textAlign: "center",
   },
+
   subtitleLeft: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   cardTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -766,12 +856,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     flexWrap: "wrap",
   },
+
   cardTitle: {
     margin: 0,
     fontSize: "24px",
     lineHeight: 1.3,
     color: "#111827",
   },
+
+  badgeStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    alignItems: "flex-end",
+  },
+
   badge: {
     padding: "8px 12px",
     borderRadius: "999px",
@@ -779,6 +878,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
     whiteSpace: "nowrap",
   },
+
+  accessBadge: {
+    padding: "7px 10px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "12px",
+    whiteSpace: "nowrap",
+    background: "#dcfce7",
+    color: "#166534",
+    border: "1px solid #86efac",
+  },
+
   progressRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -786,22 +897,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "16px",
     flexWrap: "wrap",
   },
+
   progressText: {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
   },
+
   questionText: {
     fontSize: "26px",
     color: "#111827",
     marginBottom: "24px",
     lineHeight: 1.5,
   },
+
   options: {
     display: "grid",
     gap: "14px",
     marginBottom: "24px",
   },
+
   optionButton: {
     padding: "16px",
     borderRadius: "14px",
@@ -809,29 +924,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     lineHeight: 1.5,
   },
+
   feedbackBox: {
     border: "1px solid",
     borderRadius: "14px",
     padding: "16px",
     marginBottom: "20px",
   },
+
   feedbackText: {
     fontSize: "16px",
     color: "#111827",
     margin: "8px 0",
     lineHeight: 1.5,
   },
+
   resultBox: {
     background: "#f9fafb",
     borderRadius: "14px",
     padding: "18px",
     margin: "24px 0",
   },
+
   resultText: {
     fontSize: "18px",
     color: "#111827",
     margin: "10px 0",
   },
+
   finishButtons: {
     display: "flex",
     gap: "12px",
@@ -839,6 +959,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
     marginTop: "20px",
   },
+
   startButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -852,6 +973,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "180px",
     cursor: "pointer",
   },
+
   retryButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -865,6 +987,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "180px",
     cursor: "pointer",
   },
+
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
+  },
+
   message: {
     textAlign: "center",
     marginTop: "40px",

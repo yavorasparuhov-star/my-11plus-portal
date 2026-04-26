@@ -7,13 +7,15 @@ import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
+type AnswerOption = "A" | "B" | "C" | "D"
+
 type NVRTest = {
   id: number
   title: string
   category: string | null
   difficulty: number | null
   access_level: string | null
-  is_free: boolean
+  is_free: boolean | null
   created_at: string
 }
 
@@ -38,11 +40,15 @@ type NVRQuestion = {
 }
 
 type UserAnswerMap = {
-  [questionId: number]: "A" | "B" | "C" | "D"
+  [questionId: number]: AnswerOption
 }
 
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
+}
+
+function isFreeTest(test: NVRTest) {
+  return test.is_free === true || test.access_level === "free"
 }
 
 export default function NVRShapePatternsTestPage() {
@@ -63,7 +69,9 @@ export default function NVRShapePatternsTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
-  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(null)
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
   useEffect(() => {
     async function loadCurrentUserAndPlan() {
@@ -130,7 +138,14 @@ export default function NVRShapePatternsTestPage() {
         .single()
 
       if (testError || !testData) {
-        console.error("Error loading NVR test:", testError)
+        console.error("Error loading NVR test:", {
+          message: testError?.message,
+          details: testError?.details,
+          hint: testError?.hint,
+          code: testError?.code,
+          full: testError,
+        })
+
         setErrorMessage("Could not load this Shape Patterns test.")
         setLoading(false)
         return
@@ -151,7 +166,7 @@ export default function NVRShapePatternsTestPage() {
 
       const canStart =
         hasFullAccess(currentAccess.plan) ||
-        (currentAccess.plan === "free" && loadedTest.is_free)
+        (currentAccess.plan === "free" && isFreeTest(loadedTest))
 
       if (!canStart) {
         setAccessBlocked("upgrade")
@@ -166,7 +181,14 @@ export default function NVRShapePatternsTestPage() {
         .order("question_order", { ascending: true })
 
       if (questionError) {
-        console.error("Error loading NVR questions:", questionError)
+        console.error("Error loading NVR questions:", {
+          message: questionError.message,
+          details: questionError.details,
+          hint: questionError.hint,
+          code: questionError.code,
+          full: questionError,
+        })
+
         setErrorMessage("Could not load the questions for this test.")
         setLoading(false)
         return
@@ -186,6 +208,7 @@ export default function NVRShapePatternsTestPage() {
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
+
       e.preventDefault()
       e.returnValue = ""
     }
@@ -208,10 +231,11 @@ export default function NVRShapePatternsTestPage() {
   function goBackSafely() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
+
     router.push("/nvr/shape-patterns")
   }
 
-  function handleSelect(questionId: number, option: "A" | "B" | "C" | "D") {
+  function handleSelect(questionId: number, option: AnswerOption) {
     if (submitted) return
 
     setAnswers((prev) => ({
@@ -225,81 +249,99 @@ export default function NVRShapePatternsTestPage() {
     if (questions.length === 0) return
 
     setSubmitting(true)
+    setErrorMessage("")
 
-    let correctAnswers = 0
-    const wrongAnswersForReview: {
-      user_id: string
-      question_id: number
-      question_text: string
-      knew_it: boolean
-      difficulty: number | null
-    }[] = []
+    try {
+      let correctAnswers = 0
 
-    for (const question of questions) {
-      const selected = answers[question.id]
+      const wrongAnswersForReview: {
+        user_id: string
+        test_id: number
+        question_id: number
+        category: string | null
+        question_text: string
+        user_answer: string | null
+        correct_answer: string
+        difficulty: number | null
+      }[] = []
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          question_id: question.id,
-          question_text: question.question_text,
-          knew_it: false,
-          difficulty: question.difficulty ?? test.difficulty ?? null,
-        })
+      for (const question of questions) {
+        const selected = answers[question.id]
+
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
+        } else {
+          wrongAnswersForReview.push({
+            user_id: userId,
+            test_id: test.id,
+            question_id: question.id,
+            category: test.category || "shape-patterns",
+            question_text: question.question_text,
+            user_answer: selected ?? null,
+            correct_answer: question.correct_answer,
+            difficulty: question.difficulty ?? test.difficulty ?? null,
+          })
+        }
       }
-    }
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const progressPayload = {
-      user_id: userId,
-      test_id: test.id,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: test.difficulty,
-    }
-
-    const { error: progressError } = await supabase
-      .from("nvr_progress")
-      .insert([progressPayload])
-
-    if (progressError) {
-      console.error("Error saving NVR progress:", {
-        message: progressError.message,
-        details: progressError.details,
-        hint: progressError.hint,
-        code: progressError.code,
-        full: progressError,
-      })
-    }
-
-    if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("nvr_review")
-        .insert(wrongAnswersForReview)
-
-      if (reviewError) {
-        console.error("Error saving NVR review:", {
-          message: reviewError.message,
-          details: reviewError.details,
-          hint: reviewError.hint,
-          code: reviewError.code,
-          full: reviewError,
-        })
+      const progressPayload = {
+        user_id: userId,
+        test_id: test.id,
+        category: test.category || "shape-patterns",
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
       }
+
+      const { error: progressError } = await supabase
+        .from("nvr_progress")
+        .insert([progressPayload])
+
+      if (progressError) {
+        console.error("Error saving NVR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+          payload: progressPayload,
+        })
+
+        setErrorMessage(
+          progressError.message || "Could not save your progress. Please try again."
+        )
+        return
+      }
+
+      if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("nvr_review")
+          .insert(wrongAnswersForReview)
+
+        if (reviewError) {
+          console.error("Error saving NVR review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
+      }
+
+      setScore(correctAnswers)
+      setSubmitted(true)
+      setShowIncompleteModal(false)
+
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } finally {
+      setSubmitting(false)
     }
-
-    setScore(correctAnswers)
-    setSubmitted(true)
-    setSubmitting(false)
-    setShowIncompleteModal(false)
-
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function handleSubmit() {
@@ -316,14 +358,14 @@ export default function NVRShapePatternsTestPage() {
     await submitTest()
   }
 
-  function getOptionText(question: NVRQuestion, option: "A" | "B" | "C" | "D") {
+  function getOptionText(question: NVRQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
     return question.option_d
   }
 
-  function getOptionImage(question: NVRQuestion, option: "A" | "B" | "C" | "D") {
+  function getOptionImage(question: NVRQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a_image_url
     if (option === "B") return question.option_b_image_url
     if (option === "C") return question.option_c_image_url
@@ -335,6 +377,8 @@ export default function NVRShapePatternsTestPage() {
     setSubmitted(false)
     setScore(0)
     setShowIncompleteModal(false)
+    setErrorMessage("")
+
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -356,6 +400,7 @@ export default function NVRShapePatternsTestPage() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Please sign in</h1>
+
             <p style={styles.subtitle}>
               Guests can browse the tests, but you need to sign in before starting a test.
             </p>
@@ -364,6 +409,7 @@ export default function NVRShapePatternsTestPage() {
               <button onClick={() => router.push("/login")} style={styles.primaryButton}>
                 Sign In
               </button>
+
               <button onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Topic
               </button>
@@ -381,6 +427,7 @@ export default function NVRShapePatternsTestPage() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Members-only test</h1>
+
             <p style={styles.subtitle}>
               This test is not included in the free plan. Upgrade your plan to unlock it.
             </p>
@@ -389,6 +436,7 @@ export default function NVRShapePatternsTestPage() {
               <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
                 View Upgrade Options
               </button>
+
               <button onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Topic
               </button>
@@ -399,7 +447,7 @@ export default function NVRShapePatternsTestPage() {
     )
   }
 
-  if (errorMessage) {
+  if (errorMessage && !test) {
     return (
       <>
         <Header />
@@ -407,6 +455,7 @@ export default function NVRShapePatternsTestPage() {
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Could not open test</h1>
             <p>{errorMessage}</p>
+
             <button onClick={goBackSafely} style={styles.primaryButton}>
               Back to Topic
             </button>
@@ -423,6 +472,7 @@ export default function NVRShapePatternsTestPage() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>NVR test not found</h1>
+
             <button onClick={goBackSafely} style={styles.primaryButton}>
               Back to Topic
             </button>
@@ -435,12 +485,14 @@ export default function NVRShapePatternsTestPage() {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>🧩 {test.title}</h1>
+
                 <p style={styles.subtitle}>
                   Answer all multiple-choice questions carefully and study the visual patterns.
                 </p>
@@ -461,14 +513,19 @@ export default function NVRShapePatternsTestPage() {
             {submitted ? (
               <div style={styles.resultBanner}>
                 <h2 style={{ marginTop: 0 }}>Finished</h2>
+
                 <p style={styles.resultText}>
                   You scored <strong>{score}</strong> out of{" "}
                   <strong>{questions.length}</strong>
                 </p>
+
                 <p style={styles.resultText}>
                   Success rate:{" "}
                   <strong>
-                    {questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%
+                    {questions.length > 0
+                      ? Math.round((score / questions.length) * 100)
+                      : 0}
+                    %
                   </strong>
                 </p>
 
@@ -476,6 +533,7 @@ export default function NVRShapePatternsTestPage() {
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Test
                   </button>
+
                   <button
                     onClick={() => router.push("/nvr/shape-patterns")}
                     style={styles.primaryButton}
@@ -485,118 +543,129 @@ export default function NVRShapePatternsTestPage() {
                 </div>
               </div>
             ) : (
-              <div style={styles.progressInfo}>
-                Answered: <strong>{answeredCount}</strong> / {questions.length}
-              </div>
+              <>
+                <div style={styles.progressInfo}>
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
+                </div>
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+              </>
             )}
           </div>
 
           <div style={styles.questionsCard}>
             <h2 style={styles.sectionTitle}>Questions</h2>
 
-            {questions.map((question, index) => {
-              const selected = answers[question.id]
-              const isCorrect = selected === question.correct_answer
+            {questions.length === 0 ? (
+              <div style={styles.centerCard}>
+                <h2>No questions found</h2>
+                <p>Add questions in Supabase for this test.</p>
+              </div>
+            ) : (
+              questions.map((question, index) => {
+                const selected = answers[question.id]
+                const isCorrect = selected === question.correct_answer
 
-              return (
-                <div key={question.id} style={styles.questionBlock}>
-                  <h3 style={styles.questionTitle}>
-                    {index + 1}. {question.question_text}
-                  </h3>
+                return (
+                  <div key={question.id} style={styles.questionBlock}>
+                    <h3 style={styles.questionTitle}>
+                      {index + 1}. {question.question_text}
+                    </h3>
 
-                  {question.image_url && (
-                    <div style={styles.questionImageWrap}>
-                      <img
-                        src={question.image_url}
-                        alt={`Question ${index + 1} visual`}
-                        style={styles.questionImage}
-                      />
-                    </div>
-                  )}
+                    {question.image_url && (
+                      <div style={styles.questionImageWrap}>
+                        <img
+                          src={question.image_url}
+                          alt={`Question ${index + 1} visual`}
+                          style={styles.questionImage}
+                        />
+                      </div>
+                    )}
 
-                  <div style={styles.optionsGrid}>
-                    {(["A", "B", "C", "D"] as const).map((option) => {
-                      const optionText = getOptionText(question, option)
-                      const optionImage = getOptionImage(question, option)
+                    <div style={styles.optionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const optionText = getOptionText(question, option)
+                        const optionImage = getOptionImage(question, option)
 
-                      let backgroundColor = "#f3f4f6"
-                      let borderColor = "transparent"
+                        let backgroundColor = "#f3f4f6"
+                        let borderColor = "transparent"
 
-                      if (selected === option) {
-                        backgroundColor = "#e0e7ff"
-                        borderColor = "#4f46e5"
-                      }
-
-                      if (submitted) {
-                        if (option === question.correct_answer) {
-                          backgroundColor = "#dcfce7"
-                          borderColor = "#16a34a"
-                        } else if (selected === option && option !== question.correct_answer) {
-                          backgroundColor = "#fee2e2"
-                          borderColor = "#dc2626"
+                        if (selected === option) {
+                          backgroundColor = "#e0e7ff"
+                          borderColor = "#4f46e5"
                         }
-                      }
 
-                      return (
-                        <button
-                          key={option}
-                          onClick={() => handleSelect(question.id, option)}
-                          disabled={submitted}
-                          style={{
-                            ...styles.optionButton,
-                            backgroundColor,
-                            borderColor,
-                            cursor: submitted ? "default" : "pointer",
-                          }}
-                        >
-                          <span style={styles.optionLetter}>{option}</span>
+                        if (submitted) {
+                          if (option === question.correct_answer) {
+                            backgroundColor = "#dcfce7"
+                            borderColor = "#16a34a"
+                          } else if (selected === option && option !== question.correct_answer) {
+                            backgroundColor = "#fee2e2"
+                            borderColor = "#dc2626"
+                          }
+                        }
 
-                          <div style={styles.optionContent}>
-                            {optionText && <span>{optionText}</span>}
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => handleSelect(question.id, option)}
+                            disabled={submitted}
+                            style={{
+                              ...styles.optionButton,
+                              backgroundColor,
+                              borderColor,
+                              cursor: submitted ? "default" : "pointer",
+                            }}
+                          >
+                            <span style={styles.optionLetter}>{option}</span>
 
-                            {optionImage && (
-                              <img
-                                src={optionImage}
-                                alt={`Option ${option}`}
-                                style={styles.optionImage}
-                              />
-                            )}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
+                            <div style={styles.optionContent}>
+                              {optionText && <span>{optionText}</span>}
 
-                  {submitted && (
-                    <div
-                      style={{
-                        ...styles.feedbackBox,
-                        backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                        borderColor: isCorrect ? "#86efac" : "#fecaca",
-                      }}
-                    >
-                      <p style={{ margin: 0 }}>
-                        <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
-                      </p>
-
-                      {!isCorrect && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          Correct answer: <strong>{question.correct_answer}</strong>
-                        </p>
-                      )}
-
-                      {question.explanation && question.explanation.trim() !== "" && (
-                        <p style={{ margin: "8px 0 0 0" }}>
-                          <strong>Explanation:</strong> {question.explanation}
-                        </p>
-                      )}
+                              {optionImage && (
+                                <img
+                                  src={optionImage}
+                                  alt={`Option ${option}`}
+                                  style={styles.optionImage}
+                                />
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
-              )
-            })}
 
-            {!submitted && (
+                    {submitted && (
+                      <div
+                        style={{
+                          ...styles.feedbackBox,
+                          backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                          borderColor: isCorrect ? "#86efac" : "#fecaca",
+                        }}
+                      >
+                        <p style={{ margin: 0 }}>
+                          <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
+                        </p>
+
+                        {!isCorrect && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            Correct answer: <strong>{question.correct_answer}</strong>
+                          </p>
+                        )}
+
+                        {question.explanation && question.explanation.trim() !== "" && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            <strong>Explanation:</strong> {question.explanation}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+
+            {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
                 <button
                   onClick={handleSubmit}
@@ -618,11 +687,14 @@ export default function NVRShapePatternsTestPage() {
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
             <h2 style={styles.modalTitle}>Incomplete Test</h2>
+
             <p style={styles.modalText}>Not all questions have been answered.</p>
+
             <p style={styles.modalText}>
               You still have <strong>{unansweredCount}</strong> unanswered question
               {unansweredCount === 1 ? "" : "s"}.
             </p>
+
             <p style={styles.modalText}>Are you sure you want to submit the test?</p>
 
             <div style={styles.modalButtons}>
@@ -632,6 +704,7 @@ export default function NVRShapePatternsTestPage() {
               >
                 Go Back
               </button>
+
               <button onClick={submitTest} style={styles.primaryButton}>
                 Submit Anyway
               </button>
@@ -647,10 +720,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -658,6 +733,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   heroTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -665,15 +741,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     flexWrap: "wrap",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   badge: {
     padding: "10px 14px",
     borderRadius: "999px",
@@ -682,10 +761,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
+
   progressInfo: {
     marginTop: "20px",
     color: "#444",
   },
+
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
+  },
+
   resultBanner: {
     marginTop: "20px",
     background: "#f8fafc",
@@ -693,10 +782,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     border: "1px solid #e5e7eb",
   },
+
   resultText: {
     margin: "8px 0",
     fontSize: "18px",
   },
+
   resultButtons: {
     display: "flex",
     gap: "12px",
@@ -704,31 +795,37 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "18px",
     justifyContent: "center",
   },
+
   questionsCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   sectionTitle: {
     marginTop: 0,
     marginBottom: "20px",
     fontSize: "28px",
   },
+
   questionBlock: {
     padding: "22px 0",
     borderBottom: "1px solid #e5e7eb",
   },
+
   questionTitle: {
     marginTop: 0,
     marginBottom: "16px",
     fontSize: "22px",
     lineHeight: 1.5,
   },
+
   questionImageWrap: {
     marginBottom: "16px",
     textAlign: "center",
   },
+
   questionImage: {
     maxWidth: "100%",
     maxHeight: "320px",
@@ -737,10 +834,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     objectFit: "contain",
     background: "#fff",
   },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
   },
+
   optionButton: {
     width: "100%",
     textAlign: "left",
@@ -753,16 +852,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     transition: "all 0.2s ease",
   },
+
   optionLetter: {
     fontWeight: 700,
     minWidth: "22px",
   },
+
   optionContent: {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
     width: "100%",
   },
+
   optionImage: {
     maxWidth: "220px",
     maxHeight: "140px",
@@ -771,6 +873,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     objectFit: "contain",
     background: "#fff",
   },
+
   feedbackBox: {
     marginTop: "14px",
     padding: "14px",
@@ -778,11 +881,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid",
     lineHeight: 1.5,
   },
+
   submitRow: {
     marginTop: "28px",
     display: "flex",
     justifyContent: "center",
   },
+
   primaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -793,6 +898,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -803,6 +909,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
   },
+
   centerCard: {
     maxWidth: "700px",
     margin: "80px auto",
@@ -812,11 +919,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
   },
+
   modalOverlay: {
     position: "fixed",
     inset: 0,
@@ -827,6 +936,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     zIndex: 1000,
   },
+
   modalCard: {
     background: "white",
     borderRadius: "20px",
@@ -835,17 +945,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "480px",
     boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
   },
+
   modalTitle: {
     marginTop: 0,
     marginBottom: "14px",
     fontSize: "28px",
   },
+
   modalText: {
     margin: "8px 0",
     color: "#374151",
     lineHeight: 1.6,
     fontSize: "16px",
   },
+
   modalButtons: {
     display: "flex",
     justifyContent: "flex-end",
