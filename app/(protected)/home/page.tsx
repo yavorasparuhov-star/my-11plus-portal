@@ -150,7 +150,7 @@ export default function HomePage() {
         <div style={styles.heroActions}>
           <button
             style={styles.primaryButton}
-            onClick={() => router.push("/register")}
+            onClick={() => router.push("/signup")}
           >
             Start free
           </button>
