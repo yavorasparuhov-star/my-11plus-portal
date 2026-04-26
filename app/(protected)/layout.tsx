@@ -10,20 +10,27 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
 
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
+    let mounted = true
+
     async function checkUser() {
       const { data, error } = await supabase.auth.getUser()
 
+      if (!mounted) return
+
       if (error || !data.user) {
-        router.push("/login")
-      } else {
-        setUser(data.user)
+        setUser(null)
+        setLoading(false)
+        router.replace("/login")
+        return
       }
 
+      setUser(data.user)
       setLoading(false)
     }
 
@@ -32,14 +39,19 @@ export default function ProtectedLayout({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+
       if (!session?.user) {
-        router.push("/login")
-      } else {
-        setUser(session.user)
+        setUser(null)
+        router.replace("/login")
+        return
       }
+
+      setUser(session.user)
     })
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [router])
@@ -50,11 +62,28 @@ export default function ProtectedLayout({
     }
 
     await supabase.auth.signOut()
-    router.push("/login")
+
+    setUser(null)
+    router.replace("/login")
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f4fbf4",
+          color: "#065f46",
+          fontSize: "20px",
+          fontWeight: 700,
+        }}
+      >
+        Loading...
+      </div>
+    )
   }
 
   if (!user) {

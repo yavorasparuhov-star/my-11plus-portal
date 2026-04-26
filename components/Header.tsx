@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabaseClient"
 
 type HeaderProps = {
@@ -16,11 +16,35 @@ type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const dropdownRef = useRef<HTMLDivElement | null>(null)
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
   const [loadingUser, setLoadingUser] = useState(!propUser)
   const [plan, setPlan] = useState<UserPlan>("guest")
+
+  useEffect(() => {
+    setMenuOpen(false)
+    setProfileMenuOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setProfileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -115,8 +139,20 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     }
   }, [propUser])
 
+  const activeUser = propUser ?? currentUser
+  const isGuest = !activeUser
+
+  const homeHref = isGuest ? "/" : "/home"
+  const englishHref = "/english"
+  const mathHref = "/math"
+  const vrHref = "/vr"
+  const nvrHref = "/nvr"
+  const customTestsHref = "/custom-tests"
+  const membershipHref = "/"
+
   const handleLogoutClick = async () => {
     setMenuOpen(false)
+    setProfileMenuOpen(false)
 
     if (onLogout) {
       onLogout()
@@ -124,22 +160,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     }
 
     await supabase.auth.signOut()
+
     setCurrentUser(null)
     setPlan("guest")
-    router.push("/login")
+
+    router.replace("/login")
     router.refresh()
   }
-
-  const activeUser = propUser ?? currentUser
-  const isGuest = !activeUser
-
-  const homeHref = "/"
-  const englishHref = "/english"
-  const mathHref = "/math"
-  const vrHref = "/vr"
-  const nvrHref = "/nvr"
-  const customTestsHref = "/custom-tests"
-  const pricingHref = "/profile"
 
   const isActivePath = (path: string) => {
     if (path === "/") return pathname === "/"
@@ -163,8 +190,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const displayName =
     activeUser?.user_metadata?.nickname ||
     activeUser?.user_metadata?.first_name ||
-    activeUser?.email ||
-    "User"
+    "Profile"
 
   const initial = (
     activeUser?.user_metadata?.nickname?.[0] ||
@@ -333,7 +359,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           </Link>
 
           {isGuest && (
-            <Link href={pricingHref} style={linkStyle(pricingHref)}>
+            <Link href={membershipHref} style={linkStyle(membershipHref)}>
               💎 Membership
             </Link>
           )}
@@ -376,73 +402,132 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 {planBadgeText}
               </div>
 
-              <Link
-                href="/profile"
+              <div
+                ref={dropdownRef}
                 style={{
-                  textDecoration: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  background: "rgba(255,255,255,0.65)",
-                  border: "1px solid rgba(0,0,0,0.05)",
-                  padding: "8px 12px",
-                  borderRadius: "999px",
-                  maxWidth: "190px",
-                  transition: "all 0.2s ease",
+                  position: "relative",
                 }}
               >
-                <div
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  aria-label="Open profile menu"
                   style={{
-                    width: "30px",
-                    height: "30px",
+                    width: "38px",
+                    height: "38px",
                     borderRadius: "50%",
-                    background: "#86efac",
-                    color: "#111827",
+                    border: "2px solid rgba(6,95,70,0.18)",
+                    background: "white",
+                    color: "#065f46",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontWeight: 700,
-                    fontSize: "13px",
-                    flexShrink: 0,
+                    fontWeight: 900,
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
                   }}
                 >
                   {initial}
-                </div>
+                </button>
 
-                <span
-                  title={displayName}
-                  style={{
-                    fontSize: "13px",
-                    color: "#1f2937",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: "120px",
-                    display: "inline-block",
-                    fontWeight: 600,
-                  }}
-                >
-                  {displayName}
-                </span>
-              </Link>
+                {profileMenuOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "48px",
+                      width: "210px",
+                      background: "white",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "16px",
+                      boxShadow: "0 18px 38px rgba(0,0,0,0.14)",
+                      padding: "10px",
+                      zIndex: 2000,
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "10px 10px 12px",
+                        borderBottom: "1px solid #e5e7eb",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#6b7280",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Signed in as
+                      </div>
 
-              <button
-                onClick={handleLogoutClick}
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: "999px",
-                  border: "none",
-                  background: "#ef4444",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  boxShadow: "0 6px 14px rgba(239,68,68,0.22)",
-                  transition: "all 0.2s ease",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Logout
-              </button>
+                      <div
+                        title={displayName}
+                        style={{
+                          fontSize: "15px",
+                          fontWeight: 800,
+                          color: "#111827",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {displayName}
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        color: "#1f2937",
+                        fontWeight: 700,
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      👤 Profile
+                    </Link>
+
+                    <Link
+                      href="/home"
+                      onClick={() => setProfileMenuOpen(false)}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        color: "#1f2937",
+                        fontWeight: 700,
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      🏠 Member home
+                    </Link>
+
+                    <button
+                      onClick={handleLogoutClick}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: "transparent",
+                        color: "#b91c1c",
+                        cursor: "pointer",
+                        fontWeight: 800,
+                        fontSize: "15px",
+                      }}
+                    >
+                      🚪 Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
@@ -577,14 +662,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               </Link>
 
               {isGuest && (
-  <Link
-    href={pricingHref}
-    style={linkStyle(pricingHref)}
-    onClick={() => setMenuOpen(false)}
-  >
-    💎 Membership
-  </Link>
-)}
+                <Link
+                  href={membershipHref}
+                  style={linkStyle(membershipHref)}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  💎 Membership
+                </Link>
+              )}
 
               {!isGuest && (
                 <>
@@ -602,6 +687,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     onClick={() => setMenuOpen(false)}
                   >
                     📚 Review
+                  </Link>
+
+                  <Link
+                    href="/profile"
+                    style={linkStyle("/profile")}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    👤 Profile
                   </Link>
                 </>
               )}
@@ -650,11 +743,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   {planBadgeText}
                 </div>
 
-                <Link
-                  href="/profile"
-                  onClick={() => setMenuOpen(false)}
+                <div
                   style={{
-                    textDecoration: "none",
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
@@ -662,16 +752,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 >
                   <div
                     style={{
-                      width: "32px",
-                      height: "32px",
+                      width: "34px",
+                      height: "34px",
                       borderRadius: "50%",
-                      background: "#86efac",
+                      background: "white",
                       color: "#065f46",
+                      border: "2px solid rgba(6,95,70,0.18)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontWeight: 700,
-                      fontSize: "13px",
+                      fontWeight: 900,
+                      fontSize: "14px",
                       flexShrink: 0,
                     }}
                   >
@@ -682,27 +773,27 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     style={{
                       fontSize: "14px",
                       color: "#1f2937",
-                      wordBreak: "break-all",
+                      fontWeight: 700,
                     }}
                   >
                     {displayName}
                   </span>
-                </Link>
+                </div>
 
                 <button
                   onClick={handleLogoutClick}
                   style={{
-                    padding: "10px 16px",
-                    borderRadius: "999px",
-                    border: "none",
-                    background: "#ef4444",
-                    color: "white",
+                    padding: "10px 14px",
+                    borderRadius: "12px",
+                    border: "1px solid #fecaca",
+                    background: "#fff7f7",
+                    color: "#b91c1c",
                     cursor: "pointer",
-                    fontWeight: 600,
+                    fontWeight: 800,
                     width: "fit-content",
                   }}
                 >
-                  Logout
+                  🚪 Logout
                 </button>
               </div>
             )}
