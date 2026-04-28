@@ -390,7 +390,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           </Link>
 
           <Link href={mathHref} style={linkStyle(mathHref)}>
-            ➗ Math
+            ➗ Maths
           </Link>
 
           <Link href={vrHref} style={linkStyle(vrHref)}>

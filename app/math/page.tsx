@@ -167,7 +167,7 @@ export default function MathPage() {
 
       <div style={styles.page}>
         <div style={styles.hero}>
-          <h1 style={styles.title}>Math</h1>
+          <h1 style={styles.title}>Maths</h1>
           <p style={styles.subtitle}>
             Practise core mathematical skills across all major 11+ topics and
             build confidence step by step.
