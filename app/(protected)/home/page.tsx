@@ -19,7 +19,7 @@ export default function HomePage() {
       path: "/english",
     },
     {
-      title: "Math",
+      title: "Maths",
       icon: "➗",
       text: "Build arithmetic, reasoning, fractions, problem-solving and exam confidence.",
       path: "/math",

@@ -89,7 +89,7 @@ export const CUSTOM_TEST_CATALOG: Record<
 
   math: {
     key: "math",
-    label: "Math",
+    label: "Maths",
     enabled: true,
     topics: [
       {
