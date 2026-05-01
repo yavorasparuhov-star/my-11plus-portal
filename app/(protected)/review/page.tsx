@@ -15,7 +15,7 @@ export default function ReviewPage() {
           </Link>
 
           <Link href="/review/math" style={styles.button}>
-            ➕ Math Review →
+            ➕ Maths Review →
           </Link>
 
           <Link href="/review/vr" style={styles.button}>

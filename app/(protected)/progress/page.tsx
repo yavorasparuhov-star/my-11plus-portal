@@ -15,7 +15,7 @@ export default function ProgressPage() {
           </Link>
 
           <Link href="/progress/math" style={styles.button}>
-            ➕ Math Progress →
+            ➕ Maths Progress →
           </Link>
 
           <Link href="/progress/vr" style={styles.button}>
