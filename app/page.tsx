@@ -185,7 +185,7 @@ export default function LandingPage() {
         <section style={styles.whySection}>
           <div style={styles.whyCard}>
             <div style={styles.whyContent}>
-             <h2 style={styles.whyTitle}>Why use YanBo Learning? MOBILE TEST</h2>
+             <h2 style={styles.whyTitle}>Why use YanBo Learning?</h2>
               <p style={styles.whyText}>
                 11+ preparation works best when practice is regular, focused and
                 easy to review. YanBo Learning is designed to help students see
