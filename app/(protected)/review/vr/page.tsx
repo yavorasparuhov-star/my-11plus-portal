@@ -943,12 +943,12 @@ export default function VRReviewPage() {
           subtitle="Your latest verbal reasoning questions to revisit."
         >
           {recentQuestions.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "hidden" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "1080px",
+                  minWidth: "100%",
                 }}
               >
                 <thead>

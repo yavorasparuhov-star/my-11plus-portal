@@ -925,6 +925,7 @@ export default function EnglishReviewPage() {
         background:
           "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
         padding: "28px 20px 50px",
+        overflowX: "hidden",
       }}
     >
       <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
@@ -1192,7 +1193,7 @@ export default function EnglishReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "1080px",
+                  minWidth: "100%",
                 }}
               >
                 <thead>

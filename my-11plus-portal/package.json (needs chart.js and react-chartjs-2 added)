@@ -1,0 +1,12 @@
+{
+	"name": "my-11plus-portal",
+	"version": "1.0.0",
+	"dependencies": {
+		"chart.js": "^3.9.1",
+		"react-chartjs-2": "^3.0.4"
+	},
+	"devDependencies": {
+		"@types/chart.js": "^2.9.32",
+		"@types/react-chartjs-2": "^2.11.4"
+	}
+}

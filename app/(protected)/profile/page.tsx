@@ -537,7 +537,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   contentGrid: {
     display: "grid",
-    gridTemplateColumns: "minmax(260px, 0.8fr) minmax(320px, 1.5fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: 24,
   },
 

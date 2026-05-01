@@ -11,73 +11,80 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from "recharts"
-import type {
-  NameType,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent"
 
-type MathReviewRow = {
-  id: number
-  user_id: string
-  test_id: number
-  question_id: number
+type ValueType = string | number | undefined
+type NameType = string | number
+
+type TimeFilter = "all" | "week" | "month" | "3months"
+
+type MathTest = {
+  id: string
+  title: string
   category: string
-  question_text: string
-  correct_answer: string
-  user_answer: string | null
   difficulty: number | null
+}
+
+type MathProgress = {
+  test_id: string
+  user_id: string
   created_at: string
+  user_answer: string | null
+  correct_answer: string | null
 }
 
-type TimeFilter = "7d" | "30d" | "90d" | "all"
-type DifficultyFilter = "all" | "1" | "2" | "3"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  number_place_value: "Number & Place Value",
-  four_operations: "Four Operations",
-  fractions_decimals_percentages: "Fractions, Decimals & Percentages",
-  shape_space: "Shape & Space",
-  measurement: "Measurement",
-  data_handling: "Data Handling",
-  algebra_reasoning: "Algebra & Reasoning",
+type ReviewItem = MathTest & {
+  created_at: string
+  user_answer: string | null
+  correct_answer: string | null
 }
 
-const categoryOptions = [
+const timeFilterOptions: { value: TimeFilter; label: string }[] = [
+  { value: "all", label: "All Time" },
+  { value: "week", label: "Past Week" },
+  { value: "month", label: "Past Month" },
+  { value: "3months", label: "Past 3 Months" },
+]
+
+const categoryOptions: { value: string; label: string }[] = [
   { value: "all", label: "All Categories" },
-  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+  { value: "Number Place Value", label: "Number Place Value" },
+  { value: "Four Operations", label: "Four Operations" },
+  { value: "Mental Maths", label: "Mental Maths" },
+  { value: "Algebra & Reasoning", label: "Algebra & Reasoning" },
+  { value: "Fractions & Decimals", label: "Fractions & Decimals" },
+  { value: "Percentages", label: "Percentages" },
+  { value: "Measurement", label: "Measurement" },
 ]
 
-const timeOptions: { value: TimeFilter; label: string }[] = [
-  { value: "7d", label: "Last 7 days" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "all", label: "All time" },
-]
-
-const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
+const difficultyOptions: { value: string; label: string }[] = [
   { value: "all", label: "All Difficulties" },
   { value: "1", label: "Easy" },
   { value: "2", label: "Medium" },
   { value: "3", label: "Hard" },
 ]
 
+const CATEGORY_COLORS = ["#22c55e", "#16a34a", "#15803d", "#14532d", "#166534", "#0f766e", "#0d9488"]
+const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
+
 function getCutoffDate(filter: TimeFilter) {
-  if (filter === "all") return null
-
   const now = new Date()
-  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
+  switch (filter) {
+    case "week":
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    case "month":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    case "3months":
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+    default:
+      return null
   }
-
-  now.setDate(now.getDate() - daysMap[filter])
-  return now
 }
 
-function formatCategory(category: string) {
-  return CATEGORY_LABELS[category] ?? category
+function formatCategory(category: string | null | undefined) {
+  return category || "Unknown"
 }
 
 function formatDifficulty(difficulty: number | null) {
@@ -87,39 +94,23 @@ function formatDifficulty(difficulty: number | null) {
   return "Not set"
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—"
   const date = new Date(value)
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   })
 }
 
-function truncateText(text: string, maxLength = 120) {
+function truncateText(text: string | null | undefined, maxLength = 120) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }
 
-function formatAnswer(answer: string | null) {
+function formatAnswer(answer: string | null | undefined) {
   return answer && answer.trim() ? answer : "No answer"
-}
-
-function toNumericValue(value: ValueType | undefined) {
-  if (typeof value === "number") return value
-  if (typeof value === "string") return Number(value)
-  if (Array.isArray(value)) return Number(value[0])
-  return 0
-}
-
-function reviewItemsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [string, string] {
-  const numericValue = toNumericValue(value)
-  return [`${numericValue}`, "Review Items"]
 }
 
 function StatCard({
@@ -160,32 +151,26 @@ function StatCard({
 
       <div
         style={{
-          fontSize: value.length > 18 ? "22px" : "34px",
+          fontSize: "28px",
           fontWeight: 800,
-          color: "#0f172a",
-          lineHeight: 1.15,
-          overflowWrap: "break-word",
-          wordBreak: "normal",
-          whiteSpace: "normal",
-          maxWidth: "100%",
+          color: "#166534",
+          lineHeight: 1.2,
         }}
       >
         {value}
       </div>
 
-      {subtitle ? (
+      {subtitle && (
         <div
           style={{
             fontSize: "13px",
             color: "#64748b",
             marginTop: "8px",
-            lineHeight: 1.45,
-            overflowWrap: "break-word",
           }}
         >
           {subtitle}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
@@ -202,15 +187,15 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-        border: "1px solid #dcfce7",
-        borderRadius: "28px",
+        background: "white",
+        borderRadius: "24px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        minWidth: 0,
+        border: "1px solid #e2e8f0",
+        marginBottom: "20px",
       }}
     >
-      <div style={{ marginBottom: "18px" }}>
+      <div style={{ marginBottom: "20px" }}>
         <h2
           style={{
             margin: 0,
@@ -225,9 +210,9 @@ function SectionCard({
         {subtitle ? (
           <p
             style={{
-              margin: "8px 0 0 0",
+              margin: "10px 0 0 0",
               color: "#64748b",
-              fontSize: "14px",
+              fontSize: "15px",
             }}
           >
             {subtitle}
@@ -240,140 +225,98 @@ function SectionCard({
   )
 }
 
-function ChartBox({
-  children,
-  height = 340,
-}: {
-  children: (size: { width: number; height: number }) => React.ReactNode
-  height?: number
-}) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const [size, setSize] = useState({ width: 0, height })
-
-  useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
-
-    const updateSize = () => {
-      const rect = element.getBoundingClientRect()
-      const width = Math.max(0, Math.floor(rect.width))
-      const measuredHeight = Math.max(0, Math.floor(rect.height))
-      setSize({ width, height: measuredHeight })
-    }
-
-    updateSize()
-
-    const observer = new ResizeObserver(() => {
-      updateSize()
-    })
-
-    observer.observe(element)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: "100%",
-        height,
-        minWidth: 0,
-      }}
-    >
-      {size.width > 0 && size.height > 0 ? (
-        children(size)
-      ) : (
-        <div style={emptyStateStyle}>Loading chart...</div>
-      )}
-    </div>
-  )
-}
-
 export default function MathReviewPage() {
   const router = useRouter()
 
-  const [loadingUser, setLoadingUser] = useState(true)
-  const [loadingData, setLoadingData] = useState(true)
-  const [rows, setRows] = useState<MathReviewRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
+
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
-  const [answerFilter, setAnswerFilter] = useState<"all" | "wrong" | "unanswered">(
-    "all"
-  )
+  const [difficultyFilter, setDifficultyFilter] = useState("all")
+  const [answerFilter, setAnswerFilter] = useState("all")
 
   useEffect(() => {
-    let mounted = true
-
-    async function loadData() {
+    async function loadReviewItems() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!mounted) return
-
       if (!user) {
-        router.push("/login")
+        router.replace("/login")
         return
       }
 
-      setLoadingUser(false)
-
-      const { data, error } = await supabase
-        .from("math_review")
-        .select("*")
+      const { data: progressData, error: progressError } = await supabase
+        .from("math_progress")
+        .select("test_id, user_id, created_at, user_answer, correct_answer")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: false }) as { data: MathProgress[] | null; error: any }
 
-      if (error) {
-        console.error("Error loading math review:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          full: error,
+      if (progressError) {
+        console.error("Error loading progress:", progressError)
+        setLoading(false)
+        return
+      }
+
+      const testIds = [...new Set(progressData?.map((p: MathProgress) => p.test_id).filter(Boolean) || [])]
+
+      if (testIds.length === 0) {
+        setReviewItems([])
+        setLoading(false)
+        return
+      }
+
+      const { data: testsData, error: testsError } = await supabase
+        .from("math_tests")
+        .select("id, title, category, difficulty")
+        .in("id", testIds) as { data: MathTest[] | null; error: any }
+
+      if (testsError) {
+        console.error("Error loading tests:", testsError)
+        setLoading(false)
+        return
+      }
+
+      const testMap = new Map(testsData?.map((t: MathTest) => [t.id, t]) || [])
+
+      const items = progressData
+        ?.map((p: MathProgress) => {
+          const test = testMap.get(p.test_id)
+          return {
+            ...test,
+            created_at: p.created_at,
+            user_answer: p.user_answer,
+            correct_answer: p.correct_answer,
+          } as ReviewItem
         })
-        setRows([])
-      } else {
-        setRows((data ?? []) as MathReviewRow[])
-      }
+        .filter((item): item is ReviewItem => !!item && !!item.category)
 
-      if (mounted) {
-        setLoadingData(false)
-      }
+      setReviewItems(items || [])
+      setLoading(false)
     }
 
-    loadData()
-
-    return () => {
-      mounted = false
-    }
+    loadReviewItems()
   }, [router])
 
   const filteredRows = useMemo(() => {
-    const cutoff = getCutoffDate(timeFilter)
+    let rows = [...reviewItems]
 
-    return rows.filter((row) => {
-      const matchesCategory = categoryFilter === "all" || row.category === categoryFilter
-      const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
+    const cutoffDate = getCutoffDate(timeFilter)
+    if (cutoffDate) {
+      rows = rows.filter((row) => row.created_at && new Date(row.created_at) >= cutoffDate)
+    }
 
-      const matchesDifficulty =
-        difficultyFilter === "all" || String(row.difficulty) === difficultyFilter
+    if (categoryFilter !== "all") {
+      rows = rows.filter((row) => row.category === categoryFilter)
+    }
 
-      const isUnanswered = !row.user_answer || !row.user_answer.trim()
-      const isWrong = !isUnanswered && row.user_answer !== row.correct_answer
+    if (difficultyFilter !== "all") {
+      rows = rows.filter((row) => String(row.difficulty) === difficultyFilter)
+    }
 
-      const matchesAnswerType =
-        answerFilter === "all" ||
-        (answerFilter === "wrong" && isWrong) ||
-        (answerFilter === "unanswered" && isUnanswered)
-
-      return matchesCategory && matchesTime && matchesDifficulty && matchesAnswerType
-    })
-  }, [rows, categoryFilter, timeFilter, difficultyFilter, answerFilter])
+    return rows
+  }, [reviewItems, categoryFilter, timeFilter, difficultyFilter])
 
   const reviewStats = useMemo(() => {
     const totalQuestions = filteredRows.length
@@ -394,7 +337,7 @@ export default function MathReviewPage() {
           acc[row.category] = 0
         }
 
-        acc[row.category] += 1
+        (acc[row.category] as number) += 1
         return acc
       }, {} as Record<string, number>)
     ).map(([category, count]) => ({ category, count }))
@@ -402,7 +345,7 @@ export default function MathReviewPage() {
     const mostMissedCategory =
       byCategory.length > 0
         ? byCategory.reduce((max, current) =>
-            current.count > max.count ? current : max
+            (current.count as number) > (max.count as number) ? current : max
           )
         : null
 
@@ -431,14 +374,15 @@ export default function MathReviewPage() {
         }
       }
 
-      acc[row.category].count += 1
+      (acc[row.category].count as number) += 1
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
     return Object.values(grouped)
-      .map((item) => ({
-        category: formatCategory(item.category),
+      .map((item, index) => ({
+        name: formatCategory(item.category),
         mistakes: item.count,
+        fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
       }))
       .sort((a, b) => b.mistakes - a.mistakes)
   }, [filteredRows])
@@ -451,7 +395,7 @@ export default function MathReviewPage() {
         acc[label] = 0
       }
 
-      acc[label] += 1
+      (acc[label] as number) += 1
       return acc
     }, {} as Record<string, number>)
 
@@ -459,9 +403,10 @@ export default function MathReviewPage() {
 
     return order
       .filter((difficulty) => grouped[difficulty])
-      .map((difficulty) => ({
-        difficulty,
+      .map((difficulty, index) => ({
+        name: difficulty,
         mistakes: grouped[difficulty],
+        fill: DIFFICULTY_COLORS[index % DIFFICULTY_COLORS.length],
       }))
   }, [filteredRows])
 
@@ -473,20 +418,38 @@ export default function MathReviewPage() {
 
   const summaryText = useMemo(() => {
     if (!filteredRows.length) {
-      return "No maths review data yet for the selected filters."
+      return "No review items found. Complete some maths tests to see your review data here."
     }
 
-    const mostMissed = reviewStats.mostMissedCategory
-      ? `${formatCategory(reviewStats.mostMissedCategory.category)} (${reviewStats.mostMissedCategory.count})`
-      : "N/A"
+    const { totalQuestions, unansweredCount, wrongAnsweredCount, uniqueCategories } = reviewStats
 
-    return `You currently have ${reviewStats.totalQuestions} maths questions to review across ${reviewStats.uniqueCategories} categories. ${reviewStats.unansweredCount} were unanswered, ${reviewStats.wrongAnsweredCount} were answered incorrectly, and the area needing the most attention is ${mostMissed}.`
+    let text = `You have ${totalQuestions} total review items across ${uniqueCategories} categories.`
+
+    if (unansweredCount > 0) {
+      text += ` ${unansweredCount} questions were left unanswered.`
+    }
+
+    if (wrongAnsweredCount > 0) {
+      text += ` ${wrongAnsweredCount} questions were answered incorrectly.`
+    }
+
+    return text
   }, [filteredRows, reviewStats])
 
-  if (loadingUser || loadingData) {
+  if (loading) {
     return (
-      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
-        Loading math review...
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+        }}
+      >
+        <p style={{ color: "#64748b", fontSize: "18px", fontWeight: 600 }}>
+          Loading maths review...
+        </p>
       </div>
     )
   }
@@ -511,11 +474,11 @@ export default function MathReviewPage() {
             marginBottom: "28px",
           }}
         >
-          <div>
+          <div style={{ minWidth: 0, flex: "1 1 300px" }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "42px",
+                fontSize: "clamp(28px, 5vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
@@ -528,7 +491,7 @@ export default function MathReviewPage() {
               style={{
                 margin: "10px 0 0 0",
                 color: "#475569",
-                fontSize: "17px",
+                fontSize: "clamp(14px, 2vw, 17px)",
                 maxWidth: "760px",
                 lineHeight: 1.6,
               }}
@@ -544,6 +507,7 @@ export default function MathReviewPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              width: "100%",
             }}
           >
             <select
@@ -551,7 +515,7 @@ export default function MathReviewPage() {
               name="mathReviewCategoryFilter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              style={selectStyle}
+              style={{...selectStyle, flex: "1 1 140px", minWidth: "140px"}}
             >
               {categoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -565,9 +529,9 @@ export default function MathReviewPage() {
               name="mathReviewTimeFilter"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
-              style={selectStyle}
+              style={{...selectStyle, flex: "1 1 120px", minWidth: "120px"}}
             >
-              {timeOptions.map((option) => (
+              {timeFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -578,8 +542,8 @@ export default function MathReviewPage() {
               id="math-review-difficulty-filter"
               name="mathReviewDifficultyFilter"
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
-              style={selectStyle}
+              onChange={(e) => setDifficultyFilter(e.target.value)}
+              style={{...selectStyle, flex: "1 1 130px", minWidth: "130px"}}
             >
               {difficultyOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -592,14 +556,12 @@ export default function MathReviewPage() {
               id="math-review-answer-filter"
               name="mathReviewAnswerFilter"
               value={answerFilter}
-              onChange={(e) =>
-                setAnswerFilter(e.target.value as "all" | "wrong" | "unanswered")
-              }
-              style={selectStyle}
+              onChange={(e) => setAnswerFilter(e.target.value)}
+              style={{...selectStyle, flex: "1 1 130px", minWidth: "130px"}}
             >
-              <option value="all">All Review Items</option>
-              <option value="wrong">Wrong Answers</option>
-              <option value="unanswered">Unanswered</option>
+              <option value="all">All Answers</option>
+              <option value="wrong">Incorrect Only</option>
+              <option value="unanswered">Unanswered Only</option>
             </select>
           </div>
         </div>
@@ -607,15 +569,16 @@ export default function MathReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "18px",
-            marginBottom: "24px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "20px",
+            marginBottom: "20px",
           }}
         >
-          <StatCard title="Questions to Review" value={String(reviewStats.totalQuestions)} />
-          <StatCard title="Wrong Answers" value={String(reviewStats.wrongAnsweredCount)} />
-          <StatCard title="Unanswered" value={String(reviewStats.unansweredCount)} />
-          <StatCard title="Categories with Mistakes" value={String(reviewStats.uniqueCategories)} />
+          <StatCard
+            title="Total Review Items"
+            value={reviewStats.totalQuestions.toString()}
+            subtitle={`Across ${reviewStats.uniqueCategories} categories`}
+          />
 
           <StatCard
             title="Most Missed Category"
@@ -649,150 +612,80 @@ export default function MathReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
             gap: "20px",
             marginBottom: "20px",
           }}
         >
           <SectionCard
             title="Mistakes by Category"
-            subtitle="See which maths topics are producing the most review items."
+            subtitle="Which maths topics need more revision?"
           >
-            <ChartBox height={360}>
-              {({ width, height }) =>
-                mistakesByCategoryData.length ? (
-                  <BarChart
-                    width={width}
-                    height={height}
-                    data={mistakesByCategoryData}
-                    layout="vertical"
-                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      width={190}
-                      tick={{ fontSize: 12 }}
+            {mistakesByCategoryData.length > 0 ? (
+              <div style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={mistakesByCategoryData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12, fill: "#64748b" }} 
+                      angle={-45}
+                      textAnchor="end"
+                      interval={0}
+                      height={60}
                     />
-                    <Tooltip formatter={reviewItemsTooltipFormatter} />
-                    <Bar dataKey="mistakes" fill="#16a34a" radius={[0, 10, 10, 0]} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "white", 
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.1)"
+                      }}
+                    />
+                    <Bar dataKey="mistakes" radius={[8, 8, 0, 0]}>
+                      {mistakesByCategoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
-                ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
-                )
-              }
-            </ChartBox>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div style={emptyStateStyle}>No category data available.</div>
+            )}
           </SectionCard>
 
-          <SectionCard
-            title="Quick Insights"
-            subtitle="A fast view of what needs attention."
-          >
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#ecfdf5",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
-                  Review Queue
-                </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.totalQuestions}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fee2e2",
-                  border: "1px solid #fecaca",
-                }}
-              >
-                <div style={{ color: "#b91c1c", fontWeight: 700, marginBottom: "6px" }}>
-                  Wrong Answers
-                </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.wrongAnsweredCount}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fef3c7",
-                  border: "1px solid #fde68a",
-                }}
-              >
-                <div style={{ color: "#a16207", fontWeight: 700, marginBottom: "6px" }}>
-                  Unanswered
-                </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
-                  {reviewStats.unansweredCount}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
-                  Main Focus
-                </div>
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    overflowWrap: "break-word",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {reviewStats.mostMissedCategory
-                    ? formatCategory(reviewStats.mostMissedCategory.category)
-                    : "—"}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div style={{ marginBottom: "20px" }}>
           <SectionCard
             title="Mistakes by Difficulty"
-            subtitle="See whether Easy, Medium, or Hard questions are creating the most review items."
+            subtitle="Which difficulty level has the most mistakes?"
           >
-            <ChartBox height={300}>
-              {({ width, height }) =>
-                mistakesByDifficultyData.length ? (
-                  <BarChart
-                    width={width}
-                    height={height}
-                    data={mistakesByDifficultyData}
-                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="difficulty" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip formatter={reviewItemsTooltipFormatter} />
-                    <Bar dataKey="mistakes" fill="#10b981" radius={[10, 10, 0, 0]} />
+            {mistakesByDifficultyData.length > 0 ? (
+              <div style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={mistakesByDifficultyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "white", 
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.1)"
+                      }}
+                    />
+                    <Bar dataKey="mistakes" radius={[8, 8, 0, 0]}>
+                      {mistakesByDifficultyData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
-                ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
-                )
-              }
-            </ChartBox>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div style={emptyStateStyle}>No difficulty data available.</div>
+            )}
           </SectionCard>
         </div>
 
@@ -801,12 +694,12 @@ export default function MathReviewPage() {
           subtitle="Your latest maths questions to revisit for the selected filters."
         >
           {recentMistakes.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "auto", margin: "0 -24px", padding: "0 24px" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "1200px",
+                  minWidth: "700px",
                 }}
               >
                 <thead>
@@ -822,34 +715,40 @@ export default function MathReviewPage() {
                 </thead>
 
                 <tbody>
-                  {recentMistakes.map((row) => {
+                  {recentMistakes.map((row, index) => {
                     const unanswered = !row.user_answer || !row.user_answer.trim()
+                    const incorrect = row.user_answer && row.user_answer.trim() && row.user_answer !== row.correct_answer
 
                     return (
                       <tr
-                        key={row.id}
+                        key={index}
                         style={{
                           borderBottom: "1px solid #f1f5f9",
                         }}
                       >
-                        <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
-                        <td style={tdStyle}>{formatCategory(row.category)}</td>
-                        <td style={tdStyle}>{formatDifficulty(row.difficulty)}</td>
-
-                        <td style={{ ...tdStyle, maxWidth: "420px" }}>
-                          {truncateText(row.question_text, 160)}
+                        <td style={tdStyle}>
+                          {formatDateTime(row.created_at)}
                         </td>
-
-                        <td style={tdStyle}>{formatAnswer(row.user_answer)}</td>
-                        <td style={tdStyle}>{row.correct_answer}</td>
-
+                        <td style={tdStyle}>
+                          {formatCategory(row.category)}
+                        </td>
+                        <td style={tdStyle}>
+                          {formatDifficulty(row.difficulty)}
+                        </td>
+                        <td style={tdStyle}>
+                          {truncateText(row.title)}
+                        </td>
+                        <td style={tdStyle}>
+                          {formatAnswer(row.user_answer)}
+                        </td>
+                        <td style={tdStyle}>
+                          {formatAnswer(row.correct_answer)}
+                        </td>
                         <td style={tdStyle}>
                           <span
                             style={{
-                              display: "inline-block",
                               padding: "6px 10px",
                               borderRadius: "999px",
-                              background: unanswered ? "#fef3c7" : "#fee2e2",
                               color: unanswered ? "#92400e" : "#991b1b",
                               fontWeight: 700,
                               fontSize: "13px",
@@ -879,11 +778,11 @@ export default function MathReviewPage() {
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div style={{ fontSize: "clamp(18px, 3vw, 22px)", fontWeight: 800, marginBottom: "8px" }}>
             Overall Summary
           </div>
 
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+          <div style={{ color: "#dcfce7", fontSize: "clamp(14px, 2vw, 16px)", lineHeight: 1.7 }}>
             {summaryText}
           </div>
         </div>
