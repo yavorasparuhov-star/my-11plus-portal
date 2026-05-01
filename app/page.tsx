@@ -184,7 +184,7 @@ export default function LandingPage() {
         {/* WHY SECTION */}
         <section style={styles.whySection}>
           <div style={styles.whyCard}>
-            <div>
+            <div style={styles.whyContent}>
               <h2 style={styles.whyTitle}>Why use YanBo Learning?</h2>
               <p style={styles.whyText}>
                 11+ preparation works best when practice is regular, focused and
@@ -363,6 +363,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     background:
       "linear-gradient(180deg, #f4fbf4 0%, #f8fafc 48%, #ffffff 100%)",
     padding: "30px 20px 60px",
+    boxSizing: "border-box",
+    overflowX: "hidden",
   },
 
   hero: {
@@ -375,6 +377,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "56px 24px",
     boxShadow: "0 14px 36px rgba(0,0,0,0.07)",
     border: "1px solid #d1fae5",
+    boxSizing: "border-box",
   },
 
   heroBadge: {
@@ -389,7 +392,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   heroTitle: {
-    fontSize: "46px",
+    fontSize: "clamp(34px, 8vw, 46px)",
     lineHeight: 1.08,
     margin: "0 0 16px",
     color: "#064e3b",
@@ -446,7 +449,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   sectionTitle: {
-    fontSize: "34px",
+    fontSize: "clamp(28px, 6vw, 34px)",
     margin: "0 0 10px",
     color: "#1f3b2d",
     fontWeight: 900,
@@ -473,6 +476,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.07)",
     border: "1px solid #e5e7eb",
     textAlign: "center",
+    boxSizing: "border-box",
   },
 
   subjectIcon: {
@@ -506,15 +510,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "34px",
     boxShadow: "0 14px 34px rgba(6,78,59,0.22)",
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1.4fr) minmax(260px, 0.8fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "26px",
     alignItems: "center",
+    width: "100%",
+    boxSizing: "border-box",
+    overflow: "hidden",
+  },
+
+  whyContent: {
+    minWidth: 0,
   },
 
   whyTitle: {
     margin: "0 0 12px",
-    fontSize: "32px",
+    fontSize: "clamp(28px, 6vw, 32px)",
     fontWeight: 900,
+    lineHeight: 1.15,
   },
 
   whyText: {
@@ -522,6 +534,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#d1fae5",
     fontSize: "17px",
     lineHeight: 1.7,
+    overflowWrap: "break-word",
   },
 
   whyList: {
@@ -530,12 +543,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "20px",
     display: "grid",
     gap: "12px",
+    width: "100%",
+    boxSizing: "border-box",
   },
 
   whyItem: {
     color: "#ecfdf5",
     fontSize: "16px",
     fontWeight: 700,
+    lineHeight: 1.5,
   },
 
   subscriptionSection: {
@@ -561,13 +577,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     position: "relative",
     border: "1px solid #e5e7eb",
+    boxSizing: "border-box",
   },
 
   featuredCard: {
     background: "#064e3b",
     border: "1px solid #064e3b",
     boxShadow: "0 18px 40px rgba(6,78,59,0.22)",
-    transform: "scale(1.03)",
   },
 
   planBadge: {
@@ -622,6 +638,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "20px",
     textAlign: "left",
     flexGrow: 1,
+    boxSizing: "border-box",
   },
 
   featureItem: {
@@ -659,6 +676,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     border: "1px solid #e5e7eb",
+    boxSizing: "border-box",
   },
 
   stars: {
@@ -669,7 +687,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   trustTitle: {
-    fontSize: "30px",
+    fontSize: "clamp(26px, 6vw, 30px)",
     color: "#064e3b",
     margin: "0 0 12px",
     fontWeight: 900,
@@ -709,6 +727,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "22px",
     boxShadow: "0 8px 22px rgba(0,0,0,0.06)",
     border: "1px solid #e5e7eb",
+    boxSizing: "border-box",
   },
 
   faqQuestion: {
