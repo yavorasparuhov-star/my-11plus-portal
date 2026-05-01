@@ -86,6 +86,7 @@ type EnglishReviewRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+
 type CategoryFilter =
   | "all"
   | "vocabulary"
@@ -131,6 +132,7 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
+
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -164,6 +166,7 @@ function getCategoryLabel(category: string) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -223,27 +226,38 @@ function getSharedReviewMeta(category: EnglishReviewCategory) {
   if (category === "comprehension") {
     return { main_category: "comprehension", subcategory: null as string | null }
   }
+
   if (category === "primary_word_classes") {
     return { main_category: "grammar", subcategory: "primary_word_classes" }
   }
+
   if (category === "sentence_structure_syntax") {
     return { main_category: "grammar", subcategory: "sentence_structure_syntax" }
   }
+
   if (category === "advanced_punctuation") {
     return { main_category: "punctuation", subcategory: "advanced_punctuation" }
   }
+
   if (category === "apostrophes") {
     return { main_category: "punctuation", subcategory: "apostrophes" }
   }
+
   if (category === "comma") {
     return { main_category: "punctuation", subcategory: "comma" }
   }
+
   if (category === "direct_speech_punctuation") {
-    return { main_category: "punctuation", subcategory: "direct_speech_punctuation" }
+    return {
+      main_category: "punctuation",
+      subcategory: "direct_speech_punctuation",
+    }
   }
+
   if (category === "sentence_punctuation") {
     return { main_category: "punctuation", subcategory: "sentence_punctuation" }
   }
+
   return null
 }
 
@@ -254,60 +268,70 @@ function getReviewStorageConfig(category: EnglishReviewCategory) {
       route: "/english/vocabulary?mode=review",
     }
   }
+
   if (category === "spelling") {
     return {
       key: "spelling_review_ids",
       route: "/english/spelling?mode=review",
     }
   }
+
   if (category === "comprehension") {
     return {
       key: "comprehension_review_ids",
       route: "/english/comprehension?mode=review",
     }
   }
+
   if (category === "primary_word_classes") {
     return {
       key: "primary_word_classes_review_ids",
       route: "/english/grammar/primary-word-classes?mode=review",
     }
   }
+
   if (category === "sentence_structure_syntax") {
     return {
       key: "sentence_structure_syntax_review_ids",
       route: "/english/grammar/sentence-structure-syntax?mode=review",
     }
   }
+
   if (category === "advanced_punctuation") {
     return {
       key: "advanced_punctuation_review_ids",
       route: "/english/punctuation/advanced-punctuation?mode=review",
     }
   }
+
   if (category === "apostrophes") {
     return {
       key: "apostrophes_review_ids",
       route: "/english/punctuation/apostrophes?mode=review",
     }
   }
+
   if (category === "comma") {
     return {
       key: "comma_review_ids",
       route: "/english/punctuation/comma?mode=review",
     }
   }
+
   if (category === "direct_speech_punctuation") {
     return {
       key: "direct_speech_punctuation_review_ids",
       route: "/english/punctuation/direct-speech-punctuation?mode=review",
     }
   }
+
   if (category === "sentence_punctuation") {
     return {
       key: "sentence_punctuation_review_ids",
       route: "/english/punctuation/sentence?mode=review",
     }
   }
+
   return null
 }
 
@@ -343,7 +367,9 @@ function StatCard({
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
+        maxWidth: "100%",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -407,6 +433,9 @@ function SectionCard({
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -416,6 +445,7 @@ function SectionCard({
             fontSize: "22px",
             fontWeight: 800,
             color: "#0f172a",
+            overflowWrap: "break-word",
           }}
         >
           {title}
@@ -427,6 +457,8 @@ function SectionCard({
               margin: "8px 0 0 0",
               color: "#64748b",
               fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {subtitle}
@@ -476,8 +508,10 @@ function ChartBox({
       ref={containerRef}
       style={{
         width: "100%",
+        maxWidth: "100%",
         height: "340px",
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {size.width > 0 && size.height > 0 ? (
@@ -496,7 +530,8 @@ export default function EnglishReviewPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [reviewItems, setReviewItems] = useState<EnglishReviewRow[]>([])
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
@@ -540,7 +575,10 @@ export default function EnglishReviewPage() {
           ])
 
         if (vocabularyResult.error) {
-          console.error("Error loading vocabulary review:", vocabularyResult.error)
+          console.error(
+            "Error loading vocabulary review:",
+            vocabularyResult.error
+          )
         }
 
         if (spellingResult.error) {
@@ -548,11 +586,18 @@ export default function EnglishReviewPage() {
         }
 
         if (englishSharedReviewResult.error) {
-          console.error("Error loading shared English review:", englishSharedReviewResult.error)
+          console.error(
+            "Error loading shared English review:",
+            englishSharedReviewResult.error
+          )
         }
 
-        const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyReviewRow[]
-        const spellingRows = (spellingResult.data ?? []) as SpellingReviewRow[]
+        const vocabularyRows =
+          (vocabularyResult.data ?? []) as VocabularyReviewRow[]
+
+        const spellingRows =
+          (spellingResult.data ?? []) as SpellingReviewRow[]
+
         const englishSharedRows =
           (englishSharedReviewResult.data ?? []) as EnglishSharedReviewRow[]
 
@@ -572,20 +617,28 @@ export default function EnglishReviewPage() {
           )
         )
 
-        let wordLookupMap = new Map<number, { definition: string; difficulty: number | null }>()
+        let wordLookupMap = new Map<
+          number,
+          { definition: string; difficulty: number | null }
+        >()
+
         let englishSharedQuestionMap = new Map<
           number,
           { explanation: string; difficulty: number | null }
         >()
 
         if (vocabularyAndSpellingWordIds.length > 0) {
-          const { data: wordLookupData, error: wordLookupError } = await supabase
-            .from("words")
-            .select("id, definition, difficulty")
-            .in("id", vocabularyAndSpellingWordIds)
+          const { data: wordLookupData, error: wordLookupError } =
+            await supabase
+              .from("words")
+              .select("id, definition, difficulty")
+              .in("id", vocabularyAndSpellingWordIds)
 
           if (wordLookupError) {
-            console.error("Error loading vocabulary/spelling definitions:", wordLookupError)
+            console.error(
+              "Error loading vocabulary/spelling definitions:",
+              wordLookupError
+            )
           } else {
             wordLookupMap = new Map(
               ((wordLookupData ?? []) as WordLookupRow[]).map((word) => [
@@ -600,22 +653,28 @@ export default function EnglishReviewPage() {
         }
 
         if (englishSharedQuestionIds.length > 0) {
-          const { data: englishQuestionsData, error: englishQuestionsError } = await supabase
-            .from("english_questions")
-            .select("id, explanation, difficulty")
-            .in("id", englishSharedQuestionIds)
+          const { data: englishQuestionsData, error: englishQuestionsError } =
+            await supabase
+              .from("english_questions")
+              .select("id, explanation, difficulty")
+              .in("id", englishSharedQuestionIds)
 
           if (englishQuestionsError) {
-            console.error("Error loading shared English explanations:", englishQuestionsError)
+            console.error(
+              "Error loading shared English explanations:",
+              englishQuestionsError
+            )
           } else {
             englishSharedQuestionMap = new Map(
-              ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map((question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty ?? null,
-                },
-              ])
+              ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map(
+                (question) => [
+                  question.id,
+                  {
+                    explanation: question.explanation || "",
+                    difficulty: question.difficulty ?? null,
+                  },
+                ]
+              )
             )
           }
         }
@@ -628,11 +687,15 @@ export default function EnglishReviewPage() {
             item_text: row.word,
             difficulty:
               row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
+                ? wordLookupMap.get(row.word_id)?.difficulty ??
+                  row.difficulty ??
+                  null
                 : row.difficulty ?? null,
             created_at: row.created_at,
             explanation:
-              row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
+              row.word_id !== null
+                ? wordLookupMap.get(row.word_id)?.definition || ""
+                : "",
           })),
           ...spellingRows.map((row) => ({
             id: `spelling-${row.id}`,
@@ -641,14 +704,19 @@ export default function EnglishReviewPage() {
             item_text: row.word,
             difficulty:
               row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.difficulty ?? row.difficulty ?? null
+                ? wordLookupMap.get(row.word_id)?.difficulty ??
+                  row.difficulty ??
+                  null
                 : row.difficulty ?? null,
             created_at: row.created_at,
             explanation:
-              row.word_id !== null ? wordLookupMap.get(row.word_id)?.definition || "" : "",
+              row.word_id !== null
+                ? wordLookupMap.get(row.word_id)?.definition || ""
+                : "",
           })),
           ...englishSharedRows.flatMap((row) => {
             const mappedCategory = mapSharedReviewCategory(row)
+
             if (!mappedCategory) return []
 
             return [
@@ -659,14 +727,16 @@ export default function EnglishReviewPage() {
                 item_text: row.question_text,
                 difficulty:
                   row.question_id !== null
-                    ? englishSharedQuestionMap.get(row.question_id)?.difficulty ??
+                    ? englishSharedQuestionMap.get(row.question_id)
+                        ?.difficulty ??
                       row.difficulty ??
                       null
                     : row.difficulty ?? null,
                 created_at: row.created_at,
                 explanation:
                   row.question_id !== null
-                    ? englishSharedQuestionMap.get(row.question_id)?.explanation || ""
+                    ? englishSharedQuestionMap.get(row.question_id)
+                        ?.explanation || ""
                     : "",
               },
             ]
@@ -755,7 +825,9 @@ export default function EnglishReviewPage() {
       return
     }
 
-    setReviewItems((prev) => prev.filter((row) => !isSameReviewItem(row, item)))
+    setReviewItems((previous) =>
+      previous.filter((row) => !isSameReviewItem(row, item))
+    )
   }
 
   const uniqueItems = useMemo(() => {
@@ -778,25 +850,34 @@ export default function EnglishReviewPage() {
 
     return uniqueItems.filter((item) => {
       const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
+
       const matchesDifficulty =
-        difficultyFilter === "all" || String(item.difficulty ?? "") === difficultyFilter
-      const matchesCategory = categoryFilter === "all" || item.category === categoryFilter
+        difficultyFilter === "all" ||
+        String(item.difficulty ?? "") === difficultyFilter
+
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
   }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredItems() {
-    const groupedIds = filteredItems.reduce((acc, row) => {
-      const itemId = row.item_id
-      if (itemId === null) return acc
+    const groupedIds = filteredItems.reduce(
+      (acc, row) => {
+        const itemId = row.item_id
+        if (itemId === null) return acc
 
-      const category = row.category
-      const existing = acc[category] ?? []
-      acc[category] = existing.includes(itemId) ? existing : [...existing, itemId]
+        const category = row.category
+        const existing = acc[category] ?? []
+        acc[category] = existing.includes(itemId)
+          ? existing
+          : [...existing, itemId]
 
-      return acc
-    }, {} as Partial<Record<EnglishReviewCategory, number[]>>)
+        return acc
+      },
+      {} as Partial<Record<EnglishReviewCategory, number[]>>
+    )
 
     const targetCategory =
       categoryFilter !== "all"
@@ -821,14 +902,19 @@ export default function EnglishReviewPage() {
     const allUnique = uniqueItems.length
 
     const byCategory = Object.entries(
-      filteredItems.reduce((acc, row) => {
-        const key = getCategoryLabel(row.category)
-        if (!acc[key]) {
-          acc[key] = 0
-        }
-        acc[key] += 1
-        return acc
-      }, {} as Record<string, number>)
+      filteredItems.reduce(
+        (acc, row) => {
+          const key = getCategoryLabel(row.category)
+
+          if (!acc[key]) {
+            acc[key] = 0
+          }
+
+          acc[key] += 1
+          return acc
+        },
+        {} as Record<string, number>
+      )
     ).map(([category, count]) => ({
       category,
       count,
@@ -836,12 +922,16 @@ export default function EnglishReviewPage() {
 
     const mostCommonCategory =
       byCategory.length > 0
-        ? byCategory.reduce((max, current) => (current.count > max.count ? current : max))
+        ? byCategory.reduce((max, current) =>
+            current.count > max.count ? current : max
+          )
         : null
 
     const mostRecentItem = filteredItems.length
       ? [...filteredItems].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
         )[0]
       : null
 
@@ -859,19 +949,22 @@ export default function EnglishReviewPage() {
   }, [filteredItems, uniqueItems])
 
   const reviewByCategoryData = useMemo(() => {
-    const grouped = filteredItems.reduce((acc, row) => {
-      const key = getCategoryLabel(row.category)
+    const grouped = filteredItems.reduce(
+      (acc, row) => {
+        const key = getCategoryLabel(row.category)
 
-      if (!acc[key]) {
-        acc[key] = {
-          category: key,
-          count: 0,
+        if (!acc[key]) {
+          acc[key] = {
+            category: key,
+            count: 0,
+          }
         }
-      }
 
-      acc[key].count += 1
-      return acc
-    }, {} as Record<string, { category: string; count: number }>)
+        acc[key].count += 1
+        return acc
+      },
+      {} as Record<string, { category: string; count: number }>
+    )
 
     const order = [
       "Vocabulary",
@@ -894,7 +987,10 @@ export default function EnglishReviewPage() {
 
   const recentItems = useMemo(() => {
     return [...filteredItems]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       .slice(0, 12)
   }, [filteredItems])
 
@@ -924,11 +1020,19 @@ export default function EnglishReviewPage() {
         minHeight: "100vh",
         background:
           "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-        padding: "28px 20px 50px",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
         overflowX: "hidden",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "1320px",
+          width: "100%",
+          margin: "0 auto",
+          minWidth: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -937,20 +1041,23 @@ export default function EnglishReviewPage() {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "42px",
+                fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
               }}
             >
               📘 English Review
             </h1>
+
             <p
               style={{
                 margin: "10px 0 0 0",
@@ -958,10 +1065,12 @@ export default function EnglishReviewPage() {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
+                overflowWrap: "break-word",
               }}
             >
-              Review English items across vocabulary, spelling, comprehension, grammar, and
-              punctuation with live filters, category insights, and quick retry access.
+              Review English items across vocabulary, spelling, comprehension,
+              grammar, and punctuation with live filters, category insights, and
+              quick retry access.
             </p>
           </div>
 
@@ -971,13 +1080,18 @@ export default function EnglishReviewPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              width: "100%",
+              maxWidth: "1100px",
+              minWidth: 0,
             }}
           >
             <select
               id="english-review-category-filter"
               name="englishReviewCategoryFilter"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -991,7 +1105,9 @@ export default function EnglishReviewPage() {
               id="english-review-difficulty-filter"
               name="englishReviewDifficultyFilter"
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -1005,7 +1121,9 @@ export default function EnglishReviewPage() {
               id="english-review-time-filter"
               name="englishReviewTimeFilter"
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -1016,6 +1134,7 @@ export default function EnglishReviewPage() {
             </select>
 
             <button
+              type="button"
               onClick={retryFilteredItems}
               disabled={filteredItems.length === 0}
               style={{
@@ -1032,23 +1151,42 @@ export default function EnglishReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
+            minWidth: 0,
           }}
         >
-          <StatCard title="Items to Review" value={String(reviewStats.totalItems)} />
-          <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
-          <StatCard title="With Explanations" value={String(reviewStats.withExplanation)} />
+          <StatCard
+            title="Items to Review"
+            value={String(reviewStats.totalItems)}
+          />
+
+          <StatCard
+            title="Total Review Bank"
+            value={String(reviewStats.allUnique)}
+          />
+
+          <StatCard
+            title="With Explanations"
+            value={String(reviewStats.withExplanation)}
+          />
+
           <StatCard
             title="Most Common Category"
-            value={reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+            value={
+              reviewStats.mostCommonCategory
+                ? reviewStats.mostCommonCategory.category
+                : "—"
+            }
             subtitle={
               reviewStats.mostCommonCategory
                 ? `${reviewStats.mostCommonCategory.count} items`
                 : undefined
             }
           />
+
           <StatCard
             title="Most Recent Item"
             value={
@@ -1062,21 +1200,21 @@ export default function EnglishReviewPage() {
                 : undefined
             }
           />
+
           <StatCard
             title="Current Filter"
-            value={categoryFilter === "all" ? "All Categories" : getCategoryLabel(categoryFilter)}
-            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
+            value={
+              categoryFilter === "all"
+                ? "All Categories"
+                : getCategoryLabel(categoryFilter)
+            }
+            subtitle={
+              timeOptions.find((option) => option.value === timeFilter)?.label
+            }
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Review Items by Category"
             subtitle="See which English categories currently need the most revision."
@@ -1088,16 +1226,28 @@ export default function EnglishReviewPage() {
                     width={width}
                     height={height}
                     data={reviewByCategoryData}
+                    layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} />
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="category"
+                      width={135}
+                      tick={{ fontSize: 11 }}
+                    />
                     <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar dataKey="count" fill="#16a34a" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="count"
+                      fill="#16a34a"
+                      radius={[0, 10, 10, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -1116,10 +1266,23 @@ export default function EnglishReviewPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Review Queue
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {reviewStats.totalItems}
                 </div>
               </div>
@@ -1132,10 +1295,23 @@ export default function EnglishReviewPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Explanations Ready
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {reviewStats.withExplanation}
                 </div>
               </div>
@@ -1148,9 +1324,16 @@ export default function EnglishReviewPage() {
                   border: "1px solid #fed7aa",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Main Focus
                 </div>
+
                 <div
                   style={{
                     fontSize: "18px",
@@ -1160,7 +1343,9 @@ export default function EnglishReviewPage() {
                     lineHeight: 1.25,
                   }}
                 >
-                  {reviewStats.mostCommonCategory ? reviewStats.mostCommonCategory.category : "—"}
+                  {reviewStats.mostCommonCategory
+                    ? reviewStats.mostCommonCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -1172,10 +1357,23 @@ export default function EnglishReviewPage() {
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#475569",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Total Review Bank
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {reviewStats.allUnique}
                 </div>
               </div>
@@ -1188,12 +1386,12 @@ export default function EnglishReviewPage() {
           subtitle="Your most recent English review items for the selected filters."
         >
           {recentItems.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "100%",
+                  minWidth: "860px",
                 }}
               >
                 <thead>
@@ -1206,6 +1404,7 @@ export default function EnglishReviewPage() {
                     <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentItems.map((row) => (
                     <tr
@@ -1217,16 +1416,20 @@ export default function EnglishReviewPage() {
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
+                      <td style={{ ...tdStyle, maxWidth: "300px" }}>
                         {truncateText(row.item_text, 130)}
                       </td>
-                      <td style={{ ...tdStyle, maxWidth: "340px" }}>
+                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
                         {row.explanation && row.explanation.trim()
                           ? truncateText(row.explanation, 140)
                           : "No explanation available."}
                       </td>
                       <td style={tdStyle}>
-                        <button onClick={() => removeItem(row)} style={removeButtonStyle}>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(row)}
+                          style={removeButtonStyle}
+                        >
                           Remove
                         </button>
                       </td>
@@ -1236,7 +1439,9 @@ export default function EnglishReviewPage() {
               </table>
             </div>
           ) : (
-            <div style={emptyStateStyle}>No review items found for the selected filters.</div>
+            <div style={emptyStateStyle}>
+              No review items found for the selected filters.
+            </div>
           )}
         </SectionCard>
 
@@ -1244,9 +1449,11 @@ export default function EnglishReviewPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
               gap: "18px",
               marginTop: "20px",
+              minWidth: 0,
             }}
           >
             {filteredItems.slice(0, 9).map((row) => (
@@ -1259,40 +1466,48 @@ export default function EnglishReviewPage() {
                   padding: "20px",
                   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
                   minWidth: 0,
+                  maxWidth: "100%",
                   overflow: "hidden",
+                  boxSizing: "border-box",
                 }}
               >
                 <div
                   style={{
-                    display: "inline-block",
-                    padding: "6px 10px",
-                    borderRadius: "999px",
-                    background: "#dcfce7",
-                    color: "#166534",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    marginBottom: "10px",
-                    maxWidth: "100%",
-                    overflowWrap: "break-word",
-                  }}
-                >
-                  {getCategoryLabel(row.category)}
-                </div>
-
-                <div
-                  style={{
-                    display: "inline-block",
-                    padding: "6px 10px",
-                    borderRadius: "999px",
-                    background: "#ecfdf5",
-                    color: "#15803d",
-                    fontSize: "12px",
-                    fontWeight: 700,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
                     marginBottom: "14px",
-                    marginLeft: "8px",
                   }}
                 >
-                  {getLevelLabel(row.difficulty)}
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#dcfce7",
+                      color: "#166534",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      maxWidth: "100%",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {getCategoryLabel(row.category)}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#ecfdf5",
+                      color: "#15803d",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {getLevelLabel(row.difficulty)}
+                  </span>
                 </div>
 
                 <h3
@@ -1312,7 +1527,7 @@ export default function EnglishReviewPage() {
                     color: "#0f172a",
                     lineHeight: 1.6,
                     fontWeight: 500,
-                    overflowWrap: "break-word",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {row.item_text}
@@ -1325,6 +1540,9 @@ export default function EnglishReviewPage() {
                     background: "#f8fafc",
                     border: "1px solid #e2e8f0",
                     marginBottom: "14px",
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    boxSizing: "border-box",
                   }}
                 >
                   <div
@@ -1337,12 +1555,13 @@ export default function EnglishReviewPage() {
                   >
                     Explanation
                   </div>
+
                   <div
                     style={{
                       color: "#334155",
                       lineHeight: 1.6,
                       fontSize: "14px",
-                      overflowWrap: "break-word",
+                      overflowWrap: "anywhere",
                     }}
                   >
                     {row.explanation && row.explanation.trim()
@@ -1356,12 +1575,17 @@ export default function EnglishReviewPage() {
                     fontSize: "13px",
                     color: "#64748b",
                     marginBottom: "14px",
+                    overflowWrap: "break-word",
                   }}
                 >
                   Added: {formatDateTime(row.created_at)}
                 </div>
 
-                <button onClick={() => removeItem(row)} style={removeButtonStyle}>
+                <button
+                  type="button"
+                  onClick={() => removeItem(row)}
+                  style={removeButtonStyle}
+                >
                   Remove from review
                 </button>
               </div>
@@ -1377,18 +1601,46 @@ export default function EnglishReviewPage() {
             borderRadius: "28px",
             padding: "26px",
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
+            maxWidth: "100%",
+            overflow: "hidden",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
             Overall Summary
           </div>
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
             {summaryText}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const selectStyle: React.CSSProperties = {
@@ -1399,8 +1651,11 @@ const selectStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   color: "#0f172a",
-  minWidth: "180px",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
   boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
 }
 
 const actionButtonStyle: React.CSSProperties = {
@@ -1411,6 +1666,10 @@ const actionButtonStyle: React.CSSProperties = {
   color: "white",
   fontWeight: 700,
   boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxSizing: "border-box",
 }
 
 const removeButtonStyle: React.CSSProperties = {
@@ -1421,6 +1680,7 @@ const removeButtonStyle: React.CSSProperties = {
   color: "white",
   fontWeight: 700,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -1440,6 +1700,7 @@ const thStyle: React.CSSProperties = {
   fontSize: "13px",
   color: "#64748b",
   fontWeight: 700,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1447,4 +1708,5 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  verticalAlign: "top",
 }

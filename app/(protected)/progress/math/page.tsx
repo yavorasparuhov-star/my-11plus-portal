@@ -30,6 +30,7 @@ type MathProgressRow = {
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
+
 type CategoryFilter =
   | "all"
   | "number_place_value"
@@ -85,6 +86,7 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
+
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -101,6 +103,7 @@ function formatCategory(category: string) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -112,6 +115,7 @@ function formatDateTime(value: string) {
 
 function formatShortDate(value: string) {
   const date = new Date(value)
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -171,7 +175,9 @@ function StatCard({
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
+        maxWidth: "100%",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -235,6 +241,9 @@ function SectionCard({
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -244,6 +253,7 @@ function SectionCard({
             fontSize: "22px",
             fontWeight: 800,
             color: "#0f172a",
+            overflowWrap: "break-word",
           }}
         >
           {title}
@@ -255,6 +265,8 @@ function SectionCard({
               margin: "8px 0 0 0",
               color: "#64748b",
               fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {subtitle}
@@ -304,8 +316,10 @@ function ChartBox({
       ref={containerRef}
       style={{
         width: "100%",
+        maxWidth: "100%",
         height: "340px",
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {size.width > 0 && size.height > 0 ? (
@@ -361,7 +375,7 @@ export default function MathProgressPage() {
       }
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       mounted = false
@@ -373,17 +387,21 @@ export default function MathProgressPage() {
 
     return rows.filter((row) => {
       const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
-      const matchesCategory = categoryFilter === "all" || row.category === categoryFilter
+      const matchesCategory =
+        categoryFilter === "all" || row.category === categoryFilter
+
       return matchesTime && matchesCategory
     })
   }, [rows, timeFilter, categoryFilter])
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
+
     const questionsPractised = filteredRows.reduce(
       (sum, row) => sum + row.total_questions,
       0
     )
+
     const totalCorrect = filteredRows.reduce(
       (sum, row) => sum + row.correct_answers,
       0
@@ -401,14 +419,19 @@ export default function MathProgressPage() {
         : 0
 
     const byCategory = Object.entries(
-      filteredRows.reduce((acc, row) => {
-        if (!acc[row.category]) {
-          acc[row.category] = { attempts: 0, totalSuccess: 0 }
-        }
-        acc[row.category].attempts += 1
-        acc[row.category].totalSuccess += Number(row.success_rate)
-        return acc
-      }, {} as Record<string, { attempts: number; totalSuccess: number }>)
+      filteredRows.reduce(
+        (acc, row) => {
+          if (!acc[row.category]) {
+            acc[row.category] = { attempts: 0, totalSuccess: 0 }
+          }
+
+          acc[row.category].attempts += 1
+          acc[row.category].totalSuccess += Number(row.success_rate)
+
+          return acc
+        },
+        {} as Record<string, { attempts: number; totalSuccess: number }>
+      )
     ).map(([category, data]) => ({
       category,
       avgSuccess: data.attempts ? data.totalSuccess / data.attempts : 0,
@@ -441,7 +464,8 @@ export default function MathProgressPage() {
 
   const performanceTrendData = useMemo(() => {
     const sorted = [...filteredRows].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
 
     return sorted.map((row, index) => ({
@@ -454,53 +478,76 @@ export default function MathProgressPage() {
   }, [filteredRows])
 
   const successByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      if (!acc[row.category]) {
-        acc[row.category] = {
-          category: row.category,
-          attempts: 0,
-          totalSuccess: 0,
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        if (!acc[row.category]) {
+          acc[row.category] = {
+            category: row.category,
+            attempts: 0,
+            totalSuccess: 0,
+          }
         }
-      }
 
-      acc[row.category].attempts += 1
-      acc[row.category].totalSuccess += Number(row.success_rate)
-      return acc
-    }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
+        acc[row.category].attempts += 1
+        acc[row.category].totalSuccess += Number(row.success_rate)
 
-    return CATEGORY_ORDER.filter((category) => grouped[category]).map((category) => ({
-      category: formatCategory(category),
-      avgSuccess: Number(
-        (grouped[category].totalSuccess / grouped[category].attempts).toFixed(1)
-      ),
-    }))
+        return acc
+      },
+      {} as Record<
+        string,
+        { category: string; attempts: number; totalSuccess: number }
+      >
+    )
+
+    return CATEGORY_ORDER.filter((category) => grouped[category]).map(
+      (category) => ({
+        category: formatCategory(category),
+        avgSuccess: Number(
+          (
+            grouped[category].totalSuccess / grouped[category].attempts
+          ).toFixed(1)
+        ),
+      })
+    )
   }, [filteredRows])
 
   const attemptsByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      if (!acc[row.category]) {
-        acc[row.category] = {
-          category: row.category,
-          attempts: 0,
-          questions: 0,
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        if (!acc[row.category]) {
+          acc[row.category] = {
+            category: row.category,
+            attempts: 0,
+            questions: 0,
+          }
         }
-      }
 
-      acc[row.category].attempts += 1
-      acc[row.category].questions += row.total_questions
-      return acc
-    }, {} as Record<string, { category: string; attempts: number; questions: number }>)
+        acc[row.category].attempts += 1
+        acc[row.category].questions += row.total_questions
 
-    return CATEGORY_ORDER.filter((category) => grouped[category]).map((category) => ({
-      category: formatCategory(category),
-      attempts: grouped[category].attempts,
-      questions: grouped[category].questions,
-    }))
+        return acc
+      },
+      {} as Record<
+        string,
+        { category: string; attempts: number; questions: number }
+      >
+    )
+
+    return CATEGORY_ORDER.filter((category) => grouped[category]).map(
+      (category) => ({
+        category: formatCategory(category),
+        attempts: grouped[category].attempts,
+        questions: grouped[category].questions,
+      })
+    )
   }, [filteredRows])
 
   const recentAttempts = useMemo(() => {
     return [...filteredRows]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       .slice(0, 12)
   }, [filteredRows])
 
@@ -510,11 +557,15 @@ export default function MathProgressPage() {
     }
 
     const strongest = overallStats.strongestCategory
-      ? `${formatCategory(overallStats.strongestCategory.category)} (${overallStats.strongestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${formatCategory(
+          overallStats.strongestCategory.category
+        )} (${overallStats.strongestCategory.avgSuccess.toFixed(1)}%)`
       : "N/A"
 
     const weakest = overallStats.weakestCategory
-      ? `${formatCategory(overallStats.weakestCategory.category)} (${overallStats.weakestCategory.avgSuccess.toFixed(1)}%)`
+      ? `${formatCategory(
+          overallStats.weakestCategory.category
+        )} (${overallStats.weakestCategory.avgSuccess.toFixed(1)}%)`
       : "N/A"
 
     return `You answered ${overallStats.totalCorrect} maths questions correctly across ${overallStats.testsCompleted} completed tests. Your strongest area is ${strongest}, while your weakest area is ${weakest}.`
@@ -534,10 +585,19 @@ export default function MathProgressPage() {
         minHeight: "100vh",
         background:
           "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-        padding: "28px 20px 50px",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "1320px",
+          width: "100%",
+          margin: "0 auto",
+          minWidth: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -546,16 +606,18 @@ export default function MathProgressPage() {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "42px",
+                fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
               }}
             >
               ➗ Maths Progress
@@ -568,10 +630,12 @@ export default function MathProgressPage() {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
+                overflowWrap: "break-word",
               }}
             >
-              Explore maths performance across all seven categories with live filters,
-              trend tracking, category insights, and recent test history.
+              Explore maths performance across all seven categories with live
+              filters, trend tracking, category insights, and recent test
+              history.
             </p>
           </div>
 
@@ -581,13 +645,18 @@ export default function MathProgressPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              width: "100%",
+              maxWidth: "540px",
+              minWidth: 0,
             }}
           >
             <select
               id="math-progress-category-filter"
               name="mathProgressCategoryFilter"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -601,7 +670,9 @@ export default function MathProgressPage() {
               id="math-progress-time-filter"
               name="mathProgressTimeFilter"
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -616,15 +687,28 @@ export default function MathProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
+            minWidth: 0,
           }}
         >
-          <StatCard title="Tests Completed" value={String(overallStats.testsCompleted)} />
-          <StatCard title="Questions Practised" value={String(overallStats.questionsPractised)} />
-          <StatCard title="Average Success" value={`${overallStats.averageSuccess.toFixed(1)}%`} />
-          <StatCard title="Best Score" value={`${overallStats.bestScore.toFixed(1)}%`} />
+          <StatCard
+            title="Tests Completed"
+            value={String(overallStats.testsCompleted)}
+          />
+          <StatCard
+            title="Questions Practised"
+            value={String(overallStats.questionsPractised)}
+          />
+          <StatCard
+            title="Average Success"
+            value={`${overallStats.averageSuccess.toFixed(1)}%`}
+          />
+          <StatCard
+            title="Best Score"
+            value={`${overallStats.bestScore.toFixed(1)}%`}
+          />
           <StatCard
             title="Strongest Category"
             value={
@@ -634,7 +718,9 @@ export default function MathProgressPage() {
             }
             subtitle={
               overallStats.strongestCategory
-                ? `${overallStats.strongestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.strongestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
@@ -647,20 +733,15 @@ export default function MathProgressPage() {
             }
             subtitle={
               overallStats.weakestCategory
-                ? `${overallStats.weakestCategory.avgSuccess.toFixed(1)}% average success`
+                ? `${overallStats.weakestCategory.avgSuccess.toFixed(
+                    1
+                  )}% average success`
                 : undefined
             }
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent maths attempts."
@@ -668,7 +749,11 @@ export default function MathProgressPage() {
             <ChartBox>
               {({ width, height }) =>
                 performanceTrendData.length ? (
-                  <LineChart width={width} height={height} data={performanceTrendData}>
+                  <LineChart
+                    width={width}
+                    height={height}
+                    data={performanceTrendData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
@@ -676,6 +761,7 @@ export default function MathProgressPage() {
                       formatter={successTooltipFormatter}
                       labelFormatter={(label, payload) => {
                         const point = payload?.[0]?.payload
+
                         return point
                           ? `${point.date} • ${point.category} • ${point.scoreLabel}`
                           : label
@@ -691,7 +777,9 @@ export default function MathProgressPage() {
                     />
                   </LineChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -710,10 +798,22 @@ export default function MathProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Accuracy
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.averageSuccess.toFixed(1)}%
                 </div>
               </div>
@@ -726,7 +826,13 @@ export default function MathProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Best Area
                 </div>
                 <div
@@ -752,7 +858,13 @@ export default function MathProgressPage() {
                   border: "1px solid #fed7aa",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Needs Focus
                 </div>
                 <div
@@ -778,10 +890,22 @@ export default function MathProgressPage() {
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#475569",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Questions Correct
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.totalCorrect}
                 </div>
               </div>
@@ -789,14 +913,7 @@ export default function MathProgressPage() {
           </SectionCard>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Average Success by Category"
             subtitle="Compare performance across the seven maths categories."
@@ -809,21 +926,27 @@ export default function MathProgressPage() {
                     height={height}
                     data={successByCategoryData}
                     layout="vertical"
-                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" domain={[0, 100]} />
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={200}
-                      tick={{ fontSize: 12 }}
+                      width={135}
+                      tick={{ fontSize: 11 }}
                     />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[0, 10, 10, 0]} />
+                    <Bar
+                      dataKey="avgSuccess"
+                      fill="#16a34a"
+                      radius={[0, 10, 10, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -841,21 +964,27 @@ export default function MathProgressPage() {
                     height={height}
                     data={attemptsByCategoryData}
                     layout="vertical"
-                    margin={{ top: 8, right: 12, left: 24, bottom: 8 }}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={200}
-                      tick={{ fontSize: 12 }}
+                      width={135}
+                      tick={{ fontSize: 11 }}
                     />
                     <Tooltip formatter={attemptsTooltipFormatter} />
-                    <Bar dataKey="attempts" fill="#10b981" radius={[0, 10, 10, 0]} />
+                    <Bar
+                      dataKey="attempts"
+                      fill="#10b981"
+                      radius={[0, 10, 10, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -867,12 +996,12 @@ export default function MathProgressPage() {
           subtitle="Your most recent maths test results for the selected filters."
         >
           {recentAttempts.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "850px",
+                  minWidth: "760px",
                 }}
               >
                 <thead>
@@ -884,6 +1013,7 @@ export default function MathProgressPage() {
                     <th style={thStyle}>Success</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentAttempts.map((row) => (
                     <tr
@@ -916,6 +1046,7 @@ export default function MathProgressPage() {
                                   : "#991b1b",
                             fontWeight: 700,
                             fontSize: "13px",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {Number(row.success_rate).toFixed(1)}%
@@ -941,18 +1072,46 @@ export default function MathProgressPage() {
             borderRadius: "28px",
             padding: "26px",
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
+            maxWidth: "100%",
+            overflow: "hidden",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
             Overall Summary
           </div>
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
             {summaryText}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const selectStyle: React.CSSProperties = {
@@ -963,8 +1122,11 @@ const selectStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   color: "#0f172a",
-  minWidth: "220px",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
   boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -984,6 +1146,7 @@ const thStyle: React.CSSProperties = {
   fontSize: "13px",
   color: "#64748b",
   fontWeight: 700,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -991,4 +1154,5 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  whiteSpace: "nowrap",
 }

@@ -43,6 +43,7 @@ type VRTestRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+
 type CategoryFilter =
   | "all"
   | "word-relationships"
@@ -74,6 +75,7 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
+
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -152,7 +154,9 @@ function StatCard({
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
+        maxWidth: "100%",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -216,6 +220,9 @@ function SectionCard({
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -225,6 +232,7 @@ function SectionCard({
             fontSize: "22px",
             fontWeight: 800,
             color: "#0f172a",
+            overflowWrap: "break-word",
           }}
         >
           {title}
@@ -236,6 +244,8 @@ function SectionCard({
               margin: "8px 0 0 0",
               color: "#64748b",
               fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {subtitle}
@@ -287,8 +297,10 @@ function ChartBox({
       ref={containerRef}
       style={{
         width: "100%",
+        maxWidth: "100%",
         height,
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {size.width > 0 && size.height > 0 ? (
@@ -334,6 +346,8 @@ export default function VRReviewPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
+      if (!mounted) return
+
       if (error) {
         console.error("Error loading VR review:", {
           message: error.message,
@@ -344,11 +358,7 @@ export default function VRReviewPage() {
         })
 
         setReviewQuestions([])
-
-        if (mounted) {
-          setLoadingData(false)
-        }
-
+        setLoadingData(false)
         return
       }
 
@@ -450,7 +460,7 @@ export default function VRReviewPage() {
       }
     }
 
-    fetchReviewQuestions()
+    void fetchReviewQuestions()
 
     return () => {
       mounted = false
@@ -481,8 +491,8 @@ export default function VRReviewPage() {
       return
     }
 
-    setReviewQuestions((prev) =>
-      prev.filter(
+    setReviewQuestions((previous) =>
+      previous.filter(
         (row) => row.question_text.toLowerCase() !== questionText.toLowerCase()
       )
     )
@@ -504,7 +514,9 @@ export default function VRReviewPage() {
         difficultyFilter === "all" ||
         String(question.difficulty ?? "") === difficultyFilter
 
-      const matchesTime = cutoff ? new Date(question.created_at) >= cutoff : true
+      const matchesTime = cutoff
+        ? new Date(question.created_at) >= cutoff
+        : true
 
       const matchesCategory =
         categoryFilter === "all" || (question.category ?? "") === categoryFilter
@@ -524,6 +536,7 @@ export default function VRReviewPage() {
       "vr_review_question_ids",
       JSON.stringify(reviewQuestionIds)
     )
+
     router.push("/vr-test?mode=review")
   }
 
@@ -557,7 +570,8 @@ export default function VRReviewPage() {
     const mostRecentItem = filteredQuestions.length
       ? [...filteredQuestions].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
         )[0]
       : null
 
@@ -605,7 +619,8 @@ export default function VRReviewPage() {
     return [...filteredQuestions]
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime()
       )
       .slice(0, 12)
   }, [filteredQuestions])
@@ -636,10 +651,19 @@ export default function VRReviewPage() {
         minHeight: "100vh",
         background:
           "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-        padding: "28px 20px 50px",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "1320px",
+          width: "100%",
+          margin: "0 auto",
+          minWidth: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -648,16 +672,18 @@ export default function VRReviewPage() {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "42px",
+                fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
               }}
             >
               🧠 VR Review
@@ -670,10 +696,12 @@ export default function VRReviewPage() {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
+                overflowWrap: "break-word",
               }}
             >
-              Review verbal reasoning questions that need more practice, filter by
-              category and difficulty, and jump straight into a focused retry session.
+              Review verbal reasoning questions that need more practice, filter
+              by category and difficulty, and jump straight into a focused retry
+              session.
             </p>
           </div>
 
@@ -683,6 +711,9 @@ export default function VRReviewPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              width: "100%",
+              maxWidth: "1100px",
+              minWidth: 0,
             }}
           >
             <select
@@ -721,7 +752,9 @@ export default function VRReviewPage() {
               id="vr-review-time-filter"
               name="vrReviewTimeFilter"
               value={timeFilter}
-              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -732,6 +765,7 @@ export default function VRReviewPage() {
             </select>
 
             <button
+              type="button"
               onClick={retryFilteredQuestions}
               disabled={filteredQuestions.length === 0}
               style={{
@@ -749,9 +783,11 @@ export default function VRReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
+            minWidth: 0,
           }}
         >
           <StatCard
@@ -759,7 +795,10 @@ export default function VRReviewPage() {
             value={String(reviewStats.totalQuestions)}
           />
 
-          <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
+          <StatCard
+            title="Total Review Bank"
+            value={String(reviewStats.allUnique)}
+          />
 
           <StatCard
             title="With Explanations"
@@ -801,18 +840,13 @@ export default function VRReviewPage() {
                 ? "All Categories"
                 : getCategoryLabel(categoryFilter)
             }
-            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
+            subtitle={
+              timeOptions.find((option) => option.value === timeFilter)?.label
+            }
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Review Questions by Category"
             subtitle="See which VR categories need the most revision."
@@ -824,16 +858,28 @@ export default function VRReviewPage() {
                     width={width}
                     height={height}
                     data={reviewByCategoryData}
+                    layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} />
+                    <XAxis type="number" allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="category"
+                      width={135}
+                      tick={{ fontSize: 11 }}
+                    />
                     <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar dataKey="count" fill="#16a34a" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="count"
+                      fill="#16a34a"
+                      radius={[0, 10, 10, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -943,12 +989,12 @@ export default function VRReviewPage() {
           subtitle="Your latest verbal reasoning questions to revisit."
         >
           {recentQuestions.length ? (
-            <div style={{ overflowX: "hidden" }}>
+            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "100%",
+                  minWidth: "860px",
                 }}
               >
                 <thead>
@@ -974,11 +1020,11 @@ export default function VRReviewPage() {
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
 
-                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
+                      <td style={{ ...tdStyle, maxWidth: "300px" }}>
                         {truncateText(row.question_text, 130)}
                       </td>
 
-                      <td style={{ ...tdStyle, maxWidth: "340px" }}>
+                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
                         {row.explanation && row.explanation.trim()
                           ? truncateText(row.explanation, 140)
                           : "No explanation available."}
@@ -986,6 +1032,7 @@ export default function VRReviewPage() {
 
                       <td style={tdStyle}>
                         <button
+                          type="button"
                           onClick={() => removeQuestion(row.question_text)}
                           style={removeButtonStyle}
                         >
@@ -1008,9 +1055,11 @@ export default function VRReviewPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
               gap: "18px",
               marginTop: "20px",
+              minWidth: 0,
             }}
           >
             {filteredQuestions.slice(0, 9).map((row) => (
@@ -1023,40 +1072,48 @@ export default function VRReviewPage() {
                   padding: "20px",
                   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
                   minWidth: 0,
+                  maxWidth: "100%",
                   overflow: "hidden",
+                  boxSizing: "border-box",
                 }}
               >
                 <div
                   style={{
-                    display: "inline-block",
-                    padding: "6px 10px",
-                    borderRadius: "999px",
-                    background: "#dcfce7",
-                    color: "#166534",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    marginBottom: "10px",
-                    maxWidth: "100%",
-                    overflowWrap: "break-word",
-                  }}
-                >
-                  {getCategoryLabel(row.category)}
-                </div>
-
-                <div
-                  style={{
-                    display: "inline-block",
-                    padding: "6px 10px",
-                    borderRadius: "999px",
-                    background: "#ecfdf5",
-                    color: "#15803d",
-                    fontSize: "12px",
-                    fontWeight: 700,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
                     marginBottom: "14px",
-                    marginLeft: "8px",
                   }}
                 >
-                  {getLevelLabel(row.difficulty)}
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#dcfce7",
+                      color: "#166534",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      maxWidth: "100%",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {getCategoryLabel(row.category)}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#ecfdf5",
+                      color: "#15803d",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {getLevelLabel(row.difficulty)}
+                  </span>
                 </div>
 
                 <h3
@@ -1076,7 +1133,7 @@ export default function VRReviewPage() {
                     color: "#0f172a",
                     lineHeight: 1.6,
                     fontWeight: 500,
-                    overflowWrap: "break-word",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {row.question_text}
@@ -1089,6 +1146,9 @@ export default function VRReviewPage() {
                     background: "#f8fafc",
                     border: "1px solid #e2e8f0",
                     marginBottom: "14px",
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    boxSizing: "border-box",
                   }}
                 >
                   <div
@@ -1107,7 +1167,7 @@ export default function VRReviewPage() {
                       color: "#334155",
                       lineHeight: 1.6,
                       fontSize: "14px",
-                      overflowWrap: "break-word",
+                      overflowWrap: "anywhere",
                     }}
                   >
                     {row.explanation && row.explanation.trim()
@@ -1121,12 +1181,14 @@ export default function VRReviewPage() {
                     fontSize: "13px",
                     color: "#64748b",
                     marginBottom: "14px",
+                    overflowWrap: "break-word",
                   }}
                 >
                   Added: {formatDateTime(row.created_at)}
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => removeQuestion(row.question_text)}
                   style={removeButtonStyle}
                 >
@@ -1145,19 +1207,46 @@ export default function VRReviewPage() {
             borderRadius: "28px",
             padding: "26px",
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
+            maxWidth: "100%",
+            overflow: "hidden",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
             Overall Summary
           </div>
 
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
             {summaryText}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const selectStyle: React.CSSProperties = {
@@ -1168,8 +1257,11 @@ const selectStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   color: "#0f172a",
-  minWidth: "180px",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
   boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
 }
 
 const actionButtonStyle: React.CSSProperties = {
@@ -1180,6 +1272,10 @@ const actionButtonStyle: React.CSSProperties = {
   color: "white",
   fontWeight: 700,
   boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxSizing: "border-box",
 }
 
 const removeButtonStyle: React.CSSProperties = {
@@ -1190,6 +1286,7 @@ const removeButtonStyle: React.CSSProperties = {
   color: "white",
   fontWeight: 700,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -1209,6 +1306,7 @@ const thStyle: React.CSSProperties = {
   fontSize: "13px",
   color: "#64748b",
   fontWeight: 700,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1216,4 +1314,5 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  verticalAlign: "top",
 }

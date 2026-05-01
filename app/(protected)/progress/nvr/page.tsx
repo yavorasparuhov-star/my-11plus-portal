@@ -45,6 +45,7 @@ type EnrichedNVRProgressRow = NVRProgressRow & {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+
 type CategoryFilter =
   | "all"
   | "shape-patterns"
@@ -76,6 +77,7 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
+
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -179,7 +181,9 @@ function StatCard({
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
+        maxWidth: "100%",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -243,6 +247,9 @@ function SectionCard({
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -252,6 +259,7 @@ function SectionCard({
             fontSize: "22px",
             fontWeight: 800,
             color: "#0f172a",
+            overflowWrap: "break-word",
           }}
         >
           {title}
@@ -263,6 +271,8 @@ function SectionCard({
               margin: "8px 0 0 0",
               color: "#64748b",
               fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {subtitle}
@@ -314,8 +324,10 @@ function ChartBox({
       ref={containerRef}
       style={{
         width: "100%",
+        maxWidth: "100%",
         height,
         minWidth: 0,
+        overflow: "hidden",
       }}
     >
       {size.width > 0 && size.height > 0 ? (
@@ -334,7 +346,8 @@ export default function NVRProgressPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [rows, setRows] = useState<EnrichedNVRProgressRow[]>([])
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
@@ -430,7 +443,7 @@ export default function NVRProgressPage() {
       }
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       mounted = false
@@ -453,7 +466,8 @@ export default function NVRProgressPage() {
         String(row.resolved_difficulty ?? "") === difficultyFilter
 
       const matchesCategory =
-        categoryFilter === "all" || (row.resolved_category ?? "") === categoryFilter
+        categoryFilter === "all" ||
+        (row.resolved_category ?? "") === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
@@ -474,8 +488,10 @@ export default function NVRProgressPage() {
 
     const averageSuccess =
       testsCompleted > 0
-        ? filteredRows.reduce((sum, row) => sum + toSafeNumber(row.success_rate), 0) /
-          testsCompleted
+        ? filteredRows.reduce(
+            (sum, row) => sum + toSafeNumber(row.success_rate),
+            0
+          ) / testsCompleted
         : 0
 
     const bestScore =
@@ -484,18 +500,21 @@ export default function NVRProgressPage() {
         : 0
 
     const byCategory = Object.entries(
-      filteredRows.reduce((acc, row) => {
-        const key = getCategoryLabel(row.resolved_category)
+      filteredRows.reduce(
+        (acc, row) => {
+          const key = getCategoryLabel(row.resolved_category)
 
-        if (!acc[key]) {
-          acc[key] = { attempts: 0, totalSuccess: 0 }
-        }
+          if (!acc[key]) {
+            acc[key] = { attempts: 0, totalSuccess: 0 }
+          }
 
-        acc[key].attempts += 1
-        acc[key].totalSuccess += toSafeNumber(row.success_rate)
+          acc[key].attempts += 1
+          acc[key].totalSuccess += toSafeNumber(row.success_rate)
 
-        return acc
-      }, {} as Record<string, { attempts: number; totalSuccess: number }>)
+          return acc
+        },
+        {} as Record<string, { attempts: number; totalSuccess: number }>
+      )
     ).map(([category, data]) => ({
       category,
       avgSuccess: data.attempts ? data.totalSuccess / data.attempts : 0,
@@ -546,22 +565,28 @@ export default function NVRProgressPage() {
   }, [filteredRows])
 
   const successByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = getCategoryLabel(row.resolved_category)
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        const key = getCategoryLabel(row.resolved_category)
 
-      if (!acc[key]) {
-        acc[key] = {
-          category: key,
-          attempts: 0,
-          totalSuccess: 0,
+        if (!acc[key]) {
+          acc[key] = {
+            category: key,
+            attempts: 0,
+            totalSuccess: 0,
+          }
         }
-      }
 
-      acc[key].attempts += 1
-      acc[key].totalSuccess += toSafeNumber(row.success_rate)
+        acc[key].attempts += 1
+        acc[key].totalSuccess += toSafeNumber(row.success_rate)
 
-      return acc
-    }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
+        return acc
+      },
+      {} as Record<
+        string,
+        { category: string; attempts: number; totalSuccess: number }
+      >
+    )
 
     const order = [
       "Shape Patterns",
@@ -579,22 +604,28 @@ export default function NVRProgressPage() {
   }, [filteredRows])
 
   const attemptsByDifficultyData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = getLevelLabel(row.resolved_difficulty)
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        const key = getLevelLabel(row.resolved_difficulty)
 
-      if (!acc[key]) {
-        acc[key] = {
-          difficulty: key,
-          attempts: 0,
-          questions: 0,
+        if (!acc[key]) {
+          acc[key] = {
+            difficulty: key,
+            attempts: 0,
+            questions: 0,
+          }
         }
-      }
 
-      acc[key].attempts += 1
-      acc[key].questions += toSafeNumber(row.total_questions)
+        acc[key].attempts += 1
+        acc[key].questions += toSafeNumber(row.total_questions)
 
-      return acc
-    }, {} as Record<string, { difficulty: string; attempts: number; questions: number }>)
+        return acc
+      },
+      {} as Record<
+        string,
+        { difficulty: string; attempts: number; questions: number }
+      >
+    )
 
     const order = ["Easy", "Medium", "Hard", "Not set"]
 
@@ -651,10 +682,19 @@ export default function NVRProgressPage() {
         minHeight: "100vh",
         background:
           "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-        padding: "28px 20px 50px",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
-      <div style={{ maxWidth: "1320px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "1320px",
+          width: "100%",
+          margin: "0 auto",
+          minWidth: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -663,16 +703,18 @@ export default function NVRProgressPage() {
             alignItems: "center",
             gap: "16px",
             marginBottom: "28px",
+            minWidth: 0,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "42px",
+                fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
               }}
             >
               🔷 NVR Progress
@@ -685,6 +727,7 @@ export default function NVRProgressPage() {
                 fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
+                overflowWrap: "break-word",
               }}
             >
               Explore non-verbal reasoning performance with live filters, trend
@@ -698,6 +741,9 @@ export default function NVRProgressPage() {
               flexWrap: "wrap",
               gap: "12px",
               alignItems: "center",
+              width: "100%",
+              maxWidth: "820px",
+              minWidth: 0,
             }}
           >
             <select
@@ -736,7 +782,9 @@ export default function NVRProgressPage() {
               id="nvr-progress-time-filter"
               name="nvrProgressTimeFilter"
               value={timeFilter}
-              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -751,9 +799,10 @@ export default function NVRProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
+            minWidth: 0,
           }}
         >
           <StatCard
@@ -809,14 +858,7 @@ export default function NVRProgressPage() {
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent non-verbal reasoning attempts."
@@ -824,7 +866,11 @@ export default function NVRProgressPage() {
             <ChartBox>
               {({ width, height }) =>
                 performanceTrendData.length ? (
-                  <LineChart width={width} height={height} data={performanceTrendData}>
+                  <LineChart
+                    width={width}
+                    height={height}
+                    data={performanceTrendData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
@@ -848,7 +894,9 @@ export default function NVRProgressPage() {
                     />
                   </LineChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -867,11 +915,23 @@ export default function NVRProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Accuracy
                 </div>
 
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.averageSuccess.toFixed(1)}%
                 </div>
               </div>
@@ -884,7 +944,13 @@ export default function NVRProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Best Category
                 </div>
 
@@ -911,7 +977,13 @@ export default function NVRProgressPage() {
                   border: "1px solid #fed7aa",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Needs Focus
                 </div>
 
@@ -938,11 +1010,23 @@ export default function NVRProgressPage() {
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#475569",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Questions Correct
                 </div>
 
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.totalCorrect}
                 </div>
               </div>
@@ -950,14 +1034,7 @@ export default function NVRProgressPage() {
           </SectionCard>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Average Success by Category"
             subtitle="Compare performance across NVR categories."
@@ -969,16 +1046,28 @@ export default function NVRProgressPage() {
                     width={width}
                     height={height}
                     data={successByCategoryData}
+                    layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} />
+                    <XAxis type="number" domain={[0, 100]} />
+                    <YAxis
+                      type="category"
+                      dataKey="category"
+                      width={135}
+                      tick={{ fontSize: 11 }}
+                    />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="avgSuccess"
+                      fill="#16a34a"
+                      radius={[0, 10, 10, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -1001,10 +1090,16 @@ export default function NVRProgressPage() {
                     <XAxis dataKey="difficulty" />
                     <YAxis allowDecimals={false} />
                     <Tooltip formatter={attemptsTooltipFormatter} />
-                    <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="attempts"
+                      fill="#10b981"
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -1016,12 +1111,12 @@ export default function NVRProgressPage() {
           subtitle="Your most recent NVR test results for the selected filters."
         >
           {recentAttempts.length ? (
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "980px",
+                  minWidth: "880px",
                 }}
               >
                 <thead>
@@ -1048,10 +1143,18 @@ export default function NVRProgressPage() {
                         {row.created_at ? formatDateTime(row.created_at) : "—"}
                       </td>
                       <td style={tdStyle}>{row.test_title}</td>
-                      <td style={tdStyle}>{getCategoryLabel(row.resolved_category)}</td>
-                      <td style={tdStyle}>{getLevelLabel(row.resolved_difficulty)}</td>
-                      <td style={tdStyle}>{toSafeNumber(row.correct_answers)}</td>
-                      <td style={tdStyle}>{toSafeNumber(row.total_questions)}</td>
+                      <td style={tdStyle}>
+                        {getCategoryLabel(row.resolved_category)}
+                      </td>
+                      <td style={tdStyle}>
+                        {getLevelLabel(row.resolved_difficulty)}
+                      </td>
+                      <td style={tdStyle}>
+                        {toSafeNumber(row.correct_answers)}
+                      </td>
+                      <td style={tdStyle}>
+                        {toSafeNumber(row.total_questions)}
+                      </td>
                       <td style={tdStyle}>
                         <span
                           style={{
@@ -1072,6 +1175,7 @@ export default function NVRProgressPage() {
                                   : "#991b1b",
                             fontWeight: 700,
                             fontSize: "13px",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {toSafeNumber(row.success_rate).toFixed(1)}%
@@ -1097,19 +1201,46 @@ export default function NVRProgressPage() {
             borderRadius: "28px",
             padding: "26px",
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
+            maxWidth: "100%",
+            overflow: "hidden",
+            boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
             Overall Summary
           </div>
 
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
             {summaryText}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const selectStyle: React.CSSProperties = {
@@ -1120,8 +1251,11 @@ const selectStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   color: "#0f172a",
-  minWidth: "180px",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
   boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -1141,6 +1275,7 @@ const thStyle: React.CSSProperties = {
   fontSize: "13px",
   color: "#64748b",
   fontWeight: 700,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1148,4 +1283,5 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  whiteSpace: "nowrap",
 }

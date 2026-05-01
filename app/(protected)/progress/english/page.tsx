@@ -75,6 +75,7 @@ type EnglishProgressRow = {
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
+
 type CategoryFilter =
   | "all"
   | "vocabulary"
@@ -120,6 +121,7 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
+
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -153,6 +155,7 @@ function getCategoryLabel(category: string) {
 
 function formatDateTime(value: string) {
   const date = new Date(value)
+
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -164,6 +167,7 @@ function formatDateTime(value: string) {
 
 function formatShortDate(value: string) {
   const date = new Date(value)
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -421,24 +425,25 @@ export default function EnglishProgressPage() {
 
         setLoadingUser(false)
 
-        const [vocabularyResult, spellingResult, englishSharedProgressResult] = await Promise.all([
-          supabase
-            .from("vocabulary_progress")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("spelling_progress")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("english_progress")
-            .select("*")
-            .eq("user_id", user.id)
-            .in("main_category", ["comprehension", "grammar", "punctuation"])
-            .order("created_at", { ascending: false }),
-        ])
+        const [vocabularyResult, spellingResult, englishSharedProgressResult] =
+          await Promise.all([
+            supabase
+              .from("vocabulary_progress")
+              .select("*")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("spelling_progress")
+              .select("*")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("english_progress")
+              .select("*")
+              .eq("user_id", user.id)
+              .in("main_category", ["comprehension", "grammar", "punctuation"])
+              .order("created_at", { ascending: false }),
+          ])
 
         if (vocabularyResult.error) {
           console.error("Error loading vocabulary progress:", vocabularyResult.error)
@@ -449,11 +454,18 @@ export default function EnglishProgressPage() {
         }
 
         if (englishSharedProgressResult.error) {
-          console.error("Error loading shared English progress:", englishSharedProgressResult.error)
+          console.error(
+            "Error loading shared English progress:",
+            englishSharedProgressResult.error
+          )
         }
 
-        const vocabularyRows = (vocabularyResult.data ?? []) as VocabularyProgressRow[]
-        const spellingRows = (spellingResult.data ?? []) as SpellingProgressRow[]
+        const vocabularyRows =
+          (vocabularyResult.data ?? []) as VocabularyProgressRow[]
+
+        const spellingRows =
+          (spellingResult.data ?? []) as SpellingProgressRow[]
+
         const englishSharedRows =
           (englishSharedProgressResult.data ?? []) as EnglishSharedProgressRow[]
 
@@ -517,9 +529,13 @@ export default function EnglishProgressPage() {
 
     return rows.filter((row) => {
       const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
+
       const matchesDifficulty =
-        difficultyFilter === "all" || String(row.difficulty ?? "") === difficultyFilter
-      const matchesCategory = categoryFilter === "all" || row.category === categoryFilter
+        difficultyFilter === "all" ||
+        String(row.difficulty ?? "") === difficultyFilter
+
+      const matchesCategory =
+        categoryFilter === "all" || row.category === categoryFilter
 
       return matchesTime && matchesDifficulty && matchesCategory
     })
@@ -527,29 +543,44 @@ export default function EnglishProgressPage() {
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
-    const questionsPractised = filteredRows.reduce((sum, row) => sum + row.total_questions, 0)
-    const totalCorrect = filteredRows.reduce((sum, row) => sum + row.correct_answers, 0)
+
+    const questionsPractised = filteredRows.reduce(
+      (sum, row) => sum + row.total_questions,
+      0
+    )
+
+    const totalCorrect = filteredRows.reduce(
+      (sum, row) => sum + row.correct_answers,
+      0
+    )
 
     const averageSuccess =
       testsCompleted > 0
-        ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) / testsCompleted
+        ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) /
+          testsCompleted
         : 0
 
     const bestScore =
-      testsCompleted > 0 ? Math.max(...filteredRows.map((row) => Number(row.success_rate))) : 0
+      testsCompleted > 0
+        ? Math.max(...filteredRows.map((row) => Number(row.success_rate)))
+        : 0
 
     const byCategory = Object.entries(
-      filteredRows.reduce((acc, row) => {
-        const key = getCategoryLabel(row.category)
+      filteredRows.reduce(
+        (acc, row) => {
+          const key = getCategoryLabel(row.category)
 
-        if (!acc[key]) {
-          acc[key] = { attempts: 0, totalSuccess: 0 }
-        }
+          if (!acc[key]) {
+            acc[key] = { attempts: 0, totalSuccess: 0 }
+          }
 
-        acc[key].attempts += 1
-        acc[key].totalSuccess += Number(row.success_rate)
-        return acc
-      }, {} as Record<string, { attempts: number; totalSuccess: number }>)
+          acc[key].attempts += 1
+          acc[key].totalSuccess += Number(row.success_rate)
+
+          return acc
+        },
+        {} as Record<string, { attempts: number; totalSuccess: number }>
+      )
     ).map(([category, data]) => ({
       category,
       avgSuccess: data.attempts ? data.totalSuccess / data.attempts : 0,
@@ -582,7 +613,8 @@ export default function EnglishProgressPage() {
 
   const performanceTrendData = useMemo(() => {
     const sorted = [...filteredRows].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
 
     return sorted.map((row, index) => ({
@@ -596,21 +628,28 @@ export default function EnglishProgressPage() {
   }, [filteredRows])
 
   const successByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = getCategoryLabel(row.category)
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        const key = getCategoryLabel(row.category)
 
-      if (!acc[key]) {
-        acc[key] = {
-          category: key,
-          attempts: 0,
-          totalSuccess: 0,
+        if (!acc[key]) {
+          acc[key] = {
+            category: key,
+            attempts: 0,
+            totalSuccess: 0,
+          }
         }
-      }
 
-      acc[key].attempts += 1
-      acc[key].totalSuccess += Number(row.success_rate)
-      return acc
-    }, {} as Record<string, { category: string; attempts: number; totalSuccess: number }>)
+        acc[key].attempts += 1
+        acc[key].totalSuccess += Number(row.success_rate)
+
+        return acc
+      },
+      {} as Record<
+        string,
+        { category: string; attempts: number; totalSuccess: number }
+      >
+    )
 
     const order = [
       "Vocabulary",
@@ -635,21 +674,28 @@ export default function EnglishProgressPage() {
   }, [filteredRows])
 
   const attemptsByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const key = getCategoryLabel(row.category)
+    const grouped = filteredRows.reduce(
+      (acc, row) => {
+        const key = getCategoryLabel(row.category)
 
-      if (!acc[key]) {
-        acc[key] = {
-          category: key,
-          attempts: 0,
-          questions: 0,
+        if (!acc[key]) {
+          acc[key] = {
+            category: key,
+            attempts: 0,
+            questions: 0,
+          }
         }
-      }
 
-      acc[key].attempts += 1
-      acc[key].questions += row.total_questions
-      return acc
-    }, {} as Record<string, { category: string; attempts: number; questions: number }>)
+        acc[key].attempts += 1
+        acc[key].questions += row.total_questions
+
+        return acc
+      },
+      {} as Record<
+        string,
+        { category: string; attempts: number; questions: number }
+      >
+    )
 
     const order = [
       "Vocabulary",
@@ -676,7 +722,10 @@ export default function EnglishProgressPage() {
 
   const recentAttempts = useMemo(() => {
     return [...filteredRows]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
       .slice(0, 12)
   }, [filteredRows])
 
@@ -746,9 +795,9 @@ export default function EnglishProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore English performance across vocabulary, spelling, comprehension,
-              grammar, and punctuation with live filters, trend tracking, and category
-              insights.
+              Explore English performance across vocabulary, spelling,
+              comprehension, grammar, and punctuation with live filters, trend
+              tracking, and category insights.
             </p>
           </div>
 
@@ -764,7 +813,9 @@ export default function EnglishProgressPage() {
               id="english-progress-category-filter"
               name="englishProgressCategoryFilter"
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -778,7 +829,9 @@ export default function EnglishProgressPage() {
               id="english-progress-difficulty-filter"
               name="englishProgressDifficultyFilter"
               value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value as DifficultyFilter)}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -792,7 +845,9 @@ export default function EnglishProgressPage() {
               id="english-progress-time-filter"
               name="englishProgressTimeFilter"
               value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
               style={selectStyle}
             >
               {timeOptions.map((option) => (
@@ -812,13 +867,29 @@ export default function EnglishProgressPage() {
             marginBottom: "24px",
           }}
         >
-          <StatCard title="Attempts Completed" value={String(overallStats.testsCompleted)} />
-          <StatCard title="Questions Practised" value={String(overallStats.questionsPractised)} />
-          <StatCard title="Average Success" value={`${overallStats.averageSuccess.toFixed(1)}%`} />
-          <StatCard title="Best Score" value={`${overallStats.bestScore.toFixed(1)}%`} />
+          <StatCard
+            title="Attempts Completed"
+            value={String(overallStats.testsCompleted)}
+          />
+          <StatCard
+            title="Questions Practised"
+            value={String(overallStats.questionsPractised)}
+          />
+          <StatCard
+            title="Average Success"
+            value={`${overallStats.averageSuccess.toFixed(1)}%`}
+          />
+          <StatCard
+            title="Best Score"
+            value={`${overallStats.bestScore.toFixed(1)}%`}
+          />
           <StatCard
             title="Strongest Category"
-            value={overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+            value={
+              overallStats.strongestCategory
+                ? overallStats.strongestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.strongestCategory
                 ? `${overallStats.strongestCategory.avgSuccess.toFixed(1)}% average success`
@@ -827,7 +898,11 @@ export default function EnglishProgressPage() {
           />
           <StatCard
             title="Weakest Category"
-            value={overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+            value={
+              overallStats.weakestCategory
+                ? overallStats.weakestCategory.category
+                : "—"
+            }
             subtitle={
               overallStats.weakestCategory
                 ? `${overallStats.weakestCategory.avgSuccess.toFixed(1)}% average success`
@@ -836,14 +911,7 @@ export default function EnglishProgressPage() {
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Performance Trend"
             subtitle="Track success rate across recent English attempts."
@@ -851,7 +919,11 @@ export default function EnglishProgressPage() {
             <ChartBox>
               {({ width, height }) =>
                 performanceTrendData.length ? (
-                  <LineChart width={width} height={height} data={performanceTrendData}>
+                  <LineChart
+                    width={width}
+                    height={height}
+                    data={performanceTrendData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
@@ -859,6 +931,7 @@ export default function EnglishProgressPage() {
                       formatter={successTooltipFormatter}
                       labelFormatter={(label, payload) => {
                         const point = payload?.[0]?.payload
+
                         return point
                           ? `${point.date} • ${point.category} • ${point.scoreLabel}`
                           : label
@@ -874,7 +947,9 @@ export default function EnglishProgressPage() {
                     />
                   </LineChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -893,10 +968,22 @@ export default function EnglishProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Accuracy
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.averageSuccess.toFixed(1)}%
                 </div>
               </div>
@@ -909,7 +996,13 @@ export default function EnglishProgressPage() {
                   border: "1px solid #bbf7d0",
                 }}
               >
-                <div style={{ color: "#15803d", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Best Category
                 </div>
                 <div
@@ -920,7 +1013,9 @@ export default function EnglishProgressPage() {
                     overflowWrap: "break-word",
                   }}
                 >
-                  {overallStats.strongestCategory ? overallStats.strongestCategory.category : "—"}
+                  {overallStats.strongestCategory
+                    ? overallStats.strongestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -932,7 +1027,13 @@ export default function EnglishProgressPage() {
                   border: "1px solid #fed7aa",
                 }}
               >
-                <div style={{ color: "#c2410c", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Needs Focus
                 </div>
                 <div
@@ -943,7 +1044,9 @@ export default function EnglishProgressPage() {
                     overflowWrap: "break-word",
                   }}
                 >
-                  {overallStats.weakestCategory ? overallStats.weakestCategory.category : "—"}
+                  {overallStats.weakestCategory
+                    ? overallStats.weakestCategory.category
+                    : "—"}
                 </div>
               </div>
 
@@ -955,10 +1058,22 @@ export default function EnglishProgressPage() {
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ color: "#475569", fontWeight: 700, marginBottom: "6px" }}>
+                <div
+                  style={{
+                    color: "#475569",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
                   Questions Correct
                 </div>
-                <div style={{ fontSize: "28px", fontWeight: 800, color: "#0f172a" }}>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
                   {overallStats.totalCorrect}
                 </div>
               </div>
@@ -966,14 +1081,7 @@ export default function EnglishProgressPage() {
           </SectionCard>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-            gap: "20px",
-            marginBottom: "20px",
-          }}
-        >
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Average Success by Category"
             subtitle="Compare performance across English categories."
@@ -981,15 +1089,25 @@ export default function EnglishProgressPage() {
             <ChartBox>
               {({ width, height }) =>
                 successByCategoryData.length ? (
-                  <BarChart width={width} height={height} data={successByCategoryData}>
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={successByCategoryData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
                     <YAxis domain={[0, 100]} />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" fill="#16a34a" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="avgSuccess"
+                      fill="#16a34a"
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -1002,15 +1120,25 @@ export default function EnglishProgressPage() {
             <ChartBox>
               {({ width, height }) =>
                 attemptsByCategoryData.length ? (
-                  <BarChart width={width} height={height} data={attemptsByCategoryData}>
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={attemptsByCategoryData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="attempts" fill="#10b981" radius={[10, 10, 0, 0]} />
+                    <Bar
+                      dataKey="attempts"
+                      fill="#10b981"
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
                 ) : (
-                  <div style={emptyStateStyle}>No data available for this filter.</div>
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
                 )
               }
             </ChartBox>
@@ -1040,6 +1168,7 @@ export default function EnglishProgressPage() {
                     <th style={thStyle}>Success</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {recentAttempts.map((row) => (
                     <tr
@@ -1100,16 +1229,36 @@ export default function EnglishProgressPage() {
             boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
           }}
         >
-          <div style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px" }}>
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
             Overall Summary
           </div>
-          <div style={{ color: "#dcfce7", fontSize: "16px", lineHeight: 1.7 }}>
+
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+            }}
+          >
             {summaryText}
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
 }
 
 const selectStyle: React.CSSProperties = {
