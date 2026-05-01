@@ -318,7 +318,7 @@ export default function NumberPlaceValuePage() {
 
             <div style={styles.heroActions}>
               <Link href="/math" style={styles.backLink}>
-                ← Back to Math
+                ← Back to Maths
               </Link>
             </div>
           </div>
