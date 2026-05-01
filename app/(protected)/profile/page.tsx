@@ -193,7 +193,9 @@ export default function ProfilePage() {
       console.error("Error saving profile:", error)
       setMessage("There was a problem saving your profile. Please try again.")
     } else {
-      setMessage("Profile saved successfully. Refresh the page if the header name has not updated yet.")
+      setMessage(
+        "Profile saved successfully. Refresh the page if the header name has not updated yet."
+      )
     }
 
     setSaving(false)
@@ -211,13 +213,6 @@ export default function ProfilePage() {
         : plan === "annual"
           ? "Annual"
           : "Free"
-
-  const planStyle =
-    plan === "admin"
-      ? styles.adminPlanBadge
-      : plan === "monthly" || plan === "annual"
-        ? styles.paidPlanBadge
-        : styles.freePlanBadge
 
   if (loading) {
     return (
@@ -251,10 +246,6 @@ export default function ProfilePage() {
               Manage your learning details and keep your 11+ progress connected
               to your account.
             </p>
-          </div>
-
-          <div style={{ ...styles.planBadge, ...planStyle }}>
-            {planLabel}
           </div>
         </section>
 
@@ -506,33 +497,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "1rem",
     lineHeight: 1.6,
     color: "#4b5563",
-  },
-
-  planBadge: {
-    padding: "9px 14px",
-    borderRadius: 999,
-    fontSize: "0.85rem",
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-    border: "1px solid",
-  },
-
-  freePlanBadge: {
-    background: "#eef2ff",
-    color: "#3730a3",
-    borderColor: "#c7d2fe",
-  },
-
-  paidPlanBadge: {
-    background: "#dcfce7",
-    color: "#166534",
-    borderColor: "#86efac",
-  },
-
-  adminPlanBadge: {
-    background: "#fef3c7",
-    color: "#92400e",
-    borderColor: "#fcd34d",
   },
 
   contentGrid: {
