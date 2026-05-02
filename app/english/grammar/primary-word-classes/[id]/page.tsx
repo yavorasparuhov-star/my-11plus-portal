@@ -61,17 +61,32 @@ export default function PrimaryWordClassesTestPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [test, setTest] = useState<PrimaryWordClassesTest | null>(null)
   const [questions, setQuestions] = useState<PrimaryWordClassesQuestion[]>([])
+
   const [answers, setAnswers] = useState<UserAnswerMap>({})
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
-  const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
     null
   )
+
+  const currentQuestion = questions[currentIndex]
+
+  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+
+  const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
+
+  const selectedAnswerText = useMemo(() => {
+    if (!currentQuestion || !selectedAnswer) return ""
+    return getOptionText(currentQuestion, selectedAnswer)
+  }, [currentQuestion, selectedAnswer])
 
   useEffect(() => {
     if (mode !== "review") {
@@ -104,6 +119,14 @@ export default function PrimaryWordClassesTestPage() {
       setLoading(true)
       setErrorMessage("")
       setAccessBlocked(null)
+      setFinished(false)
+      setSubmitting(false)
+      setCurrentIndex(0)
+      setAnswers({})
+      setSelectedAnswer(null)
+      setShowFeedback(false)
+      setScore(0)
+      setQuestions([])
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Primary Word Classes test ID.")
@@ -228,10 +251,6 @@ export default function PrimaryWordClassesTestPage() {
     loadPage()
   }, [rawId, testId, mode, reviewIds.join(",")])
 
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
-  const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
-
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
@@ -251,7 +270,7 @@ export default function PrimaryWordClassesTestPage() {
     if (!shouldWarnBeforeLeaving) return true
 
     return window.confirm(
-      "Not all questions have been answered. Are you sure you want to leave this test?"
+      "Not all questions have been finished. Are you sure you want to leave this test?"
     )
   }
 
@@ -268,21 +287,49 @@ export default function PrimaryWordClassesTestPage() {
     router.push("/english/grammar/primary-word-classes")
   }
 
-  function handleSelect(questionId: number, option: AnswerOption) {
-  if (submitted || submitting) return
+  function handleSelectAnswer(option: AnswerOption) {
+    if (showFeedback || finished || submitting) return
+    setSelectedAnswer(option)
+  }
+
+  function handleCheckAnswer() {
+    if (!currentQuestion || !selectedAnswer || submitting || finished) return
 
     setAnswers((prev) => ({
       ...prev,
-      [questionId]: option,
+      [currentQuestion.id]: selectedAnswer,
     }))
+
+    setShowFeedback(true)
   }
 
-async function submitTest() {
-  if (submitting) return
-  if (!userId || !test) return
-  if (questions.length === 0) return
+  async function handleNext() {
+    if (!currentQuestion || !selectedAnswer || !showFeedback || submitting) return
 
-  setSubmitting(true)
+    const isLastQuestion = currentIndex === questions.length - 1
+
+    const finalAnswers = {
+      ...answers,
+      [currentQuestion.id]: selectedAnswer,
+    }
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function submitResults(finalAnswers: UserAnswerMap) {
+    if (submitting) return
+    if (!userId || !test) return
+    if (questions.length === 0) return
+
+    setSubmitting(true)
     setErrorMessage("")
 
     let correctAnswers = 0
@@ -302,7 +349,7 @@ async function submitTest() {
     const correctlyAnsweredReviewQuestionIds: number[] = []
 
     for (const question of questions) {
-      const selected = answers[question.id]
+      const selected = finalAnswers[question.id]
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
@@ -382,6 +429,12 @@ async function submitTest() {
           )
         }
       }
+
+      const remainingIds = reviewIds.filter(
+        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+      )
+
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
     } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
@@ -398,47 +451,23 @@ async function submitTest() {
 
       const existingReviewIds = Array.from(new Set(reviewIds))
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
-      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
-
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-// Do not call setReviewIds here.
-// It reloads the page after submit and clears the result screen.
-    }
-
-    if (mode === "review") {
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+      const updatedReviewIds = Array.from(
+        new Set([...existingReviewIds, ...newWrongIds])
       )
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-// Do not call setReviewIds here.
-// It reloads the page after submit and clears the result screen.
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
     }
 
     setScore(correctAnswers)
-    setSubmitted(true)
+    setFinished(true)
     setSubmitting(false)
-    setShowIncompleteModal(false)
-
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function handleSubmit() {
-  if (submitting) return
-  if (!userId || !test) return
-  if (questions.length === 0) return
-
-    const unansweredCount = questions.length - answeredCount
-
-    if (unansweredCount > 0) {
-      setShowIncompleteModal(true)
-      return
-    }
-
-    await submitTest()
-  }
-
-  function getOptionText(question: PrimaryWordClassesQuestion, option: AnswerOption) {
+  function getOptionText(
+    question: PrimaryWordClassesQuestion,
+    option: AnswerOption
+  ) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -447,14 +476,37 @@ async function submitTest() {
 
   function restartSameTest() {
     setAnswers({})
-    setSubmitted(false)
+    setCurrentIndex(0)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setFinished(false)
     setScore(0)
-    setShowIncompleteModal(false)
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  const unansweredCount = questions.length - answeredCount
+  function getDifficultyLabel(difficulty: number | null) {
+    if (difficulty === 1) return "Easy"
+    if (difficulty === 2) return "Medium"
+    if (difficulty === 3) return "Hard"
+    return "Not set"
+  }
+
+  function getDifficultyColors(difficulty: number | null) {
+    if (difficulty === 1) {
+      return { background: "#ecfdf5", color: "#065f46" }
+    }
+
+    if (difficulty === 2) {
+      return { background: "#eff6ff", color: "#1d4ed8" }
+    }
+
+    if (difficulty === 3) {
+      return { background: "#fef2f2", color: "#b91c1c" }
+    }
+
+    return { background: "#f3f4f6", color: "#374151" }
+  }
 
   if (loading) {
     return (
@@ -476,14 +528,20 @@ async function submitTest() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Please sign in</h1>
+
             <p style={styles.subtitle}>
-              Guests can browse the tests, but you need to sign in before starting a test.
+              Guests can browse the tests, but you need to sign in before starting
+              a test.
             </p>
 
             <div style={styles.resultButtons}>
-              <button onClick={() => router.push("/login")} style={styles.primaryButton}>
+              <button
+                onClick={() => router.push("/login")}
+                style={styles.primaryButton}
+              >
                 Sign In
               </button>
+
               <button onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Primary Word Classes
               </button>
@@ -501,14 +559,20 @@ async function submitTest() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Members-only test</h1>
+
             <p style={styles.subtitle}>
-              This test is not included in the free plan. Upgrade your plan to unlock it.
+              This test is not included in the free plan. Upgrade your plan to
+              unlock it.
             </p>
 
             <div style={styles.resultButtons}>
-              <button onClick={() => router.push("/profile")} style={styles.primaryButton}>
+              <button
+                onClick={() => router.push("/profile")}
+                style={styles.primaryButton}
+              >
                 View Membership
               </button>
+
               <button onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Primary Word Classes
               </button>
@@ -527,6 +591,7 @@ async function submitTest() {
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Could not open test</h1>
             <p>{errorMessage}</p>
+
             <button onClick={goBackSafely} style={styles.primaryButton}>
               Back to Primary Word Classes
             </button>
@@ -543,6 +608,7 @@ async function submitTest() {
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Primary Word Classes test not found</h1>
+
             <button onClick={goBackSafely} style={styles.primaryButton}>
               Back to Primary Word Classes
             </button>
@@ -551,6 +617,106 @@ async function submitTest() {
       </>
     )
   }
+
+  if (questions.length === 0) {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.emptyCard}>
+              <h2>
+                {mode === "review" ? "No review questions found" : "No questions found"}
+              </h2>
+
+              <p>
+                {mode === "review"
+                  ? "There are no saved review questions for this test."
+                  : "Add questions in Supabase for this test."}
+              </p>
+
+              <button onClick={goBackSafely} style={styles.primaryButton}>
+                Back to Primary Word Classes
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const percentage =
+    questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
+
+  const badgeColors = getDifficultyColors(test.difficulty)
+
+  if (finished) {
+    return (
+      <>
+        <Header />
+
+        <div style={styles.page}>
+          <div style={styles.container}>
+            <div style={styles.heroCard}>
+              <h1 style={styles.title}>
+                {mode === "review"
+                  ? "📝 Review Complete"
+                  : "📝 Primary Word Classes Test Complete"}
+              </h1>
+
+              <p style={styles.subtitle}>{test.title}</p>
+            </div>
+
+            <div style={styles.resultBanner}>
+              <div style={styles.cardTop}>
+                <h2 style={styles.sectionTitle}>Your Results</h2>
+
+                <span
+                  style={{
+                    ...styles.badge,
+                    background: badgeColors.background,
+                    color: badgeColors.color,
+                  }}
+                >
+                  {getDifficultyLabel(test.difficulty)}
+                </span>
+              </div>
+
+              <div style={styles.resultBox}>
+                <p style={styles.resultText}>
+                  <strong>Score:</strong> {score} / {questions.length}
+                </p>
+
+                <p style={styles.resultText}>
+                  <strong>Success Rate:</strong> {percentage}%
+                </p>
+
+                <p style={styles.resultText}>
+                  <strong>Category:</strong> Primary Word Classes
+                </p>
+
+                {submitting && <p style={styles.resultText}>Saving results...</p>}
+
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+              </div>
+
+              <div style={styles.resultButtons}>
+                <button onClick={restartSameTest} style={styles.secondaryButton}>
+                  Retry This Set
+                </button>
+
+                <button onClick={goBackSafely} style={styles.primaryButton}>
+                  Back to Primary Word Classes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  const isCorrect = selectedAnswer === currentQuestion.correct_answer
 
   return (
     <>
@@ -567,223 +733,170 @@ async function submitTest() {
 
                 <p style={styles.subtitle}>
                   {mode === "review"
-                    ? "Answer your saved review questions carefully, then submit."
-                    : "Answer all grammar questions carefully, then submit your test."}
+                    ? "Answer your saved review questions one at a time."
+                    : "Answer each grammar question one at a time."}
                 </p>
               </div>
 
-              <div style={styles.badge}>
-                Difficulty:{" "}
-                {test.difficulty === 1
-                  ? "Easy"
-                  : test.difficulty === 2
-                    ? "Medium"
-                    : test.difficulty === 3
-                      ? "Hard"
-                      : "Not set"}
+              <div
+                style={{
+                  ...styles.badge,
+                  background: badgeColors.background,
+                  color: badgeColors.color,
+                }}
+              >
+                {getDifficultyLabel(test.difficulty)}
               </div>
             </div>
 
-            {submitted ? (
-              <div style={styles.resultBanner}>
-                <h2 style={{ marginTop: 0 }}>Finished</h2>
+            <div style={styles.progressInfo}>
+              Question <strong>{currentIndex + 1}</strong> / {questions.length}
+            </div>
 
-                <p style={styles.resultText}>
-                  You scored <strong>{score}</strong> out of{" "}
-                  <strong>{questions.length}</strong>
-                </p>
-
-                <p style={styles.resultText}>
-                  Success rate:{" "}
-                  <strong>
-                    {questions.length > 0
-                      ? Math.round((score / questions.length) * 100)
-                      : 0}
-                    %
-                  </strong>
-                </p>
-
-                <div style={styles.resultButtons}>
-                  <button onClick={restartSameTest} style={styles.secondaryButton}>
-                    Retry This Set
-                  </button>
-
-                  <button onClick={goBackSafely} style={styles.primaryButton}>
-                    Back to Primary Word Classes
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={styles.progressInfo}>
-                  Answered: <strong>{answeredCount}</strong> / {questions.length}
-                </div>
-
-                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
-              </>
-            )}
+            {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
 
           <div style={styles.questionsCard}>
-            <h2 style={styles.sectionTitle}>
-              {mode === "review" ? "Review Questions" : "Questions"}
-            </h2>
+            <div style={styles.progressRow}>
+              <span style={styles.progressText}>
+                Question {currentIndex + 1} / {questions.length}
+              </span>
 
-            {questions.length === 0 ? (
-              <div style={styles.emptyCard}>
-                <h2>
-                  {mode === "review" ? "No review questions found" : "No questions found"}
-                </h2>
+              <span style={styles.progressText}>
+                Answered: {answeredCount} / {questions.length}
+              </span>
+            </div>
 
-                <p>
-                  {mode === "review"
-                    ? "There are no saved review questions for this test."
-                    : "Add questions in Supabase for this test."}
-                </p>
-              </div>
-            ) : (
-              questions.map((question, index) => {
-                const selected = answers[question.id]
-                const isCorrect = selected === question.correct_answer
+            <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
+
+            <div style={styles.optionsGrid}>
+              {(["A", "B", "C", "D"] as const).map((option) => {
+                const optionText = getOptionText(currentQuestion, option)
+
+                let backgroundColor = "#f3f4f6"
+                let borderColor = "transparent"
+
+                if (selectedAnswer === option) {
+                  backgroundColor = "#e0e7ff"
+                  borderColor = "#4f46e5"
+                }
+
+                if (showFeedback) {
+                  if (option === currentQuestion.correct_answer) {
+                    backgroundColor = "#dcfce7"
+                    borderColor = "#16a34a"
+                  } else if (
+                    selectedAnswer === option &&
+                    option !== currentQuestion.correct_answer
+                  ) {
+                    backgroundColor = "#fee2e2"
+                    borderColor = "#dc2626"
+                  }
+                }
 
                 return (
-                  <div key={question.id} style={styles.questionBlock}>
-                    <h3 style={styles.questionTitle}>
-                      {index + 1}. {question.question_text}
-                    </h3>
-
-                    <div style={styles.optionsGrid}>
-                      {(["A", "B", "C", "D"] as const).map((option) => {
-                        const optionText = getOptionText(question, option)
-
-                        let backgroundColor = "#f3f4f6"
-                        let borderColor = "transparent"
-
-                        if (selected === option) {
-                          backgroundColor = "#e0e7ff"
-                          borderColor = "#4f46e5"
-                        }
-
-                        if (submitted) {
-                          if (option === question.correct_answer) {
-                            backgroundColor = "#dcfce7"
-                            borderColor = "#16a34a"
-                          } else if (selected === option && option !== question.correct_answer) {
-                            backgroundColor = "#fee2e2"
-                            borderColor = "#dc2626"
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={option}
-                            onClick={() => handleSelect(question.id, option)}
-                            disabled={submitted}
-                            style={{
-                              ...styles.optionButton,
-                              backgroundColor,
-                              borderColor,
-                              cursor: submitted ? "default" : "pointer",
-                            }}
-                          >
-                            <span style={styles.optionLetter}>{option}</span>
-                            <span>{optionText}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {submitted && (
-                      <div
-                        style={{
-                          ...styles.feedbackBox,
-                          backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                          borderColor: isCorrect ? "#86efac" : "#fecaca",
-                        }}
-                      >
-                        <p style={{ margin: 0 }}>
-                          <strong>{isCorrect ? "Correct" : "Incorrect"}</strong>
-                        </p>
-
-                        {!isCorrect && (
-                          <p style={{ margin: "8px 0 0 0" }}>
-                            Correct answer:{" "}
-                            <strong>
-                              {question.correct_answer} —{" "}
-                              {getOptionText(question, question.correct_answer)}
-                            </strong>
-                          </p>
-                        )}
-
-                        {question.explanation && question.explanation.trim() !== "" && (
-                          <p style={{ margin: "8px 0 0 0" }}>
-                            <strong>Explanation:</strong> {question.explanation}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    key={option}
+                    onClick={() => handleSelectAnswer(option)}
+                    disabled={showFeedback || submitting}
+                    style={{
+                      ...styles.optionButton,
+                      backgroundColor,
+                      borderColor,
+                      cursor: showFeedback || submitting ? "default" : "pointer",
+                    }}
+                  >
+                    <span style={styles.optionLetter}>{option}.</span>
+                    <span>{optionText}</span>
+                  </button>
                 )
-              })
-            )}
+              })}
+            </div>
 
-            {!submitted && questions.length > 0 && (
+            {!showFeedback ? (
               <div style={styles.submitRow}>
                 <button
-  type="button"
-  onClick={handleSubmit}
-  disabled={submitting}
+                  type="button"
+                  onClick={handleCheckAnswer}
+                  disabled={!selectedAnswer || submitting}
                   style={{
                     ...styles.primaryButton,
-                    opacity: submitting ? 0.7 : 1,
+                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
+                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
                   }}
                 >
-                  {submitting ? "Submitting..." : "Submit Answers"}
+                  Check Answer
                 </button>
               </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    ...styles.feedbackBox,
+                    backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                    borderColor: isCorrect ? "#86efac" : "#fecaca",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    <strong>{isCorrect ? "Correct!" : "Not quite."}</strong>
+                  </p>
+
+                  {!isCorrect && (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Correct answer:</strong>{" "}
+                      {currentQuestion.correct_answer} —{" "}
+                      {getOptionText(
+                        currentQuestion,
+                        currentQuestion.correct_answer
+                      )}
+                    </p>
+                  )}
+
+                  {selectedAnswer && (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Your answer:</strong> {selectedAnswer} —{" "}
+                      {selectedAnswerText}
+                    </p>
+                  )}
+
+                  {currentQuestion.explanation &&
+                    currentQuestion.explanation.trim() !== "" && (
+                      <p style={{ margin: "8px 0 0 0" }}>
+                        <strong>Explanation:</strong>{" "}
+                        {currentQuestion.explanation}
+                      </p>
+                    )}
+                </div>
+
+                <div style={styles.submitRow}>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={submitting}
+                    style={{
+                      ...styles.primaryButton,
+                      opacity: submitting ? 0.7 : 1,
+                      cursor: submitting ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {submitting
+                      ? "Saving..."
+                      : currentIndex === questions.length - 1
+                        ? "Finish Test"
+                        : "Next Question"}
+                  </button>
+                </div>
+              </>
             )}
-          </div>
-        </div>
-      </div>
 
-      {showIncompleteModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <h2 style={styles.modalTitle}>Incomplete Test</h2>
-
-            <p style={styles.modalText}>Not all questions have been answered.</p>
-
-            <p style={styles.modalText}>
-              You still have <strong>{unansweredCount}</strong> unanswered question
-              {unansweredCount === 1 ? "" : "s"}.
-            </p>
-
-            <p style={styles.modalText}>Are you sure you want to submit the test?</p>
-
-            <div style={styles.modalButtons}>
-              <button
-                onClick={() => setShowIncompleteModal(false)}
-                style={styles.secondaryButton}
-              >
-                Go Back
+            <div style={styles.backRow}>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Primary Word Classes
               </button>
-
-              <button
-  type="button"
-  onClick={submitTest}
-  disabled={submitting}
-  style={{
-    ...styles.primaryButton,
-    opacity: submitting ? 0.7 : 1,
-    cursor: submitting ? "not-allowed" : "pointer",
-  }}
->
-  {submitting ? "Submitting..." : "Submit Anyway"}
-</button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </>
   )
 }
@@ -791,11 +904,15 @@ async function submitTest() {
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
+    background: "#f9fafb",
+    minHeight: "calc(100vh - 70px)",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -803,6 +920,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   heroTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -810,15 +928,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "16px",
     flexWrap: "wrap",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
+    color: "#111827",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   badge: {
     padding: "10px 14px",
     borderRadius: "999px",
@@ -827,10 +949,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     whiteSpace: "nowrap",
   },
+
   progressInfo: {
     marginTop: "20px",
     color: "#444",
+    fontWeight: 600,
   },
+
+  progressRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    marginBottom: "16px",
+    flexWrap: "wrap",
+  },
+
+  progressText: {
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "#374151",
+  },
+
   inlineError: {
     marginTop: "12px",
     marginBottom: 0,
@@ -838,48 +977,69 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     fontWeight: 600,
   },
+
   resultBanner: {
-    marginTop: "20px",
-    background: "#f8fafc",
-    borderRadius: "16px",
-    padding: "20px",
-    border: "1px solid #e5e7eb",
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
+  resultBox: {
+    background: "#f9fafb",
+    borderRadius: "14px",
+    padding: "18px",
+    margin: "24px 0",
+  },
+
   resultText: {
-    margin: "8px 0",
+    margin: "10px 0",
     fontSize: "18px",
+    color: "#111827",
   },
+
   resultButtons: {
     display: "flex",
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
   },
+
   questionsCard: {
     background: "white",
     borderRadius: "20px",
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
+
   sectionTitle: {
     marginTop: 0,
     marginBottom: "20px",
     fontSize: "28px",
+    color: "#111827",
   },
-  questionBlock: {
-    padding: "22px 0",
-    borderBottom: "1px solid #e5e7eb",
+
+  cardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "12px",
+    flexWrap: "wrap",
   },
+
   questionTitle: {
     marginTop: 0,
-    marginBottom: "16px",
-    fontSize: "22px",
+    marginBottom: "24px",
+    fontSize: "26px",
     lineHeight: 1.5,
+    color: "#111827",
   },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
   },
+
   optionButton: {
     width: "100%",
     textAlign: "left",
@@ -891,23 +1051,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "flex-start",
     gap: "12px",
     transition: "all 0.2s ease",
+    lineHeight: 1.5,
   },
+
   optionLetter: {
     fontWeight: 700,
-    minWidth: "22px",
+    minWidth: "24px",
   },
+
   feedbackBox: {
-    marginTop: "14px",
-    padding: "14px",
-    borderRadius: "12px",
+    marginTop: "20px",
+    padding: "16px",
+    borderRadius: "14px",
     border: "1px solid",
     lineHeight: 1.5,
   },
+
   submitRow: {
-    marginTop: "28px",
+    marginTop: "24px",
     display: "flex",
     justifyContent: "center",
   },
+
+  backRow: {
+    marginTop: "16px",
+    display: "flex",
+    justifyContent: "center",
+  },
+
   primaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -917,7 +1088,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontSize: "16px",
     fontWeight: 600,
+    minWidth: "180px",
   },
+
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
@@ -927,7 +1100,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontSize: "16px",
     fontWeight: 600,
+    minWidth: "180px",
   },
+
   centerCard: {
     maxWidth: "700px",
     margin: "80px auto",
@@ -937,6 +1112,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -944,45 +1120,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "20px",
-    zIndex: 1000,
-  },
-  modalCard: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "28px",
-    width: "100%",
-    maxWidth: "480px",
-    boxShadow: "0 20px 40px rgba(0,0,0,0.18)",
-  },
-  modalTitle: {
-    marginTop: 0,
-    marginBottom: "14px",
-    fontSize: "28px",
-  },
-  modalText: {
-    margin: "8px 0",
-    color: "#374151",
-    lineHeight: 1.6,
-    fontSize: "16px",
-  },
-  modalButtons: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    flexWrap: "wrap",
-    marginTop: "22px",
   },
 }
