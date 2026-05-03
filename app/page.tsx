@@ -13,27 +13,31 @@ export default function LandingPage() {
   const router = useRouter()
 
   const subjects = [
-    {
-      title: "English",
-      icon: "📘",
-      text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
-    },
-    {
-      title: "Maths",
-      icon: "➗",
-      text: "Arithmetic, fractions, reasoning, problem-solving and exam-style practice.",
-    },
-    {
-      title: "Verbal Reasoning",
-      icon: "🧠",
-      text: "Words, codes, logic, patterns and reasoning question types.",
-    },
-    {
-      title: "Non-Verbal Reasoning",
-      icon: "🔷",
-      text: "Shape patterns, rotations, reflections and spatial reasoning.",
-    },
-  ]
+  {
+    title: "English",
+    icon: "📘",
+    text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
+    path: "/english",
+  },
+  {
+    title: "Maths",
+    icon: "➗",
+    text: "Arithmetic, fractions, reasoning, problem-solving and exam-style practice.",
+    path: "/math",
+  },
+  {
+    title: "Verbal Reasoning",
+    icon: "🧠",
+    text: "Words, codes, logic, patterns and reasoning question types.",
+    path: "/vr",
+  },
+  {
+    title: "Non-Verbal Reasoning",
+    icon: "🔷",
+    text: "Shape patterns, rotations, reflections and spatial reasoning.",
+    path: "/nvr",
+  },
+]
 
   const plans = [
     {
@@ -171,14 +175,38 @@ export default function LandingPage() {
           </div>
 
           <div style={styles.subjectGrid}>
-            {subjects.map((subject) => (
-              <div key={subject.title} style={styles.subjectCard}>
-                <div style={styles.subjectIcon}>{subject.icon}</div>
-                <h3 style={styles.subjectTitle}>{subject.title}</h3>
-                <p style={styles.subjectText}>{subject.text}</p>
-              </div>
-            ))}
-          </div>
+  {subjects.map((subject) => (
+    <div
+      key={subject.title}
+      style={{
+        ...styles.subjectCard,
+        ...hoverCardStyle,
+      }}
+      onClick={() => router.push(subject.path)}
+      onMouseEnter={(e) => handleCardHover(e, true)}
+      onMouseLeave={(e) => handleCardHover(e, false)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          router.push(subject.path)
+        }
+      }}
+    >
+      <div style={styles.subjectGlow}></div>
+
+      <div style={styles.subjectIcon}>{subject.icon}</div>
+
+      <h3 style={styles.subjectTitle}>{subject.title}</h3>
+
+      <p style={styles.subjectText}>{subject.text}</p>
+
+      <div style={styles.subjectAction}>
+        Start practice <span style={styles.subjectArrow}>→</span>
+      </div>
+    </div>
+  ))}
+</div>
         </section>
 
         {/* WHY SECTION */}
@@ -469,16 +497,48 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "18px",
   },
 
-  subjectCard: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.07)",
-    border: "1px solid #e5e7eb",
-    textAlign: "center",
-    boxSizing: "border-box",
-  },
+subjectCard: {
+  background:
+    "linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #dcfce7 100%)",
+  borderRadius: "24px",
+  padding: "28px 24px",
+  boxShadow: "0 14px 30px rgba(6,78,59,0.1)",
+  border: "1px solid #bbf7d0",
+  textAlign: "center",
+  boxSizing: "border-box",
+  position: "relative",
+  overflow: "hidden",
+  minHeight: "250px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+subjectGlow: {
+  position: "absolute",
+  top: "-40px",
+  right: "-40px",
+  width: "120px",
+  height: "120px",
+  background: "rgba(22, 163, 74, 0.14)",
+  borderRadius: "999px",
+},
 
+subjectAction: {
+  marginTop: "18px",
+  padding: "10px 16px",
+  borderRadius: "999px",
+  background: "#16a34a",
+  color: "white",
+  fontSize: "14px",
+  fontWeight: 800,
+  boxShadow: "0 8px 18px rgba(22,163,74,0.22)",
+},
+
+subjectArrow: {
+  marginLeft: "6px",
+  fontWeight: 900,
+},
   subjectIcon: {
     fontSize: "40px",
     marginBottom: "12px",
