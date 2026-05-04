@@ -60,7 +60,7 @@ export default function LandingPage() {
       title: "Monthly",
       badge: "Flexible option",
       icon: "⭐",
-      price: "£9.99 / month",
+      price: "£7.99 / month",
       text: "Flexible monthly access for regular 11+ practice and progress building.",
       features: [
         "Full practice access",
@@ -76,7 +76,7 @@ export default function LandingPage() {
       title: "Yearly",
       badge: "Preferred choice",
       icon: "🏆",
-      price: "£99 / year",
+      price: "£79 / year",
       text: "Best value for families who want long-term preparation and steady practice.",
       features: [
         "Everything in Monthly",
