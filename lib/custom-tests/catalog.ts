@@ -88,64 +88,70 @@ export const CUSTOM_TEST_CATALOG: Record<
   },
 
   math: {
-    key: "math",
-    label: "Maths",
-    enabled: true,
-    topics: [
-      {
-        key: "arithmetic",
-        label: "Arithmetic",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description: "Questions from math_questions for arithmetic topics.",
-        enabled: true,
-      },
-      {
-        key: "fractions-decimals-percentages",
-        label: "Fractions, Decimals & Percentages",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description:
-          "Questions from math_questions for fractions, decimals and percentages.",
-        enabled: true,
-      },
-      {
-        key: "algebra-reasoning",
-        label: "Algebra & Reasoning",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description:
-          "Questions from math_questions for algebra and reasoning.",
-        enabled: true,
-      },
-      {
-        key: "geometry-measurement",
-        label: "Geometry & Measurement",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description:
-          "Questions from math_questions for geometry and measurement.",
-        enabled: true,
-      },
-      {
-        key: "ratio-proportion",
-        label: "Ratio & Proportion",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description:
-          "Questions from math_questions for ratio and proportion.",
-        enabled: true,
-      },
-      {
-        key: "word-problems",
-        label: "Word Problems",
-        mainCategory: "math",
-        sourceKind: "math_questions",
-        description: "Questions from math_questions for mixed word problems.",
-        enabled: true,
-      },
-    ],
-  },
+  key: "math",
+  label: "Maths",
+  enabled: true,
+  topics: [
+    {
+      key: "number-place-value",
+      label: "Number & Place Value",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description: "Questions from math_questions for number and place value.",
+      enabled: true,
+    },
+    {
+      key: "four-operations",
+      label: "Four Operations",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description: "Questions from math_questions for the four operations.",
+      enabled: true,
+    },
+    {
+      key: "fractions-decimals-percentages",
+      label: "Fractions, Decimals & Percentages",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description:
+        "Questions from math_questions for fractions, decimals and percentages.",
+      enabled: true,
+    },
+    {
+      key: "shape-space",
+      label: "Shape & Space",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description: "Questions from math_questions for shape and space.",
+      enabled: true,
+    },
+    {
+      key: "measurement",
+      label: "Measurement",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description: "Questions from math_questions for measurement.",
+      enabled: true,
+    },
+    {
+      key: "data-handling",
+      label: "Data Handling",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description: "Questions from math_questions for data handling.",
+      enabled: true,
+    },
+    {
+      key: "algebra-reasoning",
+      label: "Algebra & Reasoning",
+      mainCategory: "math",
+      sourceKind: "math_questions",
+      description:
+        "Questions from math_questions for algebra and reasoning.",
+      enabled: true,
+    },
+  ],
+},
 
   vr: {
     key: "vr",

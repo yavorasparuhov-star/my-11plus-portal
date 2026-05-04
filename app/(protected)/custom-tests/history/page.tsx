@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
+import { getTopicByKey } from "../../../../lib/custom-tests/catalog"
 import type {
   DifficultyFilter,
   MainCategory,
@@ -108,14 +109,31 @@ function formatDifficulty(value: DifficultyFilter | undefined) {
   return "Hard"
 }
 
+function formatTopicKey(topicKey: string, mainCategory?: MainCategory) {
+  if (mainCategory) {
+    const topic = getTopicByKey(mainCategory, topicKey)
+
+    if (topic) {
+      return topic.label
+    }
+  }
+
+  return topicKey
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
 function formatTopics(config: AttemptConfig) {
   if (!config.topicKeys || config.topicKeys.length === 0) {
     return "—"
   }
 
   return config.topicKeys
-    .map((topic) => topic.replaceAll("_", " "))
-    .map((topic) => topic.charAt(0).toUpperCase() + topic.slice(1))
+    .map((topicKey) => formatTopicKey(topicKey, config.mainCategory))
     .join(", ")
 }
 

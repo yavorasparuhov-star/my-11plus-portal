@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { supabase } from "../../../../../lib/supabaseClient"
+import { getTopicByKey } from "../../../../../lib/custom-tests/catalog"
 import type {
   GeneratedCustomTest,
   MainCategory,
@@ -35,7 +36,31 @@ function formatSeconds(totalSeconds: number) {
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
+function formatTopicKey(topicKey: string, mainCategory: MainCategory) {
+  const topic = getTopicByKey(mainCategory, topicKey)
 
+  if (topic) {
+    return topic.label
+  }
+
+  return topicKey
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+function formatTopicKeys(topicKeys: string[], mainCategory: MainCategory) {
+  if (topicKeys.length === 0) {
+    return "—"
+  }
+
+  return topicKeys
+    .map((topicKey) => formatTopicKey(topicKey, mainCategory))
+    .join(", ")
+}
 export default function CustomTestRunPage() {
   const params = useParams<{ mainCategory: string }>()
   const router = useRouter()
@@ -782,13 +807,13 @@ export default function CustomTestRunPage() {
 
             <div style={{ display: "grid", gap: 12 }}>
               <div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                  Main category
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>
-                  {test.config.mainCategory.toUpperCase()}
-                </div>
-              </div>
+  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
+    Topics
+  </div>
+  <div style={{ color: "#111827", lineHeight: 1.7 }}>
+    {formatTopicKeys(test.config.topicKeys, test.config.mainCategory)}
+  </div>
+</div>
 
               <div>
                 <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>

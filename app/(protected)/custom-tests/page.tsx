@@ -268,8 +268,8 @@ export default function CustomTestsPage() {
                   <p style={textStyle}>
                     {category.key === "english" &&
                       "Create custom tests using Vocabulary, Spelling, Comprehension, Grammar, and Punctuation."}
-                    {category.key === "math" &&
-                      "Create custom tests using Math topics such as Arithmetic, Fractions, Algebra, Geometry and Word Problems."}
+                  {category.key === "math" &&
+  "Create custom tests using Maths topics such as Number & Place Value, Four Operations, Fractions, Shape & Space, Measurement, Data Handling and Algebra & Reasoning."}
                     {category.key === "vr" &&
                       "Create custom tests using VR topics such as Word Relationships, Codes & Logic, and Sequences."}
                     {category.key === "nvr" &&

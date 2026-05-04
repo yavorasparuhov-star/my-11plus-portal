@@ -476,17 +476,6 @@ export default function CustomTestBuilderPage() {
                           {topic.label}
                         </div>
 
-                        {topic.description ? (
-                          <div
-                            style={{
-                              color: "#4b5563",
-                              lineHeight: 1.5,
-                              fontSize: "0.95rem",
-                            }}
-                          >
-                            {topic.description}
-                          </div>
-                        ) : null}
                       </div>
                     </label>
 
