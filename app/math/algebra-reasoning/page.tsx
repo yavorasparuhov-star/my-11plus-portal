@@ -22,12 +22,19 @@ type MathTest = {
   is_free: boolean
 }
 
-type MathProgress = {
-  id: string
+type MathLatestTestResult = {
+  id: number
   user_id: string
-  test_id: number | null
-  success_rate: number | null
-  created_at: string | null
+  subject: string
+  category: string
+  test_id: number
+  test_title: string
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  completed_at: string | null
+  updated_at: string | null
 }
 
 type TestWithProgress = MathTest & {
@@ -147,14 +154,18 @@ export default function AlgebraReasoningPage() {
       return
     }
 
-    const { data: progressData, error: progressError } = await supabase
-      .from("math_progress")
-      .select("id, user_id, test_id, success_rate, created_at")
+    const { data: latestResultsData, error: latestResultsError } = await supabase
+      .from("math_latest_test_results")
+      .select(
+        "id, user_id, subject, category, test_id, test_title, total_questions, correct_answers, success_rate, difficulty, completed_at, updated_at"
+      )
       .eq("user_id", currentAccess.userId)
+      .eq("subject", "math")
+      .eq("category", "algebra_reasoning")
       .in("test_id", testIds)
 
-    if (progressError) {
-      console.error("Error loading math progress:", progressError)
+    if (latestResultsError) {
+      console.error("Error loading latest math test results:", latestResultsError)
 
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
         ...test,
@@ -168,29 +179,21 @@ export default function AlgebraReasoningPage() {
       return
     }
 
-    const progressRows = (progressData || []) as MathProgress[]
-    const latestProgressMap = new Map<number, MathProgress>()
+    const latestResultRows = (latestResultsData || []) as MathLatestTestResult[]
+    const latestResultMap = new Map<number, MathLatestTestResult>()
 
-    for (const row of progressRows) {
-      if (row.test_id === null) continue
-
-      const existing = latestProgressMap.get(row.test_id)
-      const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
-
-      if (!existing || rowDate > existingDate) {
-        latestProgressMap.set(row.test_id, row)
-      }
+    for (const row of latestResultRows) {
+      latestResultMap.set(row.test_id, row)
     }
 
     const mergedTests: TestWithProgress[] = allTests.map((test) => {
-      const progress = latestProgressMap.get(test.id)
+      const latestResult = latestResultMap.get(test.id)
 
       return {
         ...test,
-        score: progress?.success_rate ?? 0,
-        completed_at: progress?.created_at || null,
-        isCompleted: !!progress,
+        score: latestResult?.success_rate ?? 0,
+        completed_at: latestResult?.completed_at || null,
+        isCompleted: !!latestResult,
       }
     })
 
@@ -241,6 +244,28 @@ export default function AlgebraReasoningPage() {
     if (hasFullAccess(plan)) return "Full access"
     if (test.is_free) return "Free test"
     return "Members only"
+  }
+
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    return (
+      <Link
+        href={`/math/results/${test.category}/${test.id}`}
+        style={styles.completedResultLink}
+        title="View full test result"
+      >
+        {completedDate}
+      </Link>
+    )
   }
 
   function getTestButton(test: TestWithProgress) {
@@ -427,14 +452,7 @@ export default function AlgebraReasoningPage() {
 
                       <div style={styles.metaRow}>
                         <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
+                          <strong>Completed:</strong> {getCompletedDateContent(test)}
                         </p>
 
                         <p style={styles.metaHalf}>
@@ -602,6 +620,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
+  },
+  completedResultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   scoreIcon: {
     marginLeft: "6px",

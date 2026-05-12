@@ -387,26 +387,30 @@ export default function AlgebraReasoningTestPage() {
         return
       }
 
-      const latestResultPayload = {
-        user_id: userId,
-        subject: "math",
-        category: test.category,
-        test_id: test.id,
-        test_title: test.title,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
-        answers: fullReview,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
+     const latestResultPayload = {
+  user_id: userId,
+  subject: "math",
+  category: test.category,
+  subcategory: "",
+  subcategory_two: "",
+  subcategory_three: "",
+  test_id: test.id,
+  test_title: test.title,
+  total_questions: totalQuestions,
+  correct_answers: correctAnswers,
+  success_rate: successRate,
+  difficulty: test.difficulty ?? null,
+  answers: fullReview,
+  completed_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
 
-      const { error: latestResultError } = await supabase
-        .from("math_latest_test_results")
-        .upsert([latestResultPayload], {
-          onConflict: "user_id,subject,category,test_id",
-        })
+const { error: latestResultError } = await supabase
+  .from("latest_test_results")
+  .upsert([latestResultPayload], {
+    onConflict:
+      "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+  })
 
       if (latestResultError) {
         console.error("Error saving latest full math result:", {
