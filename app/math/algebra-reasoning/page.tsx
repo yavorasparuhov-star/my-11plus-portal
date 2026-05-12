@@ -22,11 +22,14 @@ type MathTest = {
   is_free: boolean
 }
 
-type MathLatestTestResult = {
+type LatestTestResult = {
   id: number
   user_id: string
   subject: string
   category: string
+  subcategory: string
+  subcategory_two: string
+  subcategory_three: string
   test_id: number
   test_title: string
   total_questions: number
@@ -154,18 +157,21 @@ export default function AlgebraReasoningPage() {
       return
     }
 
-    const { data: latestResultsData, error: latestResultsError } = await supabase
-      .from("math_latest_test_results")
+    const { data: resultData, error: resultError } = await supabase
+      .from("latest_test_results")
       .select(
-        "id, user_id, subject, category, test_id, test_title, total_questions, correct_answers, success_rate, difficulty, completed_at, updated_at"
+        "id, user_id, subject, category, subcategory, subcategory_two, subcategory_three, test_id, test_title, total_questions, correct_answers, success_rate, difficulty, completed_at, updated_at"
       )
       .eq("user_id", currentAccess.userId)
       .eq("subject", "math")
       .eq("category", "algebra_reasoning")
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
       .in("test_id", testIds)
 
-    if (latestResultsError) {
-      console.error("Error loading latest math test results:", latestResultsError)
+    if (resultError) {
+      console.error("Error loading latest test results:", resultError)
 
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
         ...test,
@@ -179,21 +185,21 @@ export default function AlgebraReasoningPage() {
       return
     }
 
-    const latestResultRows = (latestResultsData || []) as MathLatestTestResult[]
-    const latestResultMap = new Map<number, MathLatestTestResult>()
+    const resultRows = (resultData || []) as LatestTestResult[]
+    const latestResultMap = new Map<number, LatestTestResult>()
 
-    for (const row of latestResultRows) {
+    for (const row of resultRows) {
       latestResultMap.set(row.test_id, row)
     }
 
     const mergedTests: TestWithProgress[] = allTests.map((test) => {
-      const latestResult = latestResultMap.get(test.id)
+      const result = latestResultMap.get(test.id)
 
       return {
         ...test,
-        score: latestResult?.success_rate ?? 0,
-        completed_at: latestResult?.completed_at || null,
-        isCompleted: !!latestResult,
+        score: result?.success_rate ?? 0,
+        completed_at: result?.completed_at || null,
+        isCompleted: !!result,
       }
     })
 
@@ -259,7 +265,7 @@ export default function AlgebraReasoningPage() {
 
     return (
       <Link
-        href={`/math/results/${test.category}/${test.id}`}
+        href={`/results/math/${test.category}/${test.id}`}
         style={styles.completedResultLink}
         title="View full test result"
       >
