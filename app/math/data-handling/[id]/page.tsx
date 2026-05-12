@@ -292,186 +292,192 @@ export default function DataHandlingTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function submitResults(finalAnswers: UserAnswerMap) {
-    if (submitting) return
-    if (!userId || !test) return
-    if (questions.length === 0) return
+ async function submitResults(finalAnswers: UserAnswerMap) {
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
-    setSubmitting(true)
-    setErrorMessage("")
+  setSubmitting(true)
+  setErrorMessage("")
 
-    try {
-      let correctAnswers = 0
+  let correctAnswers = 0
 
-      const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-      }[] = []
+  const wrongAnswersForReview: {
+    user_id: string
+    test_id: number
+    question_id: number
+    category: string
+    question_text: string
+    user_answer: string | null
+    correct_answer: string
+    difficulty: number | null
+  }[] = []
 
-      for (const question of questions) {
-        const selected = finalAnswers[question.id]
+  for (const question of questions) {
+    const selected = finalAnswers[question.id]
 
-        if (selected === question.correct_answer) {
-          correctAnswers += 1
-        } else {
-          wrongAnswersForReview.push({
-            user_id: userId,
-            test_id: test.id,
-            question_id: question.id,
-            category: test.category,
-            question_text: question.question_text,
-            user_answer: selected ?? null,
-            correct_answer: question.correct_answer,
-            difficulty: test.difficulty ?? null,
-          })
-        }
-      }
-
-      const totalQuestions = questions.length
-      const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
-      const fullReview: CompletedQuestionReview[] = questions.map((question) => {
-        const selected = finalAnswers[question.id] ?? null
-
-        return {
-          question_id: question.id,
-          question_order: question.question_order,
-          question_text: question.question_text,
-          question_image_url: null,
-          options: {
-            A: question.option_a,
-            B: question.option_b,
-            C: question.option_c,
-            D: question.option_d,
-          },
-          option_images: {
-            A: null,
-            B: null,
-            C: null,
-            D: null,
-          },
-          user_answer: selected,
-          correct_answer: question.correct_answer,
-          user_answer_text: selected ? getOptionText(question, selected) : null,
-          correct_answer_text: getOptionText(question, question.correct_answer),
-          user_answer_image_url: null,
-          correct_answer_image_url: null,
-          is_correct: selected === question.correct_answer,
-          explanation: question.explanation,
-          explanation_image_url: null,
-          difficulty: test.difficulty ?? null,
-        }
+    if (selected === question.correct_answer) {
+      correctAnswers += 1
+    } else {
+      wrongAnswersForReview.push({
+        user_id: userId,
+        test_id: test.id,
+        question_id: question.id,
+        category: test.category,
+        question_text: question.question_text,
+        user_answer: selected ?? null,
+        correct_answer: question.correct_answer,
+        difficulty: test.difficulty ?? null,
       })
-
-      const progressPayload = {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
-      }
-
-      const { error: progressError } = await supabase
-        .from("math_progress")
-        .insert([progressPayload])
-
-     if (progressError) {
-  console.error("Error saving math progress:", {
-    message: progressError.message,
-    details: progressError.details,
-    hint: progressError.hint,
-    code: progressError.code,
-    full: progressError,
-    payload: progressPayload,
-  })
-
-  setErrorMessage(
-    "Your test was completed, but the progress history could not be saved."
-  )
-}
-
-      const latestResultPayload = {
-        user_id: userId,
-        subject: "math",
-        category: test.category,
-        subcategory: "",
-        subcategory_two: "",
-        subcategory_three: "",
-        test_id: test.id,
-        test_title: test.title,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
-        answers: fullReview,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-console.log("Saving latest test result payload:", latestResultPayload)
-
-const { data: savedLatestResult, error: latestResultError } = await supabase
-  .from("latest_test_results")
-  .upsert([latestResultPayload], {
-    onConflict:
-      "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-  })
-  .select()
-
-if (latestResultError) {
-  console.error("Error saving latest full test result:", {
-    message: latestResultError.message,
-    details: latestResultError.details,
-    hint: latestResultError.hint,
-    code: latestResultError.code,
-    full: latestResultError,
-    payload: latestResultPayload,
-  })
-
-  setErrorMessage(
-    "Your score was saved, but the full test result could not be saved for later."
-  )
-} else {
-  console.log("Latest test result saved successfully:", savedLatestResult)
-}
-
-      if (wrongAnswersForReview.length > 0) {
-        const { error: reviewError } = await supabase
-          .from("math_review")
-          .insert(wrongAnswersForReview)
-
-        if (reviewError) {
-          console.error("Error saving math review:", {
-            message: reviewError.message,
-            details: reviewError.details,
-            hint: reviewError.hint,
-            code: reviewError.code,
-            full: reviewError,
-          })
-        }
-      }
-
-      setAnswers(finalAnswers)
-      setCompletedReview(fullReview)
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    } catch (error) {
-      console.error("Unexpected math submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
-      setSubmitting(false)
     }
   }
+
+  const totalQuestions = questions.length
+  const successRate =
+    totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+  const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+    const selected = finalAnswers[question.id] ?? null
+
+    return {
+      question_id: question.id,
+      question_order: question.question_order,
+      question_text: question.question_text,
+      question_image_url: null,
+      options: {
+        A: question.option_a,
+        B: question.option_b,
+        C: question.option_c,
+        D: question.option_d,
+      },
+      option_images: {
+        A: null,
+        B: null,
+        C: null,
+        D: null,
+      },
+      user_answer: selected,
+      correct_answer: question.correct_answer,
+      user_answer_text: selected ? getOptionText(question, selected) : null,
+      correct_answer_text: getOptionText(question, question.correct_answer),
+      user_answer_image_url: null,
+      correct_answer_image_url: null,
+      is_correct: selected === question.correct_answer,
+      explanation: question.explanation,
+      explanation_image_url: null,
+      difficulty: test.difficulty ?? null,
+    }
+  })
+
+  /**
+   * Show the result immediately.
+   * This should happen before any Supabase saving.
+   */
+  setAnswers(finalAnswers)
+  setCompletedReview(fullReview)
+  setScore(correctAnswers)
+  setFinished(true)
+  window.scrollTo({ top: 0, behavior: "smooth" })
+
+  try {
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      category: test.category,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+    }
+
+    const { error: progressError } = await supabase
+      .from("math_progress")
+      .insert([progressPayload])
+
+    if (progressError) {
+      console.error("Error saving math progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+        payload: progressPayload,
+      })
+
+      setErrorMessage(
+        "Your result is shown below, but the progress history could not be saved."
+      )
+    }
+
+    const latestResultPayload = {
+      user_id: userId,
+      subject: "math",
+      category: test.category,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: fullReview,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    console.log("Saving latest Data Handling result:", latestResultPayload)
+
+    const { data: savedLatestResult, error: latestResultError } = await supabase
+      .from("latest_test_results")
+      .upsert([latestResultPayload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+      .select()
+
+    if (latestResultError) {
+      console.error("Error saving latest full test result:", {
+        message: latestResultError.message,
+        details: latestResultError.details,
+        hint: latestResultError.hint,
+        code: latestResultError.code,
+        full: latestResultError,
+        payload: latestResultPayload,
+      })
+
+      setErrorMessage(
+        "Your result is shown below, but the full test result could not be saved for later."
+      )
+    } else {
+      console.log("Latest Data Handling result saved:", savedLatestResult)
+    }
+
+    if (wrongAnswersForReview.length > 0) {
+      const { error: reviewError } = await supabase
+        .from("math_review")
+        .insert(wrongAnswersForReview)
+
+      if (reviewError) {
+        console.error("Error saving math review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
+      }
+    }
+  } catch (error) {
+    console.error("Unexpected math submit error:", error)
+    setErrorMessage(
+      "Your result is shown below, but something went wrong while saving it."
+    )
+  } finally {
+    setSubmitting(false)
+  }
+}
 
   function getOptionText(question: MathQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
