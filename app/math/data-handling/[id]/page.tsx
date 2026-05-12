@@ -384,22 +384,20 @@ export default function DataHandlingTestPage() {
         .from("math_progress")
         .insert([progressPayload])
 
-      if (progressError) {
-        console.error("Error saving math progress:", {
-          message: progressError.message,
-          details: progressError.details,
-          hint: progressError.hint,
-          code: progressError.code,
-          full: progressError,
-          payload: progressPayload,
-        })
+     if (progressError) {
+  console.error("Error saving math progress:", {
+    message: progressError.message,
+    details: progressError.details,
+    hint: progressError.hint,
+    code: progressError.code,
+    full: progressError,
+    payload: progressPayload,
+  })
 
-        setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
-        )
-        setSubmitting(false)
-        return
-      }
+  setErrorMessage(
+    "Your test was completed, but the progress history could not be saved."
+  )
+}
 
       const latestResultPayload = {
         user_id: userId,
@@ -419,27 +417,32 @@ export default function DataHandlingTestPage() {
         updated_at: new Date().toISOString(),
       }
 
-      const { error: latestResultError } = await supabase
-        .from("latest_test_results")
-        .upsert([latestResultPayload], {
-          onConflict:
-            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-        })
+console.log("Saving latest test result payload:", latestResultPayload)
 
-      if (latestResultError) {
-        console.error("Error saving latest full test result:", {
-          message: latestResultError.message,
-          details: latestResultError.details,
-          hint: latestResultError.hint,
-          code: latestResultError.code,
-          full: latestResultError,
-          payload: latestResultPayload,
-        })
+const { data: savedLatestResult, error: latestResultError } = await supabase
+  .from("latest_test_results")
+  .upsert([latestResultPayload], {
+    onConflict:
+      "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+  })
+  .select()
 
-        setErrorMessage(
-          "Your score was saved, but the full test result could not be saved for later."
-        )
-      }
+if (latestResultError) {
+  console.error("Error saving latest full test result:", {
+    message: latestResultError.message,
+    details: latestResultError.details,
+    hint: latestResultError.hint,
+    code: latestResultError.code,
+    full: latestResultError,
+    payload: latestResultPayload,
+  })
+
+  setErrorMessage(
+    "Your score was saved, but the full test result could not be saved for later."
+  )
+} else {
+  console.log("Latest test result saved successfully:", savedLatestResult)
+}
 
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
