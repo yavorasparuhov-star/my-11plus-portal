@@ -35,6 +35,25 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+type CompletedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url: string | null
+  options: Record<AnswerOption, string>
+  option_images: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url: string | null
+  difficulty: number | null
+}
+
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
@@ -56,6 +75,7 @@ export default function FourOperationsTestPage() {
   const [questions, setQuestions] = useState<MathQuestion[]>([])
 
   const [answers, setAnswers] = useState<UserAnswerMap>({})
+  const [completedReview, setCompletedReview] = useState<CompletedQuestionReview[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
@@ -89,6 +109,7 @@ export default function FourOperationsTestPage() {
       setErrorMessage("")
       setQuestions([])
       setAnswers({})
+      setCompletedReview([])
       setCurrentIndex(0)
       setSelectedAnswer(null)
       setShowFeedback(false)
@@ -279,43 +300,82 @@ export default function FourOperationsTestPage() {
     setSubmitting(true)
     setErrorMessage("")
 
-    try {
-      let correctAnswers = 0
+    let correctAnswers = 0
 
-      const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-      }[] = []
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      category: string
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+    }[] = []
 
-      for (const question of questions) {
-        const selected = finalAnswers[question.id]
+    for (const question of questions) {
+      const selected = finalAnswers[question.id]
 
-        if (selected === question.correct_answer) {
-          correctAnswers += 1
-        } else {
-          wrongAnswersForReview.push({
-            user_id: userId,
-            test_id: test.id,
-            question_id: question.id,
-            category: test.category,
-            question_text: question.question_text,
-            user_answer: selected ?? null,
-            correct_answer: question.correct_answer,
-            difficulty: test.difficulty ?? null,
-          })
-        }
+      if (selected === question.correct_answer) {
+        correctAnswers += 1
+      } else {
+        wrongAnswersForReview.push({
+          user_id: userId,
+          test_id: test.id,
+          question_id: question.id,
+          category: test.category,
+          question_text: question.question_text,
+          user_answer: selected ?? null,
+          correct_answer: question.correct_answer,
+          difficulty: test.difficulty ?? null,
+        })
       }
+    }
 
-      const totalQuestions = questions.length
-      const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+    const totalQuestions = questions.length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
+    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+      const selected = finalAnswers[question.id] ?? null
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: null,
+          B: null,
+          C: null,
+          D: null,
+        },
+        user_answer: selected,
+        correct_answer: question.correct_answer,
+        user_answer_text: selected ? getOptionText(question, selected) : null,
+        correct_answer_text: getOptionText(question, question.correct_answer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: selected === question.correct_answer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: test.difficulty ?? null,
+      }
+    })
+
+    setAnswers(finalAnswers)
+    setCompletedReview(fullReview)
+    setScore(correctAnswers)
+    setFinished(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+
+    try {
       const progressPayload = {
         user_id: userId,
         test_id: test.id,
@@ -341,10 +401,51 @@ export default function FourOperationsTestPage() {
         })
 
         setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
+          "Your result is shown below, but the progress history could not be saved."
         )
-        setSubmitting(false)
-        return
+      }
+
+      const latestResultPayload = {
+        user_id: userId,
+        subject: "math",
+        category: test.category,
+        subcategory: "",
+        subcategory_two: "",
+        subcategory_three: "",
+        test_id: test.id,
+        test_title: test.title,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+        answers: fullReview,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data: savedLatestResult, error: latestResultError } = await supabase
+        .from("latest_test_results")
+        .upsert([latestResultPayload], {
+          onConflict:
+            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+        })
+        .select()
+
+      if (latestResultError) {
+        console.error("Error saving latest full test result:", {
+          message: latestResultError.message,
+          details: latestResultError.details,
+          hint: latestResultError.hint,
+          code: latestResultError.code,
+          full: latestResultError,
+          payload: latestResultPayload,
+        })
+
+        setErrorMessage(
+          "Your result is shown below, but the full test result could not be saved for later."
+        )
+      } else {
+        console.log("Latest Four Operations result saved:", savedLatestResult)
       }
 
       if (wrongAnswersForReview.length > 0) {
@@ -362,14 +463,12 @@ export default function FourOperationsTestPage() {
           })
         }
       }
-
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (error) {
       console.error("Unexpected math submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
+      setErrorMessage(
+        "Your result is shown below, but something went wrong while saving it."
+      )
+    } finally {
       setSubmitting(false)
     }
   }
@@ -383,6 +482,7 @@ export default function FourOperationsTestPage() {
 
   function restartSameTest() {
     setAnswers({})
+    setCompletedReview([])
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
@@ -603,6 +703,106 @@ export default function FourOperationsTestPage() {
                 <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Topic
                 </button>
+              </div>
+            </div>
+
+            <div style={styles.reviewCard}>
+              <h2 style={styles.sectionTitle}>Full Test Review</h2>
+
+              <p style={styles.subtitle}>
+                Here are all the questions, your answers, and the correct answers.
+              </p>
+
+              <div style={styles.reviewList}>
+                {completedReview.map((item, index) => (
+                  <div
+                    key={item.question_id}
+                    style={{
+                      ...styles.reviewQuestionCard,
+                      borderColor: item.is_correct ? "#86efac" : "#fecaca",
+                      background: item.is_correct ? "#f0fdf4" : "#fef2f2",
+                    }}
+                  >
+                    <div style={styles.reviewQuestionTop}>
+                      <h3 style={styles.reviewQuestionTitle}>
+                        Question {index + 1}
+                      </h3>
+
+                      <span
+                        style={{
+                          ...styles.reviewStatusBadge,
+                          background: item.is_correct ? "#dcfce7" : "#fee2e2",
+                          color: item.is_correct ? "#166534" : "#991b1b",
+                        }}
+                      >
+                        {item.is_correct ? "Correct" : "Incorrect"}
+                      </span>
+                    </div>
+
+                    <p style={styles.reviewQuestionText}>{item.question_text}</p>
+
+                    <div style={styles.reviewOptionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const isUserAnswer = item.user_answer === option
+                        const isCorrectAnswer = item.correct_answer === option
+
+                        let background = "white"
+                        let borderColor = "#e5e7eb"
+
+                        if (isCorrectAnswer) {
+                          background = "#dcfce7"
+                          borderColor = "#16a34a"
+                        }
+
+                        if (isUserAnswer && !isCorrectAnswer) {
+                          background = "#fee2e2"
+                          borderColor = "#dc2626"
+                        }
+
+                        return (
+                          <div
+                            key={option}
+                            style={{
+                              ...styles.reviewOption,
+                              background,
+                              borderColor,
+                            }}
+                          >
+                            <strong>{option}.</strong> {item.options[option]}
+
+                            {isCorrectAnswer && (
+                              <span style={styles.optionTag}>Correct answer</span>
+                            )}
+
+                            {isUserAnswer && (
+                              <span style={styles.optionTag}>Your answer</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div style={styles.reviewAnswerBox}>
+                      <p>
+                        <strong>Your answer:</strong>{" "}
+                        {item.user_answer
+                          ? `${item.user_answer} — ${item.user_answer_text}`
+                          : "No answer"}
+                      </p>
+
+                      <p>
+                        <strong>Correct answer:</strong>{" "}
+                        {item.correct_answer} — {item.correct_answer_text}
+                      </p>
+
+                      {item.explanation && item.explanation.trim() !== "" && (
+                        <p>
+                          <strong>Explanation:</strong> {item.explanation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -1025,5 +1225,81 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
+  },
+
+  reviewCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    marginTop: "24px",
+  },
+
+  reviewList: {
+    display: "grid",
+    gap: "18px",
+    marginTop: "24px",
+  },
+
+  reviewQuestionCard: {
+    border: "2px solid",
+    borderRadius: "16px",
+    padding: "20px",
+  },
+
+  reviewQuestionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+
+  reviewQuestionTitle: {
+    margin: 0,
+    fontSize: "22px",
+    color: "#111827",
+  },
+
+  reviewStatusBadge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  reviewQuestionText: {
+    fontSize: "18px",
+    lineHeight: 1.6,
+    color: "#111827",
+    marginBottom: "16px",
+  },
+
+  reviewOptionsGrid: {
+    display: "grid",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+
+  reviewOption: {
+    border: "2px solid",
+    borderRadius: "12px",
+    padding: "12px",
+    lineHeight: 1.5,
+  },
+
+  optionTag: {
+    display: "inline-block",
+    marginLeft: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  reviewAnswerBox: {
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "12px",
+    padding: "14px",
+    lineHeight: 1.6,
   },
 }
