@@ -412,124 +412,102 @@ function VocabularyContent() {
   }
 
   async function saveLatestVocabularyResult(results: PracticeResult[]) {
-    if (!userId) return
+  if (!userId) return
 
-    const totalQuestions = results.length
-    const correctAnswers = results.filter((result) => result.knewIt).length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+  const totalQuestions = results.length
+  const correctAnswers = results.filter((result) => result.knewIt).length
+  const successRate =
+    totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-    const completedAt = new Date().toISOString()
+  const completedAt = new Date().toISOString()
 
-    const answers: SavedQuestionReview[] = results.map((result, index) => ({
-      question_id: result.wordId,
-      question_order: index + 1,
-      question_text: result.word,
-      question_image_url: null,
-      options: result.options,
-      option_images: {},
-      user_answer: result.userAnswer,
-      correct_answer: result.correctAnswer,
-      user_answer_text: result.userAnswerText,
-      correct_answer_text: result.correctAnswerText,
-      user_answer_image_url: null,
-      correct_answer_image_url: null,
-      is_correct: result.knewIt,
-      explanation: result.example_sentence
-        ? `Example sentence: ${result.example_sentence}`
-        : null,
-      explanation_image_url: null,
-      difficulty: result.difficulty,
-    }))
+  const answers: SavedQuestionReview[] = results.map((result, index) => ({
+    question_id: result.wordId,
+    question_order: index + 1,
+    question_text: result.word,
+    question_image_url: null,
+    options: result.options,
+    option_images: {},
+    user_answer: result.userAnswer,
+    correct_answer: result.correctAnswer,
+    user_answer_text: result.userAnswerText,
+    correct_answer_text: result.correctAnswerText,
+    user_answer_image_url: null,
+    correct_answer_image_url: null,
+    is_correct: result.knewIt,
+    explanation: result.example_sentence
+      ? `Example sentence: ${result.example_sentence}`
+      : null,
+    explanation_image_url: null,
+    difficulty: result.difficulty,
+  }))
 
-    const payload = {
-      user_id: userId,
-      subject: "english",
-      category: "vocabulary",
-      subcategory: "",
-      subcategory_two: "",
-      subcategory_three: "",
-      test_id: RESULT_TEST_ID,
-      test_title: reviewMode
-        ? "Vocabulary Review"
-        : `Vocabulary ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: reviewMode ? null : difficulty,
-      answers,
-      completed_at: completedAt,
-      updated_at: completedAt,
-    }
-
-    const { data: existingResult, error: existingError } = await supabase
-      .from("latest_test_results")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("subject", "english")
-      .eq("category", "vocabulary")
-      .eq("subcategory", "")
-      .eq("subcategory_two", "")
-      .eq("subcategory_three", "")
-      .eq("test_id", RESULT_TEST_ID)
-      .maybeSingle()
-
-    if (existingError) {
-      console.error("Error checking existing vocabulary result:", {
-        message: existingError.message,
-        details: existingError.details,
-        hint: existingError.hint,
-        code: existingError.code,
-      })
-
-      setErrorMessage("The test was completed, but the full result could not be saved.")
-      return
-    }
-
-    if (existingResult) {
-      const row = existingResult as LatestResultRow
-
-      const { error: updateError } = await supabase
-        .from("latest_test_results")
-        .update(payload)
-        .eq("id", row.id)
-
-      if (updateError) {
-        console.error("Error updating latest vocabulary result:", {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code,
-          payload,
-        })
-
-        setErrorMessage("The test was completed, but the full result could not be saved.")
-        return
-      }
-
-      setResultSaved(true)
-      return
-    }
-
-    const { error: insertError } = await supabase
-      .from("latest_test_results")
-      .insert([payload])
-
-    if (insertError) {
-      console.error("Error inserting latest vocabulary result:", {
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint,
-        code: insertError.code,
-        payload,
-      })
-
-      setErrorMessage("The test was completed, but the full result could not be saved.")
-      return
-    }
-
-    setResultSaved(true)
+  const payload = {
+    user_id: userId,
+    subject: "english",
+    category: "vocabulary",
+    subcategory: "",
+    subcategory_two: "",
+    subcategory_three: "",
+    test_id: RESULT_TEST_ID,
+    test_title: reviewMode
+      ? "Vocabulary Review"
+      : `Vocabulary ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
+    total_questions: totalQuestions,
+    correct_answers: correctAnswers,
+    success_rate: successRate,
+    difficulty: reviewMode ? null : difficulty,
+    answers,
+    completed_at: completedAt,
+    updated_at: completedAt,
   }
+
+  const { data: updatedRows, error: updateError } = await supabase
+    .from("latest_test_results")
+    .update(payload)
+    .eq("user_id", userId)
+    .eq("subject", "english")
+    .eq("category", "vocabulary")
+    .eq("test_id", RESULT_TEST_ID)
+    .select("id")
+
+  if (updateError) {
+    console.error("Error updating latest vocabulary result:", {
+      message: updateError.message,
+      details: updateError.details,
+      hint: updateError.hint,
+      code: updateError.code,
+      payload,
+    })
+
+    setErrorMessage("The test was completed, but the full result could not be saved.")
+    return
+  }
+
+  if (updatedRows && updatedRows.length > 0) {
+    setResultSaved(true)
+    return
+  }
+
+  const { error: insertError } = await supabase
+    .from("latest_test_results")
+    .insert([payload])
+
+  if (insertError) {
+    console.error("Error inserting latest vocabulary result:", {
+      message: insertError.message,
+      details: insertError.details,
+      hint: insertError.hint,
+      code: insertError.code,
+      payload,
+    })
+
+    setErrorMessage("The test was completed, but the full result could not be saved.")
+    return
+  }
+
+  setResultSaved(true)
+}
 
   async function finishTest(results: PracticeResult[]) {
     setTestCompleted(true)
