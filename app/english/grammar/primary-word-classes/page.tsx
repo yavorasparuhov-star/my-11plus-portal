@@ -8,6 +8,7 @@ import { supabase } from "../../../../lib/supabaseClient"
 
 const MAIN_CATEGORY = "grammar"
 const SUBCATEGORY = "primary_word_classes"
+const RESULT_CATEGORY = "primary_word_classes"
 const REVIEW_STORAGE_KEY = "primary_word_classes_review_ids"
 
 const hoverCardStyle = {
@@ -346,6 +347,31 @@ function PrimaryWordClassesContent() {
     return "Members only"
   }
 
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString(
+      "en-GB",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    )
+
+    return (
+      <Link
+        href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+        style={styles.completedResultLink}
+        title="View full test result"
+      >
+        {completedDate}
+      </Link>
+    )
+  }
+
   function getTestButton(test: TestWithProgress, href: string) {
     if (plan === "guest") {
       return (
@@ -573,16 +599,7 @@ function PrimaryWordClassesContent() {
                         <div style={styles.metaRow}>
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
-                            {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString(
-                                  "en-GB",
-                                  {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  }
-                                )
-                              : "Not yet"}
+                            {getCompletedDateContent(test)}
                           </p>
 
                           <p style={styles.metaHalf}>
@@ -751,6 +768,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
+  },
+  completedResultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   scoreIcon: {
     marginLeft: "6px",

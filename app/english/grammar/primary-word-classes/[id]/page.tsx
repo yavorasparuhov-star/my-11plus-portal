@@ -7,6 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 const MAIN_CATEGORY = "grammar"
 const SUBCATEGORY = "primary_word_classes"
+const RESULT_CATEGORY = "primary_word_classes"
 const REVIEW_STORAGE_KEY = "primary_word_classes_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -41,6 +42,25 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
+}
+
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
@@ -63,6 +83,7 @@ export default function PrimaryWordClassesTestPage() {
   const [questions, setQuestions] = useState<PrimaryWordClassesQuestion[]>([])
 
   const [answers, setAnswers] = useState<UserAnswerMap>({})
+  const [finalReviewAnswers, setFinalReviewAnswers] = useState<UserAnswerMap>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
@@ -73,6 +94,7 @@ export default function PrimaryWordClassesTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [reviewIds, setReviewIds] = useState<number[]>([])
+  const [resultSaved, setResultSaved] = useState(false)
   const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
     null
   )
@@ -123,10 +145,12 @@ export default function PrimaryWordClassesTestPage() {
       setSubmitting(false)
       setCurrentIndex(0)
       setAnswers({})
+      setFinalReviewAnswers({})
       setSelectedAnswer(null)
       setShowFeedback(false)
       setScore(0)
       setQuestions([])
+      setResultSaved(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Primary Word Classes test ID.")
@@ -324,6 +348,85 @@ export default function PrimaryWordClassesTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
+
+    const answersForResult: SavedQuestionReview[] = questions.map((question, index) => {
+      const userAnswer = finalAnswers[question.id] ?? null
+      const correctAnswer = question.correct_answer
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order || index + 1,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {},
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
+        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        correct_answer_text: getOptionText(question, correctAnswer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: userAnswer === correctAnswer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test.difficulty ?? null,
+      }
+    })
+
+    const payload = {
+      user_id: userId,
+      subject: "english",
+      category: RESULT_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: questions.length,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: answersForResult,
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { error } = await supabase.from("latest_test_results").upsert([payload], {
+      onConflict:
+        "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+    })
+
+    if (error) {
+      console.error("Error saving latest primary word classes result:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        payload,
+      })
+
+      setErrorMessage(
+        "The test was completed, but the full result could not be saved."
+      )
+      return
+    }
+
+    setResultSaved(true)
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -331,6 +434,7 @@ export default function PrimaryWordClassesTestPage() {
 
     setSubmitting(true)
     setErrorMessage("")
+    setResultSaved(false)
 
     let correctAnswers = 0
 
@@ -407,6 +511,8 @@ export default function PrimaryWordClassesTestPage() {
       return
     }
 
+    await saveLatestTestResult(finalAnswers, correctAnswers, successRate)
+
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
         const { error: deleteReviewError } = await supabase
@@ -458,6 +564,7 @@ export default function PrimaryWordClassesTestPage() {
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
     }
 
+    setFinalReviewAnswers(finalAnswers)
     setScore(correctAnswers)
     setFinished(true)
     setSubmitting(false)
@@ -476,12 +583,14 @@ export default function PrimaryWordClassesTestPage() {
 
   function restartSameTest() {
     setAnswers({})
+    setFinalReviewAnswers({})
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setResultSaved(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -695,6 +804,8 @@ export default function PrimaryWordClassesTestPage() {
                   <strong>Category:</strong> Primary Word Classes
                 </p>
 
+                {resultSaved && <p style={styles.savedText}>Full result saved.</p>}
+
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
@@ -708,6 +819,114 @@ export default function PrimaryWordClassesTestPage() {
                 <button onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Primary Word Classes
                 </button>
+              </div>
+
+              <div style={styles.reviewSection}>
+                <h2 style={styles.sectionTitle}>Answer Review</h2>
+
+                {questions.map((question, index) => {
+                  const userAnswer = finalReviewAnswers[question.id] ?? null
+                  const isQuestionCorrect = userAnswer === question.correct_answer
+
+                  return (
+                    <div
+                      key={question.id}
+                      style={{
+                        ...styles.reviewQuestionCard,
+                        borderColor: isQuestionCorrect ? "#86efac" : "#fecaca",
+                        background: isQuestionCorrect ? "#f0fdf4" : "#fef2f2",
+                      }}
+                    >
+                      <div style={styles.reviewQuestionTop}>
+                        <h3 style={styles.reviewQuestionTitle}>
+                          Question {index + 1}
+                        </h3>
+
+                        <span
+                          style={{
+                            ...styles.reviewStatusBadge,
+                            background: isQuestionCorrect ? "#dcfce7" : "#fee2e2",
+                            color: isQuestionCorrect ? "#166534" : "#991b1b",
+                          }}
+                        >
+                          {isQuestionCorrect ? "Correct" : "Incorrect"}
+                        </span>
+                      </div>
+
+                      <p style={styles.reviewQuestionText}>
+                        {question.question_text}
+                      </p>
+
+                      <div style={styles.reviewOptionsGrid}>
+                        {(["A", "B", "C", "D"] as const).map((option) => {
+                          const isUserAnswer = userAnswer === option
+                          const isCorrectAnswer = question.correct_answer === option
+
+                          let background = "white"
+                          let borderColor = "#e5e7eb"
+
+                          if (isCorrectAnswer) {
+                            background = "#dcfce7"
+                            borderColor = "#16a34a"
+                          }
+
+                          if (isUserAnswer && !isCorrectAnswer) {
+                            background = "#fee2e2"
+                            borderColor = "#dc2626"
+                          }
+
+                          return (
+                            <div
+                              key={option}
+                              style={{
+                                ...styles.reviewOption,
+                                background,
+                                borderColor,
+                              }}
+                            >
+                              <strong>{option}.</strong>{" "}
+                              {getOptionText(question, option)}
+
+                              <div>
+                                {isCorrectAnswer && (
+                                  <span style={styles.optionTag}>
+                                    Correct answer
+                                  </span>
+                                )}
+
+                                {isUserAnswer && (
+                                  <span style={styles.optionTag}>Your answer</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      <div style={styles.reviewAnswerBox}>
+                        <p>
+                          <strong>Your answer:</strong>{" "}
+                          {userAnswer
+                            ? `${userAnswer} — ${getOptionText(question, userAnswer)}`
+                            : "No answer"}
+                        </p>
+
+                        <p>
+                          <strong>Correct answer:</strong>{" "}
+                          {question.correct_answer} —{" "}
+                          {getOptionText(question, question.correct_answer)}
+                        </p>
+
+                        {question.explanation &&
+                          question.explanation.trim() !== "" && (
+                            <p>
+                              <strong>Explanation:</strong> {question.explanation}
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -822,7 +1041,8 @@ export default function PrimaryWordClassesTestPage() {
                   style={{
                     ...styles.primaryButton,
                     opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    cursor:
+                      selectedAnswer && !submitting ? "pointer" : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -978,6 +1198,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
   },
 
+  savedText: {
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#166534",
+    fontWeight: 700,
+  },
+
   resultBanner: {
     background: "white",
     borderRadius: "20px",
@@ -1119,6 +1346,74 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "32px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
+  },
+
+  reviewSection: {
+    marginTop: "28px",
+  },
+
+  reviewQuestionCard: {
+    border: "2px solid",
+    borderRadius: "16px",
+    padding: "20px",
+    marginBottom: "18px",
+  },
+
+  reviewQuestionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+
+  reviewQuestionTitle: {
+    margin: 0,
+    fontSize: "22px",
+    color: "#111827",
+  },
+
+  reviewStatusBadge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  reviewQuestionText: {
+    fontSize: "18px",
+    lineHeight: 1.6,
+    color: "#111827",
+    marginBottom: "16px",
+  },
+
+  reviewOptionsGrid: {
+    display: "grid",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+
+  reviewOption: {
+    border: "2px solid",
+    borderRadius: "12px",
+    padding: "12px",
+    lineHeight: 1.5,
+  },
+
+  optionTag: {
+    display: "inline-block",
+    marginTop: "8px",
+    marginRight: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  reviewAnswerBox: {
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "12px",
+    padding: "14px",
+    lineHeight: 1.6,
   },
 
   message: {
