@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import Header from "../../../../../components/Header"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -874,6 +875,13 @@ export default function AdvancedPunctuationTestPage() {
                   Retry This Set
                 </button>
 
+                <Link
+                  href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+                  style={styles.resultLinkButton}
+                >
+                  Review Full Result
+                </Link>
+
                 <button onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Advanced Punctuation
                 </button>
@@ -1270,6 +1278,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
+  },
+
+  resultLinkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+    textAlign: "center",
+    textDecoration: "none",
   },
 
   centerCard: {
