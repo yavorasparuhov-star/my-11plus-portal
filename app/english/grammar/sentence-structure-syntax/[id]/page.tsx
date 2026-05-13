@@ -430,9 +430,9 @@ export default function SentenceStructureSyntaxTestPage() {
       updated_at: completedAt,
     }
 
-    const { error: deleteError } = await supabase
+    const { data: existingResult, error: findError } = await supabase
       .from("latest_test_results")
-      .delete()
+      .select("id")
       .eq("user_id", userId)
       .eq("subject", "english")
       .eq("category", RESULT_CATEGORY)
@@ -440,14 +440,44 @@ export default function SentenceStructureSyntaxTestPage() {
       .eq("subcategory_two", "")
       .eq("subcategory_three", "")
       .eq("test_id", test.id)
+      .maybeSingle()
 
-    if (deleteError) {
-      console.error("Error deleting old sentence structure syntax result:", {
-        message: deleteError.message,
-        details: deleteError.details,
-        hint: deleteError.hint,
-        code: deleteError.code,
+    if (findError) {
+      console.error("Error checking existing sentence structure syntax result:", {
+        message: findError.message,
+        details: findError.details,
+        hint: findError.hint,
+        code: findError.code,
       })
+
+      setErrorMessage(
+        "The test was completed, but the full result could not be checked."
+      )
+      return
+    }
+
+    if (existingResult?.id) {
+      const { error: updateError } = await supabase
+        .from("latest_test_results")
+        .update(payload)
+        .eq("id", existingResult.id)
+        .eq("user_id", userId)
+
+      if (updateError) {
+        console.error("Error updating latest sentence structure syntax result:", {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+          payload,
+        })
+
+        setErrorMessage(
+          "The test was completed, but the full result could not be updated."
+        )
+      }
+
+      return
     }
 
     const { error: insertError } = await supabase
@@ -857,7 +887,16 @@ export default function SentenceStructureSyntaxTestPage() {
                   Retry This Set
                 </button>
 
-                <button onClick={goBackSafely} style={styles.primaryButton}>
+                <button
+                  onClick={() =>
+                    router.push(`/results/english/${RESULT_CATEGORY}/${test.id}`)
+                  }
+                  style={styles.primaryButton}
+                >
+                  View Full Result
+                </button>
+
+                <button onClick={goBackSafely} style={styles.secondaryButton}>
                   Back to Sentence Structure & Syntax
                 </button>
               </div>

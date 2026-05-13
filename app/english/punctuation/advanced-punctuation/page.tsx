@@ -8,6 +8,7 @@ import { supabase } from "../../../../lib/supabaseClient"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "advanced_punctuation"
+const RESULT_CATEGORY = "advanced_punctuation"
 const REVIEW_STORAGE_KEY = "advanced_punctuation_review_ids"
 
 const hoverCardStyle = {
@@ -94,6 +95,7 @@ function AdvancedPunctuationContent() {
     }
 
     const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
     if (!raw) {
       setReviewIds([])
       return
@@ -101,6 +103,7 @@ function AdvancedPunctuationContent() {
 
     try {
       const parsed = JSON.parse(raw)
+
       if (Array.isArray(parsed)) {
         setReviewIds(parsed.filter((id) => typeof id === "number"))
       } else {
@@ -273,7 +276,9 @@ function AdvancedPunctuationContent() {
     for (const row of progressRows) {
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+      const existingDate = existing
+        ? new Date(existing.created_at || 0).getTime()
+        : 0
 
       if (!existing || rowDate > existingDate) {
         latestProgressMap.set(row.test_id, row)
@@ -404,6 +409,7 @@ function AdvancedPunctuationContent() {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
@@ -412,6 +418,7 @@ function AdvancedPunctuationContent() {
                 ? "🖋️ Advanced Punctuation Review"
                 : "🖋️ Advanced Punctuation Tests"}
             </h1>
+
             <p style={styles.subtitle}>
               {mode === "review"
                 ? "Revise your saved punctuation mistakes and strengthen advanced punctuation skills."
@@ -440,6 +447,7 @@ function AdvancedPunctuationContent() {
                   ? "No Advanced Punctuation review items found"
                   : "No Advanced Punctuation tests yet"}
               </h2>
+
               <p>
                 {mode === "review"
                   ? "Try another category or make a few mistakes first so they can appear here for revision."
@@ -466,7 +474,8 @@ function AdvancedPunctuationContent() {
                     onClick={() => setDifficultyFilter(1)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 1 ? "white" : "black",
                     }}
                   >
@@ -477,7 +486,8 @@ function AdvancedPunctuationContent() {
                     onClick={() => setDifficultyFilter(2)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 2 ? "white" : "black",
                     }}
                   >
@@ -488,7 +498,8 @@ function AdvancedPunctuationContent() {
                     onClick={() => setDifficultyFilter(3)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 3 ? "white" : "black",
                     }}
                   >
@@ -532,6 +543,7 @@ function AdvancedPunctuationContent() {
                             <span style={styles.badge}>
                               {getDifficultyLabel(test.difficulty)}
                             </span>
+
                             <span
                               style={{
                                 ...styles.accessBadge,
@@ -562,11 +574,14 @@ function AdvancedPunctuationContent() {
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
                             {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                })
+                              ? new Date(test.completed_at).toLocaleDateString(
+                                  "en-GB",
+                                  {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  }
+                                )
                               : "Not yet"}
                           </p>
 
@@ -575,6 +590,17 @@ function AdvancedPunctuationContent() {
                             <span style={styles.scoreIcon}>
                               {getScoreIcon(test.score, test.isCompleted)}
                             </span>
+                          </p>
+
+                          <p style={styles.metaHalf}>
+                            <strong>Last result:</strong>{" "}
+                            <Link
+                              href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+                              style={styles.resultLink}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View
+                            </Link>
                           </p>
                         </div>
 
@@ -736,6 +762,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
+  },
+  resultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   scoreIcon: {
     marginLeft: "6px",

@@ -7,10 +7,30 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "advanced_punctuation"
+const RESULT_CATEGORY = "advanced_punctuation"
 const REVIEW_STORAGE_KEY = "advanced_punctuation_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
+}
 
 type AdvancedPunctuationTest = {
   id: number
@@ -322,6 +342,99 @@ export default function AdvancedPunctuationTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
+
+    const savedAnswers: SavedQuestionReview[] = questions.map((question, index) => {
+      const userAnswer = finalAnswers[question.id] ?? null
+      const correctAnswer = question.correct_answer
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order ?? index + 1,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {},
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
+        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        correct_answer_text: getOptionText(question, correctAnswer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: userAnswer === correctAnswer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test.difficulty ?? null,
+      }
+    })
+
+    const payload = {
+      user_id: userId,
+      subject: "english",
+      category: RESULT_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: questions.length,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: savedAnswers,
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { error: deleteError } = await supabase
+      .from("latest_test_results")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", "english")
+      .eq("category", RESULT_CATEGORY)
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
+      .eq("test_id", test.id)
+
+    if (deleteError) {
+      console.error("Error deleting old advanced punctuation result:", {
+        message: deleteError.message,
+        details: deleteError.details,
+        hint: deleteError.hint,
+        code: deleteError.code,
+      })
+    }
+
+    const { error: insertError } = await supabase
+      .from("latest_test_results")
+      .insert([payload])
+
+    if (insertError) {
+      console.error("Error saving latest advanced punctuation result:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        payload,
+      })
+
+      setErrorMessage("Progress was saved, but the full test result could not be saved.")
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -404,6 +517,8 @@ export default function AdvancedPunctuationTestPage() {
       setSubmitting(false)
       return
     }
+
+    await saveLatestTestResult(finalAnswers, correctAnswers, successRate)
 
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
