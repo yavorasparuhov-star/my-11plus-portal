@@ -89,6 +89,30 @@ function getBackHref(subject: string, category: string) {
     return "/math/algebra-reasoning"
   }
 
+  if (subject === "math" && category === "data_handling") {
+    return "/math/data-handling"
+  }
+
+  if (subject === "math" && category === "four_operations") {
+    return "/math/four-operations"
+  }
+
+  if (subject === "math" && category === "fractions_decimals_percentages") {
+    return "/math/fractions-decimals-percentages"
+  }
+
+  if (subject === "math" && category === "measurement") {
+    return "/math/measurement"
+  }
+
+  if (subject === "math" && category === "number_place_value") {
+    return "/math/number-place-value"
+  }
+
+  if (subject === "math" && category === "shape_space") {
+    return "/math/shape-space"
+  }
+
   if (subject === "math") {
     return "/math"
   }
@@ -97,12 +121,16 @@ function getBackHref(subject: string, category: string) {
     return "/english"
   }
 
+  if (subject === "vr" && category === "codes-logic") {
+    return "/vr/code-logic"
+  }
+
   if (subject === "vr") {
-    return "/verbal-reasoning"
+    return "/vr"
   }
 
   if (subject === "nvr") {
-    return "/non-verbal-reasoning"
+    return "/nvr"
   }
 
   return "/"
