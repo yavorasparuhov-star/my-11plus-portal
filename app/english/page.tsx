@@ -45,7 +45,9 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>📘</div>
+
             <h2 style={styles.cardTitle}>Vocabulary</h2>
+
             <p style={styles.cardText}>
               Strengthen word meaning, synonyms, antonyms, and precise language
               knowledge for 11+ English.
@@ -99,65 +101,31 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>✍️</div>
+
             <h2 style={styles.cardTitle}>Spelling</h2>
+
             <p style={styles.cardText}>
               Practise accurate spelling, spot common mistakes, and improve word
               recognition under test conditions.
             </p>
 
-           <div
-  style={{ ...styles.card, ...hoverCardStyle }}
-  onClick={() => openCategory("/english/spelling")}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.transform = "translateY(-6px)"
-    e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.transform = "translateY(0)"
-    e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-  }}
->
-  <div style={styles.icon}>✍️</div>
-  <h2 style={styles.cardTitle}>Spelling</h2>
-  <p style={styles.cardText}>
-    Practise accurate spelling, spot common mistakes, and improve word
-    recognition under test conditions.
-  </p>
+            <div style={styles.infoBox}>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Focus:</span>
+                <span style={styles.infoValue}>Correct spelling</span>
+              </div>
 
-  <div style={styles.infoBox}>
-    <div style={styles.infoRow}>
-      <span style={styles.infoLabel}>Focus:</span>
-      <span style={styles.infoValue}>Correct spelling</span>
-    </div>
-
-    <div style={styles.infoRow}>
-      <span style={styles.infoLabel}>Last result:</span>
-      <Link
-        href="/results/english/spelling/0"
-        style={styles.resultLink}
-        onClick={(e) => e.stopPropagation()}
-      >
-        View
-      </Link>
-    </div>
-  </div>
-
-  <button
-    onClick={(e) => {
-      e.stopPropagation()
-      openCategory("/english/spelling")
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.background = "#bbf7d0"
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = "#d4f5d0"
-    }}
-    style={styles.button}
-  >
-    Open Spelling
-  </button>
-</div>
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Last result:</span>
+                <Link
+                  href="/results/english/spelling/0"
+                  style={styles.resultLink}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View
+                </Link>
+              </div>
+            </div>
 
             <button
               onClick={(e) => {
@@ -189,7 +157,9 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>📖</div>
+
             <h2 style={styles.cardTitle}>Comprehension</h2>
+
             <p style={styles.cardText}>
               Develop reading skills, inference, retrieval, and understanding of
               fiction and non-fiction passages.
@@ -232,7 +202,9 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>📝</div>
+
             <h2 style={styles.cardTitle}>Grammar</h2>
+
             <p style={styles.cardText}>
               Build confidence with sentence structure, tenses, word classes,
               agreement, and key grammar rules for 11+ exams.
@@ -275,7 +247,9 @@ export default function EnglishPage() {
             }}
           >
             <div style={styles.icon}>✒️</div>
+
             <h2 style={styles.cardTitle}>Punctuation</h2>
+
             <p style={styles.cardText}>
               Practise full stops, commas, apostrophes, speech marks, colons,
               semicolons, and other punctuation used in 11+ English.
@@ -316,15 +290,18 @@ const styles: { [key: string]: CSSProperties } = {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   hero: {
     textAlign: "center",
     marginBottom: "32px",
   },
+
   title: {
     fontSize: "40px",
     marginBottom: "10px",
     color: "#111827",
   },
+
   subtitle: {
     fontSize: "18px",
     color: "#4b5563",
@@ -332,11 +309,13 @@ const styles: { [key: string]: CSSProperties } = {
     margin: "0 auto",
     lineHeight: 1.6,
   },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "20px",
   },
+
   card: {
     background: "white",
     borderRadius: "20px",
@@ -347,15 +326,18 @@ const styles: { [key: string]: CSSProperties } = {
     flexDirection: "column",
     alignItems: "center",
   },
+
   icon: {
     fontSize: "42px",
     marginBottom: "12px",
   },
+
   cardTitle: {
     fontSize: "24px",
     marginBottom: "10px",
     color: "#111827",
   },
+
   cardText: {
     fontSize: "16px",
     color: "#4b5563",
@@ -363,6 +345,7 @@ const styles: { [key: string]: CSSProperties } = {
     marginBottom: "18px",
     minHeight: "78px",
   },
+
   infoBox: {
     width: "100%",
     background: "#f9fafb",
@@ -370,6 +353,7 @@ const styles: { [key: string]: CSSProperties } = {
     padding: "14px",
     marginBottom: "18px",
   },
+
   infoRow: {
     display: "flex",
     justifyContent: "space-between",
@@ -377,17 +361,20 @@ const styles: { [key: string]: CSSProperties } = {
     gap: "12px",
     margin: "8px 0",
   },
+
   infoLabel: {
     color: "#374151",
     fontSize: "15px",
     fontWeight: 500,
   },
+
   infoValue: {
     fontSize: "15px",
     fontWeight: 700,
     color: "#111827",
     textAlign: "right",
   },
+
   resultLink: {
     fontSize: "15px",
     fontWeight: 700,
@@ -395,6 +382,7 @@ const styles: { [key: string]: CSSProperties } = {
     textDecoration: "underline",
     textUnderlineOffset: "3px",
   },
+
   button: {
     padding: "12px 18px",
     borderRadius: "12px",
