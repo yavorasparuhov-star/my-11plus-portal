@@ -37,6 +37,25 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+type CompletedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url: string | null
+  options: Record<AnswerOption, string>
+  option_images: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url: string | null
+  difficulty: number | null
+}
+
 const MAIN_CATEGORY = "comprehension"
 const SUBCATEGORY = "comprehension"
 const REVIEW_STORAGE_KEY = "comprehension_review_ids"
@@ -132,6 +151,11 @@ export default function ComprehensionTestPage() {
       setErrorMessage("")
       setAccessBlocked(null)
       setQuestions([])
+      setAnswers({})
+      setSubmitted(false)
+      setScore(0)
+      setShowIncompleteModal(false)
+      setSubmitting(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid comprehension test ID.")
@@ -359,6 +383,39 @@ export default function ComprehensionTestPage() {
     const successRate =
       totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
+    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+      const selected = answers[question.id] ?? null
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: null,
+          B: null,
+          C: null,
+          D: null,
+        },
+        user_answer: selected,
+        correct_answer: question.correct_answer,
+        user_answer_text: selected ? getOptionText(question, selected) : null,
+        correct_answer_text: getOptionText(question, question.correct_answer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: selected === question.correct_answer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test.difficulty ?? null,
+      }
+    })
+
     const progressPayload = {
       user_id: userId,
       test_id: test.id,
@@ -388,6 +445,46 @@ export default function ComprehensionTestPage() {
       )
       setSubmitting(false)
       return
+    }
+
+    const latestResultPayload = {
+      user_id: userId,
+      subject: "english",
+      category: MAIN_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: fullReview,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error: latestResultError } = await supabase
+      .from("latest_test_results")
+      .upsert([latestResultPayload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (latestResultError) {
+      console.error("Error saving latest English comprehension result:", {
+        message: latestResultError.message,
+        details: latestResultError.details,
+        hint: latestResultError.hint,
+        code: latestResultError.code,
+        full: latestResultError,
+        payload: latestResultPayload,
+      })
+
+      setErrorMessage(
+        "Your score was saved, but the full completed test result could not be saved for later."
+      )
     }
 
     if (mode === "review") {
@@ -428,11 +525,11 @@ export default function ComprehensionTestPage() {
 
       const existingReviewIds = Array.from(new Set(reviewIds))
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
-      const updatedReviewIds = Array.from(new Set([...existingReviewIds, ...newWrongIds]))
+      const updatedReviewIds = Array.from(
+        new Set([...existingReviewIds, ...newWrongIds])
+      )
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-// Do not call setReviewIds here.
-// It reloads the page after submit and clears the result screen.
     }
 
     if (mode === "review") {
@@ -441,8 +538,6 @@ export default function ComprehensionTestPage() {
       )
 
       localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-// Do not call setReviewIds here.
-// It reloads the page after submit and clears the result screen.
     }
 
     setScore(correctAnswers)
@@ -635,6 +730,8 @@ export default function ComprehensionTestPage() {
                   </strong>
                 </p>
 
+                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
                 <div style={styles.resultButtons}>
                   <button onClick={restartSameTest} style={styles.secondaryButton}>
                     Retry This Test
@@ -761,6 +858,15 @@ export default function ComprehensionTestPage() {
                           </p>
                         )}
 
+                        {selected && (
+                          <p style={{ margin: "8px 0 0 0" }}>
+                            Your answer:{" "}
+                            <strong>
+                              {selected} — {getOptionText(question, selected)}
+                            </strong>
+                          </p>
+                        )}
+
                         {question.explanation && question.explanation.trim() !== "" && (
                           <p style={{ margin: "8px 0 0 0" }}>
                             <strong>Explanation:</strong> {question.explanation}
@@ -781,6 +887,7 @@ export default function ComprehensionTestPage() {
                   style={{
                     ...styles.primaryButton,
                     opacity: submitting ? 0.7 : 1,
+                    cursor: submitting ? "not-allowed" : "pointer",
                   }}
                 >
                   {submitting ? "Submitting..." : "Submit Answers"}
@@ -814,17 +921,17 @@ export default function ComprehensionTestPage() {
               </button>
 
               <button
-  type="button"
-  onClick={submitTest}
-  disabled={submitting}
-  style={{
-    ...styles.primaryButton,
-    opacity: submitting ? 0.7 : 1,
-    cursor: submitting ? "not-allowed" : "pointer",
-  }}
->
-  {submitting ? "Submitting..." : "Submit Anyway"}
-</button>
+                type="button"
+                onClick={submitTest}
+                disabled={submitting}
+                style={{
+                  ...styles.primaryButton,
+                  opacity: submitting ? 0.7 : 1,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Submitting..." : "Submit Anyway"}
+              </button>
             </div>
           </div>
         </div>

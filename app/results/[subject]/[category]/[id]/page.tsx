@@ -116,7 +116,9 @@ function getBackHref(subject: string, category: string) {
   if (subject === "math") {
     return "/math"
   }
-
+if (subject === "english" && category === "comprehension") {
+  return "/english/comprehension"
+}
   if (subject === "english") {
     return "/english"
   }
