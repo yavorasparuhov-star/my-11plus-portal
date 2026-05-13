@@ -48,10 +48,15 @@ type PracticeResult = {
   options: Record<AnswerOption, string>
 }
 
+type LatestResultRow = {
+  id: number
+}
+
 const REVIEW_STORAGE_KEY = "vocabulary_review_ids"
 const LEGACY_REVIEW_STORAGE_KEY = "vocabulary_review_word_ids"
 
 const RESULT_TEST_ID = 0
+const RESULT_LINK = `/results/english/vocabulary/${RESULT_TEST_ID}`
 
 const OPTION_KEYS: AnswerOption[] = ["A", "B", "C", "D"]
 
@@ -80,17 +85,22 @@ function VocabularyContent() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1)
   const [practiceResults, setPracticeResults] = useState<PracticeResult[]>([])
+
   const [timer, setTimer] = useState(15)
   const [totalTimer, setTotalTimer] = useState(90)
   const [isTimerActive, setIsTimerActive] = useState(false)
+
   const [testCompleted, setTestCompleted] = useState(false)
   const [testStarted, setTestStarted] = useState(false)
   const [showHint, setShowHint] = useState(false)
+
   const [progressSaved, setProgressSaved] = useState(false)
   const [resultSaved, setResultSaved] = useState(false)
+
   const [isAnswerLocked, setIsAnswerLocked] = useState(false)
   const [options, setOptions] = useState<WordRow[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+
   const [userId, setUserId] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [clearedReviewWordIds, setClearedReviewWordIds] = useState<number[]>([])
@@ -452,9 +462,9 @@ function VocabularyContent() {
       updated_at: completedAt,
     }
 
-    const { error: deleteError } = await supabase
+    const { data: existingResult, error: existingError } = await supabase
       .from("latest_test_results")
-      .delete()
+      .select("id")
       .eq("user_id", userId)
       .eq("subject", "english")
       .eq("category", "vocabulary")
@@ -462,9 +472,43 @@ function VocabularyContent() {
       .eq("subcategory_two", "")
       .eq("subcategory_three", "")
       .eq("test_id", RESULT_TEST_ID)
+      .maybeSingle()
 
-    if (deleteError) {
-      console.error("Error deleting old vocabulary result:", deleteError)
+    if (existingError) {
+      console.error("Error checking existing vocabulary result:", {
+        message: existingError.message,
+        details: existingError.details,
+        hint: existingError.hint,
+        code: existingError.code,
+      })
+
+      setErrorMessage("The test was completed, but the full result could not be saved.")
+      return
+    }
+
+    if (existingResult) {
+      const row = existingResult as LatestResultRow
+
+      const { error: updateError } = await supabase
+        .from("latest_test_results")
+        .update(payload)
+        .eq("id", row.id)
+
+      if (updateError) {
+        console.error("Error updating latest vocabulary result:", {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+          payload,
+        })
+
+        setErrorMessage("The test was completed, but the full result could not be saved.")
+        return
+      }
+
+      setResultSaved(true)
+      return
     }
 
     const { error: insertError } = await supabase
@@ -472,7 +516,7 @@ function VocabularyContent() {
       .insert([payload])
 
     if (insertError) {
-      console.error("Error saving latest vocabulary result:", {
+      console.error("Error inserting latest vocabulary result:", {
         message: insertError.message,
         details: insertError.details,
         hint: insertError.hint,
@@ -586,6 +630,7 @@ function VocabularyContent() {
     window.speechSynthesis.cancel()
 
     const utterance = new SpeechSynthesisUtterance(text)
+
     utterance.lang = "en-GB"
     utterance.rate = 0.95
 
@@ -665,6 +710,7 @@ function VocabularyContent() {
                 {[1, 2, 3].map((level) => (
                   <button
                     key={level}
+                    type="button"
                     onClick={() => setDifficulty(level as 1 | 2 | 3)}
                     style={{
                       ...styles.smallButton,
@@ -679,7 +725,11 @@ function VocabularyContent() {
               </div>
             )}
 
-            <button onClick={() => setTestStarted(true)} style={styles.button}>
+            <button
+              type="button"
+              onClick={() => setTestStarted(true)}
+              style={styles.button}
+            >
               {reviewMode
                 ? "Start Review Retry"
                 : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
@@ -710,6 +760,7 @@ function VocabularyContent() {
             </p>
 
             <button
+              type="button"
               onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
               style={styles.button}
             >
@@ -754,6 +805,7 @@ function VocabularyContent() {
 
               <div style={styles.headerButtons}>
                 <button
+                  type="button"
                   onClick={() => {
                     animatePress(setHearPressed)
                     toggleVoice()
@@ -774,6 +826,7 @@ function VocabularyContent() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleRepeatPress(currentWord.word)}
                   style={{
                     ...styles.controlButton,
@@ -789,6 +842,7 @@ function VocabularyContent() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     animatePress(setHintPressed)
                     setShowHint((prev) => !prev)
@@ -807,6 +861,7 @@ function VocabularyContent() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     animatePress(setTimerPressed)
                     toggleTimer()
@@ -851,6 +906,7 @@ function VocabularyContent() {
                 return (
                   <button
                     key={option.id}
+                    type="button"
                     onClick={() => handleAnswer(option)}
                     disabled={selectedAnswer !== null}
                     style={{
@@ -888,17 +944,17 @@ function VocabularyContent() {
               </p>
 
               {progressSaved && <p style={styles.savedText}>Progress saved.</p>}
-              {resultSaved && <p style={styles.savedText}>Full result saved.</p>}
+              {resultSaved && <p style={styles.savedText}>Latest result saved.</p>}
               {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
             </div>
 
             <div style={styles.resultButtons}>
-              <button onClick={restartTest} style={styles.secondaryButton}>
+              <button type="button" onClick={restartTest} style={styles.secondaryButton}>
                 🔁 Restart Test
               </button>
 
-
               <button
+                type="button"
                 onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
                 style={styles.primaryButton}
               >
