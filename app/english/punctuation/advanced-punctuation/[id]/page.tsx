@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "advanced_punctuation"
-const RESULT_CATEGORY = "advanced_punctuation"
+const RESULT_CATEGORY = "advanced-punctuation"
 const REVIEW_STORAGE_KEY = "advanced_punctuation_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -305,6 +305,35 @@ export default function AdvancedPunctuationTestPage() {
     router.push("/english/punctuation/advanced-punctuation")
   }
 
+  function getStoredReviewIds() {
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
+    if (!raw) return []
+
+    try {
+      const parsed = JSON.parse(raw)
+
+      if (!Array.isArray(parsed)) return []
+
+      return Array.from(
+        new Set(parsed.filter((id): id is number => typeof id === "number"))
+      )
+    } catch {
+      return []
+    }
+  }
+
+  function setStoredReviewIds(ids: number[]) {
+    const uniqueIds = Array.from(new Set(ids))
+
+    if (uniqueIds.length === 0) {
+      localStorage.removeItem(REVIEW_STORAGE_KEY)
+      return
+    }
+
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(uniqueIds))
+  }
+
   function handleSelectAnswer(option: AnswerOption) {
     if (showFeedback || finished || submitting) return
     setSelectedAnswer(option)
@@ -342,16 +371,8 @@ export default function AdvancedPunctuationTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function saveLatestTestResult(
-    finalAnswers: UserAnswerMap,
-    correctAnswers: number,
-    successRate: number
-  ) {
-    if (!userId || !test) return
-
-    const completedAt = new Date().toISOString()
-
-    const savedAnswers: SavedQuestionReview[] = questions.map((question, index) => {
+  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
+    return questions.map((question, index) => {
       const userAnswer = finalAnswers[question.id] ?? null
       const correctAnswer = question.correct_answer
 
@@ -376,9 +397,20 @@ export default function AdvancedPunctuationTestPage() {
         is_correct: userAnswer === correctAnswer,
         explanation: question.explanation,
         explanation_image_url: null,
-        difficulty: question.difficulty ?? test.difficulty ?? null,
+        difficulty: question.difficulty ?? test?.difficulty ?? null,
       }
     })
+  }
+
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    totalQuestions: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
 
     const payload = {
       user_id: userId,
@@ -389,14 +421,31 @@ export default function AdvancedPunctuationTestPage() {
       subcategory_three: "",
       test_id: test.id,
       test_title: test.title,
-      total_questions: questions.length,
+      total_questions: totalQuestions,
       correct_answers: correctAnswers,
       success_rate: successRate,
       difficulty: test.difficulty ?? null,
-      answers: savedAnswers,
+      answers: buildSavedAnswers(finalAnswers),
       completed_at: completedAt,
       updated_at: completedAt,
     }
+
+    const { error: upsertError } = await supabase
+      .from("latest_test_results")
+      .upsert([payload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (!upsertError) return
+
+    console.error("Error upserting latest advanced punctuation result:", {
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+      code: upsertError.code,
+      payload,
+    })
 
     const { error: deleteError } = await supabase
       .from("latest_test_results")
@@ -431,7 +480,9 @@ export default function AdvancedPunctuationTestPage() {
         payload,
       })
 
-      setErrorMessage("Progress was saved, but the full test result could not be saved.")
+      setErrorMessage(
+        "Progress was saved, but the full test result could not be saved."
+      )
     }
   }
 
@@ -518,7 +569,12 @@ export default function AdvancedPunctuationTestPage() {
       return
     }
 
-    await saveLatestTestResult(finalAnswers, correctAnswers, successRate)
+    await saveLatestTestResult(
+      finalAnswers,
+      correctAnswers,
+      totalQuestions,
+      successRate
+    )
 
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
@@ -547,7 +603,7 @@ export default function AdvancedPunctuationTestPage() {
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+      setStoredReviewIds(remainingIds)
     } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
@@ -562,13 +618,13 @@ export default function AdvancedPunctuationTestPage() {
         })
       }
 
-      const existingReviewIds = Array.from(new Set(reviewIds))
+      const existingReviewIds = getStoredReviewIds()
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(
         new Set([...existingReviewIds, ...newWrongIds])
       )
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+      setStoredReviewIds(updatedReviewIds)
     }
 
     setScore(correctAnswers)

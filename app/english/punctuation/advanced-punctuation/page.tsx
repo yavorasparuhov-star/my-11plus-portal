@@ -8,7 +8,7 @@ import { supabase } from "../../../../lib/supabaseClient"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "advanced_punctuation"
-const RESULT_CATEGORY = "advanced_punctuation"
+const RESULT_CATEGORY = "advanced-punctuation"
 const REVIEW_STORAGE_KEY = "advanced_punctuation_review_ids"
 
 const hoverCardStyle = {
@@ -346,6 +346,29 @@ function AdvancedPunctuationContent() {
     return "Members only"
   }
 
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    return (
+      <Link
+        href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+        style={styles.resultLink}
+        onClick={(e) => e.stopPropagation()}
+        title="View full test result"
+      >
+        {completedDate}
+      </Link>
+    )
+  }
+
   function getTestButton(test: TestWithProgress, href: string) {
     if (plan === "guest") {
       return (
@@ -573,16 +596,7 @@ function AdvancedPunctuationContent() {
                         <div style={styles.metaRow}>
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
-                            {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString(
-                                  "en-GB",
-                                  {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  }
-                                )
-                              : "Not yet"}
+                            {getCompletedDateContent(test)}
                           </p>
 
                           <p style={styles.metaHalf}>
@@ -590,17 +604,6 @@ function AdvancedPunctuationContent() {
                             <span style={styles.scoreIcon}>
                               {getScoreIcon(test.score, test.isCompleted)}
                             </span>
-                          </p>
-
-                          <p style={styles.metaHalf}>
-                            <strong>Last result:</strong>{" "}
-                            <Link
-                              href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
-                              style={styles.resultLink}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View
-                            </Link>
                           </p>
                         </div>
 
