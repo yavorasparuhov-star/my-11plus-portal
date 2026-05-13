@@ -3,9 +3,10 @@
 import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+type AnswerOption = "A" | "B" | "C" | "D"
 
 type WordRow = {
   id: number
@@ -15,9 +16,43 @@ type WordRow = {
   wrong_words: string[] | null
 }
 
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
+}
+
+type SpellingResult = {
+  wordId: number
+  word: string
+  definition: string | null
+  difficulty: number | null
+  isCorrect: boolean
+  userAnswer: AnswerOption | null
+  correctAnswer: AnswerOption
+  userAnswerText: string | null
+  correctAnswerText: string
+  options: Record<AnswerOption, string>
+}
+
 const REVIEW_STORAGE_KEY = "spelling_review_ids"
 const LEGACY_REVIEW_STORAGE_KEY = "spelling_review_word_ids"
 const TOTAL_QUESTIONS = 10
+const RESULT_TEST_ID = 0
+const OPTION_KEYS: AnswerOption[] = ["A", "B", "C", "D"]
 
 export default function SpellingPage() {
   return (
@@ -36,12 +71,8 @@ export default function SpellingPage() {
 
 function SpellingContent() {
   const router = useRouter()
-  const [reviewMode, setReviewMode] = useState(false)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setReviewMode(params.get("mode") === "review")
-  }, [])
+  const searchParams = useSearchParams()
+  const reviewMode = searchParams.get("mode") === "review"
 
   const [userId, setUserId] = useState<string | null>(null)
   const [plan, setPlan] = useState<UserPlan>("guest")
@@ -59,6 +90,9 @@ function SpellingContent() {
   const [score, setScore] = useState(0)
   const [hintUsed, setHintUsed] = useState(false)
   const [progressSaved, setProgressSaved] = useState(false)
+  const [resultSaved, setResultSaved] = useState(false)
+  const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([])
+  const [errorMessage, setErrorMessage] = useState("")
 
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
@@ -206,6 +240,7 @@ function SpellingContent() {
 
     if (error) {
       console.error("Error loading spelling words:", error)
+      setErrorMessage("Could not load spelling words.")
       return
     }
 
@@ -215,9 +250,9 @@ function SpellingContent() {
 
     if (reviewMode) {
       const reviewIds = getStoredReviewIds()
-      selectedWords = allWords.filter((w) => reviewIds.includes(w.id))
+      selectedWords = allWords.filter((word) => reviewIds.includes(word.id))
     } else {
-      selectedWords = allWords.filter((w) => w.difficulty === difficulty)
+      selectedWords = allWords.filter((word) => word.difficulty === difficulty)
     }
 
     const shuffled = [...selectedWords].sort(() => Math.random() - 0.5)
@@ -231,6 +266,9 @@ function SpellingContent() {
     setShowHint(false)
     setTimeLeft(15)
     setProgressSaved(false)
+    setResultSaved(false)
+    setSpellingResults([])
+    setErrorMessage("")
   }
 
   useEffect(() => {
@@ -271,6 +309,7 @@ function SpellingContent() {
           void handleTimeout()
           return 0
         }
+
         return prev - 1
       })
     }, 1000)
@@ -317,16 +356,16 @@ function SpellingContent() {
       ? wordItem.wrong_words.filter((value): value is string => typeof value === "string")
       : []
 
-    const cleanedWrong = [...new Set(wrongFromRow.map((w) => w.trim()).filter(Boolean))]
-      .filter((w) => w.toLowerCase() !== correct.trim().toLowerCase())
+    const cleanedWrong = [...new Set(wrongFromRow.map((word) => word.trim()).filter(Boolean))]
+      .filter((word) => word.toLowerCase() !== correct.trim().toLowerCase())
 
     let wrongOptions = cleanedWrong.slice(0, 3)
 
     if (wrongOptions.length < 3) {
       const fallback = allWords
-        .map((w) => w.word)
-        .filter((w) => w.trim().toLowerCase() !== correct.trim().toLowerCase())
-        .filter((w) => !wrongOptions.includes(w))
+        .map((word) => word.word)
+        .filter((word) => word.trim().toLowerCase() !== correct.trim().toLowerCase())
+        .filter((word) => !wrongOptions.includes(word))
         .sort(() => Math.random() - 0.5)
         .slice(0, 3 - wrongOptions.length)
 
@@ -340,6 +379,45 @@ function SpellingContent() {
     setFeedback("")
     setHintUsed(false)
     setShowHint(false)
+  }
+
+  function buildSpellingResult(
+    wordItem: WordRow,
+    selectedOption: string | null,
+    currentOptions: string[]
+  ): SpellingResult {
+    const safeOptions =
+      currentOptions.length === 4
+        ? currentOptions
+        : [wordItem.word, ...(wordItem.wrong_words || [])].slice(0, 4)
+
+    const optionMap = OPTION_KEYS.reduce((map, key, index) => {
+      map[key] = safeOptions[index] || ""
+      return map
+    }, {} as Record<AnswerOption, string>)
+
+    const correctIndex = safeOptions.findIndex((option) => option === wordItem.word)
+    const selectedIndex =
+      selectedOption === null
+        ? -1
+        : safeOptions.findIndex((option) => option === selectedOption)
+
+    const correctAnswer = OPTION_KEYS[correctIndex >= 0 ? correctIndex : 0]
+    const userAnswer = selectedIndex >= 0 ? OPTION_KEYS[selectedIndex] : null
+    const isCorrect = selectedOption === wordItem.word
+
+    return {
+      wordId: wordItem.id,
+      word: wordItem.word,
+      definition: wordItem.definition,
+      difficulty: wordItem.difficulty,
+      isCorrect,
+      userAnswer,
+      correctAnswer,
+      userAnswerText: selectedOption,
+      correctAnswerText: wordItem.word,
+      options: optionMap,
+    }
   }
 
   async function saveSpellingProgress(finalScore: number) {
@@ -363,6 +441,106 @@ function SpellingContent() {
     } else {
       setProgressSaved(true)
     }
+  }
+
+  async function saveLatestSpellingResult(results: SpellingResult[]) {
+    if (!userId) return
+
+    const totalQuestions = results.length
+    const correctAnswers = results.filter((result) => result.isCorrect).length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+    const progressDifficulty = getProgressDifficulty(words)
+    const completedAt = new Date().toISOString()
+
+    const answers: SavedQuestionReview[] = results.map((result, index) => ({
+      question_id: result.wordId,
+      question_order: index + 1,
+      question_text: "Choose the correct spelling.",
+      question_image_url: null,
+      options: result.options,
+      option_images: {},
+      user_answer: result.userAnswer,
+      correct_answer: result.correctAnswer,
+      user_answer_text: result.userAnswerText,
+      correct_answer_text: result.correctAnswerText,
+      user_answer_image_url: null,
+      correct_answer_image_url: null,
+      is_correct: result.isCorrect,
+      explanation: result.definition ? `Definition: ${result.definition}` : null,
+      explanation_image_url: null,
+      difficulty: result.difficulty,
+    }))
+
+    const payload = {
+      user_id: userId,
+      subject: "english",
+      category: "spelling",
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: RESULT_TEST_ID,
+      test_title: reviewMode
+        ? "Spelling Review"
+        : `Spelling ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: progressDifficulty,
+      answers,
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { data: updatedRows, error: updateError } = await supabase
+      .from("latest_test_results")
+      .update(payload)
+      .eq("user_id", userId)
+      .eq("subject", "english")
+      .eq("category", "spelling")
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
+      .eq("test_id", RESULT_TEST_ID)
+      .select("id")
+
+    if (updateError) {
+      console.error("Error updating latest spelling result:", {
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code,
+        payload,
+      })
+
+      setErrorMessage("The test was completed, but the full result could not be saved.")
+      return
+    }
+
+    if (updatedRows && updatedRows.length > 0) {
+      setResultSaved(true)
+      return
+    }
+
+    const { error: insertError } = await supabase
+      .from("latest_test_results")
+      .insert([payload])
+
+    if (insertError) {
+      console.error("Error inserting latest spelling result:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        payload,
+      })
+
+      setErrorMessage("The test was completed, but the full result could not be saved.")
+      return
+    }
+
+    setResultSaved(true)
   }
 
   async function saveWrongSpellingReview(wordItem: WordRow) {
@@ -422,6 +600,10 @@ function SpellingContent() {
     const isCorrect = option === correct
     const updatedScore = isCorrect ? score + 1 : score
 
+    const newResult = buildSpellingResult(currentWord, option, options)
+    const updatedResults = [...spellingResults, newResult]
+
+    setSpellingResults(updatedResults)
     setSelected(option)
 
     if (isCorrect) {
@@ -441,7 +623,7 @@ function SpellingContent() {
     }
 
     setTimeout(() => {
-      void nextQuestion(updatedScore)
+      void nextQuestion(updatedScore, updatedResults)
     }, 1500)
   }
 
@@ -449,6 +631,10 @@ function SpellingContent() {
     if (selected || !currentWord) return
 
     const correct = currentWord.word
+    const newResult = buildSpellingResult(currentWord, null, options)
+    const updatedResults = [...spellingResults, newResult]
+
+    setSpellingResults(updatedResults)
     setSelected("TIMEOUT")
     setFeedback(`⏰ Time's up! Correct: ${correct}`)
 
@@ -457,18 +643,21 @@ function SpellingContent() {
     }
 
     setTimeout(() => {
-      void nextQuestion(score)
+      void nextQuestion(score, updatedResults)
     }, 1500)
   }
 
-  async function nextQuestion(finalScore: number) {
+  async function nextQuestion(finalScore: number, finalResults: SpellingResult[]) {
     if (currentIndex < words.length - 1) {
       setCurrentIndex((prev) => prev + 1)
       return
     }
 
     await saveSpellingProgress(finalScore)
+    await saveLatestSpellingResult(finalResults)
+
     setCurrentIndex(words.length)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   function restartTest() {
@@ -482,6 +671,9 @@ function SpellingContent() {
     setShowHint(false)
     setTimeLeft(15)
     setProgressSaved(false)
+    setResultSaved(false)
+    setSpellingResults([])
+    setErrorMessage("")
     void fetchWords()
   }
 
@@ -491,6 +683,13 @@ function SpellingContent() {
     if (value === 3) return "Hard"
     return "Not set"
   }
+
+  const correctCount = spellingResults.filter((result) => result.isCorrect).length
+  const wrongCount = spellingResults.filter((result) => !result.isCorrect).length
+  const successRate =
+    spellingResults.length > 0
+      ? Math.round((correctCount / spellingResults.length) * 100)
+      : 0
 
   if (!authChecked) {
     return (
@@ -570,6 +769,8 @@ function SpellingContent() {
                 ? "Start Review Retry"
                 : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
             </button>
+
+            {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
         </div>
       </>
@@ -610,29 +811,139 @@ function SpellingContent() {
     return (
       <>
         <Header />
-        <div style={styles.center}>
-          <div style={styles.card}>
-            <h1>🎉 Test Complete!</h1>
-            <h2>
-              Your Score: {score} / {totalQuestions}
-            </h2>
-            <p>Difficulty: {getDifficultyLabel(displayedDifficulty)}</p>
-            {progressSaved && <p>Progress saved.</p>}
+        <div style={styles.page}>
+          <div style={styles.resultCard}>
+            <h1 style={styles.resultTitle}>🎉 Test Complete!</h1>
 
-            <div style={{ marginTop: "20px" }}>
-              <button onClick={restartTest} style={{ ...styles.button, marginRight: "10px" }}>
+            <div style={styles.resultSummary}>
+              <p style={styles.resultText}>
+                <strong>Score:</strong> {score} / {totalQuestions}
+              </p>
+
+              <p style={styles.resultText}>
+                <strong>Correct:</strong> {correctCount}
+              </p>
+
+              <p style={styles.resultText}>
+                <strong>Wrong:</strong> {wrongCount}
+              </p>
+
+              <p style={styles.resultText}>
+                <strong>Success Rate:</strong> {successRate}%
+              </p>
+
+              <p style={styles.resultText}>
+                <strong>Difficulty:</strong> {getDifficultyLabel(displayedDifficulty)}
+              </p>
+
+              {progressSaved && <p style={styles.savedText}>Progress saved.</p>}
+              {resultSaved && <p style={styles.savedText}>Full result saved.</p>}
+              {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+            </div>
+
+            <div style={styles.resultButtons}>
+              <button onClick={restartTest} style={styles.secondaryButton}>
                 Restart
               </button>
 
               <button
                 onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
-                style={{
-                  ...styles.button,
-                  backgroundColor: "#0070f3",
-                }}
+                style={styles.primaryButton}
               >
                 {reviewMode ? "📘 Back to English Review" : "📘 Back to English"}
               </button>
+            </div>
+
+            <div style={styles.reviewSection}>
+              <h2 style={styles.sectionTitle}>Answer Review</h2>
+
+              {spellingResults.map((result, index) => (
+                <div
+                  key={`${result.wordId}-${index}`}
+                  style={{
+                    ...styles.reviewQuestionCard,
+                    borderColor: result.isCorrect ? "#86efac" : "#fecaca",
+                    background: result.isCorrect ? "#f0fdf4" : "#fef2f2",
+                  }}
+                >
+                  <div style={styles.reviewQuestionTop}>
+                    <h3 style={styles.reviewQuestionTitle}>Question {index + 1}</h3>
+
+                    <span
+                      style={{
+                        ...styles.reviewStatusBadge,
+                        background: result.isCorrect ? "#dcfce7" : "#fee2e2",
+                        color: result.isCorrect ? "#166534" : "#991b1b",
+                      }}
+                    >
+                      {result.isCorrect ? "Correct" : "Incorrect"}
+                    </span>
+                  </div>
+
+                  <div style={styles.reviewOptionsGrid}>
+                    {OPTION_KEYS.map((option) => {
+                      const isUserAnswer = result.userAnswer === option
+                      const isCorrectAnswer = result.correctAnswer === option
+
+                      let background = "white"
+                      let borderColor = "#e5e7eb"
+
+                      if (isCorrectAnswer) {
+                        background = "#dcfce7"
+                        borderColor = "#16a34a"
+                      }
+
+                      if (isUserAnswer && !isCorrectAnswer) {
+                        background = "#fee2e2"
+                        borderColor = "#dc2626"
+                      }
+
+                      return (
+                        <div
+                          key={option}
+                          style={{
+                            ...styles.reviewOption,
+                            background,
+                            borderColor,
+                          }}
+                        >
+                          <strong>{option}.</strong> {result.options[option]}
+
+                          <div>
+                            {isCorrectAnswer && (
+                              <span style={styles.optionTag}>Correct answer</span>
+                            )}
+
+                            {isUserAnswer && (
+                              <span style={styles.optionTag}>Your answer</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div style={styles.reviewAnswerBox}>
+                    <p>
+                      <strong>Your answer:</strong>{" "}
+                      {result.userAnswer
+                        ? `${result.userAnswer} — ${result.userAnswerText || ""}`
+                        : "No answer"}
+                    </p>
+
+                    <p>
+                      <strong>Correct answer:</strong> {result.correctAnswer} —{" "}
+                      {result.correctAnswerText}
+                    </p>
+
+                    {result.definition && (
+                      <p>
+                        <strong>Definition:</strong> {result.definition}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -745,7 +1056,7 @@ function SpellingContent() {
         )}
 
         <div style={{ marginTop: "20px" }}>
-          {options.map((opt, i) => {
+          {options.map((opt, index) => {
             let bg = "#f3f4f6"
 
             if (selected) {
@@ -755,7 +1066,7 @@ function SpellingContent() {
 
             return (
               <button
-                key={`${opt}-${i}`}
+                key={`${opt}-${index}`}
                 onClick={() => handleAnswer(opt)}
                 disabled={!!selected}
                 style={{
@@ -908,6 +1219,128 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     fontSize: "22px",
     fontWeight: "bold",
+  },
+  resultCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+  },
+  resultTitle: {
+    textAlign: "center",
+    fontSize: "36px",
+    marginTop: 0,
+  },
+  resultSummary: {
+    background: "#f9fafb",
+    borderRadius: "14px",
+    padding: "18px",
+    margin: "24px 0",
+  },
+  resultText: {
+    margin: "10px 0",
+    fontSize: "18px",
+    color: "#111827",
+  },
+  savedText: {
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#166534",
+    fontWeight: 700,
+  },
+  resultButtons: {
+    display: "flex",
+    gap: "12px",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    marginBottom: "28px",
+  },
+  primaryButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#4f46e5",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    textDecoration: "none",
+    textAlign: "center",
+  },
+  secondaryButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#e5e7eb",
+    color: "#111827",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+  },
+  reviewSection: {
+    marginTop: "24px",
+  },
+  sectionTitle: {
+    marginTop: 0,
+    marginBottom: "20px",
+    fontSize: "28px",
+    color: "#111827",
+  },
+  reviewQuestionCard: {
+    border: "2px solid",
+    borderRadius: "16px",
+    padding: "20px",
+    marginBottom: "18px",
+  },
+  reviewQuestionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+  reviewQuestionTitle: {
+    margin: 0,
+    fontSize: "22px",
+    color: "#111827",
+  },
+  reviewStatusBadge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+  reviewOptionsGrid: {
+    display: "grid",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+  reviewOption: {
+    border: "2px solid",
+    borderRadius: "12px",
+    padding: "12px",
+    lineHeight: 1.5,
+  },
+  optionTag: {
+    display: "inline-block",
+    marginTop: "8px",
+    marginRight: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+  reviewAnswerBox: {
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "12px",
+    padding: "14px",
+    lineHeight: 1.6,
+  },
+  inlineError: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#b91c1c",
+    lineHeight: 1.6,
+    fontWeight: 600,
   },
   message: {
     textAlign: "center",

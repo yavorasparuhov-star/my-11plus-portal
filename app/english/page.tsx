@@ -105,12 +105,59 @@ export default function EnglishPage() {
               recognition under test conditions.
             </p>
 
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Correct spelling</span>
-              </div>
-            </div>
+           <div
+  style={{ ...styles.card, ...hoverCardStyle }}
+  onClick={() => openCategory("/english/spelling")}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-6px)"
+    e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0)"
+    e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+  }}
+>
+  <div style={styles.icon}>✍️</div>
+  <h2 style={styles.cardTitle}>Spelling</h2>
+  <p style={styles.cardText}>
+    Practise accurate spelling, spot common mistakes, and improve word
+    recognition under test conditions.
+  </p>
+
+  <div style={styles.infoBox}>
+    <div style={styles.infoRow}>
+      <span style={styles.infoLabel}>Focus:</span>
+      <span style={styles.infoValue}>Correct spelling</span>
+    </div>
+
+    <div style={styles.infoRow}>
+      <span style={styles.infoLabel}>Last result:</span>
+      <Link
+        href="/results/english/spelling/0"
+        style={styles.resultLink}
+        onClick={(e) => e.stopPropagation()}
+      >
+        View
+      </Link>
+    </div>
+  </div>
+
+  <button
+    onClick={(e) => {
+      e.stopPropagation()
+      openCategory("/english/spelling")
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = "#bbf7d0"
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = "#d4f5d0"
+    }}
+    style={styles.button}
+  >
+    Open Spelling
+  </button>
+</div>
 
             <button
               onClick={(e) => {
