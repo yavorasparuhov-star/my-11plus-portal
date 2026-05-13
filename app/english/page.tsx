@@ -1,6 +1,7 @@
 "use client"
 
 import type { CSSProperties } from "react"
+import Link from "next/link"
 import Header from "../../components/Header"
 import { useRouter } from "next/navigation"
 
@@ -57,8 +58,14 @@ export default function EnglishPage() {
               </div>
 
               <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
+                <span style={styles.infoLabel}>Last result:</span>
+                <Link
+                  href="/results/english/vocabulary/0"
+                  style={styles.resultLink}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View
+                </Link>
               </div>
             </div>
 
@@ -103,11 +110,6 @@ export default function EnglishPage() {
                 <span style={styles.infoLabel}>Focus:</span>
                 <span style={styles.infoValue}>Correct spelling</span>
               </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
             </div>
 
             <button
@@ -150,11 +152,6 @@ export default function EnglishPage() {
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
                 <span style={styles.infoValue}>Reading skills</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
               </div>
             </div>
 
@@ -199,11 +196,6 @@ export default function EnglishPage() {
                 <span style={styles.infoLabel}>Focus:</span>
                 <span style={styles.infoValue}>Grammar rules</span>
               </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
             </div>
 
             <button
@@ -246,11 +238,6 @@ export default function EnglishPage() {
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
                 <span style={styles.infoValue}>Punctuation marks</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
               </div>
             </div>
 
@@ -352,6 +339,14 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "15px",
     fontWeight: 700,
     color: "#111827",
+    textAlign: "right",
+  },
+  resultLink: {
+    fontSize: "15px",
+    fontWeight: 700,
+    color: "#3730a3",
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   button: {
     padding: "12px 18px",

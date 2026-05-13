@@ -1,7 +1,6 @@
 "use client"
 
 import React, { Suspense, useEffect, useState } from "react"
-import Link from "next/link"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -898,12 +897,6 @@ function VocabularyContent() {
                 🔁 Restart Test
               </button>
 
-              <Link
-                href={`/results/english/vocabulary/${RESULT_TEST_ID}`}
-                style={styles.primaryLinkButton}
-              >
-                View Full Result
-              </Link>
 
               <button
                 onClick={() => router.push(reviewMode ? "/review/english" : "/english")}
@@ -1206,19 +1199,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     background: "#4f46e5",
     color: "white",
-    cursor: "pointer",
-    fontSize: "16px",
-    fontWeight: 600,
-    textDecoration: "none",
-    textAlign: "center",
-  },
-
-  primaryLinkButton: {
-    padding: "12px 20px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
     cursor: "pointer",
     fontSize: "16px",
     fontWeight: 600,
