@@ -124,7 +124,12 @@ function getBackHref(subject: string, category: string) {
   if (subject === "vr" && category === "codes-logic") {
     return "/vr/code-logic"
   }
-
+if (subject === "vr" && category === "sequence-pattern") {
+  return "/vr/sequence-patterns"
+}
+if (subject === "vr" && category === "word-relationships") {
+  return "/vr/word-relationships"
+}
   if (subject === "vr") {
     return "/vr"
   }

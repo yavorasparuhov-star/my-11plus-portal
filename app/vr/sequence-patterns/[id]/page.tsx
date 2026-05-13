@@ -6,7 +6,6 @@ import Header from "../../../../components/Header"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
-
 type AnswerOption = "A" | "B" | "C" | "D"
 
 type VRTest = {
@@ -36,6 +35,25 @@ type VRQuestion = {
 
 type UserAnswerMap = {
   [questionId: number]: AnswerOption
+}
+
+type CompletedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url: string | null
+  options: Record<AnswerOption, string>
+  option_images: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url: string | null
+  difficulty: number | null
 }
 
 function hasFullAccess(plan: UserPlan) {
@@ -69,6 +87,7 @@ export default function VRSequencePatternsTestPage() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<UserAnswerMap>({})
+  const [completedReview, setCompletedReview] = useState<CompletedQuestionReview[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [score, setScore] = useState(0)
@@ -98,6 +117,7 @@ export default function VRSequencePatternsTestPage() {
       setFinished(false)
       setCurrentIndex(0)
       setUserAnswers({})
+      setCompletedReview([])
       setSelectedAnswer(null)
       setShowFeedback(false)
       setScore(0)
@@ -241,12 +261,14 @@ export default function VRSequencePatternsTestPage() {
   }
 
   function handleSelectAnswer(answer: AnswerOption) {
-    if (showFeedback || !hasAccess) return
+    if (showFeedback || !hasAccess || savingResults || finished) return
     setSelectedAnswer(answer)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || !hasAccess) return
+    if (!currentQuestion || !selectedAnswer || !hasAccess || savingResults || finished) {
+      return
+    }
 
     const isCorrect = selectedAnswer === currentQuestion.correct_answer
 
@@ -263,7 +285,7 @@ export default function VRSequencePatternsTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion || !hasAccess || !selectedAnswer) return
+    if (!currentQuestion || !hasAccess || !selectedAnswer || savingResults) return
 
     const isLastQuestion = currentIndex === questions.length - 1
 
@@ -289,6 +311,7 @@ export default function VRSequencePatternsTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   async function saveResults(finalScore: number, finalAnswers: UserAnswerMap) {
@@ -300,6 +323,39 @@ export default function VRSequencePatternsTestPage() {
     const totalQuestions = questions.length
     const successRate =
       totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
+
+    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+      const selected = finalAnswers[question.id] ?? null
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: null,
+          B: null,
+          C: null,
+          D: null,
+        },
+        user_answer: selected,
+        correct_answer: question.correct_answer,
+        user_answer_text: selected ? getOptionText(question, selected) : null,
+        correct_answer_text: getOptionText(question, question.correct_answer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: selected === question.correct_answer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test.difficulty ?? null,
+      }
+    })
 
     const progressPayload = {
       user_id: userId,
@@ -332,6 +388,48 @@ export default function VRSequencePatternsTestPage() {
       return
     }
 
+    const now = new Date().toISOString()
+
+    const latestResultPayload = {
+      user_id: userId,
+      subject: "vr",
+      category: test.category || "sequence-pattern",
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: finalScore,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: fullReview,
+      completed_at: now,
+      updated_at: now,
+    }
+
+    const { error: latestResultError } = await supabase
+      .from("latest_test_results")
+      .upsert([latestResultPayload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (latestResultError) {
+      console.error("Error saving latest full VR test result:", {
+        message: latestResultError.message,
+        details: latestResultError.details,
+        hint: latestResultError.hint,
+        code: latestResultError.code,
+        full: latestResultError,
+        payload: latestResultPayload,
+      })
+
+      setErrorMessage(
+        "Your score was saved, but the full test result could not be saved for later."
+      )
+    }
+
     const reviewRows = questions
       .filter((question) => finalAnswers[question.id] !== question.correct_answer)
       .map((question) => ({
@@ -361,6 +459,8 @@ export default function VRSequencePatternsTestPage() {
       }
     }
 
+    setUserAnswers(finalAnswers)
+    setCompletedReview(fullReview)
     setSavingResults(false)
   }
 
@@ -368,6 +468,7 @@ export default function VRSequencePatternsTestPage() {
     setFinished(false)
     setCurrentIndex(0)
     setUserAnswers({})
+    setCompletedReview([])
     setSelectedAnswer(null)
     setShowFeedback(false)
     setScore(0)
@@ -606,6 +707,104 @@ export default function VRSequencePatternsTestPage() {
                 </button>
               </div>
             </div>
+
+            <div style={styles.reviewCard}>
+              <h2 style={styles.sectionTitle}>Full Test Review</h2>
+
+              <p style={styles.subtitle}>
+                Here are all the questions, your answers, and the correct answers.
+              </p>
+
+              <div style={styles.reviewList}>
+                {completedReview.map((item, index) => (
+                  <div
+                    key={item.question_id}
+                    style={{
+                      ...styles.reviewQuestionCard,
+                      borderColor: item.is_correct ? "#86efac" : "#fecaca",
+                      background: item.is_correct ? "#f0fdf4" : "#fef2f2",
+                    }}
+                  >
+                    <div style={styles.reviewQuestionTop}>
+                      <h3 style={styles.reviewQuestionTitle}>Question {index + 1}</h3>
+
+                      <span
+                        style={{
+                          ...styles.reviewStatusBadge,
+                          background: item.is_correct ? "#dcfce7" : "#fee2e2",
+                          color: item.is_correct ? "#166534" : "#991b1b",
+                        }}
+                      >
+                        {item.is_correct ? "Correct" : "Incorrect"}
+                      </span>
+                    </div>
+
+                    <p style={styles.reviewQuestionText}>{item.question_text}</p>
+
+                    <div style={styles.reviewOptionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const isUserAnswer = item.user_answer === option
+                        const isCorrectAnswer = item.correct_answer === option
+
+                        let background = "white"
+                        let borderColor = "#e5e7eb"
+
+                        if (isCorrectAnswer) {
+                          background = "#dcfce7"
+                          borderColor = "#16a34a"
+                        }
+
+                        if (isUserAnswer && !isCorrectAnswer) {
+                          background = "#fee2e2"
+                          borderColor = "#dc2626"
+                        }
+
+                        return (
+                          <div
+                            key={option}
+                            style={{
+                              ...styles.reviewOption,
+                              background,
+                              borderColor,
+                            }}
+                          >
+                            <strong>{option}.</strong> {item.options[option]}
+
+                            {isCorrectAnswer && (
+                              <span style={styles.optionTag}>Correct answer</span>
+                            )}
+
+                            {isUserAnswer && (
+                              <span style={styles.optionTag}>Your answer</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div style={styles.reviewAnswerBox}>
+                      <p>
+                        <strong>Your answer:</strong>{" "}
+                        {item.user_answer
+                          ? `${item.user_answer} — ${item.user_answer_text}`
+                          : "No answer"}
+                      </p>
+
+                      <p>
+                        <strong>Correct answer:</strong>{" "}
+                        {item.correct_answer} — {item.correct_answer_text}
+                      </p>
+
+                      {item.explanation && item.explanation.trim() !== "" && (
+                        <p>
+                          <strong>Explanation:</strong> {item.explanation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </>
@@ -688,12 +887,12 @@ export default function VRSequencePatternsTestPage() {
                   <button
                     key={answerKey}
                     onClick={() => handleSelectAnswer(answerKey)}
-                    disabled={showFeedback}
+                    disabled={showFeedback || savingResults}
                     style={{
                       ...styles.optionButton,
                       background,
                       border,
-                      cursor: showFeedback ? "default" : "pointer",
+                      cursor: showFeedback || savingResults ? "default" : "pointer",
                     }}
                   >
                     <strong>{answerKey}.</strong> {optionText}
@@ -705,11 +904,12 @@ export default function VRSequencePatternsTestPage() {
             {!showFeedback ? (
               <button
                 onClick={handleCheckAnswer}
-                disabled={!selectedAnswer}
+                disabled={!selectedAnswer || savingResults}
                 style={{
                   ...styles.startButton,
-                  opacity: selectedAnswer ? 1 : 0.6,
-                  cursor: selectedAnswer ? "pointer" : "not-allowed",
+                  opacity: selectedAnswer && !savingResults ? 1 : 0.6,
+                  cursor:
+                    selectedAnswer && !savingResults ? "pointer" : "not-allowed",
                 }}
               >
                 Check Answer
@@ -750,10 +950,20 @@ export default function VRSequencePatternsTestPage() {
                     )}
                 </div>
 
-                <button onClick={handleNext} style={styles.startButton}>
-                  {currentIndex === questions.length - 1
-                    ? "Finish Test"
-                    : "Next Question"}
+                <button
+                  onClick={handleNext}
+                  disabled={savingResults}
+                  style={{
+                    ...styles.startButton,
+                    opacity: savingResults ? 0.7 : 1,
+                    cursor: savingResults ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {savingResults
+                    ? "Saving..."
+                    : currentIndex === questions.length - 1
+                      ? "Finish Test"
+                      : "Next Question"}
                 </button>
               </>
             )}
@@ -983,5 +1193,88 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
+  },
+
+  reviewCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    marginTop: "24px",
+  },
+
+  sectionTitle: {
+    marginTop: 0,
+    marginBottom: "20px",
+    fontSize: "28px",
+    color: "#111827",
+  },
+
+  reviewList: {
+    display: "grid",
+    gap: "18px",
+    marginTop: "24px",
+  },
+
+  reviewQuestionCard: {
+    border: "2px solid",
+    borderRadius: "16px",
+    padding: "20px",
+  },
+
+  reviewQuestionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+
+  reviewQuestionTitle: {
+    margin: 0,
+    fontSize: "22px",
+    color: "#111827",
+  },
+
+  reviewStatusBadge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  reviewQuestionText: {
+    fontSize: "18px",
+    lineHeight: 1.6,
+    color: "#111827",
+    marginBottom: "16px",
+  },
+
+  reviewOptionsGrid: {
+    display: "grid",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+
+  reviewOption: {
+    border: "2px solid",
+    borderRadius: "12px",
+    padding: "12px",
+    lineHeight: 1.5,
+  },
+
+  optionTag: {
+    display: "inline-block",
+    marginLeft: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  reviewAnswerBox: {
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "12px",
+    padding: "14px",
+    lineHeight: 1.6,
   },
 }

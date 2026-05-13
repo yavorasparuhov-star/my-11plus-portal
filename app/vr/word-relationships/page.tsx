@@ -22,12 +22,22 @@ type VRTestRow = {
   is_free: boolean
 }
 
-type VRProgressRow = {
-  id: string
+type LatestTestResult = {
+  id: number
   user_id: string
-  test_id: number | null
-  success_rate: number | null
-  created_at: string | null
+  subject: string
+  category: string
+  subcategory: string
+  subcategory_two: string
+  subcategory_three: string
+  test_id: number
+  test_title: string
+  total_questions: number
+  correct_answers: number
+  success_rate: number
+  difficulty: number | null
+  completed_at: string | null
+  updated_at: string | null
 }
 
 type TestWithProgress = VRTestRow & {
@@ -39,6 +49,7 @@ type TestWithProgress = VRTestRow & {
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
+
 function sortFreeTestsFirst(items: TestWithProgress[]) {
   return [...items].sort((a, b) => {
     if (a.is_free && !b.is_free) return -1
@@ -47,6 +58,7 @@ function sortFreeTestsFirst(items: TestWithProgress[]) {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 }
+
 export default function VRWordRelationshipsPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -146,14 +158,21 @@ export default function VRWordRelationshipsPage() {
       return
     }
 
-    const { data: progressData, error: progressError } = await supabase
-      .from("vr_progress")
-      .select("id, user_id, test_id, success_rate, created_at")
+    const { data: resultData, error: resultError } = await supabase
+      .from("latest_test_results")
+      .select(
+        "id, user_id, subject, category, subcategory, subcategory_two, subcategory_three, test_id, test_title, total_questions, correct_answers, success_rate, difficulty, completed_at, updated_at"
+      )
       .eq("user_id", currentAccess.userId)
+      .eq("subject", "vr")
+      .eq("category", "word-relationships")
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
       .in("test_id", testIds)
 
-    if (progressError) {
-      console.error("Error loading VR progress:", progressError)
+    if (resultError) {
+      console.error("Error loading latest Word Relationships results:", resultError)
 
       const testsWithoutProgress: TestWithProgress[] = allTests.map((test) => ({
         ...test,
@@ -167,29 +186,21 @@ export default function VRWordRelationshipsPage() {
       return
     }
 
-    const progressRows = (progressData || []) as VRProgressRow[]
-    const latestProgressMap = new Map<number, VRProgressRow>()
+    const resultRows = (resultData || []) as LatestTestResult[]
+    const latestResultMap = new Map<number, LatestTestResult>()
 
-    for (const row of progressRows) {
-      if (row.test_id === null) continue
-
-      const existing = latestProgressMap.get(row.test_id)
-      const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
-
-      if (!existing || rowDate > existingDate) {
-        latestProgressMap.set(row.test_id, row)
-      }
+    for (const row of resultRows) {
+      latestResultMap.set(row.test_id, row)
     }
 
     const mergedTests: TestWithProgress[] = allTests.map((test) => {
-      const progress = latestProgressMap.get(test.id)
+      const result = latestResultMap.get(test.id)
 
       return {
         ...test,
-        score: progress?.success_rate ?? 0,
-        completed_at: progress?.created_at || null,
-        isCompleted: !!progress,
+        score: result?.success_rate ?? 0,
+        completed_at: result?.completed_at || null,
+        isCompleted: !!result,
       }
     })
 
@@ -247,6 +258,28 @@ export default function VRWordRelationshipsPage() {
     if (hasFullAccess(plan)) return "Full access"
     if (test.is_free) return "Free test"
     return "Members only"
+  }
+
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    return (
+      <Link
+        href={`/results/vr/word-relationships/${test.id}`}
+        style={styles.completedResultLink}
+        title="View full test result"
+      >
+        {completedDate}
+      </Link>
+    )
   }
 
   function getTestButton(test: TestWithProgress) {
@@ -438,14 +471,7 @@ export default function VRWordRelationshipsPage() {
 
                       <div style={styles.metaRow}>
                         <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
+                          <strong>Completed:</strong> {getCompletedDateContent(test)}
                         </p>
 
                         <p style={styles.metaHalf}>
@@ -624,6 +650,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
+  },
+  completedResultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   scoreIcon: {
     marginLeft: "6px",
