@@ -8,6 +8,7 @@ import { supabase } from "../../../../lib/supabaseClient"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "apostrophes"
+const RESULT_CATEGORY = "apostrophes"
 const REVIEW_STORAGE_KEY = "apostrophes_review_ids"
 
 const hoverCardStyle = {
@@ -94,6 +95,7 @@ function ApostrophesContent() {
     }
 
     const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
     if (!raw) {
       setReviewIds([])
       return
@@ -101,6 +103,7 @@ function ApostrophesContent() {
 
     try {
       const parsed = JSON.parse(raw)
+
       if (Array.isArray(parsed)) {
         setReviewIds(parsed.filter((id) => typeof id === "number"))
       } else {
@@ -270,7 +273,9 @@ function ApostrophesContent() {
     for (const row of progressRows) {
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+      const existingDate = existing
+        ? new Date(existing.created_at || 0).getTime()
+        : 0
 
       if (!existing || rowDate > existingDate) {
         latestProgressMap.set(row.test_id, row)
@@ -338,6 +343,22 @@ function ApostrophesContent() {
     return "Members only"
   }
 
+  function getLastResultContent(test: TestWithProgress) {
+    if (!test.isCompleted) {
+      return <span style={styles.infoMuted}>Not yet</span>
+    }
+
+    return (
+      <Link
+        href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+        style={styles.resultLink}
+        onClick={(e) => e.stopPropagation()}
+      >
+        View
+      </Link>
+    )
+  }
+
   function getTestButton(test: TestWithProgress, href: string) {
     if (plan === "guest") {
       return (
@@ -401,12 +422,14 @@ function ApostrophesContent() {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
               {mode === "review" ? "📝 Apostrophes Review" : "📝 Apostrophes Tests"}
             </h1>
+
             <p style={styles.subtitle}>
               {mode === "review"
                 ? "Revise your saved punctuation mistakes and strengthen apostrophe skills."
@@ -435,6 +458,7 @@ function ApostrophesContent() {
                   ? "No Apostrophes review items found"
                   : "No Apostrophes tests yet"}
               </h2>
+
               <p>
                 {mode === "review"
                   ? "Try another category or make a few mistakes first so they can appear here for revision."
@@ -527,6 +551,7 @@ function ApostrophesContent() {
                             <span style={styles.badge}>
                               {getDifficultyLabel(test.difficulty)}
                             </span>
+
                             <span
                               style={{
                                 ...styles.accessBadge,
@@ -571,6 +596,10 @@ function ApostrophesContent() {
                               {getScoreIcon(test.score, test.isCompleted)}
                             </span>
                           </p>
+
+                          <p style={styles.metaHalf}>
+                            <strong>Last result:</strong> {getLastResultContent(test)}
+                          </p>
                         </div>
 
                         {getTestButton(test, href)}
@@ -591,10 +620,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -603,15 +634,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "24px",
     textAlign: "center",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   accessInfo: {
     marginTop: "18px",
     display: "inline-block",
@@ -623,15 +657,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     fontSize: "14px",
   },
+
   heroActions: {
     marginTop: "16px",
   },
+
   backLink: {
     display: "inline-block",
     textDecoration: "none",
     color: "#3730a3",
     fontWeight: 600,
   },
+
   summaryCard: {
     background: "white",
     borderRadius: "16px",
@@ -639,11 +676,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   filterRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: "10px",
   },
+
   filterButton: {
     padding: "8px 14px",
     borderRadius: "10px",
@@ -651,6 +690,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: "bold",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -658,11 +698,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "18px",
   },
+
   card: {
     background: "white",
     borderRadius: "20px",
@@ -672,23 +714,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     gap: "14px",
   },
+
   cardTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: "12px",
   },
+
   cardTitle: {
     margin: 0,
     fontSize: "24px",
     lineHeight: 1.3,
   },
+
   badgeStack: {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
     alignItems: "flex-end",
   },
+
   badge: {
     padding: "8px 12px",
     borderRadius: "999px",
@@ -698,6 +744,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
     whiteSpace: "nowrap",
   },
+
   accessBadge: {
     padding: "7px 10px",
     borderRadius: "999px",
@@ -705,37 +752,56 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "12px",
     whiteSpace: "nowrap",
   },
+
   freeBadge: {
     background: "#dcfce7",
     color: "#166534",
     border: "1px solid #86efac",
   },
+
   lockedBadge: {
     background: "#fff7ed",
     color: "#9a3412",
     border: "1px solid #fed7aa",
   },
+
   preview: {
     margin: 0,
     color: "#374151",
     lineHeight: 1.6,
     flexGrow: 1,
   },
+
   metaRow: {
     display: "flex",
     justifyContent: "space-between",
     gap: "16px",
     flexWrap: "wrap",
   },
+
   metaHalf: {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
   },
+
+  infoMuted: {
+    color: "#9ca3af",
+    fontWeight: 600,
+  },
+
+  resultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
+  },
+
   scoreIcon: {
     marginLeft: "6px",
     fontSize: "16px",
   },
+
   startButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -746,6 +812,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   retryButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -756,6 +823,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   signInButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -767,6 +835,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #c7d2fe",
   },
+
   upgradeButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -778,6 +847,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #fed7aa",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",

@@ -1,16 +1,37 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import Header from "../../../../../components/Header"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "apostrophes"
+const RESULT_CATEGORY = "apostrophes"
 const REVIEW_STORAGE_KEY = "apostrophes_review_ids"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
+}
 
 type ApostrophesTest = {
   id: number
@@ -78,7 +99,6 @@ export default function ApostrophesTestPage() {
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
   const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
 
   const selectedAnswerText = useMemo(() => {
@@ -282,6 +302,35 @@ export default function ApostrophesTestPage() {
     router.push("/english/punctuation/apostrophes")
   }
 
+  function getStoredReviewIds() {
+    const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
+    if (!raw) return []
+
+    try {
+      const parsed = JSON.parse(raw)
+
+      if (!Array.isArray(parsed)) return []
+
+      return Array.from(
+        new Set(parsed.filter((id): id is number => typeof id === "number"))
+      )
+    } catch {
+      return []
+    }
+  }
+
+  function setStoredReviewIds(ids: number[]) {
+    const uniqueIds = Array.from(new Set(ids))
+
+    if (uniqueIds.length === 0) {
+      localStorage.removeItem(REVIEW_STORAGE_KEY)
+      return
+    }
+
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(uniqueIds))
+  }
+
   function handleSelectAnswer(option: AnswerOption) {
     if (showFeedback || finished || submitting) return
     setSelectedAnswer(option)
@@ -317,6 +366,121 @@ export default function ApostrophesTestPage() {
     setSelectedAnswer(null)
     setShowFeedback(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
+    return questions.map((question, index) => {
+      const userAnswer = finalAnswers[question.id] ?? null
+      const correctAnswer = question.correct_answer
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order ?? index + 1,
+        question_text: question.question_text,
+        question_image_url: null,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {},
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
+        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        correct_answer_text: getOptionText(question, correctAnswer),
+        user_answer_image_url: null,
+        correct_answer_image_url: null,
+        is_correct: userAnswer === correctAnswer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test?.difficulty ?? null,
+      }
+    })
+  }
+
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    totalQuestions: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
+
+    const payload = {
+      user_id: userId,
+      subject: "english",
+      category: RESULT_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: buildSavedAnswers(finalAnswers),
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { error: upsertError } = await supabase
+      .from("latest_test_results")
+      .upsert([payload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (!upsertError) return
+
+    console.error("Error upserting latest apostrophes result:", {
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+      code: upsertError.code,
+      payload,
+    })
+
+    const { error: deleteError } = await supabase
+      .from("latest_test_results")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", "english")
+      .eq("category", RESULT_CATEGORY)
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
+      .eq("test_id", test.id)
+
+    if (deleteError) {
+      console.error("Error deleting old apostrophes result:", {
+        message: deleteError.message,
+        details: deleteError.details,
+        hint: deleteError.hint,
+        code: deleteError.code,
+      })
+    }
+
+    const { error: insertError } = await supabase
+      .from("latest_test_results")
+      .insert([payload])
+
+    if (insertError) {
+      console.error("Error saving latest apostrophes result:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        payload,
+      })
+
+      setErrorMessage(
+        "Progress was saved, but the full test result could not be saved."
+      )
+    }
   }
 
   async function submitResults(finalAnswers: UserAnswerMap) {
@@ -402,6 +566,13 @@ export default function ApostrophesTestPage() {
       return
     }
 
+    await saveLatestTestResult(
+      finalAnswers,
+      correctAnswers,
+      totalQuestions,
+      successRate
+    )
+
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
         const { error: deleteReviewError } = await supabase
@@ -426,7 +597,7 @@ export default function ApostrophesTestPage() {
         (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
       )
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+      setStoredReviewIds(remainingIds)
     } else if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
@@ -441,13 +612,13 @@ export default function ApostrophesTestPage() {
         })
       }
 
-      const existingReviewIds = Array.from(new Set(reviewIds))
+      const existingReviewIds = getStoredReviewIds()
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(
         new Set([...existingReviewIds, ...newWrongIds])
       )
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+      setStoredReviewIds(updatedReviewIds)
     }
 
     setScore(correctAnswers)
@@ -691,6 +862,13 @@ export default function ApostrophesTestPage() {
                 <button onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Set
                 </button>
+
+                <Link
+                  href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+                  style={styles.resultLinkButton}
+                >
+                  Review Full Result
+                </Link>
 
                 <button onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Apostrophes
@@ -990,6 +1168,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
+  },
+
+  resultLinkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+    textAlign: "center",
+    textDecoration: "none",
   },
 
   questionsCard: {
