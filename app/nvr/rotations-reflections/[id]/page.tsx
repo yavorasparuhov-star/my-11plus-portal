@@ -1,9 +1,13 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
+
+const NVR_CATEGORY = "rotations-reflections"
+const RESULT_CATEGORY = "rotations-reflections"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -36,6 +40,25 @@ type NVRQuestion = {
   difficulty: number | null
   question_order: number
   created_at: string
+}
+
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url: string | null
+  options: Record<AnswerOption, string | null>
+  option_images: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string | null
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
 }
 
 type UserAnswerMap = {
@@ -112,7 +135,7 @@ export default function NVRRotationsReflectionsTestPage() {
         .from("nvr_tests")
         .select("id, title, category, difficulty, access_level, is_free, created_at")
         .eq("id", testId)
-        .eq("category", "rotations-reflections")
+        .eq("category", NVR_CATEGORY)
         .single()
 
       if (testError || !testData) {
@@ -276,6 +299,128 @@ export default function NVRRotationsReflectionsTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
+    return questions.map((question, index) => {
+      const userAnswer = finalAnswers[question.id] ?? null
+      const correctAnswer = question.correct_answer
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order ?? index + 1,
+        question_text: question.question_text,
+        question_image_url: question.image_url,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: question.option_a_image_url,
+          B: question.option_b_image_url,
+          C: question.option_c_image_url,
+          D: question.option_d_image_url,
+        },
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
+        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        correct_answer_text: getOptionText(question, correctAnswer),
+        user_answer_image_url: userAnswer
+          ? getOptionImage(question, userAnswer)
+          : null,
+        correct_answer_image_url: getOptionImage(question, correctAnswer),
+        is_correct: userAnswer === correctAnswer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test?.difficulty ?? null,
+      }
+    })
+  }
+
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    totalQuestions: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
+
+    const payload = {
+      user_id: userId,
+      subject: "nvr",
+      category: RESULT_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: buildSavedAnswers(finalAnswers),
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { error: upsertError } = await supabase
+      .from("latest_test_results")
+      .upsert([payload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (!upsertError) return
+
+    console.error("Error upserting latest rotations reflections result:", {
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+      code: upsertError.code,
+      payload,
+    })
+
+    const { error: deleteError } = await supabase
+      .from("latest_test_results")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", "nvr")
+      .eq("category", RESULT_CATEGORY)
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
+      .eq("test_id", test.id)
+
+    if (deleteError) {
+      console.error("Error deleting old rotations reflections result:", {
+        message: deleteError.message,
+        details: deleteError.details,
+        hint: deleteError.hint,
+        code: deleteError.code,
+      })
+    }
+
+    const { error: insertError } = await supabase
+      .from("latest_test_results")
+      .insert([payload])
+
+    if (insertError) {
+      console.error("Error saving latest rotations reflections result:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        payload,
+      })
+
+      setErrorMessage(
+        "Progress was saved, but the full test result could not be saved."
+      )
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -308,7 +453,7 @@ export default function NVRRotationsReflectionsTestPage() {
             user_id: userId,
             test_id: test.id,
             question_id: question.id,
-            category: test.category || "rotations-reflections",
+            category: test.category || NVR_CATEGORY,
             question_text: question.question_text,
             user_answer: selected ?? null,
             correct_answer: question.correct_answer,
@@ -319,12 +464,14 @@ export default function NVRRotationsReflectionsTestPage() {
 
       const totalQuestions = questions.length
       const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0
 
       const progressPayload = {
         user_id: userId,
         test_id: test.id,
-        category: test.category || "rotations-reflections",
+        category: test.category || NVR_CATEGORY,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,
         success_rate: successRate,
@@ -351,6 +498,13 @@ export default function NVRRotationsReflectionsTestPage() {
         setSubmitting(false)
         return
       }
+
+      await saveLatestTestResult(
+        finalAnswers,
+        correctAnswers,
+        totalQuestions,
+        successRate
+      )
 
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
@@ -606,11 +760,18 @@ export default function NVRRotationsReflectionsTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
+                <Link
+                  href={`/results/nvr/${RESULT_CATEGORY}/${test.id}`}
+                  style={styles.primaryLinkButton}
+                >
+                  View Full Result
+                </Link>
+
                 <button type="button" onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Test
                 </button>
 
-                <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
+                <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
                   Back to Topic
                 </button>
               </div>
@@ -1039,6 +1200,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
+  },
+
+  primaryLinkButton: {
+    display: "inline-block",
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 700,
+    minWidth: "180px",
+    textAlign: "center",
+    textDecoration: "none",
   },
 
   secondaryButton: {

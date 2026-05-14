@@ -1,9 +1,14 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
+
+const MAIN_CATEGORY = "nvr"
+const RESULT_CATEGORY = "codes-spatial-logic"
+const NVR_CATEGORY = "codes-spatial-logic"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -36,6 +41,25 @@ type NVRQuestion = {
   difficulty: number | null
   question_order: number
   created_at: string
+}
+
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string | null>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string | null
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
 }
 
 type UserAnswerMap = {
@@ -75,6 +99,8 @@ export default function NVRCodesSpatialLogicTestPage() {
 
   const currentQuestion = questions[currentIndex]
 
+  const resultHref = `/results/nvr/${RESULT_CATEGORY}/${testId}`
+
   const canAccessTest = useMemo(() => {
     if (!test) return false
     return hasFullAccess(plan) || (plan === "free" && isFreeTest(test))
@@ -112,7 +138,7 @@ export default function NVRCodesSpatialLogicTestPage() {
         .from("nvr_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", "codes-spatial-logic")
+        .eq("category", NVR_CATEGORY)
         .single()
 
       if (testError || !testData) {
@@ -276,6 +302,126 @@ export default function NVRCodesSpatialLogicTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
+    return questions.map((question, index) => {
+      const userAnswer = finalAnswers[question.id] ?? null
+      const correctAnswer = question.correct_answer
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order ?? index + 1,
+        question_text: question.question_text,
+        question_image_url: question.image_url,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: question.option_a_image_url,
+          B: question.option_b_image_url,
+          C: question.option_c_image_url,
+          D: question.option_d_image_url,
+        },
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
+        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        correct_answer_text: getOptionText(question, correctAnswer),
+        user_answer_image_url: userAnswer
+          ? getOptionImage(question, userAnswer)
+          : null,
+        correct_answer_image_url: getOptionImage(question, correctAnswer),
+        is_correct: userAnswer === correctAnswer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: question.difficulty ?? test?.difficulty ?? null,
+      }
+    })
+  }
+
+  async function saveLatestTestResult(
+    finalAnswers: UserAnswerMap,
+    correctAnswers: number,
+    totalQuestions: number,
+    successRate: number
+  ) {
+    if (!userId || !test) return
+
+    const completedAt = new Date().toISOString()
+
+    const payload = {
+      user_id: userId,
+      subject: "nvr",
+      category: RESULT_CATEGORY,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: buildSavedAnswers(finalAnswers),
+      completed_at: completedAt,
+      updated_at: completedAt,
+    }
+
+    const { error: upsertError } = await supabase
+      .from("latest_test_results")
+      .upsert([payload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+
+    if (!upsertError) return
+
+    console.error("Error upserting latest NVR result:", {
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+      code: upsertError.code,
+      payload,
+    })
+
+    const { error: deleteError } = await supabase
+      .from("latest_test_results")
+      .delete()
+      .eq("user_id", userId)
+      .eq("subject", "nvr")
+      .eq("category", RESULT_CATEGORY)
+      .eq("subcategory", "")
+      .eq("subcategory_two", "")
+      .eq("subcategory_three", "")
+      .eq("test_id", test.id)
+
+    if (deleteError) {
+      console.error("Error deleting old NVR result:", {
+        message: deleteError.message,
+        details: deleteError.details,
+        hint: deleteError.hint,
+        code: deleteError.code,
+      })
+    }
+
+    const { error: insertError } = await supabase
+      .from("latest_test_results")
+      .insert([payload])
+
+    if (insertError) {
+      console.error("Error saving latest NVR result:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        payload,
+      })
+
+      setErrorMessage("Progress was saved, but the full test result could not be saved.")
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -351,6 +497,13 @@ export default function NVRCodesSpatialLogicTestPage() {
         setSubmitting(false)
         return
       }
+
+      await saveLatestTestResult(
+        finalAnswers,
+        correctAnswers,
+        totalQuestions,
+        successRate
+      )
 
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
@@ -606,6 +759,10 @@ export default function NVRCodesSpatialLogicTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
+                <Link href={resultHref} style={styles.primaryLinkButton}>
+                  View Full Result
+                </Link>
+
                 <button type="button" onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Test
                 </button>
@@ -1041,6 +1198,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
+  },
+
+  primaryLinkButton: {
+    display: "inline-block",
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+    textAlign: "center",
+    textDecoration: "none",
   },
 
   secondaryButton: {

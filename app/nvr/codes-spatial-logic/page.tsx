@@ -5,6 +5,9 @@ import Link from "next/link"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
 
+const RESULT_CATEGORY = "codes-spatial-logic"
+const NVR_CATEGORY = "codes-spatial-logic"
+
 const hoverCardStyle = {
   transition: "all 0.25s ease",
   cursor: "pointer",
@@ -42,6 +45,7 @@ type TestWithProgress = NVRTest & {
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
+
 function sortFreeTestsFirst(items: TestWithProgress[]) {
   return [...items].sort((a, b) => {
     if (a.is_free && !b.is_free) return -1
@@ -50,10 +54,13 @@ function sortFreeTestsFirst(items: TestWithProgress[]) {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 }
+
 export default function NVRCodesSpatialLogicPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
-  const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
+  const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>(
+    "all"
+  )
   const [userId, setUserId] = useState<string | null>(null)
   const [plan, setPlan] = useState<UserPlan>("guest")
 
@@ -116,7 +123,7 @@ export default function NVRCodesSpatialLogicPage() {
     const { data: testsData, error: testsError } = await supabase
       .from("nvr_tests")
       .select("id, title, category, difficulty, access_level, created_at, is_free")
-      .eq("category", "codes-spatial-logic")
+      .eq("category", NVR_CATEGORY)
       .order("created_at", { ascending: false })
 
     if (testsError) {
@@ -151,7 +158,9 @@ export default function NVRCodesSpatialLogicPage() {
 
     const { data: progressData, error: progressError } = await supabase
       .from("nvr_progress")
-      .select("id, user_id, test_id, total_questions, correct_answers, success_rate, difficulty, created_at")
+      .select(
+        "id, user_id, test_id, total_questions, correct_answers, success_rate, difficulty, created_at"
+      )
       .eq("user_id", currentAccess.userId)
       .in("test_id", testIds)
 
@@ -178,7 +187,9 @@ export default function NVRCodesSpatialLogicPage() {
 
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+      const existingDate = existing
+        ? new Date(existing.created_at || 0).getTime()
+        : 0
 
       if (!existing || rowDate > existingDate) {
         latestProgressMap.set(row.test_id, row)
@@ -220,10 +231,10 @@ export default function NVRCodesSpatialLogicPage() {
     return Math.round((completedCount / items.length) * 100)
   }
 
-function getScorePercentage(score: number, isCompleted: boolean) {
-  if (!isCompleted) return 0
-  return Math.max(0, Math.min(100, Math.round(score)))
-}
+  function getScorePercentage(score: number, isCompleted: boolean) {
+    if (!isCompleted) return 0
+    return Math.max(0, Math.min(100, Math.round(score)))
+  }
 
   function getScoreText(test: TestWithProgress) {
     return `${getScorePercentage(test.score, test.isCompleted)}%`
@@ -250,6 +261,29 @@ function getScorePercentage(score: number, isCompleted: boolean) {
     if (hasFullAccess(plan)) return "Full access"
     if (test.is_free) return "Free test"
     return "Members only"
+  }
+
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    return (
+      <Link
+        href={`/results/nvr/${RESULT_CATEGORY}/${test.id}`}
+        style={styles.completedResultLink}
+        title="View full test result"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {completedDate}
+      </Link>
+    )
   }
 
   function getTestButton(test: TestWithProgress) {
@@ -311,10 +345,12 @@ function getScorePercentage(score: number, isCompleted: boolean) {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>🧠 Codes & Spatial Logic</h1>
+
             <p style={styles.subtitle}>
               Choose a non-verbal reasoning test and practise codes, hidden shapes,
               cubes, nets, and spatial logic.
@@ -348,7 +384,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter("all")}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === "all" ? "white" : "black",
                     }}
                   >
@@ -359,7 +396,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(1)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 1 ? "white" : "black",
                     }}
                   >
@@ -370,7 +408,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(2)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 2 ? "white" : "black",
                     }}
                   >
@@ -381,7 +420,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(3)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 3 ? "white" : "black",
                     }}
                   >
@@ -403,11 +443,13 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                       style={{ ...styles.card, ...hoverCardStyle }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = "translateY(-6px)"
-                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+                        e.currentTarget.style.boxShadow =
+                          "0 20px 40px rgba(0,0,0,0.12)"
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = "translateY(0)"
-                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
+                        e.currentTarget.style.boxShadow =
+                          "0 10px 30px rgba(0,0,0,0.08)"
                       }}
                     >
                       <div style={styles.cardTop}>
@@ -435,19 +477,13 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                       </div>
 
                       <p style={styles.preview}>
-                        Practise NVR codes, hidden shapes, nets, cubes, and spatial logic in this test.
+                        Practise NVR codes, hidden shapes, nets, cubes, and spatial
+                        logic in this test.
                       </p>
 
                       <div style={styles.metaRow}>
                         <p style={styles.metaHalf}>
-                          <strong>Completed:</strong>{" "}
-                          {test.completed_at
-                            ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : "Not yet"}
+                          <strong>Completed:</strong> {getCompletedDateContent(test)}
                         </p>
 
                         <p style={styles.metaHalf}>
@@ -475,10 +511,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -487,19 +525,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "24px",
     textAlign: "center",
   },
-  scoreIcon: {
-    marginLeft: "6px",
-    fontSize: "16px",
-  },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   accessInfo: {
     marginTop: "18px",
     display: "inline-block",
@@ -511,15 +548,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     fontSize: "14px",
   },
+
   heroActions: {
     marginTop: "16px",
   },
+
   backLink: {
     display: "inline-block",
     textDecoration: "none",
     color: "#3730a3",
     fontWeight: 600,
   },
+
   summaryCard: {
     background: "white",
     borderRadius: "16px",
@@ -527,11 +567,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   filterRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: "10px",
   },
+
   filterButton: {
     padding: "8px 14px",
     borderRadius: "10px",
@@ -539,6 +581,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: "bold",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -546,11 +589,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "18px",
   },
+
   card: {
     background: "white",
     borderRadius: "20px",
@@ -560,23 +605,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     gap: "14px",
   },
+
   cardTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: "12px",
   },
+
   cardTitle: {
     margin: 0,
     fontSize: "24px",
     lineHeight: 1.3,
   },
+
   badgeStack: {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
     alignItems: "flex-end",
   },
+
   badge: {
     padding: "8px 12px",
     borderRadius: "999px",
@@ -584,6 +633,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
     whiteSpace: "nowrap",
   },
+
   accessBadge: {
     padding: "7px 10px",
     borderRadius: "999px",
@@ -591,33 +641,51 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "12px",
     whiteSpace: "nowrap",
   },
+
   freeBadge: {
     background: "#dcfce7",
     color: "#166534",
     border: "1px solid #86efac",
   },
+
   lockedBadge: {
     background: "#fff7ed",
     color: "#9a3412",
     border: "1px solid #fed7aa",
   },
+
   preview: {
     margin: 0,
     color: "#374151",
     lineHeight: 1.6,
     flexGrow: 1,
   },
+
   metaRow: {
     display: "flex",
     justifyContent: "space-between",
     gap: "16px",
     flexWrap: "wrap",
   },
+
   metaHalf: {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
   },
+
+  completedResultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
+  },
+
+  scoreIcon: {
+    marginLeft: "6px",
+    fontSize: "16px",
+  },
+
   startButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -628,6 +696,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   retryButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -638,6 +707,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   signInButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -649,6 +719,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #c7d2fe",
   },
+
   upgradeButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -660,6 +731,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #fed7aa",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",

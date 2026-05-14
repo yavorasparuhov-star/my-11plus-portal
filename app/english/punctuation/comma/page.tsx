@@ -450,8 +450,8 @@ function CommaContent() {
             </div>
 
             <div style={styles.heroActions}>
-              <Link href="/english/punctuation/comma" style={styles.backLink}>
-                ← Back to Comma
+              <Link href="/english/punctuation" style={styles.backLink}>
+                ← Back to Punctuation
               </Link>
             </div>
           </div>

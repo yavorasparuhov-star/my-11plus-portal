@@ -455,8 +455,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
             </div>
 
             <div style={styles.heroActions}>
-              <Link href="/english/punctuation/apostrophes" style={styles.backLink}>
-                ← Back to Apostrophes
+              <Link href="/english/punctuation" style={styles.backLink}>
+                ← Back to Punctuation
               </Link>
             </div>
           </div>
