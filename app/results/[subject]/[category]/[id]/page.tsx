@@ -116,6 +116,19 @@ function getBackHref(subject: string, category: string) {
   if (subject === "math") {
     return "/math"
   }
+   if (subject === "english" && category === "apostrophes") {
+    return "/english/punctuation/apostrophes"
+  }
+
+  if (subject === "english" && category === "advanced-punctuation") {
+    return "/english/punctuation/advanced-punctuation"
+  }
+  if (subject === "english" && category === "primary-word-classes") {
+    return "/english/grammar/primary-word-classes"
+  }
+  if (subject === "english" && category === "sentence-structure-syntax") {
+    return "/english/grammar/sentence-structure-syntax"
+  }
 if (subject === "english" && category === "comprehension") {
   return "/english/comprehension"
 }

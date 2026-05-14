@@ -203,7 +203,10 @@ function ApostrophesContent() {
           .in("id", reviewIds)
 
       if (reviewQuestionsError) {
-        console.error("Error loading apostrophes review questions:", reviewQuestionsError)
+        console.error(
+          "Error loading apostrophes review questions:",
+          reviewQuestionsError
+        )
         setLoading(false)
         return
       }
@@ -343,18 +346,25 @@ function ApostrophesContent() {
     return "Members only"
   }
 
-  function getLastResultContent(test: TestWithProgress) {
-    if (!test.isCompleted) {
-      return <span style={styles.infoMuted}>Not yet</span>
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
     }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
 
     return (
       <Link
         href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
-        style={styles.resultLink}
+        style={styles.completedResultLink}
+        title="View full test result"
         onClick={(e) => e.stopPropagation()}
       >
-        View
+        {completedDate}
       </Link>
     )
   }
@@ -445,8 +455,8 @@ function ApostrophesContent() {
             </div>
 
             <div style={styles.heroActions}>
-              <Link href="/english/punctuation" style={styles.backLink}>
-                ← Back to Punctuation
+              <Link href="/english/punctuation/apostrophes" style={styles.backLink}>
+                ← Back to Apostrophes
               </Link>
             </div>
           </div>
@@ -485,7 +495,8 @@ function ApostrophesContent() {
                     onClick={() => setDifficultyFilter(1)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 1 ? "white" : "black",
                     }}
                   >
@@ -496,7 +507,8 @@ function ApostrophesContent() {
                     onClick={() => setDifficultyFilter(2)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 2 ? "white" : "black",
                     }}
                   >
@@ -507,7 +519,8 @@ function ApostrophesContent() {
                     onClick={() => setDifficultyFilter(3)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 3 ? "white" : "black",
                     }}
                   >
@@ -581,13 +594,7 @@ function ApostrophesContent() {
                         <div style={styles.metaRow}>
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
-                            {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                })
-                              : "Not yet"}
+                            {getCompletedDateContent(test)}
                           </p>
 
                           <p style={styles.metaHalf}>
@@ -595,10 +602,6 @@ function ApostrophesContent() {
                             <span style={styles.scoreIcon}>
                               {getScoreIcon(test.score, test.isCompleted)}
                             </span>
-                          </p>
-
-                          <p style={styles.metaHalf}>
-                            <strong>Last result:</strong> {getLastResultContent(test)}
                           </p>
                         </div>
 
@@ -785,12 +788,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
   },
 
-  infoMuted: {
-    color: "#9ca3af",
-    fontWeight: 600,
-  },
-
-  resultLink: {
+  completedResultLink: {
     color: "#3730a3",
     fontWeight: 700,
     textDecoration: "underline",
