@@ -55,7 +55,46 @@ function getSubjectLabel(subject: string) {
 }
 
 function getCategoryLabel(category: string) {
+  const labels: Record<string, string> = {
+    algebra_reasoning: "Algebra Reasoning",
+    data_handling: "Data Handling",
+    four_operations: "Four Operations",
+    fractions_decimals_percentages: "Fractions, Decimals & Percentages",
+    measurement: "Measurement",
+    number_place_value: "Number & Place Value",
+    shape_space: "Shape & Space",
+
+    apostrophes: "Apostrophes",
+    comma: "Comma",
+    "advanced-punctuation": "Advanced Punctuation",
+    advanced_punctuation: "Advanced Punctuation",
+    "direct-speech-punctuation": "Direct Speech Punctuation",
+    direct_speech_punctuation: "Direct Speech Punctuation",
+    sentence: "Sentence Punctuation",
+    sentence_punctuation: "Sentence Punctuation",
+
+    "primary-word-classes": "Primary Word Classes",
+    primary_word_classes: "Primary Word Classes",
+    "sentence-structure-syntax": "Sentence Structure & Syntax",
+    sentence_structure_syntax: "Sentence Structure & Syntax",
+    comprehension: "Comprehension",
+    vocabulary: "Vocabulary",
+
+    "codes-logic": "Codes & Logic",
+    "code-logic": "Codes & Logic",
+    "sequence-pattern": "Sequence Patterns",
+    "sequence-patterns": "Sequence Patterns",
+    "word-relationships": "Word Relationships",
+
+    "codes-spatial-logic": "Codes & Spatial Logic",
+    "rotations-reflections": "Rotations & Reflections",
+    "shape-patterns": "Shape Patterns",
+  }
+
+  if (labels[category]) return labels[category]
+
   return category
+    .replace(/-/g, "_")
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
@@ -82,6 +121,39 @@ function getDifficultyColors(difficulty: number | null) {
   }
 
   return { background: "#f3f4f6", color: "#374151" }
+}
+
+function getCategoryCandidates(category: string) {
+  const aliasMap: Record<string, string[]> = {
+    "advanced-punctuation": ["advanced-punctuation", "advanced_punctuation"],
+    advanced_punctuation: ["advanced_punctuation", "advanced-punctuation"],
+
+    "direct-speech-punctuation": [
+      "direct-speech-punctuation",
+      "direct_speech_punctuation",
+    ],
+    direct_speech_punctuation: [
+      "direct_speech_punctuation",
+      "direct-speech-punctuation",
+    ],
+
+    sentence: ["sentence", "sentence_punctuation"],
+    sentence_punctuation: ["sentence_punctuation", "sentence"],
+
+    "primary-word-classes": ["primary-word-classes", "primary_word_classes"],
+    primary_word_classes: ["primary_word_classes", "primary-word-classes"],
+
+    "sentence-structure-syntax": [
+      "sentence-structure-syntax",
+      "sentence_structure_syntax",
+    ],
+    sentence_structure_syntax: [
+      "sentence_structure_syntax",
+      "sentence-structure-syntax",
+    ],
+  }
+
+  return aliasMap[category] || [category]
 }
 
 function getBackHref(subject: string, category: string) {
@@ -116,42 +188,93 @@ function getBackHref(subject: string, category: string) {
   if (subject === "math") {
     return "/math"
   }
-   if (subject === "english" && category === "apostrophes") {
+
+  if (subject === "english" && category === "apostrophes") {
     return "/english/punctuation/apostrophes"
   }
+
   if (subject === "english" && category === "comma") {
     return "/english/punctuation/comma"
   }
-  if (subject === "english" && category === "advanced-punctuation") {
+
+  if (
+    subject === "english" &&
+    (category === "advanced-punctuation" || category === "advanced_punctuation")
+  ) {
     return "/english/punctuation/advanced-punctuation"
   }
-  if (subject === "english" && category === "primary-word-classes") {
+
+  if (
+    subject === "english" &&
+    (category === "direct-speech-punctuation" ||
+      category === "direct_speech_punctuation")
+  ) {
+    return "/english/punctuation/direct-speech-punctuation"
+  }
+
+  if (
+    subject === "english" &&
+    (category === "sentence" || category === "sentence_punctuation")
+  ) {
+    return "/english/punctuation/sentence"
+  }
+
+  if (
+    subject === "english" &&
+    (category === "primary-word-classes" || category === "primary_word_classes")
+  ) {
     return "/english/grammar/primary-word-classes"
   }
-  if (subject === "english" && category === "sentence-structure-syntax") {
+
+  if (
+    subject === "english" &&
+    (category === "sentence-structure-syntax" ||
+      category === "sentence_structure_syntax")
+  ) {
     return "/english/grammar/sentence-structure-syntax"
   }
-if (subject === "english" && category === "comprehension") {
-  return "/english/comprehension"
-}
-if (subject === "english" && category === "vocabulary") {
-  return "/english/vocabulary"
-}
+
+  if (subject === "english" && category === "comprehension") {
+    return "/english/comprehension"
+  }
+
+  if (subject === "english" && category === "vocabulary") {
+    return "/english/vocabulary"
+  }
+
   if (subject === "english") {
     return "/english"
   }
 
-  if (subject === "vr" && category === "codes-logic") {
+  if (subject === "vr" && (category === "codes-logic" || category === "code-logic")) {
     return "/vr/code-logic"
   }
-if (subject === "vr" && category === "sequence-pattern") {
-  return "/vr/sequence-patterns"
-}
-if (subject === "vr" && category === "word-relationships") {
-  return "/vr/word-relationships"
-}
+
+  if (
+    subject === "vr" &&
+    (category === "sequence-pattern" || category === "sequence-patterns")
+  ) {
+    return "/vr/sequence-patterns"
+  }
+
+  if (subject === "vr" && category === "word-relationships") {
+    return "/vr/word-relationships"
+  }
+
   if (subject === "vr") {
     return "/vr"
+  }
+
+  if (subject === "nvr" && category === "codes-spatial-logic") {
+    return "/nvr/codes-spatial-logic"
+  }
+
+  if (subject === "nvr" && category === "rotations-reflections") {
+    return "/nvr/rotations-reflections"
+  }
+
+  if (subject === "nvr" && category === "shape-patterns") {
+    return "/nvr/shape-patterns"
   }
 
   if (subject === "nvr") {
@@ -159,6 +282,10 @@ if (subject === "vr" && category === "word-relationships") {
   }
 
   return "/"
+}
+
+function getOptionText(item: SavedQuestionReview, option: AnswerOption) {
+  return item.options?.[option] || ""
 }
 
 export default function UniversalResultPage() {
@@ -213,17 +340,20 @@ export default function UniversalResultPage() {
         return
       }
 
+      const categoryCandidates = getCategoryCandidates(category)
+
       const { data, error } = await supabase
         .from("latest_test_results")
         .select("*")
         .eq("user_id", user.id)
         .eq("subject", subject)
-        .eq("category", category)
+        .in("category", categoryCandidates)
         .eq("subcategory", "")
         .eq("subcategory_two", "")
         .eq("subcategory_three", "")
         .eq("test_id", testId)
-        .maybeSingle()
+        .order("updated_at", { ascending: false })
+        .limit(1)
 
       if (error) {
         console.error("Error loading latest test result:", {
@@ -239,13 +369,15 @@ export default function UniversalResultPage() {
         return
       }
 
-      if (!data) {
+      const latestResult = data?.[0]
+
+      if (!latestResult) {
         setErrorMessage("No completed result was found for this test.")
         setLoading(false)
         return
       }
 
-      setResult(data as LatestTestResult)
+      setResult(latestResult as LatestTestResult)
       setLoading(false)
     }
 
@@ -267,6 +399,7 @@ export default function UniversalResultPage() {
     return (
       <>
         <Header />
+
         <div style={styles.page}>
           <div style={styles.centerCard}>
             <h1 style={styles.title}>Result not available</h1>
@@ -284,7 +417,7 @@ export default function UniversalResultPage() {
                   onClick={() => router.push(backHref)}
                   style={styles.primaryButton}
                 >
-                  Back
+                  Back to Tests
                 </button>
               )}
             </div>
@@ -376,7 +509,7 @@ export default function UniversalResultPage() {
                 >
                   <div style={styles.reviewQuestionTop}>
                     <h3 style={styles.reviewQuestionTitle}>
-                      Question {index + 1}
+                      Question {item.question_order || index + 1}
                     </h3>
 
                     <span
@@ -393,17 +526,20 @@ export default function UniversalResultPage() {
                   <p style={styles.reviewQuestionText}>{item.question_text}</p>
 
                   {item.question_image_url && (
-                    <img
-                      src={item.question_image_url}
-                      alt={`Question ${index + 1}`}
-                      style={styles.questionImage}
-                    />
+                    <div style={styles.questionImageWrap}>
+                      <img
+                        src={item.question_image_url}
+                        alt={`Question ${index + 1}`}
+                        style={styles.questionImage}
+                      />
+                    </div>
                   )}
 
                   <div style={styles.reviewOptionsGrid}>
                     {(["A", "B", "C", "D"] as const).map((option) => {
                       const isUserAnswer = item.user_answer === option
                       const isCorrectAnswer = item.correct_answer === option
+                      const optionText = getOptionText(item, option)
                       const optionImage = item.option_images?.[option] || null
 
                       let background = "white"
@@ -428,8 +564,9 @@ export default function UniversalResultPage() {
                             borderColor,
                           }}
                         >
-                          <div>
-                            <strong>{option}.</strong> {item.options?.[option] || ""}
+                          <div style={styles.optionText}>
+                            <strong>{option}.</strong>{" "}
+                            {optionText || optionImage ? optionText : "No text"}
                           </div>
 
                           {optionImage && (
@@ -442,11 +579,21 @@ export default function UniversalResultPage() {
 
                           <div>
                             {isCorrectAnswer && (
-                              <span style={styles.optionTag}>Correct answer</span>
+                              <span style={styles.correctOptionTag}>
+                                Correct answer
+                              </span>
                             )}
 
                             {isUserAnswer && (
-                              <span style={styles.optionTag}>Your answer</span>
+                              <span
+                                style={
+                                  isCorrectAnswer
+                                    ? styles.correctOptionTag
+                                    : styles.userOptionTag
+                                }
+                              >
+                                Your answer
+                              </span>
                             )}
                           </div>
                         </div>
@@ -458,7 +605,11 @@ export default function UniversalResultPage() {
                     <p>
                       <strong>Your answer:</strong>{" "}
                       {item.user_answer
-                        ? `${item.user_answer} — ${item.user_answer_text || ""}`
+                        ? `${item.user_answer}${
+                            item.user_answer_text
+                              ? ` — ${item.user_answer_text}`
+                              : ""
+                          }`
                         : "No answer"}
                     </p>
 
@@ -471,8 +622,10 @@ export default function UniversalResultPage() {
                     )}
 
                     <p>
-                      <strong>Correct answer:</strong>{" "}
-                      {item.correct_answer} — {item.correct_answer_text}
+                      <strong>Correct answer:</strong> {item.correct_answer}
+                      {item.correct_answer_text
+                        ? ` — ${item.correct_answer_text}`
+                        : ""}
                     </p>
 
                     {item.correct_answer_image_url && (
@@ -624,15 +777,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "16px",
   },
 
+  questionImageWrap: {
+    marginBottom: "16px",
+    textAlign: "center",
+  },
+
   questionImage: {
-    display: "block",
     maxWidth: "100%",
     maxHeight: "420px",
     objectFit: "contain",
     borderRadius: "12px",
     background: "white",
     border: "1px solid #e5e7eb",
-    marginBottom: "16px",
   },
 
   reviewOptionsGrid: {
@@ -648,6 +804,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.5,
   },
 
+  optionText: {
+    color: "#111827",
+  },
+
   optionImage: {
     display: "block",
     maxWidth: "100%",
@@ -659,12 +819,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "10px",
   },
 
-  optionTag: {
+  correctOptionTag: {
     display: "inline-block",
     marginTop: "8px",
     marginRight: "8px",
     fontSize: "13px",
     fontWeight: 700,
+    color: "#166534",
+  },
+
+  userOptionTag: {
+    display: "inline-block",
+    marginTop: "8px",
+    marginRight: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#991b1b",
   },
 
   reviewAnswerBox: {
