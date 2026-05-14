@@ -222,10 +222,10 @@ export default function VRSequencePatternsPage() {
     return { backgroundColor: "#e5e7eb", color: "#374151" }
   }
 
-  function getScorePercentage(score: number, isCompleted: boolean) {
-    if (!isCompleted) return 0
-    return score <= 10 ? score * 10 : score
-  }
+function getScorePercentage(score: number, isCompleted: boolean) {
+  if (!isCompleted) return 0
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
 
   function getScoreText(test: TestWithProgress) {
     return `${getScorePercentage(test.score, test.isCompleted)}%`

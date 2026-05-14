@@ -220,10 +220,10 @@ export default function ShapeAndSpacePage() {
     return Math.round((completedCount / items.length) * 100)
   }
 
-  function getScorePercentage(score: number, isCompleted: boolean) {
-    if (!isCompleted) return 0
-    return score <= 10 ? score * 10 : score
-  }
+function getScorePercentage(score: number, isCompleted: boolean) {
+  if (!isCompleted) return 0
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
 
   function getScoreText(test: TestWithProgress) {
     return `${getScorePercentage(test.score, test.isCompleted)}%`
