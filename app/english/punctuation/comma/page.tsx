@@ -8,6 +8,7 @@ import { supabase } from "../../../../lib/supabaseClient"
 
 const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "comma"
+const RESULT_CATEGORY = "comma"
 const REVIEW_STORAGE_KEY = "comma_review_ids"
 
 const hoverCardStyle = {
@@ -58,6 +59,7 @@ function sortFreeTestsFirst(items: TestWithProgress[]) {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 }
+
 export default function CommaPage() {
   return (
     <Suspense
@@ -93,6 +95,7 @@ function CommaContent() {
     }
 
     const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
+
     if (!raw) {
       setReviewIds([])
       return
@@ -100,6 +103,7 @@ function CommaContent() {
 
     try {
       const parsed = JSON.parse(raw)
+
       if (Array.isArray(parsed)) {
         setReviewIds(parsed.filter((id) => typeof id === "number"))
       } else {
@@ -226,7 +230,7 @@ function CommaContent() {
         reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -258,7 +262,7 @@ function CommaContent() {
         reviewQuestionIds: reviewQuestionMap.get(test.id) || [],
       }))
 
-      setTests(testsWithoutProgress)
+      setTests(sortFreeTestsFirst(testsWithoutProgress))
       setLoading(false)
       return
     }
@@ -269,7 +273,9 @@ function CommaContent() {
     for (const row of progressRows) {
       const existing = latestProgressMap.get(row.test_id)
       const rowDate = new Date(row.created_at || 0).getTime()
-      const existingDate = existing ? new Date(existing.created_at || 0).getTime() : 0
+      const existingDate = existing
+        ? new Date(existing.created_at || 0).getTime()
+        : 0
 
       if (!existing || rowDate > existingDate) {
         latestProgressMap.set(row.test_id, row)
@@ -305,10 +311,10 @@ function CommaContent() {
     return Math.round((completedCount / items.length) * 100)
   }
 
-function getScorePercentage(score: number, isCompleted: boolean) {
-  if (!isCompleted) return 0
-  return Math.max(0, Math.min(100, Math.round(score)))
-}
+  function getScorePercentage(score: number, isCompleted: boolean) {
+    if (!isCompleted) return 0
+    return Math.max(0, Math.min(100, Math.round(score)))
+  }
 
   function getScoreText(test: TestWithProgress) {
     return `${getScorePercentage(test.score, test.isCompleted)}%`
@@ -335,6 +341,29 @@ function getScorePercentage(score: number, isCompleted: boolean) {
     if (hasFullAccess(plan)) return "Full access"
     if (test.is_free) return "Free test"
     return "Members only"
+  }
+
+  function getCompletedDateContent(test: TestWithProgress) {
+    if (!test.completed_at) {
+      return "Not yet"
+    }
+
+    const completedDate = new Date(test.completed_at).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+
+    return (
+      <Link
+        href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
+        style={styles.completedResultLink}
+        title="View full test result"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {completedDate}
+      </Link>
+    )
   }
 
   function getTestButton(test: TestWithProgress, href: string) {
@@ -398,12 +427,14 @@ function getScorePercentage(score: number, isCompleted: boolean) {
   return (
     <>
       <Header />
+
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
               {mode === "review" ? "🔹 Comma Review" : "🔹 Comma Tests"}
             </h1>
+
             <p style={styles.subtitle}>
               {mode === "review"
                 ? "Revise your saved punctuation mistakes and strengthen comma skills."
@@ -419,15 +450,18 @@ function getScorePercentage(score: number, isCompleted: boolean) {
             </div>
 
             <div style={styles.heroActions}>
-              <Link href="/english/punctuation" style={styles.backLink}>
-                ← Back to Punctuation
+              <Link href="/english/punctuation/comma" style={styles.backLink}>
+                ← Back to Comma
               </Link>
             </div>
           </div>
 
           {tests.length === 0 ? (
             <div style={styles.emptyCard}>
-              <h2>{mode === "review" ? "No Comma review items found" : "No Comma tests yet"}</h2>
+              <h2>
+                {mode === "review" ? "No Comma review items found" : "No Comma tests yet"}
+              </h2>
+
               <p>
                 {mode === "review"
                   ? "Try another category or make a few mistakes first so they can appear here for revision."
@@ -454,7 +488,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(1)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 1 ? "white" : "black",
                     }}
                   >
@@ -465,7 +500,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(2)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 2 ? "white" : "black",
                     }}
                   >
@@ -476,7 +512,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     onClick={() => setDifficultyFilter(3)}
                     style={{
                       ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
+                      backgroundColor:
+                        difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
                       color: difficultyFilter === 3 ? "white" : "black",
                     }}
                   >
@@ -520,6 +557,7 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                             <span style={styles.badge}>
                               {getDifficultyLabel(test.difficulty)}
                             </span>
+
                             <span
                               style={{
                                 ...styles.accessBadge,
@@ -549,13 +587,7 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                         <div style={styles.metaRow}>
                           <p style={styles.metaHalf}>
                             <strong>Completed:</strong>{" "}
-                            {test.completed_at
-                              ? new Date(test.completed_at).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                })
-                              : "Not yet"}
+                            {getCompletedDateContent(test)}
                           </p>
 
                           <p style={styles.metaHalf}>
@@ -584,10 +616,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   page: {
     padding: "24px",
   },
+
   container: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
+
   heroCard: {
     background: "white",
     borderRadius: "20px",
@@ -596,15 +630,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "24px",
     textAlign: "center",
   },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
+
   subtitle: {
     margin: 0,
     color: "#555",
     lineHeight: 1.6,
   },
+
   accessInfo: {
     marginTop: "18px",
     display: "inline-block",
@@ -616,15 +653,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     fontSize: "14px",
   },
+
   heroActions: {
     marginTop: "16px",
   },
+
   backLink: {
     display: "inline-block",
     textDecoration: "none",
     color: "#3730a3",
     fontWeight: 600,
   },
+
   summaryCard: {
     background: "white",
     borderRadius: "16px",
@@ -632,11 +672,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     marginBottom: "24px",
   },
+
   filterRow: {
     display: "flex",
     flexWrap: "wrap",
     gap: "10px",
   },
+
   filterButton: {
     padding: "8px 14px",
     borderRadius: "10px",
@@ -644,6 +686,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: "bold",
   },
+
   emptyCard: {
     background: "white",
     borderRadius: "20px",
@@ -651,11 +694,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
   },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "18px",
   },
+
   card: {
     background: "white",
     borderRadius: "20px",
@@ -665,23 +710,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     gap: "14px",
   },
+
   cardTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: "12px",
   },
+
   cardTitle: {
     margin: 0,
     fontSize: "24px",
     lineHeight: 1.3,
   },
+
   badgeStack: {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
     alignItems: "flex-end",
   },
+
   badge: {
     padding: "8px 12px",
     borderRadius: "999px",
@@ -691,6 +740,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
     whiteSpace: "nowrap",
   },
+
   accessBadge: {
     padding: "7px 10px",
     borderRadius: "999px",
@@ -698,37 +748,51 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "12px",
     whiteSpace: "nowrap",
   },
+
   freeBadge: {
     background: "#dcfce7",
     color: "#166534",
     border: "1px solid #86efac",
   },
+
   lockedBadge: {
     background: "#fff7ed",
     color: "#9a3412",
     border: "1px solid #fed7aa",
   },
+
   preview: {
     margin: 0,
     color: "#374151",
     lineHeight: 1.6,
     flexGrow: 1,
   },
+
   metaRow: {
     display: "flex",
     justifyContent: "space-between",
     gap: "16px",
     flexWrap: "wrap",
   },
+
   metaHalf: {
     margin: 0,
     color: "#6b7280",
     fontSize: "14px",
   },
+
+  completedResultLink: {
+    color: "#3730a3",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
+  },
+
   scoreIcon: {
     marginLeft: "6px",
     fontSize: "16px",
   },
+
   startButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -739,6 +803,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   retryButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -749,6 +814,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     textAlign: "center",
   },
+
   signInButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -760,6 +826,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #c7d2fe",
   },
+
   upgradeButton: {
     display: "inline-block",
     padding: "12px 18px",
@@ -771,6 +838,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     border: "1px solid #fed7aa",
   },
+
   message: {
     textAlign: "center",
     marginTop: "40px",
