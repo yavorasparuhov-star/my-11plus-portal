@@ -21,10 +21,15 @@ type MathQuestion = {
   id: number
   test_id: number
   question_text: string
+  image_url: string | null
   option_a: string
   option_b: string
   option_c: string
   option_d: string
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
   correct_answer: AnswerOption
   explanation: string | null
   difficulty: number | null
@@ -40,13 +45,18 @@ type CompletedQuestionReview = {
   question_id: number
   question_order: number
   question_text: string
+  question_image_url: string | null
   options: Record<AnswerOption, string>
+  option_images: Partial<Record<AnswerOption, string | null>>
   user_answer: AnswerOption | null
   correct_answer: AnswerOption
   user_answer_text: string | null
   correct_answer_text: string
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
   is_correct: boolean
   explanation: string | null
+  explanation_image_url: string | null
   difficulty: number | null
 }
 
@@ -86,12 +96,10 @@ export default function AlgebraReasoningTestPage() {
 
   const canAccessTest = useMemo(() => {
     if (!test) return false
-
     return hasFullAccess(plan) || (plan === "free" && isFreeTest(test.access_level))
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
   const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
 
   const selectedAnswerText = useMemo(() => {
@@ -296,66 +304,82 @@ export default function AlgebraReasoningTestPage() {
     setSubmitting(true)
     setErrorMessage("")
 
-    try {
-      let correctAnswers = 0
+    let correctAnswers = 0
 
-      const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-      }[] = []
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      category: string
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+    }[] = []
 
-      for (const question of questions) {
-        const selected = finalAnswers[question.id]
+    for (const question of questions) {
+      const selected = finalAnswers[question.id]
 
-        if (selected === question.correct_answer) {
-          correctAnswers += 1
-        } else {
-          wrongAnswersForReview.push({
-            user_id: userId,
-            test_id: test.id,
-            question_id: question.id,
-            category: test.category,
-            question_text: question.question_text,
-            user_answer: selected ?? null,
-            correct_answer: question.correct_answer,
-            difficulty: test.difficulty ?? null,
-          })
-        }
-      }
-
-      const totalQuestions = questions.length
-      const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
-      const fullReview: CompletedQuestionReview[] = questions.map((question) => {
-        const selected = finalAnswers[question.id] ?? null
-
-        return {
+      if (selected === question.correct_answer) {
+        correctAnswers += 1
+      } else {
+        wrongAnswersForReview.push({
+          user_id: userId,
+          test_id: test.id,
           question_id: question.id,
-          question_order: question.question_order,
+          category: test.category,
           question_text: question.question_text,
-          options: {
-            A: question.option_a,
-            B: question.option_b,
-            C: question.option_c,
-            D: question.option_d,
-          },
-          user_answer: selected,
+          user_answer: selected ?? null,
           correct_answer: question.correct_answer,
-          user_answer_text: selected ? getOptionText(question, selected) : null,
-          correct_answer_text: getOptionText(question, question.correct_answer),
-          is_correct: selected === question.correct_answer,
-          explanation: question.explanation,
-          difficulty: question.difficulty,
-        }
-      })
+          difficulty: test.difficulty ?? question.difficulty ?? null,
+        })
+      }
+    }
 
+    const totalQuestions = questions.length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+      const selected = finalAnswers[question.id] ?? null
+
+      return {
+        question_id: question.id,
+        question_order: question.question_order,
+        question_text: question.question_text,
+        question_image_url: question.image_url,
+        options: {
+          A: question.option_a,
+          B: question.option_b,
+          C: question.option_c,
+          D: question.option_d,
+        },
+        option_images: {
+          A: question.option_a_image_url,
+          B: question.option_b_image_url,
+          C: question.option_c_image_url,
+          D: question.option_d_image_url,
+        },
+        user_answer: selected,
+        correct_answer: question.correct_answer,
+        user_answer_text: selected ? getOptionText(question, selected) : null,
+        correct_answer_text: getOptionText(question, question.correct_answer),
+        user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
+        correct_answer_image_url: getOptionImageUrl(question, question.correct_answer),
+        is_correct: selected === question.correct_answer,
+        explanation: question.explanation,
+        explanation_image_url: null,
+        difficulty: test.difficulty ?? question.difficulty ?? null,
+      }
+    })
+
+    setAnswers(finalAnswers)
+    setCompletedReview(fullReview)
+    setScore(correctAnswers)
+    setFinished(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+
+    try {
       const progressPayload = {
         user_id: userId,
         test_id: test.id,
@@ -381,36 +405,34 @@ export default function AlgebraReasoningTestPage() {
         })
 
         setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
+          "Your result is shown below, but the progress history could not be saved."
         )
-        setSubmitting(false)
-        return
       }
 
-     const latestResultPayload = {
-  user_id: userId,
-  subject: "math",
-  category: test.category,
-  subcategory: "",
-  subcategory_two: "",
-  subcategory_three: "",
-  test_id: test.id,
-  test_title: test.title,
-  total_questions: totalQuestions,
-  correct_answers: correctAnswers,
-  success_rate: successRate,
-  difficulty: test.difficulty ?? null,
-  answers: fullReview,
-  completed_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
+      const latestResultPayload = {
+        user_id: userId,
+        subject: "math",
+        category: test.category,
+        subcategory: "",
+        subcategory_two: "",
+        subcategory_three: "",
+        test_id: test.id,
+        test_title: test.title,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+        answers: fullReview,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
 
-const { error: latestResultError } = await supabase
-  .from("latest_test_results")
-  .upsert([latestResultPayload], {
-    onConflict:
-      "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-  })
+      const { error: latestResultError } = await supabase
+        .from("latest_test_results")
+        .upsert([latestResultPayload], {
+          onConflict:
+            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+        })
 
       if (latestResultError) {
         console.error("Error saving latest full math result:", {
@@ -423,7 +445,7 @@ const { error: latestResultError } = await supabase
         })
 
         setErrorMessage(
-          "Your score was saved, but the full test result could not be saved for later."
+          "Your result is shown below, but the full test result could not be saved for later."
         )
       }
 
@@ -442,16 +464,12 @@ const { error: latestResultError } = await supabase
           })
         }
       }
-
-      setAnswers(finalAnswers)
-      setCompletedReview(fullReview)
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (error) {
       console.error("Unexpected math submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
+      setErrorMessage(
+        "Your result is shown below, but something went wrong while saving it."
+      )
+    } finally {
       setSubmitting(false)
     }
   }
@@ -461,6 +479,13 @@ const { error: latestResultError } = await supabase
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
     return question.option_d
+  }
+
+  function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
+    if (option === "A") return question.option_a_image_url
+    if (option === "B") return question.option_b_image_url
+    if (option === "C") return question.option_c_image_url
+    return question.option_d_image_url
   }
 
   function restartSameTest() {
@@ -483,17 +508,9 @@ const { error: latestResultError } = await supabase
   }
 
   function getDifficultyColors(difficulty: number | null) {
-    if (difficulty === 1) {
-      return { background: "#ecfdf5", color: "#065f46" }
-    }
-
-    if (difficulty === 2) {
-      return { background: "#eff6ff", color: "#1d4ed8" }
-    }
-
-    if (difficulty === 3) {
-      return { background: "#fef2f2", color: "#b91c1c" }
-    }
+    if (difficulty === 1) return { background: "#ecfdf5", color: "#065f46" }
+    if (difficulty === 2) return { background: "#eff6ff", color: "#1d4ed8" }
+    if (difficulty === 3) return { background: "#fef2f2", color: "#b91c1c" }
 
     return { background: "#f3f4f6", color: "#374151" }
   }
@@ -730,10 +747,21 @@ const { error: latestResultError } = await supabase
 
                     <p style={styles.reviewQuestionText}>{item.question_text}</p>
 
+                    {item.question_image_url && (
+                      <div style={styles.reviewQuestionImageWrap}>
+                        <img
+                          src={item.question_image_url}
+                          alt={`Question ${index + 1} diagram`}
+                          style={styles.reviewQuestionImage}
+                        />
+                      </div>
+                    )}
+
                     <div style={styles.reviewOptionsGrid}>
                       {(["A", "B", "C", "D"] as const).map((option) => {
                         const isUserAnswer = item.user_answer === option
                         const isCorrectAnswer = item.correct_answer === option
+                        const optionImageUrl = item.option_images[option]
 
                         let background = "white"
                         let borderColor = "#e5e7eb"
@@ -757,7 +785,17 @@ const { error: latestResultError } = await supabase
                               borderColor,
                             }}
                           >
-                            <strong>{option}.</strong> {item.options[option]}
+                            <strong>{option}.</strong>{" "}
+
+                            {optionImageUrl ? (
+                              <img
+                                src={optionImageUrl}
+                                alt={`Option ${option}`}
+                                style={styles.reviewOptionImage}
+                              />
+                            ) : (
+                              item.options[option]
+                            )}
 
                             {isCorrectAnswer && (
                               <span style={styles.optionTag}>Correct answer</span>
@@ -849,9 +887,20 @@ const { error: latestResultError } = await supabase
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
+            {currentQuestion.image_url && (
+              <div style={styles.questionImageWrap}>
+                <img
+                  src={currentQuestion.image_url}
+                  alt="Maths question diagram"
+                  style={styles.questionImage}
+                />
+              </div>
+            )}
+
             <div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
                 const optionText = getOptionText(currentQuestion, option)
+                const optionImageUrl = getOptionImageUrl(currentQuestion, option)
 
                 let backgroundColor = "#f3f4f6"
                 let borderColor = "transparent"
@@ -888,7 +937,18 @@ const { error: latestResultError } = await supabase
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
-                    <span>{optionText}</span>
+
+                    <span style={styles.optionContent}>
+                      {optionImageUrl ? (
+                        <img
+                          src={optionImageUrl}
+                          alt={`Option ${option}`}
+                          style={styles.optionImage}
+                        />
+                      ) : (
+                        optionText
+                      )}
+                    </span>
                   </button>
                 )
               })}
@@ -1116,6 +1176,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#111827",
   },
 
+  questionImageWrap: {
+    margin: "0 0 24px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "16px",
+  },
+
+  questionImage: {
+    maxWidth: "100%",
+    maxHeight: "360px",
+    objectFit: "contain",
+  },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
@@ -1138,6 +1214,17 @@ const styles: { [key: string]: React.CSSProperties } = {
   optionLetter: {
     fontWeight: 700,
     minWidth: "24px",
+  },
+
+  optionContent: {
+    flex: 1,
+  },
+
+  optionImage: {
+    maxWidth: "100%",
+    maxHeight: "160px",
+    objectFit: "contain",
+    display: "block",
   },
 
   feedbackBox: {
@@ -1265,6 +1352,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "16px",
   },
 
+  reviewQuestionImageWrap: {
+    margin: "0 0 16px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.75)",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "14px",
+  },
+
+  reviewQuestionImage: {
+    maxWidth: "100%",
+    maxHeight: "320px",
+    objectFit: "contain",
+  },
+
   reviewOptionsGrid: {
     display: "grid",
     gap: "10px",
@@ -1276,6 +1379,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "12px",
     padding: "12px",
     lineHeight: 1.5,
+  },
+
+  reviewOptionImage: {
+    maxWidth: "100%",
+    maxHeight: "120px",
+    objectFit: "contain",
+    display: "block",
+    marginTop: "8px",
   },
 
   optionTag: {

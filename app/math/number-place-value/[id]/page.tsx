@@ -21,10 +21,15 @@ type MathQuestion = {
   id: number
   test_id: number
   question_text: string
+  image_url: string | null
   option_a: string
   option_b: string
   option_c: string
   option_d: string
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
   correct_answer: AnswerOption
   explanation: string | null
   question_order: number
@@ -90,12 +95,10 @@ export default function NumberPlaceValueTestPage() {
 
   const canAccessTest = useMemo(() => {
     if (!test) return false
-
     return hasFullAccess(plan) || (plan === "free" && isFreeTest(test.access_level))
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
-
   const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
 
   const selectedAnswerText = useMemo(() => {
@@ -343,7 +346,7 @@ export default function NumberPlaceValueTestPage() {
         question_id: question.id,
         question_order: question.question_order,
         question_text: question.question_text,
-        question_image_url: null,
+        question_image_url: question.image_url,
         options: {
           A: question.option_a,
           B: question.option_b,
@@ -351,17 +354,17 @@ export default function NumberPlaceValueTestPage() {
           D: question.option_d,
         },
         option_images: {
-          A: null,
-          B: null,
-          C: null,
-          D: null,
+          A: question.option_a_image_url,
+          B: question.option_b_image_url,
+          C: question.option_c_image_url,
+          D: question.option_d_image_url,
         },
         user_answer: selected,
         correct_answer: question.correct_answer,
         user_answer_text: selected ? getOptionText(question, selected) : null,
         correct_answer_text: getOptionText(question, question.correct_answer),
-        user_answer_image_url: null,
-        correct_answer_image_url: null,
+        user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
+        correct_answer_image_url: getOptionImageUrl(question, question.correct_answer),
         is_correct: selected === question.correct_answer,
         explanation: question.explanation,
         explanation_image_url: null,
@@ -480,6 +483,13 @@ export default function NumberPlaceValueTestPage() {
     return question.option_d
   }
 
+  function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
+    if (option === "A") return question.option_a_image_url
+    if (option === "B") return question.option_b_image_url
+    if (option === "C") return question.option_c_image_url
+    return question.option_d_image_url
+  }
+
   function restartSameTest() {
     setAnswers({})
     setCompletedReview([])
@@ -500,17 +510,9 @@ export default function NumberPlaceValueTestPage() {
   }
 
   function getDifficultyColors(difficulty: number | null) {
-    if (difficulty === 1) {
-      return { background: "#ecfdf5", color: "#065f46" }
-    }
-
-    if (difficulty === 2) {
-      return { background: "#eff6ff", color: "#1d4ed8" }
-    }
-
-    if (difficulty === 3) {
-      return { background: "#fef2f2", color: "#b91c1c" }
-    }
+    if (difficulty === 1) return { background: "#ecfdf5", color: "#065f46" }
+    if (difficulty === 2) return { background: "#eff6ff", color: "#1d4ed8" }
+    if (difficulty === 3) return { background: "#fef2f2", color: "#b91c1c" }
 
     return { background: "#f3f4f6", color: "#374151" }
   }
@@ -741,10 +743,21 @@ export default function NumberPlaceValueTestPage() {
 
                     <p style={styles.reviewQuestionText}>{item.question_text}</p>
 
+                    {item.question_image_url && (
+                      <div style={styles.reviewQuestionImageWrap}>
+                        <img
+                          src={item.question_image_url}
+                          alt={`Question ${index + 1} diagram`}
+                          style={styles.reviewQuestionImage}
+                        />
+                      </div>
+                    )}
+
                     <div style={styles.reviewOptionsGrid}>
                       {(["A", "B", "C", "D"] as const).map((option) => {
                         const isUserAnswer = item.user_answer === option
                         const isCorrectAnswer = item.correct_answer === option
+                        const optionImageUrl = item.option_images[option]
 
                         let background = "white"
                         let borderColor = "#e5e7eb"
@@ -768,7 +781,17 @@ export default function NumberPlaceValueTestPage() {
                               borderColor,
                             }}
                           >
-                            <strong>{option}.</strong> {item.options[option]}
+                            <strong>{option}.</strong>{" "}
+
+                            {optionImageUrl ? (
+                              <img
+                                src={optionImageUrl}
+                                alt={`Option ${option}`}
+                                style={styles.reviewOptionImage}
+                              />
+                            ) : (
+                              item.options[option]
+                            )}
 
                             {isCorrectAnswer && (
                               <span style={styles.optionTag}>Correct answer</span>
@@ -860,9 +883,20 @@ export default function NumberPlaceValueTestPage() {
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
+            {currentQuestion.image_url && (
+              <div style={styles.questionImageWrap}>
+                <img
+                  src={currentQuestion.image_url}
+                  alt="Maths question diagram"
+                  style={styles.questionImage}
+                />
+              </div>
+            )}
+
             <div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
                 const optionText = getOptionText(currentQuestion, option)
+                const optionImageUrl = getOptionImageUrl(currentQuestion, option)
 
                 let backgroundColor = "#f3f4f6"
                 let borderColor = "transparent"
@@ -899,7 +933,18 @@ export default function NumberPlaceValueTestPage() {
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
-                    <span>{optionText}</span>
+
+                    <span style={styles.optionContent}>
+                      {optionImageUrl ? (
+                        <img
+                          src={optionImageUrl}
+                          alt={`Option ${option}`}
+                          style={styles.optionImage}
+                        />
+                      ) : (
+                        optionText
+                      )}
+                    </span>
                   </button>
                 )
               })}
@@ -1127,6 +1172,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#111827",
   },
 
+  questionImageWrap: {
+    margin: "0 0 24px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "16px",
+  },
+
+  questionImage: {
+    maxWidth: "100%",
+    maxHeight: "360px",
+    objectFit: "contain",
+  },
+
   optionsGrid: {
     display: "grid",
     gap: "12px",
@@ -1149,6 +1210,17 @@ const styles: { [key: string]: React.CSSProperties } = {
   optionLetter: {
     fontWeight: 700,
     minWidth: "24px",
+  },
+
+  optionContent: {
+    flex: 1,
+  },
+
+  optionImage: {
+    maxWidth: "100%",
+    maxHeight: "160px",
+    objectFit: "contain",
+    display: "block",
   },
 
   feedbackBox: {
@@ -1276,6 +1348,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "16px",
   },
 
+  reviewQuestionImageWrap: {
+    margin: "0 0 16px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.75)",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "14px",
+  },
+
+  reviewQuestionImage: {
+    maxWidth: "100%",
+    maxHeight: "320px",
+    objectFit: "contain",
+  },
+
   reviewOptionsGrid: {
     display: "grid",
     gap: "10px",
@@ -1287,6 +1375,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "12px",
     padding: "12px",
     lineHeight: 1.5,
+  },
+
+  reviewOptionImage: {
+    maxWidth: "100%",
+    maxHeight: "120px",
+    objectFit: "contain",
+    display: "block",
+    marginTop: "8px",
   },
 
   optionTag: {
