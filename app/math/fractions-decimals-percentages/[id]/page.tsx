@@ -90,8 +90,10 @@ export default function FractionsDecimalsPercentagesTestPage() {
   const [timedOut, setTimedOut] = useState(false)
 
   const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
-  const [timerPressed, setTimerPressed] = useState(false)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -126,6 +128,8 @@ export default function FractionsDecimalsPercentagesTestPage() {
       setShowFeedback(false)
       setTimedOut(false)
       setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
       setFinished(false)
       setScore(0)
       setSubmitting(false)
@@ -239,44 +243,53 @@ export default function FractionsDecimalsPercentagesTestPage() {
   }, [rawId, testId])
 
   useEffect(() => {
-    const savedTimer = localStorage.getItem(TIMER_STORAGE_KEY)
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
 
-    if (savedTimer !== null) {
-      setTimerEnabled(savedTimer === "true")
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
     }
+
+    setTimerPreferenceLoaded(true)
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
-  }, [timerEnabled])
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
 
   useEffect(() => {
-    if (!timerEnabled) {
-      setTimeLeft(QUESTION_TIME)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+  }, [currentIndex, timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (!currentQuestion) return
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
       return
     }
 
-    if (!currentQuestion) return
-    if (finished) return
-    if (submitting) return
-    if (showFeedback) return
-
-    setTimeLeft(QUESTION_TIME)
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          void handleTimeout()
-          return 0
-        }
-
-        return prev - 1
-      })
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
     }, 1000)
 
-    return () => clearInterval(timer)
-  }, [currentIndex, timerEnabled, currentQuestion, finished, submitting, showFeedback])
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    currentQuestion,
+    finished,
+    submitting,
+    showFeedback,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -308,23 +321,16 @@ export default function FractionsDecimalsPercentagesTestPage() {
     router.push("/math/fractions-decimals-percentages")
   }
 
-  function animatePress(setter: (value: boolean) => void) {
-    setter(true)
-
-    setTimeout(() => {
-      setter(false)
-    }, 140)
-  }
 
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting) return
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return
 
     setTimedOut(false)
     setSelectedAnswer(option)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || submitting || finished) return
+    if (!currentQuestion || !selectedAnswer || submitting || finished || timeExpiredProcessing) return
 
     setAnswers((prev) => ({
       ...prev,
@@ -334,14 +340,16 @@ export default function FractionsDecimalsPercentagesTestPage() {
     setShowFeedback(true)
   }
 
-  async function handleTimeout() {
-    if (!currentQuestion || showFeedback || finished || submitting) return
+  async function handleTimeUp() {
+    if (!currentQuestion || showFeedback || finished || submitting || timeExpiredProcessing) return
 
+    setTimeExpiredProcessing(true)
     setTimedOut(true)
     setSelectedAnswer(null)
     setShowFeedback(true)
+    setTimeUpMessage("Time is up. Moving to the next question...")
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       const isLastQuestion = currentIndex === questions.length - 1
 
       if (isLastQuestion) {
@@ -354,6 +362,8 @@ export default function FractionsDecimalsPercentagesTestPage() {
       setShowFeedback(false)
       setTimedOut(false)
       setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
       window.scrollTo({ top: 0, behavior: "smooth" })
     }, 1500)
   }
@@ -382,9 +392,12 @@ export default function FractionsDecimalsPercentagesTestPage() {
     setShowFeedback(false)
     setTimedOut(false)
     setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
-    async function submitResults(finalAnswers: UserAnswerMap) {
+
+  async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
     if (questions.length === 0) return
@@ -537,10 +550,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
           "Your result is shown below, but the full test result could not be saved for later."
         )
       } else {
-        console.log(
-          "Latest Fractions, Decimals & Percentages result saved:",
-          savedLatestResult
-        )
+        console.log("Latest Fractions, Decimals & Percentages result saved:", savedLatestResult)
       }
 
       if (wrongAnswersForReview.length > 0) {
@@ -590,6 +600,8 @@ export default function FractionsDecimalsPercentagesTestPage() {
     setShowFeedback(false)
     setTimedOut(false)
     setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
@@ -754,9 +766,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>
-                🟰 Fractions, Decimals & Percentages Test Complete
-              </h1>
+              <h1 style={styles.title}>➗ Fractions, Decimals & Percentages Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -848,6 +858,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
                         />
                       </div>
                     )}
+
                     <div style={styles.reviewOptionsGrid}>
                       {(["A", "B", "C", "D"] as const).map((option) => {
                         const isUserAnswer = item.user_answer === option
@@ -940,57 +951,23 @@ export default function FractionsDecimalsPercentagesTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>🟰 {test.title}</h1>
+                <h1 style={styles.title}>➗ {test.title}</h1>
 
                 <p style={styles.subtitle}>
                   Answer each maths question one at a time.
                 </p>
               </div>
 
-              <div style={styles.heroControls}>
-                <div
-                  style={{
-                    ...styles.badge,
-                    background: badgeColors.background,
-                    color: badgeColors.color,
-                  }}
-                >
-                  {getDifficultyLabel(test.difficulty)}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    animatePress(setTimerPressed)
-                    setTimerEnabled((prev) => !prev)
-                    setTimeLeft(QUESTION_TIME)
-                  }}
-                  style={{
-                    ...styles.controlButton,
-                    backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
-                    color: timerEnabled ? "white" : "black",
-                    transform: timerPressed
-                      ? "translateY(2px) scale(0.98)"
-                      : "translateY(0) scale(1)",
-                    boxShadow: timerPressed
-                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                      : "0 2px 6px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  Timer: {timerEnabled ? "ON" : "OFF"}
-                </button>
+              <div
+                style={{
+                  ...styles.badge,
+                  background: badgeColors.background,
+                  color: badgeColors.color,
+                }}
+              >
+                {getDifficultyLabel(test.difficulty)}
               </div>
             </div>
-
-            <div style={styles.progressInfo}>
-              Question <strong>{currentIndex + 1}</strong> / {questions.length}
-            </div>
-
-            {timerEnabled && (
-              <div style={styles.timerText}>
-                Question Timer: {timeLeft}s
-              </div>
-            )}
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
@@ -998,13 +975,43 @@ export default function FractionsDecimalsPercentagesTestPage() {
           <div style={styles.questionsCard}>
             <div style={styles.progressRow}>
               <span style={styles.progressText}>
-                Question {currentIndex + 1} / {questions.length}
-              </span>
-
-              <span style={styles.progressText}>
                 Answered: {answeredCount} / {questions.length}
               </span>
+
+              <div style={styles.timerControls}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimerEnabled((prev) => !prev)
+                    setTimeLeft(QUESTION_TIME)
+                    setTimeUpMessage("")
+                    setTimeExpiredProcessing(false)
+                  }}
+                  disabled={submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.timerButton,
+                    opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 ? "#b91c1c" : "#374151",
+                    }}
+                  >
+                    Time left: {timeLeft}s
+                  </span>
+                )}
+              </div>
             </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
@@ -1049,12 +1056,12 @@ export default function FractionsDecimalsPercentagesTestPage() {
                     key={option}
                     type="button"
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting}
+                    disabled={showFeedback || submitting || timeExpiredProcessing}
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
                       borderColor,
-                      cursor: showFeedback || submitting ? "default" : "pointer",
+                      cursor: showFeedback || submitting || timeExpiredProcessing ? "default" : "pointer",
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
@@ -1080,11 +1087,11 @@ export default function FractionsDecimalsPercentagesTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity: selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor: selectedAnswer && !submitting && !timeExpiredProcessing ? "pointer" : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -1197,13 +1204,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
   },
 
-  heroControls: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
 
   title: {
     fontSize: "36px",
@@ -1226,31 +1226,33 @@ const styles: { [key: string]: React.CSSProperties } = {
     whiteSpace: "nowrap",
   },
 
-  controlButton: {
-    width: "140px",
-    height: "44px",
-    borderRadius: "6px",
-    border: "none",
-    backgroundColor: "#374151",
-    color: "white",
-    cursor: "pointer",
-    fontSize: "16px",
+
+
+  timerControls: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.12s ease, box-shadow 0.12s ease",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+    gap: "10px",
+    flexWrap: "wrap",
   },
 
-  progressInfo: {
-    marginTop: "20px",
-    color: "#444",
-    fontWeight: 600,
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
   },
 
   timerText: {
-    marginTop: "12px",
-    color: "#111827",
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "0 0 18px 0",
+    color: "#b91c1c",
     fontWeight: 700,
     fontSize: "18px",
   },
@@ -1560,4 +1562,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "14px",
     lineHeight: 1.6,
   },
-}                    
+}

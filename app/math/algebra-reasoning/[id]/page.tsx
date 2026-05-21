@@ -986,10 +986,6 @@ export default function AlgebraReasoningTestPage() {
           <div style={styles.questionsCard}>
             <div style={styles.progressRow}>
               <span style={styles.progressText}>
-                Question {currentIndex + 1} / {questions.length}
-              </span>
-
-              <span style={styles.progressText}>
                 Answered: {answeredCount} / {questions.length}
               </span>
 
