@@ -88,22 +88,27 @@ type StandardTableConfig = {
 const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig> =
   {
     math: {
-      testsTable: "math_tests",
-      questionsTable: "math_questions",
-      questionSelect: `
-      id,
-      test_id,
-      question_text,
-      option_a,
-      option_b,
-      option_c,
-      option_d,
-      correct_answer,
-      explanation,
-      question_order
-    `,
-      sourceType: "math_question",
-    },
+  testsTable: "math_tests",
+  questionsTable: "math_questions",
+  questionSelect: `
+    id,
+    test_id,
+    question_text,
+    image_url,
+    option_a,
+    option_b,
+    option_c,
+    option_d,
+    option_a_image_url,
+    option_b_image_url,
+    option_c_image_url,
+    option_d_image_url,
+    correct_answer,
+    explanation,
+    question_order
+  `,
+  sourceType: "math_question",
+},
     vr: {
       testsTable: "vr_tests",
       questionsTable: "vr_questions",
