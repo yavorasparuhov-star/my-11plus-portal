@@ -8,6 +8,9 @@ import { useParams, useRouter } from "next/navigation"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "math_algebra_reasoning_timer_enabled"
+
 type MathTest = {
   id: number
   title: string
@@ -60,15 +63,49 @@ type CompletedQuestionReview = {
   difficulty: number | null
 }
 
-const QUESTION_TIME = 60
-const TIMER_STORAGE_KEY = "math_timer_enabled"
-
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
 function isFreeTest(accessLevel: string | null) {
   return accessLevel === "free"
+}
+
+function getOptionText(question: MathQuestion, option: AnswerOption) {
+  if (option === "A") return question.option_a
+  if (option === "B") return question.option_b
+  if (option === "C") return question.option_c
+  return question.option_d
+}
+
+function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
+  if (option === "A") return question.option_a_image_url
+  if (option === "B") return question.option_b_image_url
+  if (option === "C") return question.option_c_image_url
+  return question.option_d_image_url
+}
+
+function getDifficultyLabel(difficulty: number | null) {
+  if (difficulty === 1) return "Easy"
+  if (difficulty === 2) return "Medium"
+  if (difficulty === 3) return "Hard"
+  return "Not set"
+}
+
+function getDifficultyColors(difficulty: number | null) {
+  if (difficulty === 1) {
+    return { background: "#ecfdf5", color: "#065f46" }
+  }
+
+  if (difficulty === 2) {
+    return { background: "#eff6ff", color: "#1d4ed8" }
+  }
+
+  if (difficulty === 3) {
+    return { background: "#fef2f2", color: "#b91c1c" }
+  }
+
+  return { background: "#f3f4f6", color: "#374151" }
 }
 
 export default function AlgebraReasoningTestPage() {
@@ -88,11 +125,12 @@ export default function AlgebraReasoningTestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
-  const [timedOut, setTimedOut] = useState(false)
 
   const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
-  const [timerPressed, setTimerPressed] = useState(false)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -104,10 +142,12 @@ export default function AlgebraReasoningTestPage() {
 
   const canAccessTest = useMemo(() => {
     if (!test) return false
+
     return hasFullAccess(plan) || (plan === "free" && isFreeTest(test.access_level))
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+
   const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
 
   const selectedAnswerText = useMemo(() => {
@@ -125,8 +165,9 @@ export default function AlgebraReasoningTestPage() {
       setCurrentIndex(0)
       setSelectedAnswer(null)
       setShowFeedback(false)
-      setTimedOut(false)
       setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
       setFinished(false)
       setScore(0)
       setSubmitting(false)
@@ -238,46 +279,54 @@ export default function AlgebraReasoningTestPage() {
 
     loadPage()
   }, [rawId, testId])
+    useEffect(() => {
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
 
-  useEffect(() => {
-    const savedTimer = localStorage.getItem(TIMER_STORAGE_KEY)
-
-    if (savedTimer !== null) {
-      setTimerEnabled(savedTimer === "true")
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
     }
+
+    setTimerPreferenceLoaded(true)
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
-  }, [timerEnabled])
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
 
   useEffect(() => {
-    if (!timerEnabled) {
-      setTimeLeft(QUESTION_TIME)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+  }, [currentIndex, timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (!currentQuestion) return
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
       return
     }
 
-    if (!currentQuestion) return
-    if (finished) return
-    if (submitting) return
-    if (showFeedback) return
-
-    setTimeLeft(QUESTION_TIME)
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          void handleTimeout()
-          return 0
-        }
-
-        return prev - 1
-      })
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
     }, 1000)
 
-    return () => clearInterval(timer)
-  }, [currentIndex, timerEnabled, currentQuestion, finished, submitting, showFeedback])
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    currentQuestion,
+    finished,
+    submitting,
+    showFeedback,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -309,23 +358,21 @@ export default function AlgebraReasoningTestPage() {
     router.push("/math/algebra-reasoning")
   }
 
-  function animatePress(setter: (value: boolean) => void) {
-    setter(true)
-
-    setTimeout(() => {
-      setter(false)
-    }, 140)
-  }
-
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting) return
-
-    setTimedOut(false)
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return
     setSelectedAnswer(option)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || submitting || finished) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      submitting ||
+      finished ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     setAnswers((prev) => ({
       ...prev,
@@ -335,43 +382,23 @@ export default function AlgebraReasoningTestPage() {
     setShowFeedback(true)
   }
 
-  async function handleTimeout() {
-    if (!currentQuestion || showFeedback || finished || submitting) return
-
-    setTimedOut(true)
-    setSelectedAnswer(null)
-    setShowFeedback(true)
-
-    setTimeout(() => {
-      const isLastQuestion = currentIndex === questions.length - 1
-
-      if (isLastQuestion) {
-        void submitResults(answers)
-        return
-      }
-
-      setCurrentIndex((prev) => prev + 1)
-      setSelectedAnswer(null)
-      setShowFeedback(false)
-      setTimedOut(false)
-      setTimeLeft(QUESTION_TIME)
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    }, 1500)
-  }
-
   async function handleNext() {
-    if (!currentQuestion || (!selectedAnswer && !timedOut) || !showFeedback || submitting) {
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      !showFeedback ||
+      submitting ||
+      timeExpiredProcessing
+    ) {
       return
     }
 
     const isLastQuestion = currentIndex === questions.length - 1
 
-    const finalAnswers = selectedAnswer
-      ? {
-          ...answers,
-          [currentQuestion.id]: selectedAnswer,
-        }
-      : answers
+    const finalAnswers = {
+      ...answers,
+      [currentQuestion.id]: selectedAnswer,
+    }
 
     if (isLastQuestion) {
       await submitResults(finalAnswers)
@@ -381,8 +408,36 @@ export default function AlgebraReasoningTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
-    setTimedOut(false)
     setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || submitting || finished || timeExpiredProcessing) return
+
+    setTimeExpiredProcessing(true)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeUpMessage("Time’s up!")
+
+    const isLastQuestion = currentIndex === questions.length - 1
+    const finalAnswers = { ...answers }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900))
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -421,7 +476,7 @@ export default function AlgebraReasoningTestPage() {
           question_text: question.question_text,
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
-          difficulty: test.difficulty ?? question.difficulty ?? null,
+          difficulty: test.difficulty ?? null,
         })
       }
     }
@@ -455,15 +510,17 @@ export default function AlgebraReasoningTestPage() {
         user_answer_text: selected ? getOptionText(question, selected) : null,
         correct_answer_text: getOptionText(question, question.correct_answer),
         user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
-        correct_answer_image_url: getOptionImageUrl(question, question.correct_answer),
+        correct_answer_image_url: getOptionImageUrl(
+          question,
+          question.correct_answer
+        ),
         is_correct: selected === question.correct_answer,
         explanation: question.explanation,
         explanation_image_url: null,
-        difficulty: test.difficulty ?? question.difficulty ?? null,
+        difficulty: test.difficulty ?? null,
       }
     })
-
-    setAnswers(finalAnswers)
+        setAnswers(finalAnswers)
     setCompletedReview(fullReview)
     setScore(correctAnswers)
     setFinished(true)
@@ -517,15 +574,16 @@ export default function AlgebraReasoningTestPage() {
         updated_at: new Date().toISOString(),
       }
 
-      const { error: latestResultError } = await supabase
+      const { data: savedLatestResult, error: latestResultError } = await supabase
         .from("latest_test_results")
         .upsert([latestResultPayload], {
           onConflict:
             "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
         })
+        .select()
 
       if (latestResultError) {
-        console.error("Error saving latest full math result:", {
+        console.error("Error saving latest full test result:", {
           message: latestResultError.message,
           details: latestResultError.details,
           hint: latestResultError.hint,
@@ -537,6 +595,8 @@ export default function AlgebraReasoningTestPage() {
         setErrorMessage(
           "Your result is shown below, but the full test result could not be saved for later."
         )
+      } else {
+        console.log("Latest Algebra & Reasoning result saved:", savedLatestResult)
       }
 
       if (wrongAnswersForReview.length > 0) {
@@ -561,21 +621,8 @@ export default function AlgebraReasoningTestPage() {
       )
     } finally {
       setSubmitting(false)
+      setTimeExpiredProcessing(false)
     }
-  }
-
-  function getOptionText(question: MathQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a
-    if (option === "B") return question.option_b
-    if (option === "C") return question.option_c
-    return question.option_d
-  }
-
-  function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a_image_url
-    if (option === "B") return question.option_b_image_url
-    if (option === "C") return question.option_c_image_url
-    return question.option_d_image_url
   }
 
   function restartSameTest() {
@@ -584,34 +631,22 @@ export default function AlgebraReasoningTestPage() {
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
-    setTimedOut(false)
     setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function getDifficultyLabel(difficulty: number | null) {
-    if (difficulty === 1) return "Easy"
-    if (difficulty === 2) return "Medium"
-    if (difficulty === 3) return "Hard"
-    return "Not set"
-  }
-
-  function getDifficultyColors(difficulty: number | null) {
-    if (difficulty === 1) return { background: "#ecfdf5", color: "#065f46" }
-    if (difficulty === 2) return { background: "#eff6ff", color: "#1d4ed8" }
-    if (difficulty === 3) return { background: "#fef2f2", color: "#b91c1c" }
-
-    return { background: "#f3f4f6", color: "#374151" }
-  }
-
   if (loading) {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Algebra & Reasoning test...</p>
+        <div style={styles.page}>
+          <p style={styles.message}>Loading Algebra & Reasoning test...</p>
+        </div>
       </>
     )
   }
@@ -786,19 +821,11 @@ export default function AlgebraReasoningTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
-                <button
-                  type="button"
-                  onClick={restartSameTest}
-                  style={styles.secondaryButton}
-                >
+                <button type="button" onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Test
                 </button>
 
-                <button
-                  type="button"
-                  onClick={goBackSafely}
-                  style={styles.primaryButton}
-                >
+                <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Topic
                 </button>
               </div>
@@ -836,8 +863,7 @@ export default function AlgebraReasoningTestPage() {
                         {item.is_correct ? "Correct" : "Incorrect"}
                       </span>
                     </div>
-
-                    <p style={styles.reviewQuestionText}>{item.question_text}</p>
+                                        <p style={styles.reviewQuestionText}>{item.question_text}</p>
 
                     {item.question_image_url && (
                       <div style={styles.reviewQuestionImageWrap}>
@@ -942,57 +968,18 @@ export default function AlgebraReasoningTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>🧠 {test.title}</h1>
-
-                <p style={styles.subtitle}>
-                  Answer each maths question one at a time.
-                </p>
               </div>
 
-              <div style={styles.heroControls}>
-                <div
-                  style={{
-                    ...styles.badge,
-                    background: badgeColors.background,
-                    color: badgeColors.color,
-                  }}
-                >
-                  {getDifficultyLabel(test.difficulty)}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    animatePress(setTimerPressed)
-                    setTimerEnabled((prev) => !prev)
-                    setTimeLeft(QUESTION_TIME)
-                  }}
-                  style={{
-                    ...styles.controlButton,
-                    backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
-                    color: timerEnabled ? "white" : "black",
-                    transform: timerPressed
-                      ? "translateY(2px) scale(0.98)"
-                      : "translateY(0) scale(1)",
-                    boxShadow: timerPressed
-                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                      : "0 2px 6px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  Timer: {timerEnabled ? "ON" : "OFF"}
-                </button>
+              <div
+                style={{
+                  ...styles.badge,
+                  background: badgeColors.background,
+                  color: badgeColors.color,
+                }}
+              >
+                {getDifficultyLabel(test.difficulty)}
               </div>
             </div>
-
-            <div style={styles.progressInfo}>
-              Question <strong>{currentIndex + 1}</strong> / {questions.length}
-            </div>
-
-            {timerEnabled && (
-              <div style={styles.timerText}>
-                Question Timer: {timeLeft}s
-              </div>
-            )}
-
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
 
@@ -1005,7 +992,41 @@ export default function AlgebraReasoningTestPage() {
               <span style={styles.progressText}>
                 Answered: {answeredCount} / {questions.length}
               </span>
+
+              <div style={styles.timerControls}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimerEnabled((prev) => !prev)
+                    setTimeLeft(QUESTION_TIME)
+                    setTimeUpMessage("")
+                    setTimeExpiredProcessing(false)
+                  }}
+                  disabled={submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.timerButton,
+                    opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 ? "#b91c1c" : "#374151",
+                    }}
+                  >
+                    Time left: {timeLeft}s
+                  </span>
+                )}
+              </div>
             </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
@@ -1050,12 +1071,15 @@ export default function AlgebraReasoningTestPage() {
                     key={option}
                     type="button"
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting}
+                    disabled={showFeedback || submitting || timeExpiredProcessing}
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
                       borderColor,
-                      cursor: showFeedback || submitting ? "default" : "pointer",
+                      cursor:
+                        showFeedback || submitting || timeExpiredProcessing
+                          ? "default"
+                          : "pointer",
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
@@ -1081,11 +1105,15 @@ export default function AlgebraReasoningTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -1096,17 +1124,15 @@ export default function AlgebraReasoningTestPage() {
                 <div
                   style={{
                     ...styles.feedbackBox,
-                    backgroundColor: isCorrect && !timedOut ? "#f0fdf4" : "#fef2f2",
-                    borderColor: isCorrect && !timedOut ? "#86efac" : "#fecaca",
+                    backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
+                    borderColor: isCorrect ? "#86efac" : "#fecaca",
                   }}
                 >
                   <p style={{ margin: 0 }}>
-                    <strong>
-                      {timedOut ? "⏰ Time's up!" : isCorrect ? "Correct!" : "Not quite."}
-                    </strong>
+                    <strong>{isCorrect ? "Correct!" : "Not quite."}</strong>
                   </p>
 
-                  {(!isCorrect || timedOut) && (
+                  {!isCorrect && (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Correct answer:</strong>{" "}
                       {currentQuestion.correct_answer} —{" "}
@@ -1117,16 +1143,12 @@ export default function AlgebraReasoningTestPage() {
                     </p>
                   )}
 
-                  {selectedAnswer ? (
+                  {selectedAnswer && (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Your answer:</strong> {selectedAnswer} —{" "}
                       {selectedAnswerText}
                     </p>
-                  ) : timedOut ? (
-                    <p style={{ margin: "8px 0 0 0" }}>
-                      <strong>Your answer:</strong> No answer
-                    </p>
-                  ) : null}
+                  )}
 
                   {currentQuestion.explanation &&
                     currentQuestion.explanation.trim() !== "" && (
@@ -1141,11 +1163,12 @@ export default function AlgebraReasoningTestPage() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={submitting}
+                    disabled={submitting || timeExpiredProcessing}
                     style={{
                       ...styles.primaryButton,
-                      opacity: submitting ? 0.7 : 1,
-                      cursor: submitting ? "not-allowed" : "pointer",
+                      opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                      cursor:
+                        submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                     }}
                   >
                     {submitting
@@ -1198,14 +1221,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
   },
 
-  heroControls: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
-
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
@@ -1227,33 +1242,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     whiteSpace: "nowrap",
   },
 
-  controlButton: {
-    width: "140px",
-    height: "44px",
-    borderRadius: "6px",
-    border: "none",
-    backgroundColor: "#374151",
-    color: "white",
-    cursor: "pointer",
-    fontSize: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.12s ease, box-shadow 0.12s ease",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-  },
-
   progressInfo: {
     marginTop: "20px",
     color: "#444",
     fontWeight: 600,
-  },
-
-  timerText: {
-    marginTop: "12px",
-    color: "#111827",
-    fontWeight: 700,
-    fontSize: "18px",
   },
 
   progressRow: {
@@ -1268,6 +1260,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  timerControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "0 0 18px 0",
+    color: "#b91c1c",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   inlineError: {
