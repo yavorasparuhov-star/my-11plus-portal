@@ -952,8 +952,6 @@ export default function FractionsDecimalsPercentagesTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>➗ {test.title}</h1>
-
-
               </div>
 
               <div

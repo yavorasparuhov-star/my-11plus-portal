@@ -791,11 +791,6 @@ export default function NVRShapePatternsTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>🧩 {test.title}</h1>
-
-                <p style={styles.subtitle}>
-                  Answer each NVR question one at a time. Study the visual pattern
-                  before choosing your answer.
-                </p>
               </div>
 
               <div
@@ -809,9 +804,7 @@ export default function NVRShapePatternsTestPage() {
               </div>
             </div>
 
-            <div style={styles.progressInfo}>
-              Question <strong>{currentIndex + 1}</strong> / {questions.length}
-            </div>
+
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>

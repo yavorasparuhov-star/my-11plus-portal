@@ -829,11 +829,6 @@ export default function VRWordRelationshipsTestPage() {
             <div style={styles.cardTop}>
               <div>
                 <h1 style={styles.titleLeft}>{test.title}</h1>
-
-                <p style={styles.subtitleLeft}>
-                  Choose the best matching relationship and check your answer before
-                  moving on.
-                </p>
               </div>
 
               <div style={styles.badgeStack}>

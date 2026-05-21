@@ -794,11 +794,6 @@ export default function NVRRotationsReflectionsTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>🔄 {test.title}</h1>
-
-                <p style={styles.subtitle}>
-                  Answer each NVR question one at a time. Study the rotations,
-                  reflections, and visual transformations carefully.
-                </p>
               </div>
 
               <div
@@ -812,9 +807,7 @@ export default function NVRRotationsReflectionsTestPage() {
               </div>
             </div>
 
-            <div style={styles.progressInfo}>
-              Question <strong>{currentIndex + 1}</strong> / {questions.length}
-            </div>
+
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
