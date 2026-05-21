@@ -60,7 +60,7 @@ type CompletedQuestionReview = {
   difficulty: number | null
 }
 
-const QUESTION_TIME = 15
+const QUESTION_TIME = 60
 const TIMER_STORAGE_KEY = "math_timer_enabled"
 
 function hasFullAccess(plan: UserPlan) {
