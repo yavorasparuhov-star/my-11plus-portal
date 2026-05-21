@@ -42,25 +42,13 @@ export default function GrammarPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🔤</div>
+            <div style={styles.icon}>🔠</div>
             <h2 style={styles.cardTitle}>Primary Word Classes</h2>
             <p style={styles.cardText}>
               Practise nouns, verbs, adjectives, adverbs, pronouns,
               prepositions, conjunctions, and other essential grammar building
               blocks.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Parts of speech</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -93,24 +81,12 @@ export default function GrammarPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🧩</div>
+            <div style={styles.icon}>🧱</div>
             <h2 style={styles.cardTitle}>Sentence Structure & Syntax</h2>
             <p style={styles.cardText}>
               Improve sentence construction, word order, clauses, phrase use,
               and the structure needed for accurate 11+ English answers.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Sentence building</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -184,32 +160,8 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "16px",
     color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
+    marginBottom: "22px",
     minHeight: "78px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
   },
   button: {
     padding: "12px 18px",
@@ -221,5 +173,6 @@ const styles: { [key: string]: CSSProperties } = {
     fontWeight: 600,
     fontSize: "16px",
     minWidth: "180px",
+    marginTop: "auto",
   },
 }

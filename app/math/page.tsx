@@ -1,35 +1,22 @@
 "use client"
 
+import type { CSSProperties } from "react"
 import Header from "../../components/Header"
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../lib/supabaseClient"
 
-const hoverCardStyle = {
+const hoverCardStyle: CSSProperties = {
   transition: "all 0.25s ease",
   cursor: "pointer",
-}
-
-type MathStats = {
-  mathScore: number | null
-  mathReviewCount: number
 }
 
 export default function MathPage() {
   const router = useRouter()
 
-  const [stats, setStats] = useState<MathStats>({
-    mathScore: null,
-    mathReviewCount: 0,
-  })
-
-  const [loadingStats, setLoadingStats] = useState(true)
-
   const topics = [
     {
       title: "Number & Place Value",
       path: "/math/number-place-value",
-      icon: "🔢",
+      icon: "🔟",
       description:
         "Build confidence with place value, ordering numbers, rounding, and number patterns.",
       buttonText: "Open Number & Place Value",
@@ -37,7 +24,7 @@ export default function MathPage() {
     {
       title: "Four Operations",
       path: "/math/four-operations",
-      icon: "➕",
+      icon: "＋−×÷",
       description:
         "Practise addition, subtraction, multiplication, division, and multi-step calculations.",
       buttonText: "Open Four Operations",
@@ -45,14 +32,14 @@ export default function MathPage() {
     {
       title: "Fractions, Decimals & Percentages",
       path: "/math/fractions-decimals-percentages",
-      icon: "🟰",
+      icon: "½%",
       description: "Convert, compare and solve problems with FDP.",
       buttonText: "Open FDP",
     },
     {
       title: "Shape & Space",
       path: "/math/shape-space",
-      icon: "📐",
+      icon: "△□",
       description:
         "Explore angles, properties of shapes, symmetry, coordinates, and spatial reasoning.",
       buttonText: "Open Shape & Space",
@@ -76,89 +63,15 @@ export default function MathPage() {
     {
       title: "Algebra & Reasoning",
       path: "/math/algebra-reasoning",
-      icon: "🧠",
+      icon: "𝑥",
       description:
         "Develop algebraic thinking, sequences, formulas, and logical mathematical reasoning.",
       buttonText: "Open Algebra & Reasoning",
     },
   ]
 
-  useEffect(() => {
-    async function loadMathStats() {
-      setLoadingStats(true)
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        setLoadingStats(false)
-        return
-      }
-
-      const [mathProgressRes, mathReviewRes] = await Promise.all([
-        supabase
-          .from("math_progress")
-          .select("success_rate, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1),
-
-        supabase
-          .from("math_review")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id),
-      ])
-
-      setStats({
-        mathScore:
-          mathProgressRes.data && mathProgressRes.data.length > 0
-            ? Math.round(mathProgressRes.data[0].success_rate)
-            : null,
-        mathReviewCount: mathReviewRes.count ?? 0,
-      })
-
-      setLoadingStats(false)
-    }
-
-    loadMathStats()
-  }, [])
-
   function openCategory(path: string) {
     router.push(path)
-  }
-
-  function getScoreLabel(score: number | null) {
-    if (score === null) return "Not tested yet"
-    return `${score}%`
-  }
-
-  function getScoreBadgeStyle(score: number | null): React.CSSProperties {
-    if (score === null) {
-      return {
-        backgroundColor: "#e5e7eb",
-        color: "#374151",
-      }
-    }
-
-    if (score >= 80) {
-      return {
-        backgroundColor: "#d1fae5",
-        color: "#065f46",
-      }
-    }
-
-    if (score >= 50) {
-      return {
-        backgroundColor: "#fef3c7",
-        color: "#92400e",
-      }
-    }
-
-    return {
-      backgroundColor: "#fee2e2",
-      color: "#991b1b",
-    }
   }
 
   return (
@@ -193,29 +106,6 @@ export default function MathPage() {
               <h2 style={styles.cardTitle}>{topic.title}</h2>
               <p style={styles.cardText}>{topic.description}</p>
 
-              <div style={styles.infoBox}>
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>Last score:</span>
-                  <span
-                    style={{
-                      ...styles.scoreBadge,
-                      ...getScoreBadgeStyle(
-                        loadingStats ? null : stats.mathScore
-                      ),
-                    }}
-                  >
-                    {loadingStats ? "Loading..." : getScoreLabel(stats.mathScore)}
-                  </span>
-                </div>
-
-                <div style={styles.infoRow}>
-                  <span style={styles.infoLabel}>Review items:</span>
-                  <span style={styles.infoValue}>
-                    {loadingStats ? "Loading..." : stats.mathReviewCount}
-                  </span>
-                </div>
-              </div>
-
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -239,7 +129,7 @@ export default function MathPage() {
   )
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const styles: { [key: string]: CSSProperties } = {
   page: {
     padding: "32px 20px 50px",
     maxWidth: "1100px",
@@ -279,6 +169,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   icon: {
     fontSize: "42px",
     marginBottom: "12px",
+    minHeight: "52px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    letterSpacing: "1px",
+    fontWeight: 800,
   },
   cardTitle: {
     fontSize: "24px",
@@ -291,38 +187,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
     marginBottom: "18px",
     minHeight: "96px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
-  },
-  scoreBadge: {
-    padding: "6px 12px",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: 700,
-    minWidth: "92px",
-    textAlign: "center",
   },
   button: {
     padding: "12px 18px",

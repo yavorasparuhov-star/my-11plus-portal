@@ -41,24 +41,12 @@ export default function VRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>📝</div>
+            <div style={styles.icon}>↔️</div>
             <h2 style={styles.cardTitle}>Word Relationships</h2>
             <p style={styles.cardText}>
               Build skills in synonyms, antonyms, analogies, and word meaning
               connections.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Vocabulary logic</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -96,18 +84,6 @@ export default function VRPage() {
               verbal puzzles.
             </p>
 
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Problem solving</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
-
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -137,24 +113,12 @@ export default function VRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🔤</div>
+            <div style={styles.icon}>A→Z</div>
             <h2 style={styles.cardTitle}>Sequence & Patterns</h2>
             <p style={styles.cardText}>
               Improve recognition of letter sequences, word patterns, and logical
               order questions.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Pattern spotting</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -218,6 +182,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   icon: {
     fontSize: "42px",
     marginBottom: "12px",
+    minHeight: "52px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 800,
+    letterSpacing: "-1px",
   },
   cardTitle: {
     fontSize: "24px",
@@ -228,32 +198,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
+    marginBottom: "22px",
     minHeight: "78px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
   },
   button: {
     padding: "12px 18px",
@@ -265,5 +211,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     fontSize: "16px",
     minWidth: "180px",
+    marginTop: "auto",
   },
 }

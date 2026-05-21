@@ -907,12 +907,6 @@ export default function AdvancedPunctuationTestPage() {
                 <h1 style={styles.title}>
                   {mode === "review" ? "🖋️ Review:" : "🖋️"} {test.title}
                 </h1>
-
-                <p style={styles.subtitle}>
-                  {mode === "review"
-                    ? "Answer your saved review questions one at a time."
-                    : "Answer each punctuation question one at a time."}
-                </p>
               </div>
 
               <div
@@ -926,9 +920,7 @@ export default function AdvancedPunctuationTestPage() {
               </div>
             </div>
 
-            <div style={styles.progressInfo}>
-              Question <strong>{currentIndex + 1}</strong> / {questions.length}
-            </div>
+            
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>

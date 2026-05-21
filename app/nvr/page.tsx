@@ -43,24 +43,12 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🧩</div>
+            <div style={styles.icon}>◆◇◆</div>
             <h2 style={styles.cardTitle}>Shape Patterns</h2>
             <p style={styles.cardText}>
               Practise visual patterns, odd one out, missing shapes, and
               rule-based figure sequences.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Pattern spotting</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -91,24 +79,12 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🔄</div>
+            <div style={styles.icon}>↻↔</div>
             <h2 style={styles.cardTitle}>Rotations & Reflections</h2>
             <p style={styles.cardText}>
               Build confidence with mirror images, rotations, flips, and changes
               in shape orientation.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Transformations</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -139,24 +115,12 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🧠</div>
+            <div style={styles.icon}>▣🔐</div>
             <h2 style={styles.cardTitle}>Codes & Spatial Logic</h2>
             <p style={styles.cardText}>
               Work on shape codes, spatial logic, hidden shapes, nets, cubes,
               and other visual reasoning problems.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Spatial reasoning</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -218,8 +182,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
   },
   icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
+    fontSize: "38px",
+    lineHeight: 1,
+    marginBottom: "14px",
+    minHeight: "42px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    letterSpacing: "2px",
   },
   cardTitle: {
     fontSize: "24px",
@@ -230,32 +200,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
+    marginBottom: "22px",
     minHeight: "78px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
   },
   button: {
     padding: "12px 18px",
@@ -267,5 +213,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     fontSize: "16px",
     minWidth: "180px",
+    marginTop: "auto",
   },
 }

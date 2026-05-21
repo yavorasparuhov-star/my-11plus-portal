@@ -42,24 +42,12 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>📍</div>
+            <div style={styles.icon}>✅</div>
             <h2 style={styles.cardTitle}>Sentence</h2>
             <p style={styles.cardText}>
               Practise full stops, capital letters, question marks,
               exclamation marks, and accurate sentence punctuation.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Sentence punctuation</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -90,24 +78,12 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>➖</div>
+            <div style={styles.icon}>，</div>
             <h2 style={styles.cardTitle}>Comma</h2>
             <p style={styles.cardText}>
               Learn how commas are used in lists, clauses, sentence openings,
               and other common 11+ punctuation situations.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Comma rules</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -145,18 +121,6 @@ export default function PunctuationPage() {
               singular and plural ownership rules.
             </p>
 
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Possession & omission</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
-
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -188,24 +152,12 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>✒️</div>
+            <div style={styles.icon}>;:</div>
             <h2 style={styles.cardTitle}>Advanced Punctuation</h2>
             <p style={styles.cardText}>
               Explore colons, semicolons, brackets, dashes, and other advanced
               punctuation often used in stronger 11+ English answers.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Advanced punctuation</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -238,24 +190,12 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>💬</div>
+            <div style={styles.icon}>“ ”</div>
             <h2 style={styles.cardTitle}>Direct Speech Punctuation</h2>
             <p style={styles.cardText}>
               Practise speech marks, commas, capital letters, and punctuation
               placement when writing or correcting direct speech.
             </p>
-
-            <div style={styles.infoBox}>
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Speech punctuation</span>
-              </div>
-
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Status:</span>
-                <span style={styles.infoValue}>Ready</span>
-              </div>
-            </div>
 
             <button
               onClick={(e) => {
@@ -319,6 +259,12 @@ const styles: { [key: string]: CSSProperties } = {
   icon: {
     fontSize: "42px",
     marginBottom: "12px",
+    minHeight: "50px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 700,
+    color: "#111827",
   },
   cardTitle: {
     fontSize: "24px",
@@ -329,32 +275,8 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "16px",
     color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
-    minHeight: "78px",
-  },
-  infoBox: {
-    width: "100%",
-    background: "#f9fafb",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "18px",
-  },
-  infoRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    margin: "8px 0",
-  },
-  infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
-  },
-  infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
+    marginBottom: "22px",
+    minHeight: "104px",
   },
   button: {
     padding: "12px 18px",
@@ -366,5 +288,6 @@ const styles: { [key: string]: CSSProperties } = {
     fontWeight: 600,
     fontSize: "16px",
     minWidth: "180px",
+    marginTop: "auto",
   },
 }
