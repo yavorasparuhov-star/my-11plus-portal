@@ -8,6 +8,9 @@ import { supabase } from "../../../../lib/supabaseClient"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "math_number_place_value_timer_enabled"
+
 type MathTest = {
   id: number
   title: string
@@ -67,6 +70,35 @@ function isFreeTest(accessLevel: string | null) {
   return accessLevel === "free"
 }
 
+function getOptionText(question: MathQuestion, option: AnswerOption) {
+  if (option === "A") return question.option_a
+  if (option === "B") return question.option_b
+  if (option === "C") return question.option_c
+  return question.option_d
+}
+
+function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
+  if (option === "A") return question.option_a_image_url
+  if (option === "B") return question.option_b_image_url
+  if (option === "C") return question.option_c_image_url
+  return question.option_d_image_url
+}
+
+function getDifficultyLabel(difficulty: number | null) {
+  if (difficulty === 1) return "Easy"
+  if (difficulty === 2) return "Medium"
+  if (difficulty === 3) return "Hard"
+  return "Not set"
+}
+
+function getDifficultyColors(difficulty: number | null) {
+  if (difficulty === 1) return { background: "#ecfdf5", color: "#065f46" }
+  if (difficulty === 2) return { background: "#eff6ff", color: "#1d4ed8" }
+  if (difficulty === 3) return { background: "#fef2f2", color: "#b91c1c" }
+
+  return { background: "#f3f4f6", color: "#374151" }
+}
+
 export default function NumberPlaceValueTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -85,6 +117,12 @@ export default function NumberPlaceValueTestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
 
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -95,10 +133,12 @@ export default function NumberPlaceValueTestPage() {
 
   const canAccessTest = useMemo(() => {
     if (!test) return false
+
     return hasFullAccess(plan) || (plan === "free" && isFreeTest(test.access_level))
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+
   const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
 
   const selectedAnswerText = useMemo(() => {
@@ -116,6 +156,9 @@ export default function NumberPlaceValueTestPage() {
       setCurrentIndex(0)
       setSelectedAnswer(null)
       setShowFeedback(false)
+      setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
       setFinished(false)
       setScore(0)
       setSubmitting(false)
@@ -229,6 +272,55 @@ export default function NumberPlaceValueTestPage() {
   }, [rawId, testId])
 
   useEffect(() => {
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
+    }
+
+    setTimerPreferenceLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
+
+  useEffect(() => {
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+  }, [currentIndex, timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (!currentQuestion) return
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    currentQuestion,
+    finished,
+    submitting,
+    showFeedback,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
 
@@ -242,8 +334,7 @@ export default function NumberPlaceValueTestPage() {
       window.removeEventListener("beforeunload", handleBeforeUnload)
     }
   }, [shouldWarnBeforeLeaving])
-
-  function confirmLeaveIfNeeded() {
+    function confirmLeaveIfNeeded() {
     if (!shouldWarnBeforeLeaving) return true
 
     return window.confirm(
@@ -259,12 +350,20 @@ export default function NumberPlaceValueTestPage() {
   }
 
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting) return
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return
     setSelectedAnswer(option)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || submitting || finished) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      submitting ||
+      finished ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     setAnswers((prev) => ({
       ...prev,
@@ -275,7 +374,15 @@ export default function NumberPlaceValueTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion || !selectedAnswer || !showFeedback || submitting) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      !showFeedback ||
+      submitting ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     const isLastQuestion = currentIndex === questions.length - 1
 
@@ -292,6 +399,35 @@ export default function NumberPlaceValueTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || submitting || finished || timeExpiredProcessing) return
+
+    setTimeExpiredProcessing(true)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeUpMessage("Time’s up!")
+
+    const isLastQuestion = currentIndex === questions.length - 1
+    const finalAnswers = { ...answers }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900))
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -364,7 +500,10 @@ export default function NumberPlaceValueTestPage() {
         user_answer_text: selected ? getOptionText(question, selected) : null,
         correct_answer_text: getOptionText(question, question.correct_answer),
         user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
-        correct_answer_image_url: getOptionImageUrl(question, question.correct_answer),
+        correct_answer_image_url: getOptionImageUrl(
+          question,
+          question.correct_answer
+        ),
         is_correct: selected === question.correct_answer,
         explanation: question.explanation,
         explanation_image_url: null,
@@ -473,21 +612,8 @@ export default function NumberPlaceValueTestPage() {
       )
     } finally {
       setSubmitting(false)
+      setTimeExpiredProcessing(false)
     }
-  }
-
-  function getOptionText(question: MathQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a
-    if (option === "B") return question.option_b
-    if (option === "C") return question.option_c
-    return question.option_d
-  }
-
-  function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a_image_url
-    if (option === "B") return question.option_b_image_url
-    if (option === "C") return question.option_c_image_url
-    return question.option_d_image_url
   }
 
   function restartSameTest() {
@@ -496,25 +622,13 @@ export default function NumberPlaceValueTestPage() {
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  function getDifficultyLabel(difficulty: number | null) {
-    if (difficulty === 1) return "Easy"
-    if (difficulty === 2) return "Medium"
-    if (difficulty === 3) return "Hard"
-    return "Not set"
-  }
-
-  function getDifficultyColors(difficulty: number | null) {
-    if (difficulty === 1) return { background: "#ecfdf5", color: "#065f46" }
-    if (difficulty === 2) return { background: "#eff6ff", color: "#1d4ed8" }
-    if (difficulty === 3) return { background: "#fef2f2", color: "#b91c1c" }
-
-    return { background: "#f3f4f6", color: "#374151" }
   }
 
   if (loading) {
@@ -707,8 +821,7 @@ export default function NumberPlaceValueTestPage() {
                 </button>
               </div>
             </div>
-
-            <div style={styles.reviewCard}>
+                     <div style={styles.reviewCard}>
               <h2 style={styles.sectionTitle}>Full Test Review</h2>
 
               <p style={styles.subtitle}>
@@ -879,7 +992,36 @@ export default function NumberPlaceValueTestPage() {
               <span style={styles.progressText}>
                 Answered: {answeredCount} / {questions.length}
               </span>
+
+              <div style={styles.timerControls}>
+                <button
+                  type="button"
+                  onClick={() => setTimerEnabled((prev) => !prev)}
+                  disabled={submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.timerButton,
+                    opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 ? "#b91c1c" : "#374151",
+                    }}
+                  >
+                    Time left: {timeLeft}s
+                  </span>
+                )}
+              </div>
             </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
@@ -924,12 +1066,15 @@ export default function NumberPlaceValueTestPage() {
                     key={option}
                     type="button"
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting}
+                    disabled={showFeedback || submitting || timeExpiredProcessing}
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
                       borderColor,
-                      cursor: showFeedback || submitting ? "default" : "pointer",
+                      cursor:
+                        showFeedback || submitting || timeExpiredProcessing
+                          ? "default"
+                          : "pointer",
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
@@ -955,11 +1100,15 @@ export default function NumberPlaceValueTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -1009,11 +1158,12 @@ export default function NumberPlaceValueTestPage() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={submitting}
+                    disabled={submitting || timeExpiredProcessing}
                     style={{
                       ...styles.primaryButton,
-                      opacity: submitting ? 0.7 : 1,
-                      cursor: submitting ? "not-allowed" : "pointer",
+                      opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                      cursor:
+                        submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                     }}
                   >
                     {submitting
@@ -1105,6 +1255,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  timerControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "0 0 18px 0",
+    color: "#b91c1c",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   inlineError: {
@@ -1398,4 +1577,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "14px",
     lineHeight: 1.6,
   },
-}
+}   
