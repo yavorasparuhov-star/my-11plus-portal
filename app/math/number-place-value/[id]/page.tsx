@@ -960,9 +960,7 @@ export default function NumberPlaceValueTestPage() {
               <div>
                 <h1 style={styles.title}>🔢 {test.title}</h1>
 
-                <p style={styles.subtitle}>
-                  Answer each maths question one at a time.
-                </p>
+
               </div>
 
               <div
