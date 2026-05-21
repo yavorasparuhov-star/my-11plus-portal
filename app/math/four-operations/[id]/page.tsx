@@ -67,6 +67,9 @@ function isFreeTest(accessLevel: string | null) {
   return accessLevel === "free"
 }
 
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "math_four_operations_timer_enabled"
+
 export default function FourOperationsTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -84,6 +87,11 @@ export default function FourOperationsTestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
+
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timerPressed, setTimerPressed] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -116,6 +124,8 @@ export default function FourOperationsTestPage() {
       setCurrentIndex(0)
       setSelectedAnswer(null)
       setShowFeedback(false)
+      setTimedOut(false)
+      setTimeLeft(QUESTION_TIME)
       setFinished(false)
       setScore(0)
       setSubmitting(false)
@@ -229,6 +239,46 @@ export default function FourOperationsTestPage() {
   }, [rawId, testId])
 
   useEffect(() => {
+    const savedTimer = localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimer !== null) {
+      setTimerEnabled(savedTimer === "true")
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) {
+      setTimeLeft(QUESTION_TIME)
+      return
+    }
+
+    if (!currentQuestion) return
+    if (finished) return
+    if (submitting) return
+    if (showFeedback) return
+
+    setTimeLeft(QUESTION_TIME)
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          void handleTimeout()
+          return 0
+        }
+
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [currentIndex, timerEnabled, currentQuestion, finished, submitting, showFeedback])
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
 
@@ -258,8 +308,18 @@ export default function FourOperationsTestPage() {
     router.push("/math/four-operations")
   }
 
+  function animatePress(setter: (value: boolean) => void) {
+    setter(true)
+
+    setTimeout(() => {
+      setter(false)
+    }, 140)
+  }
+
   function handleSelectAnswer(option: AnswerOption) {
     if (showFeedback || finished || submitting) return
+
+    setTimedOut(false)
     setSelectedAnswer(option)
   }
 
@@ -274,15 +334,43 @@ export default function FourOperationsTestPage() {
     setShowFeedback(true)
   }
 
+  async function handleTimeout() {
+    if (!currentQuestion || showFeedback || finished || submitting) return
+
+    setTimedOut(true)
+    setSelectedAnswer(null)
+    setShowFeedback(true)
+
+    setTimeout(() => {
+      const isLastQuestion = currentIndex === questions.length - 1
+
+      if (isLastQuestion) {
+        void submitResults(answers)
+        return
+      }
+
+      setCurrentIndex((prev) => prev + 1)
+      setSelectedAnswer(null)
+      setShowFeedback(false)
+      setTimedOut(false)
+      setTimeLeft(QUESTION_TIME)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }, 1500)
+  }
+
   async function handleNext() {
-    if (!currentQuestion || !selectedAnswer || !showFeedback || submitting) return
+    if (!currentQuestion || (!selectedAnswer && !timedOut) || !showFeedback || submitting) {
+      return
+    }
 
     const isLastQuestion = currentIndex === questions.length - 1
 
-    const finalAnswers = {
-      ...answers,
-      [currentQuestion.id]: selectedAnswer,
-    }
+    const finalAnswers = selectedAnswer
+      ? {
+          ...answers,
+          [currentQuestion.id]: selectedAnswer,
+        }
+      : answers
 
     if (isLastQuestion) {
       await submitResults(finalAnswers)
@@ -292,6 +380,8 @@ export default function FourOperationsTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimedOut(false)
+    setTimeLeft(QUESTION_TIME)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -496,6 +586,8 @@ export default function FourOperationsTestPage() {
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimedOut(false)
+    setTimeLeft(QUESTION_TIME)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
@@ -852,20 +944,50 @@ export default function FourOperationsTestPage() {
                 </p>
               </div>
 
-              <div
-                style={{
-                  ...styles.badge,
-                  background: badgeColors.background,
-                  color: badgeColors.color,
-                }}
-              >
-                {getDifficultyLabel(test.difficulty)}
+              <div style={styles.heroControls}>
+                <div
+                  style={{
+                    ...styles.badge,
+                    background: badgeColors.background,
+                    color: badgeColors.color,
+                  }}
+                >
+                  {getDifficultyLabel(test.difficulty)}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    animatePress(setTimerPressed)
+                    setTimerEnabled((prev) => !prev)
+                    setTimeLeft(QUESTION_TIME)
+                  }}
+                  style={{
+                    ...styles.controlButton,
+                    backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
+                    color: timerEnabled ? "white" : "black",
+                    transform: timerPressed
+                      ? "translateY(2px) scale(0.98)"
+                      : "translateY(0) scale(1)",
+                    boxShadow: timerPressed
+                      ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+                      : "0 2px 6px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
               </div>
             </div>
 
             <div style={styles.progressInfo}>
               Question <strong>{currentIndex + 1}</strong> / {questions.length}
             </div>
+
+            {timerEnabled && (
+              <div style={styles.timerText}>
+                Question Timer: {timeLeft}s
+              </div>
+            )}
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
@@ -970,15 +1092,17 @@ export default function FourOperationsTestPage() {
                 <div
                   style={{
                     ...styles.feedbackBox,
-                    backgroundColor: isCorrect ? "#f0fdf4" : "#fef2f2",
-                    borderColor: isCorrect ? "#86efac" : "#fecaca",
+                    backgroundColor: isCorrect && !timedOut ? "#f0fdf4" : "#fef2f2",
+                    borderColor: isCorrect && !timedOut ? "#86efac" : "#fecaca",
                   }}
                 >
                   <p style={{ margin: 0 }}>
-                    <strong>{isCorrect ? "Correct!" : "Not quite."}</strong>
+                    <strong>
+                      {timedOut ? "⏰ Time's up!" : isCorrect ? "Correct!" : "Not quite."}
+                    </strong>
                   </p>
 
-                  {!isCorrect && (
+                  {(!isCorrect || timedOut) && (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Correct answer:</strong>{" "}
                       {currentQuestion.correct_answer} —{" "}
@@ -989,12 +1113,16 @@ export default function FourOperationsTestPage() {
                     </p>
                   )}
 
-                  {selectedAnswer && (
+                  {selectedAnswer ? (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Your answer:</strong> {selectedAnswer} —{" "}
                       {selectedAnswerText}
                     </p>
-                  )}
+                  ) : timedOut ? (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Your answer:</strong> No answer
+                    </p>
+                  ) : null}
 
                   {currentQuestion.explanation &&
                     currentQuestion.explanation.trim() !== "" && (
@@ -1066,6 +1194,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexWrap: "wrap",
   },
 
+  heroControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
@@ -1087,10 +1223,33 @@ const styles: { [key: string]: React.CSSProperties } = {
     whiteSpace: "nowrap",
   },
 
+  controlButton: {
+    width: "140px",
+    height: "44px",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#374151",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "transform 0.12s ease, box-shadow 0.12s ease",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+  },
+
   progressInfo: {
     marginTop: "20px",
     color: "#444",
     fontWeight: 600,
+  },
+
+  timerText: {
+    marginTop: "12px",
+    color: "#111827",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   progressRow: {
