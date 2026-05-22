@@ -41,7 +41,7 @@ export default function VRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>↔️</div>
+            <div style={{ ...styles.icon, ...styles.wordIcon }}>↔</div>
             <h2 style={styles.cardTitle}>Word Relationships</h2>
             <p style={styles.cardText}>
               Build skills in synonyms, antonyms, analogies, and word meaning
@@ -77,7 +77,7 @@ export default function VRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🔐</div>
+            <div style={{ ...styles.icon, ...styles.codeIcon }}>🔐</div>
             <h2 style={styles.cardTitle}>Codes & Logic</h2>
             <p style={styles.cardText}>
               Practise letter codes, word rules, hidden logic, and structured
@@ -113,7 +113,7 @@ export default function VRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>A→Z</div>
+            <div style={{ ...styles.icon, ...styles.sequenceIcon }}>A→Z</div>
             <h2 style={styles.cardTitle}>Sequence & Patterns</h2>
             <p style={styles.cardText}>
               Improve recognition of letter sequences, word patterns, and logical
@@ -180,14 +180,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
   },
   icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
-    minHeight: "52px",
+    width: "76px",
+    height: "76px",
+    borderRadius: "22px",
+    marginBottom: "16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 800,
+    fontSize: "34px",
+    fontWeight: 900,
     letterSpacing: "-1px",
+    boxShadow: "0 12px 24px rgba(0,0,0,0.12)",
+  },
+  wordIcon: {
+    background: "linear-gradient(135deg, #dbeafe, #93c5fd)",
+    color: "#1d4ed8",
+  },
+  codeIcon: {
+    background: "linear-gradient(135deg, #fef3c7, #fbbf24)",
+    color: "#92400e",
+  },
+  sequenceIcon: {
+    background: "linear-gradient(135deg, #fce7f3, #f9a8d4)",
+    color: "#9d174d",
+    fontSize: "25px",
   },
   cardTitle: {
     fontSize: "24px",

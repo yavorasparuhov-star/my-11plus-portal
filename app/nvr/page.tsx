@@ -43,7 +43,7 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>◆◇◆</div>
+            <div style={{ ...styles.icon, ...styles.shapeIcon }}>◆◇◆</div>
             <h2 style={styles.cardTitle}>Shape Patterns</h2>
             <p style={styles.cardText}>
               Practise visual patterns, odd one out, missing shapes, and
@@ -79,7 +79,7 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>↻↔</div>
+            <div style={{ ...styles.icon, ...styles.rotationIcon }}>↻↔</div>
             <h2 style={styles.cardTitle}>Rotations & Reflections</h2>
             <p style={styles.cardText}>
               Build confidence with mirror images, rotations, flips, and changes
@@ -115,7 +115,7 @@ export default function NVRPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>▣🔐</div>
+            <div style={{ ...styles.icon, ...styles.logicIcon }}>▣🔐</div>
             <h2 style={styles.cardTitle}>Codes & Spatial Logic</h2>
             <p style={styles.cardText}>
               Work on shape codes, spatial logic, hidden shapes, nets, cubes,
@@ -182,14 +182,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
   },
   icon: {
-    fontSize: "38px",
+    width: "86px",
+    height: "86px",
+    borderRadius: "24px",
+    fontSize: "30px",
     lineHeight: 1,
-    marginBottom: "14px",
-    minHeight: "42px",
+    marginBottom: "16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     letterSpacing: "2px",
+    fontWeight: 900,
+    boxShadow: "0 12px 24px rgba(0,0,0,0.12)",
+  },
+  shapeIcon: {
+    background: "linear-gradient(135deg, #fef3c7, #fb923c)",
+    color: "#7c2d12",
+  },
+  rotationIcon: {
+    background: "linear-gradient(135deg, #dbeafe, #60a5fa)",
+    color: "#1e3a8a",
+  },
+  logicIcon: {
+    background: "linear-gradient(135deg, #dcfce7, #34d399)",
+    color: "#064e3b",
   },
   cardTitle: {
     fontSize: "24px",

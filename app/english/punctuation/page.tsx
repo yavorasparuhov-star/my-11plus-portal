@@ -42,7 +42,7 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>✅</div>
+            <div style={{ ...styles.icon, ...styles.sentenceIcon }}>!</div>
             <h2 style={styles.cardTitle}>Sentence</h2>
             <p style={styles.cardText}>
               Practise full stops, capital letters, question marks,
@@ -78,7 +78,7 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>，</div>
+            <div style={{ ...styles.icon, ...styles.commaIcon }}>，</div>
             <h2 style={styles.cardTitle}>Comma</h2>
             <p style={styles.cardText}>
               Learn how commas are used in lists, clauses, sentence openings,
@@ -114,7 +114,7 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>’</div>
+            <div style={{ ...styles.icon, ...styles.apostropheIcon }}>’</div>
             <h2 style={styles.cardTitle}>Apostrophes</h2>
             <p style={styles.cardText}>
               Practise apostrophes for contraction and possession, including
@@ -152,7 +152,7 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>;:</div>
+            <div style={{ ...styles.icon, ...styles.advancedIcon }}>;:</div>
             <h2 style={styles.cardTitle}>Advanced Punctuation</h2>
             <p style={styles.cardText}>
               Explore colons, semicolons, brackets, dashes, and other advanced
@@ -190,7 +190,7 @@ export default function PunctuationPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>“ ”</div>
+            <div style={{ ...styles.icon, ...styles.speechIcon }}>“ ”</div>
             <h2 style={styles.cardTitle}>Direct Speech Punctuation</h2>
             <p style={styles.cardText}>
               Practise speech marks, commas, capital letters, and punctuation
@@ -257,14 +257,43 @@ const styles: { [key: string]: CSSProperties } = {
     alignItems: "center",
   },
   icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
-    minHeight: "50px",
+    width: "76px",
+    height: "76px",
+    borderRadius: "22px",
+    marginBottom: "16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 700,
-    color: "#111827",
+    fontSize: "42px",
+    fontWeight: 900,
+    lineHeight: 1,
+    boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
+  },
+  sentenceIcon: {
+    background: "linear-gradient(135deg, #f97316, #facc15)",
+    color: "#ffffff",
+  },
+  commaIcon: {
+    background: "linear-gradient(135deg, #38bdf8, #2563eb)",
+    color: "#ffffff",
+    fontSize: "50px",
+  },
+  apostropheIcon: {
+    background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+    color: "#ffffff",
+    fontSize: "54px",
+  },
+  advancedIcon: {
+    background: "linear-gradient(135deg, #fb7185, #db2777)",
+    color: "#ffffff",
+    fontSize: "34px",
+    letterSpacing: "-3px",
+  },
+  speechIcon: {
+    background: "linear-gradient(135deg, #34d399, #059669)",
+    color: "#ffffff",
+    fontSize: "30px",
+    letterSpacing: "-2px",
   },
   cardTitle: {
     fontSize: "24px",
@@ -275,8 +304,8 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "16px",
     color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "22px",
-    minHeight: "104px",
+    marginBottom: "18px",
+    minHeight: "78px",
   },
   button: {
     padding: "12px 18px",
@@ -288,6 +317,5 @@ const styles: { [key: string]: CSSProperties } = {
     fontWeight: 600,
     fontSize: "16px",
     minWidth: "180px",
-    marginTop: "auto",
   },
 }

@@ -42,7 +42,7 @@ export default function GrammarPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🔠</div>
+            <div style={{ ...styles.icon, ...styles.wordClassesIcon }}>ABC</div>
             <h2 style={styles.cardTitle}>Primary Word Classes</h2>
             <p style={styles.cardText}>
               Practise nouns, verbs, adjectives, adverbs, pronouns,
@@ -81,7 +81,7 @@ export default function GrammarPage() {
               e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
             }}
           >
-            <div style={styles.icon}>🧱</div>
+            <div style={{ ...styles.icon, ...styles.sentenceIcon }}>S→S</div>
             <h2 style={styles.cardTitle}>Sentence Structure & Syntax</h2>
             <p style={styles.cardText}>
               Improve sentence construction, word order, clauses, phrase use,
@@ -148,8 +148,25 @@ const styles: { [key: string]: CSSProperties } = {
     alignItems: "center",
   },
   icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
+    width: "76px",
+    height: "76px",
+    borderRadius: "22px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "30px",
+    fontWeight: 900,
+    marginBottom: "16px",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+    letterSpacing: "0.5px",
+  },
+  wordClassesIcon: {
+    background: "linear-gradient(135deg, #fef3c7, #fb923c)",
+    color: "#7c2d12",
+  },
+  sentenceIcon: {
+    background: "linear-gradient(135deg, #dbeafe, #818cf8)",
+    color: "#1e1b4b",
   },
   cardTitle: {
     fontSize: "24px",
