@@ -6,8 +6,10 @@ import Header from "../../../../components/Header"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
-const NVR_CATEGORY = "rotations-reflections"
 const RESULT_CATEGORY = "rotations-reflections"
+const NVR_CATEGORY = "rotations-reflections"
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "nvr_rotations_reflections_timer_enabled"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -46,15 +48,15 @@ type SavedQuestionReview = {
   question_id: number
   question_order: number
   question_text: string
-  question_image_url: string | null
+  question_image_url?: string | null
   options: Record<AnswerOption, string | null>
-  option_images: Partial<Record<AnswerOption, string | null>>
+  option_images?: Partial<Record<AnswerOption, string | null>>
   user_answer: AnswerOption | null
   correct_answer: AnswerOption
   user_answer_text: string | null
   correct_answer_text: string | null
-  user_answer_image_url: string | null
-  correct_answer_image_url: string | null
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
   is_correct: boolean
   explanation: string | null
   explanation_image_url?: string | null
@@ -95,8 +97,15 @@ export default function NVRRotationsReflectionsTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
 
   const currentQuestion = questions[currentIndex]
+
+  const resultHref = `/results/nvr/${RESULT_CATEGORY}/${testId}`
 
   const canAccessTest = useMemo(() => {
     if (!test) return false
@@ -124,6 +133,9 @@ export default function NVRRotationsReflectionsTestPage() {
       setFinished(false)
       setScore(0)
       setSubmitting(false)
+      setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid NVR test ID.")
@@ -233,6 +245,55 @@ export default function NVRRotationsReflectionsTestPage() {
   }, [rawId, testId])
 
   useEffect(() => {
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
+    }
+
+    setTimerPreferenceLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
+
+  useEffect(() => {
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+  }, [currentIndex, timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (!currentQuestion) return
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    currentQuestion,
+    finished,
+    submitting,
+    showFeedback,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
 
@@ -263,12 +324,20 @@ export default function NVRRotationsReflectionsTestPage() {
   }
 
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting) return
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return
     setSelectedAnswer(option)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || submitting || finished) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      submitting ||
+      finished ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     setAnswers((prev) => ({
       ...prev,
@@ -279,7 +348,15 @@ export default function NVRRotationsReflectionsTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion || !selectedAnswer || !showFeedback || submitting) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      !showFeedback ||
+      submitting ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     const isLastQuestion = currentIndex === questions.length - 1
 
@@ -296,7 +373,44 @@ export default function NVRRotationsReflectionsTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || submitting || finished || timeExpiredProcessing) return
+
+    setTimeExpiredProcessing(true)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeUpMessage("Time’s up!")
+
+    const isLastQuestion = currentIndex === questions.length - 1
+    const finalAnswers = { ...answers }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900))
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function formatTime(totalSeconds: number) {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
 
   function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
@@ -374,7 +488,7 @@ export default function NVRRotationsReflectionsTestPage() {
 
     if (!upsertError) return
 
-    console.error("Error upserting latest rotations reflections result:", {
+    console.error("Error upserting latest NVR result:", {
       message: upsertError.message,
       details: upsertError.details,
       hint: upsertError.hint,
@@ -394,7 +508,7 @@ export default function NVRRotationsReflectionsTestPage() {
       .eq("test_id", test.id)
 
     if (deleteError) {
-      console.error("Error deleting old rotations reflections result:", {
+      console.error("Error deleting old NVR result:", {
         message: deleteError.message,
         details: deleteError.details,
         hint: deleteError.hint,
@@ -407,7 +521,7 @@ export default function NVRRotationsReflectionsTestPage() {
       .insert([payload])
 
     if (insertError) {
-      console.error("Error saving latest rotations reflections result:", {
+      console.error("Error saving latest NVR result:", {
         message: insertError.message,
         details: insertError.details,
         hint: insertError.hint,
@@ -415,9 +529,7 @@ export default function NVRRotationsReflectionsTestPage() {
         payload,
       })
 
-      setErrorMessage(
-        "Progress was saved, but the full test result could not be saved."
-      )
+      setErrorMessage("Progress was saved, but the full test result could not be saved.")
     }
   }
 
@@ -453,7 +565,7 @@ export default function NVRRotationsReflectionsTestPage() {
             user_id: userId,
             test_id: test.id,
             question_id: question.id,
-            category: test.category || NVR_CATEGORY,
+            category: test.category,
             question_text: question.question_text,
             user_answer: selected ?? null,
             correct_answer: question.correct_answer,
@@ -464,14 +576,12 @@ export default function NVRRotationsReflectionsTestPage() {
 
       const totalQuestions = questions.length
       const successRate =
-        totalQuestions > 0
-          ? Math.round((correctAnswers / totalQuestions) * 100)
-          : 0
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
       const progressPayload = {
         user_id: userId,
         test_id: test.id,
-        category: test.category || NVR_CATEGORY,
+        category: test.category,
         total_questions: totalQuestions,
         correct_answers: correctAnswers,
         success_rate: successRate,
@@ -525,11 +635,13 @@ export default function NVRRotationsReflectionsTestPage() {
       setScore(correctAnswers)
       setFinished(true)
       setSubmitting(false)
+      setTimeExpiredProcessing(false)
       window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (error) {
       console.error("Unexpected NVR submit error:", error)
       setErrorMessage("Something went wrong while submitting. Please try again.")
       setSubmitting(false)
+      setTimeExpiredProcessing(false)
     }
   }
 
@@ -555,6 +667,9 @@ export default function NVRRotationsReflectionsTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -760,10 +875,7 @@ export default function NVRRotationsReflectionsTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
-                <Link
-                  href={`/results/nvr/${RESULT_CATEGORY}/${test.id}`}
-                  style={styles.primaryLinkButton}
-                >
+                <Link href={resultHref} style={styles.primaryLinkButton}>
                   View Full Result
                 </Link>
 
@@ -818,10 +930,40 @@ export default function NVRRotationsReflectionsTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
-              <span style={styles.progressText}>
-                Answered: {answeredCount} / {questions.length}
-              </span>
+              <div style={styles.timerControls}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimerEnabled((prev) => !prev)
+                    setTimeLeft(QUESTION_TIME)
+                    setTimeUpMessage("")
+                    setTimeExpiredProcessing(false)
+                  }}
+                  disabled={submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.timerButton,
+                    opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 ? "#b91c1c" : "#374151",
+                    }}
+                  >
+                    Time left: {formatTime(timeLeft)}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
@@ -866,12 +1008,15 @@ export default function NVRRotationsReflectionsTestPage() {
                     key={option}
                     type="button"
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting}
+                    disabled={showFeedback || submitting || timeExpiredProcessing}
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
                       borderColor,
-                      cursor: showFeedback || submitting ? "default" : "pointer",
+                      cursor:
+                        showFeedback || submitting || timeExpiredProcessing
+                          ? "default"
+                          : "pointer",
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
@@ -897,11 +1042,15 @@ export default function NVRRotationsReflectionsTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -922,7 +1071,8 @@ export default function NVRRotationsReflectionsTestPage() {
 
                   {!isCorrect && (
                     <p style={{ margin: "8px 0 0 0" }}>
-                      <strong>Correct answer:</strong> {currentQuestion.correct_answer}
+                      <strong>Correct answer:</strong>{" "}
+                      {currentQuestion.correct_answer}
                     </p>
                   )}
 
@@ -936,7 +1086,8 @@ export default function NVRRotationsReflectionsTestPage() {
                   {currentQuestion.explanation &&
                     currentQuestion.explanation.trim() !== "" && (
                       <p style={{ margin: "8px 0 0 0" }}>
-                        <strong>Explanation:</strong> {currentQuestion.explanation}
+                        <strong>Explanation:</strong>{" "}
+                        {currentQuestion.explanation}
                       </p>
                     )}
                 </div>
@@ -945,11 +1096,12 @@ export default function NVRRotationsReflectionsTestPage() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={submitting}
+                    disabled={submitting || timeExpiredProcessing}
                     style={{
                       ...styles.primaryButton,
-                      opacity: submitting ? 0.7 : 1,
-                      cursor: submitting ? "not-allowed" : "pointer",
+                      opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                      cursor:
+                        submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                     }}
                   >
                     {submitting
@@ -1041,6 +1193,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  timerControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "0 0 18px 0",
+    color: "#b91c1c",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   inlineError: {
@@ -1204,7 +1385,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#065f46",
     cursor: "pointer",
     fontSize: "16px",
-    fontWeight: 700,
+    fontWeight: 600,
     minWidth: "180px",
     textAlign: "center",
     textDecoration: "none",

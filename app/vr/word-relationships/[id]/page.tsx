@@ -8,6 +8,9 @@ import { useParams, useRouter } from "next/navigation"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "vr_word_relationships_timer_enabled"
+
 type VRTest = {
   id: number
   title: string
@@ -94,6 +97,9 @@ export default function VRWordRelationshipsTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timeUp, setTimeUp] = useState(false)
 
   const currentQuestion = questions[currentIndex]
   const hasAccess = canUserAccessTest(userPlan, test)
@@ -123,6 +129,9 @@ export default function VRWordRelationshipsTestPage() {
       setScore(0)
       setErrorMessage("")
       setQuestions([])
+      setSavingResults(false)
+      setTimeLeft(QUESTION_TIME)
+      setTimeUp(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid test ID.")
@@ -231,6 +240,51 @@ export default function VRWordRelationshipsTestPage() {
   }, [rawId, testId])
 
   useEffect(() => {
+    const savedTimerPreference = localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerPreference === null) return
+
+    setTimerEnabled(savedTimerPreference === "true")
+  }, [])
+
+  useEffect(() => {
+    if (finished) return
+
+    setTimeLeft(QUESTION_TIME)
+    setTimeUp(false)
+  }, [currentIndex, finished])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (loading || finished || savingResults || showFeedback || timeUp) return
+    if (timeLeft <= 0) return
+
+    const interval = window.setInterval(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [timerEnabled, loading, finished, savingResults, showFeedback, timeUp, timeLeft])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (loading || finished || savingResults || showFeedback || timeUp) return
+    if (timeLeft !== 0) return
+
+    setTimeUp(true)
+
+    const timeout = window.setTimeout(() => {
+      handleTimeUp()
+    }, 500)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [timerEnabled, loading, finished, savingResults, showFeedback, timeUp, timeLeft])
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
 
@@ -258,6 +312,56 @@ export default function VRWordRelationshipsTestPage() {
     if (!confirmed) return
 
     router.push("/vr/word-relationships")
+  }
+
+  function formatTime(totalSeconds: number) {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
+  function toggleTimer() {
+    setTimerEnabled((prev) => {
+      const next = !prev
+
+      localStorage.setItem(TIMER_STORAGE_KEY, String(next))
+      setTimeLeft(QUESTION_TIME)
+      setTimeUp(false)
+
+      return next
+    })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || !hasAccess || finished || savingResults || showFeedback) return
+
+    const isLastQuestion = currentIndex === questions.length - 1
+
+    const finalAnswers = {
+      ...userAnswers,
+    }
+
+    if (selectedAnswer) {
+      finalAnswers[currentQuestion.id] = selectedAnswer
+    }
+
+    if (isLastQuestion) {
+      const finalScore = questions.reduce((total, question) => {
+        return finalAnswers[question.id] === question.correct_answer
+          ? total + 1
+          : total
+      }, 0)
+
+      await saveResults(finalScore, finalAnswers)
+      return
+    }
+
+    setUserAnswers(finalAnswers)
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   function handleSelectAnswer(answer: AnswerOption) {
@@ -478,6 +582,8 @@ export default function VRWordRelationshipsTestPage() {
     setShowFeedback(false)
     setScore(0)
     setErrorMessage("")
+    setTimeLeft(QUESTION_TIME)
+    setTimeUp(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -853,7 +959,30 @@ export default function VRWordRelationshipsTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
-              <span style={styles.progressText}>Score: {score}</span>
+              <div style={styles.timerBox}>
+                <button
+                  type="button"
+                  onClick={toggleTimer}
+                  style={{
+                    ...styles.timerToggleButton,
+                    background: timerEnabled ? "#dcfce7" : "#e5e7eb",
+                    color: timerEnabled ? "#166534" : "#111827",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 || timeUp ? "#dc2626" : "#374151",
+                    }}
+                  >
+                    {timeUp ? "Time's up!" : `Time left: ${formatTime(timeLeft)}`}
+                  </span>
+                )}
+              </div>
             </div>
 
             <h2 style={styles.questionText}>{currentQuestion.question_text}</h2>
@@ -1104,6 +1233,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  timerBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+
+  timerToggleButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
   },
 
   questionText: {

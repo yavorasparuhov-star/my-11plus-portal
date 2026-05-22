@@ -1,12 +1,18 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
+import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
+
+const SUBJECT = "vr"
+const DB_CATEGORY = "sequence-pattern"
+const TOPIC_ROUTE = "/vr/sequence-patterns"
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "vr_sequence_patterns_timer_enabled"
 
 type VRTest = {
   id: number
@@ -94,6 +100,9 @@ export default function VRSequencePatternsTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timeUp, setTimeUp] = useState(false)
 
   const currentQuestion = questions[currentIndex]
   const hasAccess = canUserAccessTest(userPlan, test)
@@ -123,6 +132,9 @@ export default function VRSequencePatternsTestPage() {
       setScore(0)
       setErrorMessage("")
       setQuestions([])
+      setSavingResults(false)
+      setTimeLeft(QUESTION_TIME)
+      setTimeUp(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid test ID.")
@@ -134,7 +146,7 @@ export default function VRSequencePatternsTestPage() {
         .from("vr_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", "sequence-pattern")
+        .eq("category", DB_CATEGORY)
         .maybeSingle()
 
       if (testError || !testData) {
@@ -161,7 +173,11 @@ export default function VRSequencePatternsTestPage() {
       } = await supabase.auth.getSession()
 
       if (sessionError) {
-        console.error("Error getting auth session:", sessionError)
+        console.error("Error getting auth session:", {
+          message: sessionError.message,
+          name: sessionError.name,
+          full: sessionError,
+        })
       }
 
       const user = session?.user ?? null
@@ -182,7 +198,13 @@ export default function VRSequencePatternsTestPage() {
         .maybeSingle()
 
       if (profileError) {
-        console.error("Error loading profile plan:", profileError)
+        console.error("Error loading profile plan:", {
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          code: profileError.code,
+          full: profileError,
+        })
       }
 
       const dbPlan = profile?.plan
@@ -230,6 +252,52 @@ export default function VRSequencePatternsTestPage() {
     loadVRTest()
   }, [rawId, testId])
 
+
+  useEffect(() => {
+    const savedTimerPreference = localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerPreference === null) return
+
+    setTimerEnabled(savedTimerPreference === "true")
+  }, [])
+
+  useEffect(() => {
+    if (finished) return
+
+    setTimeLeft(QUESTION_TIME)
+    setTimeUp(false)
+  }, [currentIndex, finished])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (loading || finished || savingResults || showFeedback || timeUp) return
+    if (timeLeft <= 0) return
+
+    const interval = window.setInterval(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [timerEnabled, loading, finished, savingResults, showFeedback, timeUp, timeLeft])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (loading || finished || savingResults || showFeedback || timeUp) return
+    if (timeLeft !== 0) return
+
+    setTimeUp(true)
+
+    const timeout = window.setTimeout(() => {
+      handleTimeUp()
+    }, 500)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [timerEnabled, loading, finished, savingResults, showFeedback, timeUp, timeLeft])
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
@@ -257,54 +325,82 @@ export default function VRSequencePatternsTestPage() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
 
-    router.push("/vr/sequence-patterns")
+    router.push(TOPIC_ROUTE)
+  }
+
+
+  function formatTime(totalSeconds: number) {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
+  function toggleTimer() {
+    setTimerEnabled((prev) => {
+      const next = !prev
+
+      localStorage.setItem(TIMER_STORAGE_KEY, String(next))
+      setTimeLeft(QUESTION_TIME)
+      setTimeUp(false)
+
+      return next
+    })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || finished || savingResults || showFeedback) return
+
+    const isLastQuestion = currentIndex === questions.length - 1
+
+    const finalAnswers = {
+      ...userAnswers,
+    }
+
+    if (selectedAnswer) {
+      finalAnswers[currentQuestion.id] = selectedAnswer
+    }
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setUserAnswers(finalAnswers)
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   function handleSelectAnswer(answer: AnswerOption) {
-    if (showFeedback || !hasAccess || savingResults || finished) return
+    if (showFeedback || !hasAccess || finished || savingResults) return
     setSelectedAnswer(answer)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || !hasAccess || savingResults || finished) {
-      return
-    }
-
-    const isCorrect = selectedAnswer === currentQuestion.correct_answer
+    if (!currentQuestion || !selectedAnswer || !hasAccess || finished) return
 
     setUserAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: selectedAnswer,
     }))
 
-    if (isCorrect) {
-      setScore((prev) => prev + 1)
-    }
-
     setShowFeedback(true)
   }
 
   async function handleNext() {
-    if (!currentQuestion || !hasAccess || !selectedAnswer || savingResults) return
+    if (!currentQuestion || !hasAccess || !selectedAnswer || !showFeedback) return
 
     const isLastQuestion = currentIndex === questions.length - 1
 
+    const finalAnswers = {
+      ...userAnswers,
+      [currentQuestion.id]: selectedAnswer,
+    }
+
     if (isLastQuestion) {
-      const finalAnswers = {
-        ...userAnswers,
-        [currentQuestion.id]: selectedAnswer,
-      }
-
-      const finalScore = questions.reduce((total, question) => {
-        return finalAnswers[question.id] === question.correct_answer
-          ? total + 1
-          : total
-      }, 0)
-
-      await saveResults(finalScore, finalAnswers)
-      setScore(finalScore)
-      setFinished(true)
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      await submitResults(finalAnswers)
       return
     }
 
@@ -314,15 +410,51 @@ export default function VRSequencePatternsTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  async function saveResults(finalScore: number, finalAnswers: UserAnswerMap) {
+  async function submitResults(finalAnswers: UserAnswerMap) {
+    if (savingResults) return
     if (!userId || !test) return
+    if (questions.length === 0) return
 
     setSavingResults(true)
     setErrorMessage("")
 
+    const testCategory = test.category || DB_CATEGORY
+
+    let correctAnswers = 0
+
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      category: string
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+    }[] = []
+
+    for (const question of questions) {
+      const selected = finalAnswers[question.id]
+
+      if (selected === question.correct_answer) {
+        correctAnswers += 1
+      } else {
+        wrongAnswersForReview.push({
+          user_id: userId,
+          test_id: test.id,
+          question_id: question.id,
+          category: testCategory,
+          question_text: question.question_text,
+          user_answer: selected ?? null,
+          correct_answer: question.correct_answer,
+          difficulty: question.difficulty ?? test.difficulty ?? null,
+        })
+      }
+    }
+
     const totalQuestions = questions.length
     const successRate =
-      totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
     const fullReview: CompletedQuestionReview[] = questions.map((question) => {
       const selected = finalAnswers[question.id] ?? null
@@ -357,111 +489,108 @@ export default function VRSequencePatternsTestPage() {
       }
     })
 
-    const progressPayload = {
-      user_id: userId,
-      test_id: test.id,
-      category: test.category || "sequence-pattern",
-      total_questions: totalQuestions,
-      correct_answers: finalScore,
-      success_rate: successRate,
-      difficulty: test.difficulty ?? null,
-    }
-
-    const { error: progressError } = await supabase
-      .from("vr_progress")
-      .insert([progressPayload])
-
-    if (progressError) {
-      console.error("Error saving VR progress:", {
-        message: progressError.message,
-        details: progressError.details,
-        hint: progressError.hint,
-        code: progressError.code,
-        full: progressError,
-        payload: progressPayload,
-      })
-
-      setErrorMessage(
-        progressError.message || "Could not save your progress. Please try again."
-      )
-      setSavingResults(false)
-      return
-    }
-
-    const now = new Date().toISOString()
-
-    const latestResultPayload = {
-      user_id: userId,
-      subject: "vr",
-      category: test.category || "sequence-pattern",
-      subcategory: "",
-      subcategory_two: "",
-      subcategory_three: "",
-      test_id: test.id,
-      test_title: test.title,
-      total_questions: totalQuestions,
-      correct_answers: finalScore,
-      success_rate: successRate,
-      difficulty: test.difficulty ?? null,
-      answers: fullReview,
-      completed_at: now,
-      updated_at: now,
-    }
-
-    const { error: latestResultError } = await supabase
-      .from("latest_test_results")
-      .upsert([latestResultPayload], {
-        onConflict:
-          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-      })
-
-    if (latestResultError) {
-      console.error("Error saving latest full VR test result:", {
-        message: latestResultError.message,
-        details: latestResultError.details,
-        hint: latestResultError.hint,
-        code: latestResultError.code,
-        full: latestResultError,
-        payload: latestResultPayload,
-      })
-
-      setErrorMessage(
-        "Your score was saved, but the full test result could not be saved for later."
-      )
-    }
-
-    const reviewRows = questions
-      .filter((question) => finalAnswers[question.id] !== question.correct_answer)
-      .map((question) => ({
-        user_id: userId,
-        test_id: test.id,
-        question_id: question.id,
-        category: test.category || "sequence-pattern",
-        question_text: question.question_text,
-        user_answer: finalAnswers[question.id] ?? null,
-        correct_answer: question.correct_answer,
-        difficulty: question.difficulty ?? test.difficulty ?? null,
-      }))
-
-    if (reviewRows.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("vr_review")
-        .insert(reviewRows)
-
-      if (reviewError) {
-        console.error("Error saving VR review:", {
-          message: reviewError.message,
-          details: reviewError.details,
-          hint: reviewError.hint,
-          code: reviewError.code,
-          full: reviewError,
-        })
-      }
-    }
-
     setUserAnswers(finalAnswers)
     setCompletedReview(fullReview)
-    setSavingResults(false)
+    setScore(correctAnswers)
+    setFinished(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+
+    try {
+      const progressPayload = {
+        user_id: userId,
+        test_id: test.id,
+        category: testCategory,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+      }
+
+      const { error: progressError } = await supabase
+        .from("vr_progress")
+        .insert([progressPayload])
+
+      if (progressError) {
+        console.error("Error saving VR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+          payload: progressPayload,
+        })
+
+        setErrorMessage(
+          "Your result is shown below, but the progress history could not be saved."
+        )
+      }
+
+      const latestResultPayload = {
+        user_id: userId,
+        subject: SUBJECT,
+        category: testCategory,
+        subcategory: "",
+        subcategory_two: "",
+        subcategory_three: "",
+        test_id: test.id,
+        test_title: test.title,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+        answers: fullReview,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data: savedLatestResult, error: latestResultError } = await supabase
+        .from("latest_test_results")
+        .upsert([latestResultPayload], {
+          onConflict:
+            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+        })
+        .select()
+
+      if (latestResultError) {
+        console.error("Error saving latest full VR test result:", {
+          message: latestResultError.message,
+          details: latestResultError.details,
+          hint: latestResultError.hint,
+          code: latestResultError.code,
+          full: latestResultError,
+          payload: latestResultPayload,
+        })
+
+        setErrorMessage(
+          "Your result is shown below, but the full test result could not be saved for later."
+        )
+      } else {
+        console.log("Latest VR Sequence Patterns result saved:", savedLatestResult)
+      }
+
+      if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("vr_review")
+          .insert(wrongAnswersForReview)
+
+        if (reviewError) {
+          console.error("Error saving VR review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Unexpected VR submit error:", error)
+      setErrorMessage(
+        "Your result is shown below, but something went wrong while saving it."
+      )
+    } finally {
+      setSavingResults(false)
+    }
   }
 
   function restartTest() {
@@ -473,6 +602,8 @@ export default function VRSequencePatternsTestPage() {
     setShowFeedback(false)
     setScore(0)
     setErrorMessage("")
+    setTimeLeft(QUESTION_TIME)
+    setTimeUp(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -709,9 +840,9 @@ export default function VRSequencePatternsTestPage() {
             </div>
 
             <div style={styles.reviewCard}>
-              <h2 style={styles.sectionTitle}>Full Test Review</h2>
+              <h2 style={styles.cardTitle}>Full Test Review</h2>
 
-              <p style={styles.subtitle}>
+              <p style={styles.subtitleLeft}>
                 Here are all the questions, your answers, and the correct answers.
               </p>
 
@@ -726,7 +857,9 @@ export default function VRSequencePatternsTestPage() {
                     }}
                   >
                     <div style={styles.reviewQuestionTop}>
-                      <h3 style={styles.reviewQuestionTitle}>Question {index + 1}</h3>
+                      <h3 style={styles.reviewQuestionTitle}>
+                        Question {index + 1}
+                      </h3>
 
                       <span
                         style={{
@@ -848,7 +981,30 @@ export default function VRSequencePatternsTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
-              <span style={styles.progressText}>Score: {score}</span>
+              <div style={styles.timerBox}>
+                <button
+                  type="button"
+                  onClick={toggleTimer}
+                  style={{
+                    ...styles.timerToggleButton,
+                    background: timerEnabled ? "#dcfce7" : "#e5e7eb",
+                    color: timerEnabled ? "#166534" : "#111827",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 || timeUp ? "#dc2626" : "#374151",
+                    }}
+                  >
+                    {timeUp ? "Time's up!" : `Time left: ${formatTime(timeLeft)}`}
+                  </span>
+                )}
+              </div>
             </div>
 
             <h2 style={styles.questionText}>{currentQuestion.question_text}</h2>
@@ -963,6 +1119,12 @@ export default function VRSequencePatternsTestPage() {
                 </button>
               </>
             )}
+
+            <div style={styles.backRow}>
+              <button onClick={goBackSafely} style={styles.retryButton}>
+                Back to Topic
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1093,6 +1255,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#374151",
   },
 
+  timerBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  },
+
+  timerToggleButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
   questionText: {
     fontSize: "26px",
     color: "#111827",
@@ -1177,6 +1363,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
   },
 
+  backRow: {
+    marginTop: "16px",
+    display: "flex",
+    justifyContent: "center",
+  },
+
   inlineError: {
     marginTop: "12px",
     marginBottom: 0,
@@ -1197,13 +1389,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "28px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     marginTop: "24px",
-  },
-
-  sectionTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-    fontSize: "28px",
-    color: "#111827",
   },
 
   reviewList: {
