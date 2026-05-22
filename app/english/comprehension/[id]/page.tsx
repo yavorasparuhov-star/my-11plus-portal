@@ -59,6 +59,8 @@ type CompletedQuestionReview = {
 const MAIN_CATEGORY = "comprehension"
 const SUBCATEGORY = "comprehension"
 const REVIEW_STORAGE_KEY = "comprehension_review_ids"
+const TEST_TIME = 10 * 60
+const TIMER_STORAGE_KEY = "english_comprehension_timer_enabled"
 
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
@@ -87,6 +89,11 @@ export default function ComprehensionTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(TEST_TIME)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
     null
@@ -156,6 +163,9 @@ export default function ComprehensionTestPage() {
       setScore(0)
       setShowIncompleteModal(false)
       setSubmitting(false)
+      setTimeLeft(TEST_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid comprehension test ID.")
@@ -283,6 +293,56 @@ export default function ComprehensionTestPage() {
     loadPage()
   }, [rawId, testId, mode, reviewIds.join(",")])
 
+  useEffect(() => {
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
+    }
+
+    setTimerPreferenceLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
+
+  useEffect(() => {
+    if (!timerEnabled) {
+      setTimeLeft(TEST_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
+    }
+  }, [timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (questions.length === 0) return
+    if (submitted || submitting || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    questions.length,
+    submitted,
+    submitting,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
+
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
   const shouldWarnBeforeLeaving = answeredCount > 0 && !submitted && !submitting
@@ -324,7 +384,7 @@ export default function ComprehensionTestPage() {
   }
 
   function handleSelect(questionId: number, option: AnswerOption) {
-    if (submitted) return
+    if (submitted || submitting || timeExpiredProcessing) return
 
     setAnswers((prev) => ({
       ...prev,
@@ -333,6 +393,7 @@ export default function ComprehensionTestPage() {
   }
 
   async function submitTest() {
+    if (submitting) return
     if (!userId || !test) return
     if (questions.length === 0) return
 
@@ -444,6 +505,7 @@ export default function ComprehensionTestPage() {
         progressError.message || "Could not save your progress. Please try again."
       )
       setSubmitting(false)
+      setTimeExpiredProcessing(false)
       return
     }
 
@@ -544,6 +606,7 @@ export default function ComprehensionTestPage() {
     setSubmitted(true)
     setSubmitting(false)
     setShowIncompleteModal(false)
+    setTimeExpiredProcessing(false)
 
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -562,6 +625,23 @@ export default function ComprehensionTestPage() {
     await submitTest()
   }
 
+  async function handleTimeUp() {
+    if (submitted || submitting || timeExpiredProcessing) return
+
+    setTimeExpiredProcessing(true)
+    setShowIncompleteModal(false)
+    setTimeUpMessage("Time’s up!")
+
+    await submitTest()
+  }
+
+  function formatTime(totalSeconds: number) {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+
+    return `${minutes}:${String(seconds).padStart(2, "0")}`
+  }
+
   function getOptionText(
     question: EnglishComprehensionQuestion,
     option: AnswerOption
@@ -578,6 +658,9 @@ export default function ComprehensionTestPage() {
     setScore(0)
     setShowIncompleteModal(false)
     setErrorMessage("")
+    setTimeLeft(TEST_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -744,10 +827,6 @@ export default function ComprehensionTestPage() {
               </div>
             ) : (
               <>
-                <div style={styles.progressInfo}>
-                  Answered: <strong>{answeredCount}</strong> / {questions.length}
-                </div>
-
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </>
             )}
@@ -768,6 +847,52 @@ export default function ComprehensionTestPage() {
           </div>
 
           <div style={styles.questionsCard}>
+            {!submitted && questions.length > 0 && (
+              <>
+                <div style={styles.progressRow}>
+                  <span style={styles.progressText}>
+                    Answered: <strong>{answeredCount}</strong> / {questions.length}
+                  </span>
+
+                  <div style={styles.timerControls}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTimerEnabled((prev) => !prev)
+                        setTimeLeft(TEST_TIME)
+                        setTimeUpMessage("")
+                        setTimeExpiredProcessing(false)
+                      }}
+                      disabled={submitting || timeExpiredProcessing}
+                      style={{
+                        ...styles.timerButton,
+                        opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                        cursor:
+                          submitting || timeExpiredProcessing
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      Timer: {timerEnabled ? "ON" : "OFF"}
+                    </button>
+
+                    {timerEnabled && (
+                      <span
+                        style={{
+                          ...styles.timerText,
+                          color: timeLeft <= 60 ? "#b91c1c" : "#374151",
+                        }}
+                      >
+                        Time left: {formatTime(timeLeft)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
+              </>
+            )}
+
             <h2 style={styles.sectionTitle}>
               {mode === "review" ? "Review Questions" : "Questions"}
             </h2>
@@ -821,12 +946,15 @@ export default function ComprehensionTestPage() {
                           <button
                             key={option}
                             onClick={() => handleSelect(question.id, option)}
-                            disabled={submitted}
+                            disabled={submitted || submitting || timeExpiredProcessing}
                             style={{
                               ...styles.optionButton,
                               backgroundColor,
                               borderColor,
-                              cursor: submitted ? "default" : "pointer",
+                              cursor:
+                                submitted || submitting || timeExpiredProcessing
+                                  ? "default"
+                                  : "pointer",
                             }}
                           >
                             <span style={styles.optionLetter}>{option}</span>
@@ -883,14 +1011,19 @@ export default function ComprehensionTestPage() {
               <div style={styles.submitRow}>
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || questions.length === 0}
+                  disabled={submitting || timeExpiredProcessing || questions.length === 0}
                   style={{
                     ...styles.primaryButton,
-                    opacity: submitting ? 0.7 : 1,
-                    cursor: submitting ? "not-allowed" : "pointer",
+                    opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
-                  {submitting ? "Submitting..." : "Submit Answers"}
+                  {submitting || timeExpiredProcessing
+                    ? "Submitting..."
+                    : "Submit Answers"}
                 </button>
               </div>
             )}
@@ -923,14 +1056,17 @@ export default function ComprehensionTestPage() {
               <button
                 type="button"
                 onClick={submitTest}
-                disabled={submitting}
+                disabled={submitting || timeExpiredProcessing}
                 style={{
                   ...styles.primaryButton,
-                  opacity: submitting ? 0.7 : 1,
-                  cursor: submitting ? "not-allowed" : "pointer",
+                  opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                  cursor:
+                    submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                 }}
               >
-                {submitting ? "Submitting..." : "Submit Anyway"}
+                {submitting || timeExpiredProcessing
+                  ? "Submitting..."
+                  : "Submit Anyway"}
               </button>
             </div>
           </div>
@@ -989,6 +1125,49 @@ const styles: { [key: string]: React.CSSProperties } = {
   progressInfo: {
     marginTop: "20px",
     color: "#444",
+  },
+
+  progressRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    marginTop: "20px",
+    flexWrap: "wrap",
+  },
+
+  progressText: {
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "#374151",
+  },
+
+  timerControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "12px 0 0 0",
+    color: "#b91c1c",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   inlineError: {
