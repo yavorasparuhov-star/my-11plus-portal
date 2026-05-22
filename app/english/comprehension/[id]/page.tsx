@@ -393,7 +393,6 @@ export default function ComprehensionTestPage() {
   }
 
   async function submitTest() {
-    if (submitting) return
     if (!userId || !test) return
     if (questions.length === 0) return
 
@@ -605,8 +604,8 @@ export default function ComprehensionTestPage() {
     setScore(correctAnswers)
     setSubmitted(true)
     setSubmitting(false)
-    setShowIncompleteModal(false)
     setTimeExpiredProcessing(false)
+    setShowIncompleteModal(false)
 
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -614,6 +613,7 @@ export default function ComprehensionTestPage() {
   async function handleSubmit() {
     if (!userId || !test) return
     if (questions.length === 0) return
+    if (timeExpiredProcessing) return
 
     const unansweredCount = questions.length - answeredCount
 
@@ -827,13 +827,57 @@ export default function ComprehensionTestPage() {
               </div>
             ) : (
               <>
+                <div style={styles.progressInfo}>
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
+                </div>
+
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </>
             )}
           </div>
 
           <div style={styles.passageCard}>
-            <h2 style={styles.sectionTitle}>Passage</h2>
+            <div style={styles.passageHeader}>
+              <h2 style={{ ...styles.sectionTitle, marginBottom: 0 }}>Passage</h2>
+
+              {!submitted && questions.length > 0 && (
+                <div style={styles.timerControls}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimerEnabled((prev) => !prev)
+                      setTimeLeft(TEST_TIME)
+                      setTimeUpMessage("")
+                      setTimeExpiredProcessing(false)
+                    }}
+                    disabled={submitting || timeExpiredProcessing}
+                    style={{
+                      ...styles.timerButton,
+                      opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                      cursor:
+                        submitting || timeExpiredProcessing
+                          ? "not-allowed"
+                          : "pointer",
+                    }}
+                  >
+                    Timer: {timerEnabled ? "ON" : "OFF"}
+                  </button>
+
+                  {timerEnabled && (
+                    <span
+                      style={{
+                        ...styles.timerText,
+                        color: timeLeft <= 60 ? "#b91c1c" : "#374151",
+                      }}
+                    >
+                      Time left: {formatTime(timeLeft)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <div style={styles.passageText}>
               {(test.passage || "No passage available.")
@@ -847,52 +891,6 @@ export default function ComprehensionTestPage() {
           </div>
 
           <div style={styles.questionsCard}>
-            {!submitted && questions.length > 0 && (
-              <>
-                <div style={styles.progressRow}>
-                  <span style={styles.progressText}>
-                    Answered: <strong>{answeredCount}</strong> / {questions.length}
-                  </span>
-
-                  <div style={styles.timerControls}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTimerEnabled((prev) => !prev)
-                        setTimeLeft(TEST_TIME)
-                        setTimeUpMessage("")
-                        setTimeExpiredProcessing(false)
-                      }}
-                      disabled={submitting || timeExpiredProcessing}
-                      style={{
-                        ...styles.timerButton,
-                        opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
-                        cursor:
-                          submitting || timeExpiredProcessing
-                            ? "not-allowed"
-                            : "pointer",
-                      }}
-                    >
-                      Timer: {timerEnabled ? "ON" : "OFF"}
-                    </button>
-
-                    {timerEnabled && (
-                      <span
-                        style={{
-                          ...styles.timerText,
-                          color: timeLeft <= 60 ? "#b91c1c" : "#374151",
-                        }}
-                      >
-                        Time left: {formatTime(timeLeft)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
-              </>
-            )}
-
             <h2 style={styles.sectionTitle}>
               {mode === "review" ? "Review Questions" : "Questions"}
             </h2>
@@ -951,10 +949,7 @@ export default function ComprehensionTestPage() {
                               ...styles.optionButton,
                               backgroundColor,
                               borderColor,
-                              cursor:
-                                submitted || submitting || timeExpiredProcessing
-                                  ? "default"
-                                  : "pointer",
+                              cursor: submitted || submitting || timeExpiredProcessing ? "default" : "pointer",
                             }}
                           >
                             <span style={styles.optionLetter}>{option}</span>
@@ -1015,15 +1010,10 @@ export default function ComprehensionTestPage() {
                   style={{
                     ...styles.primaryButton,
                     opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
-                    cursor:
-                      submitting || timeExpiredProcessing
-                        ? "not-allowed"
-                        : "pointer",
+                    cursor: submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                   }}
                 >
-                  {submitting || timeExpiredProcessing
-                    ? "Submitting..."
-                    : "Submit Answers"}
+                  {submitting ? "Submitting..." : "Submit Answers"}
                 </button>
               </div>
             )}
@@ -1060,13 +1050,10 @@ export default function ComprehensionTestPage() {
                 style={{
                   ...styles.primaryButton,
                   opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
-                  cursor:
-                    submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  cursor: submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                 }}
               >
-                {submitting || timeExpiredProcessing
-                  ? "Submitting..."
-                  : "Submit Anyway"}
+                {submitting ? "Submitting..." : "Submit Anyway"}
               </button>
             </div>
           </div>
@@ -1127,18 +1114,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#444",
   },
 
-  progressRow: {
+  passageHeader: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: "12px",
-    marginTop: "20px",
     flexWrap: "wrap",
-  },
-
-  progressText: {
-    fontSize: "15px",
-    fontWeight: 600,
-    color: "#374151",
+    marginBottom: "20px",
   },
 
   timerControls: {
@@ -1146,6 +1128,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     gap: "10px",
     flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
 
   timerButton: {
@@ -1164,7 +1147,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   timeUpText: {
-    margin: "12px 0 0 0",
+    margin: "0 0 18px 0",
     color: "#b91c1c",
     fontWeight: 700,
     fontSize: "18px",
