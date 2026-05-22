@@ -10,6 +10,8 @@ const MAIN_CATEGORY = "punctuation"
 const SUBCATEGORY = "advanced_punctuation"
 const RESULT_CATEGORY = "advanced-punctuation"
 const REVIEW_STORAGE_KEY = "advanced_punctuation_review_ids"
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "advanced_punctuation_timer_enabled"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
@@ -87,6 +89,12 @@ export default function AdvancedPunctuationTestPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
 
+  const [timerEnabled, setTimerEnabled] = useState(false)
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
+  const [timeUpMessage, setTimeUpMessage] = useState("")
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -145,6 +153,9 @@ export default function AdvancedPunctuationTestPage() {
       setAnswers({})
       setSelectedAnswer(null)
       setShowFeedback(false)
+      setTimeLeft(QUESTION_TIME)
+      setTimeUpMessage("")
+      setTimeExpiredProcessing(false)
       setScore(0)
       setQuestions([])
 
@@ -272,6 +283,55 @@ export default function AdvancedPunctuationTestPage() {
   }, [rawId, testId, mode, reviewIds.join(",")])
 
   useEffect(() => {
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
+
+    if (savedTimerSetting !== null) {
+      setTimerEnabled(savedTimerSetting === "true")
+    }
+
+    setTimerPreferenceLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!timerPreferenceLoaded) return
+
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
+  }, [timerEnabled, timerPreferenceLoaded])
+
+  useEffect(() => {
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+  }, [currentIndex, timerEnabled])
+
+  useEffect(() => {
+    if (!timerEnabled) return
+    if (!currentQuestion) return
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+
+    if (timeLeft <= 0) {
+      void handleTimeUp()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    timerEnabled,
+    currentQuestion,
+    finished,
+    submitting,
+    showFeedback,
+    timeExpiredProcessing,
+    timeLeft,
+  ])
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!shouldWarnBeforeLeaving) return
 
@@ -336,12 +396,20 @@ export default function AdvancedPunctuationTestPage() {
   }
 
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting) return
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return
     setSelectedAnswer(option)
   }
 
   function handleCheckAnswer() {
-    if (!currentQuestion || !selectedAnswer || submitting || finished) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      submitting ||
+      finished ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     setAnswers((prev) => ({
       ...prev,
@@ -352,7 +420,15 @@ export default function AdvancedPunctuationTestPage() {
   }
 
   async function handleNext() {
-    if (!currentQuestion || !selectedAnswer || !showFeedback || submitting) return
+    if (
+      !currentQuestion ||
+      !selectedAnswer ||
+      !showFeedback ||
+      submitting ||
+      timeExpiredProcessing
+    ) {
+      return
+    }
 
     const isLastQuestion = currentIndex === questions.length - 1
 
@@ -369,6 +445,36 @@ export default function AdvancedPunctuationTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleTimeUp() {
+    if (!currentQuestion || submitting || finished || timeExpiredProcessing) return
+
+    setTimeExpiredProcessing(true)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeUpMessage("Time’s up!")
+
+    const isLastQuestion = currentIndex === questions.length - 1
+    const finalAnswers = { ...answers }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 900))
+
+    if (isLastQuestion) {
+      await submitResults(finalAnswers)
+      return
+    }
+
+    setCurrentIndex((prev) => prev + 1)
+    setSelectedAnswer(null)
+    setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -631,6 +737,7 @@ export default function AdvancedPunctuationTestPage() {
     setScore(correctAnswers)
     setFinished(true)
     setSubmitting(false)
+    setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -649,10 +756,20 @@ export default function AdvancedPunctuationTestPage() {
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
+    setTimeLeft(QUESTION_TIME)
+    setTimeUpMessage("")
+    setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
   }
 
   function getDifficultyLabel(difficulty: number | null) {
@@ -931,10 +1048,40 @@ export default function AdvancedPunctuationTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
-              <span style={styles.progressText}>
-                Answered: {answeredCount} / {questions.length}
-              </span>
+              <div style={styles.timerControls}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimerEnabled((prev) => !prev)
+                    setTimeLeft(QUESTION_TIME)
+                    setTimeUpMessage("")
+                    setTimeExpiredProcessing(false)
+                  }}
+                  disabled={submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.timerButton,
+                    opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
+                    cursor:
+                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Timer: {timerEnabled ? "ON" : "OFF"}
+                </button>
+
+                {timerEnabled && (
+                  <span
+                    style={{
+                      ...styles.timerText,
+                      color: timeLeft <= 10 ? "#b91c1c" : "#374151",
+                    }}
+                  >
+                    Time left: {formatTime(timeLeft)}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
@@ -967,12 +1114,15 @@ export default function AdvancedPunctuationTestPage() {
                   <button
                     key={option}
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting}
+                    disabled={showFeedback || submitting || timeExpiredProcessing}
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
                       borderColor,
-                      cursor: showFeedback || submitting ? "default" : "pointer",
+                      cursor:
+                        showFeedback || submitting || timeExpiredProcessing
+                          ? "default"
+                          : "pointer",
                     }}
                   >
                     <span style={styles.optionLetter}>{option}.</span>
@@ -987,11 +1137,15 @@ export default function AdvancedPunctuationTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -1041,11 +1195,14 @@ export default function AdvancedPunctuationTestPage() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={submitting}
+                    disabled={submitting || timeExpiredProcessing}
                     style={{
                       ...styles.primaryButton,
-                      opacity: submitting ? 0.7 : 1,
-                      cursor: submitting ? "not-allowed" : "pointer",
+                      opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+                      cursor:
+                        submitting || timeExpiredProcessing
+                          ? "not-allowed"
+                          : "pointer",
                     }}
                   >
                     {submitting
@@ -1137,6 +1294,35 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  timerControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  timerButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "none",
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  timerText: {
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+
+  timeUpText: {
+    margin: "0 0 18px 0",
+    color: "#b91c1c",
+    fontWeight: 700,
+    fontSize: "18px",
   },
 
   inlineError: {
