@@ -183,38 +183,6 @@ export default function CustomTestsPage() {
           )}
         </div>
 
-        <div
-          style={{
-            marginBottom: 24,
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 16,
-            padding: 20,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h2
-            style={{
-              margin: "0 0 10px 0",
-              color: "#111827",
-              fontSize: "1.15rem",
-            }}
-          >
-            How custom tests work
-          </h2>
-
-          <p
-            style={{
-              margin: 0,
-              color: "#4b5563",
-              lineHeight: 1.6,
-            }}
-          >
-            Free members can view how the custom test builder works. Monthly and
-            annual members can generate and run custom tests by choosing topics,
-            question count, difficulty and time limit.
-          </p>
-        </div>
 
         <div
           style={{
@@ -345,38 +313,6 @@ export default function CustomTestsPage() {
           })}
         </div>
 
-        <div
-          style={{
-            marginTop: 28,
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 16,
-            padding: 20,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.05)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 10px 0",
-              fontSize: "1.05rem",
-              color: "#111827",
-            }}
-          >
-            Important Rule
-          </h3>
-
-          <p
-            style={{
-              margin: 0,
-              color: "#4b5563",
-              lineHeight: 1.6,
-            }}
-          >
-            A custom test must stay inside one main category only. For example,
-            English topics can be combined with other English topics, but not
-            with Math, VR, or NVR.
-          </p>
-        </div>
       </div>
     </main>
   )
