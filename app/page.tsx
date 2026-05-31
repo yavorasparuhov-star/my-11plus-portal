@@ -343,8 +343,6 @@ export default function LandingPage() {
        {/* TRUST SECTION */}
 <section style={styles.trustSection}>
   <div style={styles.trustCard}>
-    <div style={styles.stars}>🌱 📘 🧠 🔷</div>
-
     <h2 style={styles.trustTitle}>
       Built with guidance from pupils, parents and teachers
     </h2>
