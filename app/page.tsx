@@ -340,26 +340,26 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* TRUST SECTION */}
-        <section style={styles.trustSection}>
-          <div style={styles.trustCard}>
-            <div style={styles.stars}>🌱 📘 🧠 🔷</div>
+       {/* TRUST SECTION */}
+<section style={styles.trustSection}>
+  <div style={styles.trustCard}>
+    <div style={styles.stars}>🌱 📘 🧠 🔷</div>
 
-            <h2 style={styles.trustTitle}>
-              Built to support pupils, parents and teachers
-            </h2>
+    <h2 style={styles.trustTitle}>
+      Built with guidance from pupils, parents and teachers
+    </h2>
 
-            <p style={styles.trustText}>
-              YanBo Learning is designed around real 11+ preparation: short,
-              focused practice, clear explanations, progress tracking and review
-              tools that help children improve step by step.
-            </p>
+    <p style={styles.trustText}>
+      YanBo Learning is being developed with feedback and advice from children
+      preparing for the 11+, parents supporting practice at home, and teachers
+      who understand what pupils need to build confidence and improve.
+    </p>
 
-            <div style={styles.trustPlaceholder}>
-              Made for focused 11+ practice at home and in learning support
-            </div>
-          </div>
-        </section>
+    <div style={styles.trustPlaceholder}>
+      Shaped by real learning needs, not just by test content
+    </div>
+  </div>
+</section>
 
         {/* FAQ */}
         <section style={styles.faqSection}>
