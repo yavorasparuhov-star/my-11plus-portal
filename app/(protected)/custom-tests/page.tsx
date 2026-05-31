@@ -5,14 +5,14 @@ import { useEffect, useState } from "react"
 import { supabase } from "../../../lib/supabaseClient"
 import { CUSTOM_TEST_MAIN_CATEGORIES } from "../../../lib/custom-tests/catalog"
 
-type UserPlan = "free" | "monthly" | "annual" | "admin" | null
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
 function hasCustomTestAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
 export default function CustomTestsPage() {
-  const [plan, setPlan] = useState<UserPlan>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
   const [loadingPlan, setLoadingPlan] = useState(true)
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function CustomTestsPage() {
         } = await supabase.auth.getUser()
 
         if (userError || !user) {
-          setPlan(null)
+          setPlan("guest")
           return
         }
 
