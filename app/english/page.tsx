@@ -1,9 +1,11 @@
 "use client"
 
 import type { CSSProperties } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Header from "../../components/Header"
 import { useRouter } from "next/navigation"
+import { supabase } from "../../lib/supabaseClient"
 
 const hoverCardStyle: CSSProperties = {
   transition: "all 0.25s ease",
@@ -12,6 +14,27 @@ const hoverCardStyle: CSSProperties = {
 
 export default function EnglishPage() {
   const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function checkUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (mounted) {
+        setIsLoggedIn(!!user)
+      }
+    }
+
+    checkUser()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   function openCategory(path: string) {
     router.push(path)
@@ -59,16 +82,18 @@ export default function EnglishPage() {
                 <span style={styles.infoValue}>Word meaning</span>
               </div>
 
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Last result:</span>
-                <Link
-                  href="/results/english/vocabulary/0"
-                  style={styles.resultLink}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  View
-                </Link>
-              </div>
+              {isLoggedIn && (
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Last result:</span>
+                  <Link
+                    href="/results/english/vocabulary/0"
+                    style={styles.resultLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View
+                  </Link>
+                </div>
+              )}
             </div>
 
             <button
@@ -115,16 +140,18 @@ export default function EnglishPage() {
                 <span style={styles.infoValue}>Correct spelling</span>
               </div>
 
-              <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>Last result:</span>
-                <Link
-                  href="/results/english/spelling/0"
-                  style={styles.resultLink}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  View
-                </Link>
-              </div>
+              {isLoggedIn && (
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Last result:</span>
+                  <Link
+                    href="/results/english/spelling/0"
+                    style={styles.resultLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View
+                  </Link>
+                </div>
+              )}
             </div>
 
             <button
@@ -258,7 +285,7 @@ export default function EnglishPage() {
             <div style={styles.infoBox}>
               <div style={styles.infoRow}>
                 <span style={styles.infoLabel}>Focus:</span>
-                <span style={styles.infoValue}>Punctuation marks</span>
+                <span style={styles.infoValue}>Punctuation accuracy</span>
               </div>
             </div>
 
@@ -284,74 +311,80 @@ export default function EnglishPage() {
   )
 }
 
-const styles: { [key: string]: CSSProperties } = {
+const styles: Record<string, CSSProperties> = {
   page: {
-    padding: "32px 20px 50px",
-    maxWidth: "1100px",
-    margin: "0 auto",
+    minHeight: "100vh",
+    background: "#f4fbf4",
+    padding: "40px 20px 60px",
   },
 
   hero: {
+    maxWidth: "1000px",
+    margin: "0 auto 40px",
     textAlign: "center",
-    marginBottom: "32px",
   },
 
   title: {
-    fontSize: "40px",
-    marginBottom: "10px",
-    color: "#111827",
+    fontSize: "48px",
+    fontWeight: 800,
+    color: "#064e3b",
+    margin: "0 0 14px",
   },
 
   subtitle: {
-    fontSize: "18px",
-    color: "#4b5563",
-    maxWidth: "700px",
-    margin: "0 auto",
+    fontSize: "20px",
     lineHeight: 1.6,
+    color: "#374151",
+    maxWidth: "820px",
+    margin: "0 auto",
   },
 
   grid: {
+    maxWidth: "1150px",
+    margin: "0 auto",
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "20px",
+    gap: "24px",
   },
 
   card: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "26px",
+    background: "#ffffff",
+    borderRadius: "18px",
+    padding: "28px",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
+    border: "1px solid #e5e7eb",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: "360px",
   },
 
   icon: {
     fontSize: "42px",
-    marginBottom: "12px",
+    marginBottom: "14px",
   },
 
   cardTitle: {
-    fontSize: "24px",
-    marginBottom: "10px",
+    fontSize: "28px",
+    fontWeight: 800,
     color: "#111827",
+    margin: "0 0 12px",
   },
 
   cardText: {
     fontSize: "16px",
-    color: "#4b5563",
     lineHeight: 1.6,
-    marginBottom: "18px",
-    minHeight: "78px",
+    color: "#4b5563",
+    margin: "0 0 20px",
   },
 
   infoBox: {
-    width: "100%",
-    background: "#f9fafb",
+    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
     borderRadius: "12px",
     padding: "14px",
-    marginBottom: "18px",
+    marginTop: "auto",
+    marginBottom: "20px",
   },
 
   infoRow: {
@@ -359,39 +392,35 @@ const styles: { [key: string]: CSSProperties } = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: "12px",
-    margin: "8px 0",
+    fontSize: "15px",
+    marginBottom: "6px",
   },
 
   infoLabel: {
-    color: "#374151",
-    fontSize: "15px",
-    fontWeight: 500,
+    fontWeight: 700,
+    color: "#065f46",
   },
 
   infoValue: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#111827",
+    color: "#374151",
     textAlign: "right",
   },
 
   resultLink: {
-    fontSize: "15px",
+    color: "#047857",
     fontWeight: 700,
-    color: "#3730a3",
     textDecoration: "underline",
-    textUnderlineOffset: "3px",
   },
 
   button: {
-    padding: "12px 18px",
+    width: "100%",
+    padding: "14px 18px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
     color: "#065f46",
+    fontSize: "17px",
+    fontWeight: 700,
     cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
   },
 }
