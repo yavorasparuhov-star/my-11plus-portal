@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabaseClient"
 import Header from "../../components/Header"
 
@@ -11,6 +11,7 @@ export default function ProtectedLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -26,7 +27,7 @@ export default function ProtectedLayout({
       if (error || !data.user) {
         setUser(null)
         setLoading(false)
-        router.replace("/login")
+        router.replace(`/login?redirectTo=${encodeURIComponent(pathname)}`)
         return
       }
 
@@ -43,7 +44,7 @@ export default function ProtectedLayout({
 
       if (!session?.user) {
         setUser(null)
-        router.replace("/login")
+        router.replace(`/login?redirectTo=${encodeURIComponent(pathname)}`)
         return
       }
 
@@ -54,7 +55,7 @@ export default function ProtectedLayout({
       mounted = false
       subscription.unsubscribe()
     }
-  }, [router])
+  }, [router, pathname])
 
   async function handleLogout() {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {

@@ -1,13 +1,43 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { supabase } from "../../lib/supabaseClient"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Header from "../../components/Header"
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Header />
+
+          <div
+            style={{
+              minHeight: "100vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f3f4f6",
+              color: "#065f46",
+              fontSize: "20px",
+              fontWeight: 700,
+            }}
+          >
+            Loading login...
+          </div>
+        </>
+      }
+    >
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -16,41 +46,47 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
 
-const handleLogin = async () => {
-  setError(null)
+  const handleLogin = async () => {
+    setError(null)
 
-  const trimmedEmail = email.trim()
+    const trimmedEmail = email.trim()
 
-  if (!trimmedEmail) {
-    setError("Please enter your email address.")
-    return
+    if (!trimmedEmail) {
+      setError("Please enter your email address.")
+      return
+    }
+
+    if (!trimmedEmail.includes("@")) {
+      setError("Please enter a valid email address.")
+      return
+    }
+
+    if (!password) {
+      setError("Please enter your password.")
+      return
+    }
+
+    setLoading(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
+      password,
+    })
+
+    if (error) {
+      setError("Invalid email or password.")
+      setLoading(false)
+      return
+    }
+
+    const redirectTo = searchParams.get("redirectTo")
+
+    router.replace(
+      redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+        ? redirectTo
+        : "/home"
+    )
   }
-
-  if (!trimmedEmail.includes("@")) {
-    setError("Please enter a valid email address.")
-    return
-  }
-
-  if (!password) {
-    setError("Please enter your password.")
-    return
-  }
-
-  setLoading(true)
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email: trimmedEmail,
-    password,
-  })
-
-  if (error) {
-    setError("Invalid email or password.")
-  } else {
-    router.replace("/home")
-  }
-
-  setLoading(false)
-}
 
   return (
     <>
@@ -85,6 +121,7 @@ const handleLogin = async () => {
             >
               Welcome Back
             </h1>
+
             <p
               style={{
                 fontSize: "22px",
@@ -108,6 +145,7 @@ const handleLogin = async () => {
             >
               Email <span style={{ color: "red" }}>*</span>
             </label>
+
             <input
               type="email"
               placeholder="Enter Email"
@@ -192,6 +230,7 @@ const handleLogin = async () => {
               onChange={() => setRememberMe(!rememberMe)}
               style={{ transform: "scale(1.2)" }}
             />
+
             <label
               htmlFor="rememberMe"
               style={{
@@ -219,8 +258,12 @@ const handleLogin = async () => {
           <button
             onClick={handleLogin}
             disabled={loading}
-            onMouseOver={(e) => (e.currentTarget.style.background = "#bbf7d0")}
-            onMouseOut={(e) => (e.currentTarget.style.background = "#d4f5d0")}
+            onMouseOver={(e) => {
+              if (!loading) e.currentTarget.style.background = "#bbf7d0"
+            }}
+            onMouseOut={(e) => {
+              if (!loading) e.currentTarget.style.background = "#d4f5d0"
+            }}
             style={{
               width: "100%",
               padding: "16px",
@@ -230,8 +273,9 @@ const handleLogin = async () => {
               color: "#065f46",
               fontSize: "28px",
               fontWeight: "500",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               marginBottom: "22px",
+              opacity: loading ? 0.75 : 1,
             }}
           >
             {loading ? "Please wait..." : "Sign In"}
@@ -260,6 +304,7 @@ const handleLogin = async () => {
             <span style={{ color: "#111827", fontSize: "18px" }}>
               Not Registered Yet?{" "}
             </span>
+
             <Link
               href="/signup"
               style={{
