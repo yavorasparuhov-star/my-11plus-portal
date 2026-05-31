@@ -340,23 +340,23 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* TRUSTPILOT PLACEHOLDER */}
+        {/* TRUST SECTION */}
         <section style={styles.trustSection}>
           <div style={styles.trustCard}>
-            <div style={styles.stars}>★★★★★</div>
+            <div style={styles.stars}>🌱 📘 🧠 🔷</div>
 
             <h2 style={styles.trustTitle}>
-              Trusted by families preparing for the 11+
+              Built to support pupils, parents and teachers
             </h2>
 
             <p style={styles.trustText}>
-              When your Trustpilot profile is ready, you can replace this area
-              with the official Trustpilot widget. For now, this gives the
-              landing page a clean trust section.
+              YanBo Learning is designed around real 11+ preparation: short,
+              focused practice, clear explanations, progress tracking and review
+              tools that help children improve step by step.
             </p>
 
             <div style={styles.trustPlaceholder}>
-              Trustpilot reviews coming soon
+              Made for focused 11+ practice at home and in learning support
             </div>
           </div>
         </section>
