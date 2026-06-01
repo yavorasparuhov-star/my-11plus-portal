@@ -232,7 +232,7 @@ export default function LandingPage() {
         </section>
 
         {/* SUBSCRIPTION CARDS */}
-        <section style={styles.subscriptionSection}>
+        <section id="pricing" style={styles.subscriptionSection}>
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>Choose your plan</h2>
             <p style={styles.sectionSubtitle}>

@@ -406,9 +406,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           </Link>
 
           {isGuest && (
-            <Link href={membershipHref} style={linkStyle(membershipHref)}>
-              💎 Membership
-            </Link>
+<Link href="/#pricing">
+  Pricing
+</Link>
           )}
 
           {!isGuest && (
