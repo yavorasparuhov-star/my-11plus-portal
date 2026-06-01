@@ -407,7 +407,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
           {isGuest && (
 <Link href="/#pricing">
-  Pricing
+  🏷️ Pricing
 </Link>
           )}
 
