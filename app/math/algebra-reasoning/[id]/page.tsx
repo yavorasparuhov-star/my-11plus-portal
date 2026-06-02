@@ -1103,6 +1103,13 @@ export default function AlgebraReasoningTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="math"
+                  category="algebra_reasoning"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1119,13 +1126,6 @@ export default function AlgebraReasoningTestPage() {
                 >
                   Check Answer
                 </button>
-
-                <ReportQuestionButton
-                  subject="math"
-                  category="algebra_reasoning"
-                  testId={testId}
-                  questionId={currentQuestion.id}
-                />
               </div>
             ) : (
               <>
@@ -1441,8 +1441,9 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
     gap: "12px",
     flexWrap: "wrap",

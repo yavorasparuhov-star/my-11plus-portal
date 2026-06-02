@@ -74,35 +74,37 @@ export default function ReportQuestionButton({
     setReason(reportReasons[0])
   }
 
-  return (
-    <div
-      style={{
-        marginTop: open ? 12 : 0,
-        flexBasis: open ? "100%" : "auto",
-        maxWidth: open ? 560 : "none",
-      }}
-    >
+return (
+  <div
+    style={{
+      marginTop: open ? 12 : 0,
+      flexBasis: open ? "100%" : "auto",
+      maxWidth: open ? 560 : "none",
+      textAlign: "left",
+    }}
+  >
       {!open ? (
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(true)
-            setSuccess(false)
-            setError(null)
-          }}
-          style={{
-            border: "1px solid #d1d5db",
-            background: "#f3f4f6",
-            color: "#374151",
-            borderRadius: 12,
-            padding: "10px 14px",
-            fontWeight: 800,
-            cursor: "pointer",
-            fontSize: 14,
-          }}
-        >
-          Report this question
-        </button>
+<button
+  type="button"
+  onClick={() => {
+    setOpen(true)
+    setSuccess(false)
+    setError(null)
+  }}
+  style={{
+    border: "none",
+    background: "transparent",
+    color: "#6b7280",
+    padding: 0,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontSize: 13,
+    textDecoration: "underline",
+    textUnderlineOffset: 3,
+  }}
+>
+  Report question
+</button>
       ) : (
         <div
           style={{
