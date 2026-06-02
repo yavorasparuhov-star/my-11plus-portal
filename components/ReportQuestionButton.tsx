@@ -93,7 +93,7 @@ export default function ReportQuestionButton({
             fontSize: 14,
           }}
         >
-          ⚠️ Report this question
+          Report this question
         </button>
       ) : (
         <div
@@ -115,12 +115,16 @@ export default function ReportQuestionButton({
             }}
           >
             <h3
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 900,
-                color: "#9a3412",
-              }}
+style={{
+  border: "1px solid #d1d5db",
+  background: "#f3f4f6",
+  color: "#374151",
+  borderRadius: 12,
+  padding: "10px 14px",
+  fontWeight: 800,
+  cursor: "pointer",
+  fontSize: 14,
+}}
             >
               Report this question
             </h3>

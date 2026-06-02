@@ -1104,26 +1104,33 @@ export default function AlgebraReasoningTestPage() {
               })}
             </div>
 
-            {!showFeedback ? (
-              <div style={styles.submitRow}>
-                <button
-                  type="button"
-                  onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
-                  style={{
-                    ...styles.primaryButton,
-                    opacity:
-                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
-                    cursor:
-                      selectedAnswer && !submitting && !timeExpiredProcessing
-                        ? "pointer"
-                        : "not-allowed",
-                  }}
-                >
-                  Check Answer
-                </button>
-              </div>
-            ) : (
+{!showFeedback ? (
+  <div style={styles.submitRow}>
+    <button
+      type="button"
+      onClick={handleCheckAnswer}
+      disabled={!selectedAnswer || submitting || timeExpiredProcessing}
+      style={{
+        ...styles.primaryButton,
+        opacity:
+          selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+        cursor:
+          selectedAnswer && !submitting && !timeExpiredProcessing
+            ? "pointer"
+            : "not-allowed",
+      }}
+    >
+      Check Answer
+    </button>
+
+    <ReportQuestionButton
+      subject="math"
+      category="algebra_reasoning"
+      testId={testId}
+      questionId={currentQuestion.id}
+    />
+  </div>
+) : (
               <>
                 <div
                   style={{
@@ -1184,12 +1191,6 @@ export default function AlgebraReasoningTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1419,11 +1420,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.5,
   },
 
-  submitRow: {
-    marginTop: "24px",
-    display: "flex",
-    justifyContent: "center",
-  },
+submitRow: {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  marginTop: "22px",
+},
 
   backRow: {
     marginTop: "16px",
