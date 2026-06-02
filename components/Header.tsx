@@ -186,7 +186,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const vrHref = "/vr"
   const nvrHref = "/nvr"
   const customTestsHref = "/custom-tests"
-  const membershipHref = "/"
 
   const handleLogoutClick = async () => {
     setMenuOpen(false)
@@ -404,12 +403,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
             🛠️ Custom Tests
           </Link>
-
-          {isGuest && (
-<Link href="/#pricing">
-  🏷️ Pricing
-</Link>
-          )}
 
           {!isGuest && (
             <>
@@ -708,16 +701,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               >
                 🛠️ Custom Tests
               </Link>
-
-              {isGuest && (
-                <Link
-                  href={membershipHref}
-                  style={linkStyle(membershipHref)}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  💎 Membership
-                </Link>
-              )}
 
               {!isGuest && (
                 <>
