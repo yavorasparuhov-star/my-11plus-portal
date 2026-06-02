@@ -280,7 +280,8 @@ export default function AlgebraReasoningTestPage() {
 
     loadPage()
   }, [rawId, testId])
-    useEffect(() => {
+
+  useEffect(() => {
     const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
 
     if (savedTimerSetting !== null) {
@@ -521,7 +522,8 @@ export default function AlgebraReasoningTestPage() {
         difficulty: test.difficulty ?? null,
       }
     })
-        setAnswers(finalAnswers)
+
+    setAnswers(finalAnswers)
     setCompletedReview(fullReview)
     setScore(correctAnswers)
     setFinished(true)
@@ -864,7 +866,8 @@ export default function AlgebraReasoningTestPage() {
                         {item.is_correct ? "Correct" : "Incorrect"}
                       </span>
                     </div>
-                                        <p style={styles.reviewQuestionText}>{item.question_text}</p>
+
+                    <p style={styles.reviewQuestionText}>{item.question_text}</p>
 
                     {item.question_image_url && (
                       <div style={styles.reviewQuestionImageWrap}>
@@ -981,6 +984,7 @@ export default function AlgebraReasoningTestPage() {
                 {getDifficultyLabel(test.difficulty)}
               </div>
             </div>
+
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
 
@@ -1027,24 +1031,17 @@ export default function AlgebraReasoningTestPage() {
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
-{currentQuestion.image_url && (
-  <div style={styles.questionImageWrap}>
-    <img
-      src={currentQuestion.image_url}
-      alt="Maths question diagram"
-      style={styles.questionImage}
-    />
-  </div>
-)}
+            {currentQuestion.image_url && (
+              <div style={styles.questionImageWrap}>
+                <img
+                  src={currentQuestion.image_url}
+                  alt="Maths question diagram"
+                  style={styles.questionImage}
+                />
+              </div>
+            )}
 
-<ReportQuestionButton
-  subject="math"
-  category="algebra_reasoning"
-  testId={testId}
-  questionId={currentQuestion.id}
-/>
-
-<div style={styles.optionsGrid}>
+            <div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
                 const optionText = getOptionText(currentQuestion, option)
                 const optionImageUrl = getOptionImageUrl(currentQuestion, option)
@@ -1104,33 +1101,33 @@ export default function AlgebraReasoningTestPage() {
               })}
             </div>
 
-{!showFeedback ? (
-  <div style={styles.submitRow}>
-    <button
-      type="button"
-      onClick={handleCheckAnswer}
-      disabled={!selectedAnswer || submitting || timeExpiredProcessing}
-      style={{
-        ...styles.primaryButton,
-        opacity:
-          selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
-        cursor:
-          selectedAnswer && !submitting && !timeExpiredProcessing
-            ? "pointer"
-            : "not-allowed",
-      }}
-    >
-      Check Answer
-    </button>
+            {!showFeedback ? (
+              <div style={styles.submitRow}>
+                <button
+                  type="button"
+                  onClick={handleCheckAnswer}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
+                  style={{
+                    ...styles.primaryButton,
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
+                  }}
+                >
+                  Check Answer
+                </button>
 
-    <ReportQuestionButton
-      subject="math"
-      category="algebra_reasoning"
-      testId={testId}
-      questionId={currentQuestion.id}
-    />
-  </div>
-) : (
+                <ReportQuestionButton
+                  subject="math"
+                  category="algebra_reasoning"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+              </div>
+            ) : (
               <>
                 <div
                   style={{
@@ -1146,17 +1143,14 @@ export default function AlgebraReasoningTestPage() {
                   {!isCorrect && (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Correct answer:</strong>{" "}
-                      {currentQuestion.correct_answer} —{" "}
-                      {getOptionText(
-                        currentQuestion,
-                        currentQuestion.correct_answer
-                      )}
+                      {currentQuestion.correct_answer} — {" "}
+                      {getOptionText(currentQuestion, currentQuestion.correct_answer)}
                     </p>
                   )}
 
                   {selectedAnswer && (
                     <p style={{ margin: "8px 0 0 0" }}>
-                      <strong>Your answer:</strong> {selectedAnswer} —{" "}
+                      <strong>Your answer:</strong> {selectedAnswer} — {" "}
                       {selectedAnswerText}
                     </p>
                   )}
@@ -1164,7 +1158,7 @@ export default function AlgebraReasoningTestPage() {
                   {currentQuestion.explanation &&
                     currentQuestion.explanation.trim() !== "" && (
                       <p style={{ margin: "8px 0 0 0" }}>
-                        <strong>Explanation:</strong>{" "}
+                        <strong>Explanation:</strong> {" "}
                         {currentQuestion.explanation}
                       </p>
                     )}
@@ -1245,6 +1239,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#3730a3",
     fontWeight: 600,
     whiteSpace: "nowrap",
+  },
+
+  centerCard: {
+    maxWidth: "620px",
+    margin: "0 auto",
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    textAlign: "center",
+  },
+
+  emptyCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    textAlign: "center",
+  },
+
+  accessButtonRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "20px",
   },
 
   progressInfo: {
@@ -1420,14 +1440,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.5,
   },
 
-submitRow: {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: "12px",
-  flexWrap: "wrap",
-  marginTop: "22px",
-},
+  submitRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "22px",
+  },
 
   backRow: {
     marginTop: "16px",
@@ -1459,38 +1479,6 @@ submitRow: {
     minWidth: "180px",
   },
 
-  centerCard: {
-    maxWidth: "700px",
-    margin: "80px auto",
-    background: "white",
-    borderRadius: "20px",
-    padding: "32px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-    textAlign: "center",
-  },
-
-  accessButtonRow: {
-    marginTop: "24px",
-    display: "flex",
-    justifyContent: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-
-  emptyCard: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "32px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-    textAlign: "center",
-  },
-
-  message: {
-    textAlign: "center",
-    marginTop: "40px",
-    fontSize: "18px",
-  },
-
   reviewCard: {
     background: "white",
     borderRadius: "20px",
@@ -1502,7 +1490,7 @@ submitRow: {
   reviewList: {
     display: "grid",
     gap: "18px",
-    marginTop: "24px",
+    marginTop: "20px",
   },
 
   reviewQuestionCard: {
@@ -1579,7 +1567,8 @@ submitRow: {
 
   optionTag: {
     display: "inline-block",
-    marginLeft: "8px",
+    marginTop: "8px",
+    marginRight: "8px",
     fontSize: "13px",
     fontWeight: 700,
   },
@@ -1589,5 +1578,11 @@ submitRow: {
     borderRadius: "12px",
     padding: "14px",
     lineHeight: 1.6,
+  },
+
+  message: {
+    textAlign: "center",
+    marginTop: "40px",
+    fontSize: "18px",
   },
 }

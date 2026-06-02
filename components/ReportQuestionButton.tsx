@@ -48,17 +48,19 @@ export default function ReportQuestionButton({
 
     setSubmitting(true)
 
-    const { error: insertError } = await supabase.from("question_reports").insert({
-      user_id: user.id,
-      subject,
-      category,
-      test_id: testId,
-      question_id: questionId,
-      reason,
-      message: message.trim() || null,
-      page_url: typeof window !== "undefined" ? window.location.href : null,
-      status: "open",
-    })
+    const { error: insertError } = await supabase
+      .from("question_reports")
+      .insert({
+        user_id: user.id,
+        subject,
+        category,
+        test_id: testId,
+        question_id: questionId,
+        reason,
+        message: message.trim() || null,
+        page_url: typeof window !== "undefined" ? window.location.href : null,
+        status: "open",
+      })
 
     setSubmitting(false)
 
@@ -73,7 +75,13 @@ export default function ReportQuestionButton({
   }
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div
+      style={{
+        marginTop: open ? 12 : 0,
+        flexBasis: open ? "100%" : "auto",
+        maxWidth: open ? 560 : "none",
+      }}
+    >
       {!open ? (
         <button
           type="button"
@@ -83,9 +91,9 @@ export default function ReportQuestionButton({
             setError(null)
           }}
           style={{
-            border: "1px solid #fed7aa",
-            background: "#fff7ed",
-            color: "#9a3412",
+            border: "1px solid #d1d5db",
+            background: "#f3f4f6",
+            color: "#374151",
             borderRadius: 12,
             padding: "10px 14px",
             fontWeight: 800,
@@ -98,11 +106,11 @@ export default function ReportQuestionButton({
       ) : (
         <div
           style={{
-            border: "1px solid #fed7aa",
-            background: "#fff7ed",
+            border: "1px solid #d1d5db",
+            background: "#f9fafb",
             borderRadius: 16,
             padding: 16,
-            color: "#7c2d12",
+            color: "#374151",
           }}
         >
           <div
@@ -115,16 +123,12 @@ export default function ReportQuestionButton({
             }}
           >
             <h3
-style={{
-  border: "1px solid #d1d5db",
-  background: "#f3f4f6",
-  color: "#374151",
-  borderRadius: 12,
-  padding: "10px 14px",
-  fontWeight: 800,
-  cursor: "pointer",
-  fontSize: 14,
-}}
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 900,
+                color: "#374151",
+              }}
             >
               Report this question
             </h3>
@@ -139,7 +143,7 @@ style={{
               style={{
                 border: "none",
                 background: "transparent",
-                color: "#9a3412",
+                color: "#6b7280",
                 cursor: "pointer",
                 fontWeight: 900,
                 fontSize: 18,
@@ -168,10 +172,10 @@ style={{
               width: "100%",
               padding: "10px 12px",
               borderRadius: 10,
-              border: "1px solid #fdba74",
+              border: "1px solid #d1d5db",
               marginBottom: 12,
               background: "#ffffff",
-              color: "#7c2d12",
+              color: "#374151",
               fontWeight: 700,
               boxSizing: "border-box",
             }}
@@ -203,7 +207,7 @@ style={{
               width: "100%",
               padding: "10px 12px",
               borderRadius: 10,
-              border: "1px solid #fdba74",
+              border: "1px solid #d1d5db",
               resize: "vertical",
               marginBottom: 12,
               boxSizing: "border-box",
@@ -244,7 +248,7 @@ style={{
               disabled={submitting}
               style={{
                 border: "none",
-                background: "#ea580c",
+                background: "#374151",
                 color: "#ffffff",
                 borderRadius: 10,
                 padding: "10px 14px",
@@ -264,9 +268,9 @@ style={{
                 setSuccess(false)
               }}
               style={{
-                border: "1px solid #fdba74",
+                border: "1px solid #d1d5db",
                 background: "#ffffff",
-                color: "#9a3412",
+                color: "#374151",
                 borderRadius: 10,
                 padding: "10px 14px",
                 fontWeight: 900,
