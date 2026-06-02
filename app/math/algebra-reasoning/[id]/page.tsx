@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
@@ -1026,17 +1027,24 @@ export default function AlgebraReasoningTestPage() {
 
             <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
 
-            {currentQuestion.image_url && (
-              <div style={styles.questionImageWrap}>
-                <img
-                  src={currentQuestion.image_url}
-                  alt="Maths question diagram"
-                  style={styles.questionImage}
-                />
-              </div>
-            )}
+{currentQuestion.image_url && (
+  <div style={styles.questionImageWrap}>
+    <img
+      src={currentQuestion.image_url}
+      alt="Maths question diagram"
+      style={styles.questionImage}
+    />
+  </div>
+)}
 
-            <div style={styles.optionsGrid}>
+<ReportQuestionButton
+  subject="math"
+  category="algebra_reasoning"
+  testId={testId}
+  questionId={currentQuestion.id}
+/>
+
+<div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
                 const optionText = getOptionText(currentQuestion, option)
                 const optionImageUrl = getOptionImageUrl(currentQuestion, option)
