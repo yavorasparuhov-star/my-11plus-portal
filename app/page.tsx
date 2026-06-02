@@ -3,6 +3,7 @@
 import React from "react"
 import { useRouter } from "next/navigation"
 import Header from "../components/Header"
+import Footer from "../components/Footer"
 
 const hoverCardStyle = {
   transition: "all 0.25s ease",
@@ -13,31 +14,31 @@ export default function LandingPage() {
   const router = useRouter()
 
   const subjects = [
-  {
-    title: "English",
-    icon: "📘",
-    text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
-    path: "/english",
-  },
-  {
-    title: "Maths",
-    icon: "➗",
-    text: "Arithmetic, fractions, reasoning, problem-solving and exam-style practice.",
-    path: "/math",
-  },
-  {
-    title: "Verbal Reasoning",
-    icon: "🧠",
-    text: "Words, codes, logic, patterns and reasoning question types.",
-    path: "/vr",
-  },
-  {
-    title: "Non-Verbal Reasoning",
-    icon: "🔷",
-    text: "Shape patterns, rotations, reflections and spatial reasoning.",
-    path: "/nvr",
-  },
-]
+    {
+      title: "English",
+      icon: "📘",
+      text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
+      path: "/english",
+    },
+    {
+      title: "Maths",
+      icon: "➗",
+      text: "Arithmetic, fractions, reasoning, problem-solving and exam-style practice.",
+      path: "/math",
+    },
+    {
+      title: "Verbal Reasoning",
+      icon: "🧠",
+      text: "Words, codes, logic, patterns and reasoning question types.",
+      path: "/vr",
+    },
+    {
+      title: "Non-Verbal Reasoning",
+      icon: "🔷",
+      text: "Shape patterns, rotations, reflections and spatial reasoning.",
+      path: "/nvr",
+    },
+  ]
 
   const plans = [
     {
@@ -175,45 +176,45 @@ export default function LandingPage() {
           </div>
 
           <div style={styles.subjectGrid}>
-  {subjects.map((subject) => (
-    <div
-      key={subject.title}
-      style={{
-        ...styles.subjectCard,
-        ...hoverCardStyle,
-      }}
-      onClick={() => router.push(subject.path)}
-      onMouseEnter={(e) => handleCardHover(e, true)}
-      onMouseLeave={(e) => handleCardHover(e, false)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          router.push(subject.path)
-        }
-      }}
-    >
-      <div style={styles.subjectGlow}></div>
+            {subjects.map((subject) => (
+              <div
+                key={subject.title}
+                style={{
+                  ...styles.subjectCard,
+                  ...hoverCardStyle,
+                }}
+                onClick={() => router.push(subject.path)}
+                onMouseEnter={(e) => handleCardHover(e, true)}
+                onMouseLeave={(e) => handleCardHover(e, false)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    router.push(subject.path)
+                  }
+                }}
+              >
+                <div style={styles.subjectGlow}></div>
 
-      <div style={styles.subjectIcon}>{subject.icon}</div>
+                <div style={styles.subjectIcon}>{subject.icon}</div>
 
-      <h3 style={styles.subjectTitle}>{subject.title}</h3>
+                <h3 style={styles.subjectTitle}>{subject.title}</h3>
 
-      <p style={styles.subjectText}>{subject.text}</p>
+                <p style={styles.subjectText}>{subject.text}</p>
 
-      <div style={styles.subjectAction}>
-        Start practice <span style={styles.subjectArrow}>→</span>
-      </div>
-    </div>
-  ))}
-</div>
+                <div style={styles.subjectAction}>
+                  Start practice <span style={styles.subjectArrow}>→</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* WHY SECTION */}
         <section style={styles.whySection}>
           <div style={styles.whyCard}>
             <div style={styles.whyContent}>
-             <h2 style={styles.whyTitle}>Why use YanBo Learning?</h2>
+              <h2 style={styles.whyTitle}>Why use YanBo Learning?</h2>
               <p style={styles.whyText}>
                 11+ preparation works best when practice is regular, focused and
                 easy to review. YanBo Learning is designed to help students see
@@ -340,24 +341,25 @@ export default function LandingPage() {
           </div>
         </section>
 
-       {/* TRUST SECTION */}
-<section style={styles.trustSection}>
-  <div style={styles.trustCard}>
-    <h2 style={styles.trustTitle}>
-      Built with guidance from pupils, parents and teachers
-    </h2>
+        {/* TRUST SECTION */}
+        <section style={styles.trustSection}>
+          <div style={styles.trustCard}>
+            <h2 style={styles.trustTitle}>
+              Built with guidance from pupils, parents and teachers
+            </h2>
 
-    <p style={styles.trustText}>
-      YanBo Learning is being developed with feedback and advice from children
-      preparing for the 11+, parents supporting practice at home, and teachers
-      who understand what pupils need to build confidence and improve.
-    </p>
+            <p style={styles.trustText}>
+              YanBo Learning is being developed with feedback and advice from
+              children preparing for the 11+, parents supporting practice at
+              home, and teachers who understand what pupils need to build
+              confidence and improve.
+            </p>
 
-    <div style={styles.trustPlaceholder}>
-      Shaped by real learning needs, not just by test content
-    </div>
-  </div>
-</section>
+            <div style={styles.trustPlaceholder}>
+              Shaped by real learning needs, not just by test content
+            </div>
+          </div>
+        </section>
 
         {/* FAQ */}
         <section style={styles.faqSection}>
@@ -379,6 +381,8 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+
+      <Footer />
     </>
   )
 }
@@ -495,48 +499,50 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "18px",
   },
 
-subjectCard: {
-  background:
-    "linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #dcfce7 100%)",
-  borderRadius: "24px",
-  padding: "28px 24px",
-  boxShadow: "0 14px 30px rgba(6,78,59,0.1)",
-  border: "1px solid #bbf7d0",
-  textAlign: "center",
-  boxSizing: "border-box",
-  position: "relative",
-  overflow: "hidden",
-  minHeight: "250px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "space-between",
-},
-subjectGlow: {
-  position: "absolute",
-  top: "-40px",
-  right: "-40px",
-  width: "120px",
-  height: "120px",
-  background: "rgba(22, 163, 74, 0.14)",
-  borderRadius: "999px",
-},
+  subjectCard: {
+    background:
+      "linear-gradient(135deg, #ffffff 0%, #f0fdf4 55%, #dcfce7 100%)",
+    borderRadius: "24px",
+    padding: "28px 24px",
+    boxShadow: "0 14px 30px rgba(6,78,59,0.1)",
+    border: "1px solid #bbf7d0",
+    textAlign: "center",
+    boxSizing: "border-box",
+    position: "relative",
+    overflow: "hidden",
+    minHeight: "250px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
 
-subjectAction: {
-  marginTop: "18px",
-  padding: "10px 16px",
-  borderRadius: "999px",
-  background: "#16a34a",
-  color: "white",
-  fontSize: "14px",
-  fontWeight: 800,
-  boxShadow: "0 8px 18px rgba(22,163,74,0.22)",
-},
+  subjectGlow: {
+    position: "absolute",
+    top: "-40px",
+    right: "-40px",
+    width: "120px",
+    height: "120px",
+    background: "rgba(22, 163, 74, 0.14)",
+    borderRadius: "999px",
+  },
 
-subjectArrow: {
-  marginLeft: "6px",
-  fontWeight: 900,
-},
+  subjectAction: {
+    marginTop: "18px",
+    padding: "10px 16px",
+    borderRadius: "999px",
+    background: "#16a34a",
+    color: "white",
+    fontSize: "14px",
+    fontWeight: 800,
+    boxShadow: "0 8px 18px rgba(22,163,74,0.22)",
+  },
+
+  subjectArrow: {
+    marginLeft: "6px",
+    fontWeight: 900,
+  },
+
   subjectIcon: {
     fontSize: "40px",
     marginBottom: "12px",
