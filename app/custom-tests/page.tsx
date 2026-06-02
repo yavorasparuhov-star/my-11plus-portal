@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "../../lib/supabaseClient"
 import { CUSTOM_TEST_MAIN_CATEGORIES } from "../../lib/custom-tests/catalog"
 import Header from "../../components/Header"
+import Footer from "../../components/Footer"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
@@ -543,6 +544,7 @@ export default function PublicCustomTestsPage() {
           </section>
         </div>
       </main>
+      <Footer />
     </>
   )
 }
