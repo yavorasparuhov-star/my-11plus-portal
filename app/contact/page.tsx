@@ -133,7 +133,7 @@ export default function ContactPage() {
                 maxWidth: 820,
               }}
             >
-              For now, please use the email address below for support,
+              Please use the email address below for support,
               questions and feedback.
             </p>
 
