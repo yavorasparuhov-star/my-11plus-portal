@@ -245,42 +245,22 @@ return (
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
-              type="button"
-              onClick={submitReport}
-              disabled={submitting}
-              style={{
-                border: "none",
-                background: "#374151",
-                color: "#ffffff",
-                borderRadius: 10,
-                padding: "10px 14px",
-                fontWeight: 900,
-                cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
-              }}
-            >
-              {submitting ? "Sending..." : "Send report"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                setError(null)
-                setSuccess(false)
-              }}
-              style={{
-                border: "1px solid #d1d5db",
-                background: "#ffffff",
-                color: "#374151",
-                borderRadius: 10,
-                padding: "10px 14px",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
+  type="button"
+  onClick={submitReport}
+  disabled={submitting}
+  style={{
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    borderRadius: 10,
+    padding: "10px 14px",
+    fontWeight: 900,
+    cursor: submitting ? "not-allowed" : "pointer",
+    opacity: submitting ? 0.7 : 1,
+  }}
+>
+  {submitting ? "Sending..." : "Send report"}
+</button>
           </div>
         </div>
       )}
