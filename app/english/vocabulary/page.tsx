@@ -2,6 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
+import ReportQuestionButton from "../../../components/ReportQuestionButton"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -93,6 +94,7 @@ function VocabularyContent() {
   const [testCompleted, setTestCompleted] = useState(false)
   const [testStarted, setTestStarted] = useState(false)
   const [showHint, setShowHint] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
 
   const [progressSaved, setProgressSaved] = useState(false)
   const [resultSaved, setResultSaved] = useState(false)
@@ -218,6 +220,7 @@ function VocabularyContent() {
     setIsTimerActive(timerEnabled && shuffled.length > 0)
     setSelectedAnswer(null)
     setShowHint(false)
+    setShowFeedback(false)
     setIsAnswerLocked(false)
     setClearedReviewWordIds([])
     setErrorMessage("")
@@ -240,6 +243,8 @@ function VocabularyContent() {
     setOptions(generatedOptions)
     setSelectedAnswer(null)
     setShowHint(false)
+    setShowFeedback(false)
+    setIsAnswerLocked(false)
   }, [currentWord, words])
 
   useEffect(() => {
@@ -255,17 +260,17 @@ function VocabularyContent() {
     }
 
     if (!testStarted || testCompleted || !currentWord) return
-    if (selectedAnswer !== null) return
+    if (showFeedback) return
 
     setIsTimerActive(true)
-  }, [timerEnabled, testStarted, testCompleted, currentWord, selectedAnswer])
+  }, [timerEnabled, testStarted, testCompleted, currentWord, showFeedback])
 
   useEffect(() => {
     if (!isTimerActive || !timerEnabled) return
 
     if (timer === 0) {
       setIsTimerActive(false)
-      void handleNext(false, null, options)
+      handleTimeUp()
       return
     }
 
@@ -335,22 +340,36 @@ function VocabularyContent() {
   }
 
   function handleAnswer(option: WordRow) {
-    if (isAnswerLocked) return
-    if (selectedAnswer !== null) return
+    if (isAnswerLocked || showFeedback) return
     if (!currentWord) return
     if (currentIndex >= testWords.length) return
 
-    setIsAnswerLocked(true)
-
-    const correct = option.id === currentWord.id
-
     setSelectedAnswer(option.id)
-    setIsTimerActive(false)
+  }
 
-    setTimeout(() => {
-      void handleNext(correct, option.id, options)
-      setSelectedAnswer(null)
-    }, 1800)
+  function handleCheckAnswer() {
+    if (!currentWord || selectedAnswer === null || showFeedback) return
+
+    setIsAnswerLocked(true)
+    setIsTimerActive(false)
+    setShowHint(true)
+    setShowFeedback(true)
+  }
+
+  function handleTimeUp() {
+    if (!currentWord || showFeedback) return
+
+    setIsAnswerLocked(true)
+    setIsTimerActive(false)
+    setShowHint(true)
+    setShowFeedback(true)
+  }
+
+  async function handleContinue() {
+    if (!currentWord || !showFeedback) return
+
+    const correct = selectedAnswer === currentWord.id
+    await handleNext(correct, selectedAnswer, options)
   }
 
   async function removeWordFromReview(wordId: number) {
@@ -576,6 +595,7 @@ function VocabularyContent() {
     setTimer(15)
     setSelectedAnswer(null)
     setShowHint(false)
+    setShowFeedback(false)
     setIsAnswerLocked(false)
     setIsTimerActive(timerEnabled)
   }
@@ -592,6 +612,7 @@ function VocabularyContent() {
     setIsTimerActive(false)
     setSelectedAnswer(null)
     setShowHint(false)
+    setShowFeedback(false)
     setIsAnswerLocked(false)
     setClearedReviewWordIds([])
     setErrorMessage("")
@@ -647,7 +668,7 @@ function VocabularyContent() {
 
     if (!newValue) {
       setIsTimerActive(false)
-    } else if (!testCompleted && testStarted && currentWord && selectedAnswer === null) {
+    } else if (!testCompleted && testStarted && currentWord && !showFeedback) {
       setIsTimerActive(true)
     }
   }
@@ -658,6 +679,15 @@ function VocabularyContent() {
     practiceResults.length > 0
       ? Math.round((correctCount / practiceResults.length) * 100)
       : 0
+
+  const selectedOption = selectedAnswer
+    ? options.find((option) => option.id === selectedAnswer) || null
+    : null
+  const correctOption = currentWord
+    ? options.find((option) => option.id === currentWord.id) || currentWord
+    : null
+  const isCurrentAnswerCorrect =
+    currentWord && selectedAnswer !== null ? selectedAnswer === currentWord.id : false
 
   if (!authChecked) {
     return (
@@ -875,10 +905,21 @@ function VocabularyContent() {
                 const isCorrect = option.id === currentWord.id
 
                 let backgroundColor = "#f3f4f6"
+                let borderColor = "#e5e7eb"
 
-                if (selectedAnswer !== null) {
-                  if (isCorrect) backgroundColor = "#22c55e"
-                  else if (isSelected) backgroundColor = "#ef4444"
+                if (isSelected) {
+                  backgroundColor = "#dbeafe"
+                  borderColor = "#60a5fa"
+                }
+
+                if (showFeedback && isCorrect) {
+                  backgroundColor = "#dcfce7"
+                  borderColor = "#16a34a"
+                }
+
+                if (showFeedback && isSelected && !isCorrect) {
+                  backgroundColor = "#fee2e2"
+                  borderColor = "#dc2626"
                 }
 
                 return (
@@ -886,14 +927,13 @@ function VocabularyContent() {
                     key={option.id}
                     type="button"
                     onClick={() => handleAnswer(option)}
-                    disabled={selectedAnswer !== null}
+                    disabled={showFeedback}
                     style={{
                       ...styles.answerButton,
                       backgroundColor,
-                      color:
-                        selectedAnswer !== null && (isCorrect || isSelected)
-                          ? "white"
-                          : "black",
+                      border: `2px solid ${borderColor}`,
+                      color: "#111827",
+                      cursor: showFeedback ? "default" : "pointer",
                     }}
                   >
                     {option.definition}
@@ -901,6 +941,74 @@ function VocabularyContent() {
                 )
               })}
             </div>
+
+            {!showFeedback ? (
+              <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="english"
+                  category="vocabulary"
+                  testId={RESULT_TEST_ID}
+                  questionId={currentWord.id}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleCheckAnswer}
+                  disabled={selectedAnswer === null}
+                  style={{
+                    ...styles.primaryButton,
+                    opacity: selectedAnswer !== null ? 1 : 0.6,
+                    cursor: selectedAnswer !== null ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Check Answer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    ...styles.feedbackBox,
+                    backgroundColor: isCurrentAnswerCorrect ? "#f0fdf4" : "#fef2f2",
+                    borderColor: isCurrentAnswerCorrect ? "#86efac" : "#fecaca",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    <strong>{isCurrentAnswerCorrect ? "Correct!" : "Not quite."}</strong>
+                  </p>
+
+                  {selectedOption ? (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Your answer:</strong> {selectedOption.definition}
+                    </p>
+                  ) : (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Your answer:</strong> No answer selected before the timer ended.
+                    </p>
+                  )}
+
+                  {correctOption && (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Correct answer:</strong> {correctOption.definition}
+                    </p>
+                  )}
+
+                  {currentWord.example_sentence && (
+                    <p style={{ margin: "8px 0 0 0" }}>
+                      <strong>Hint / example:</strong> {currentWord.example_sentence}
+                    </p>
+                  )}
+                </div>
+
+                <div style={styles.feedbackActionRow}>
+                  <button type="button" onClick={handleContinue} style={styles.primaryButton}>
+                    {currentIndex === testWords.length - 1
+                      ? "Finish Test"
+                      : "Next Question"}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -1184,6 +1292,33 @@ const styles: Record<string, React.CSSProperties> = {
     overflowWrap: "break-word",
     wordBreak: "break-word",
     boxSizing: "border-box",
+  },
+
+  submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "18px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+
+  feedbackBox: {
+    marginTop: "18px",
+    padding: "16px",
+    borderRadius: "12px",
+    border: "2px solid",
+    lineHeight: 1.6,
+    fontSize: "17px",
   },
 
   resultCard: {
