@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Header from "../../../../../components/Header"
+import ReportQuestionButton from "../../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
@@ -1133,6 +1134,15 @@ export default function SentencePunctuationTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <div style={styles.reportWrap}>
+                  <ReportQuestionButton
+                    subject="english"
+                    category={SUBCATEGORY}
+                    testId={testId}
+                    questionId={currentQuestion.id}
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1190,7 +1200,7 @@ export default function SentencePunctuationTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1212,11 +1222,6 @@ export default function SentencePunctuationTestPage() {
               </>
             )}
 
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Sentence Punctuation
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1435,9 +1440,28 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  reportWrap: {
+    display: "flex",
+    alignItems: "center",
   },
 
   backRow: {
