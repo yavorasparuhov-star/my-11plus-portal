@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import Header from "../../../../../components/Header"
+import ReportQuestionButton from "../../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
@@ -15,25 +15,6 @@ const TIMER_STORAGE_KEY = "advanced_punctuation_timer_enabled"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
-
-type SavedQuestionReview = {
-  question_id: number
-  question_order: number
-  question_text: string
-  question_image_url?: string | null
-  options: Record<AnswerOption, string>
-  option_images?: Partial<Record<AnswerOption, string | null>>
-  user_answer: AnswerOption | null
-  correct_answer: AnswerOption
-  user_answer_text: string | null
-  correct_answer_text: string
-  user_answer_image_url?: string | null
-  correct_answer_image_url?: string | null
-  is_correct: boolean
-  explanation: string | null
-  explanation_image_url?: string | null
-  difficulty: number | null
-}
 
 type AdvancedPunctuationTest = {
   id: number
@@ -57,6 +38,25 @@ type AdvancedPunctuationQuestion = {
   difficulty: number | null
   question_order: number
   created_at: string
+}
+
+type SavedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url?: string | null
+  options: Record<AnswerOption, string>
+  option_images?: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url?: string | null
+  correct_answer_image_url?: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url?: string | null
+  difficulty: number | null
 }
 
 type UserAnswerMap = {
@@ -537,26 +537,9 @@ export default function AdvancedPunctuationTestPage() {
       updated_at: completedAt,
     }
 
-    const { error: upsertError } = await supabase
+    const { data: existingResult, error: findError } = await supabase
       .from("latest_test_results")
-      .upsert([payload], {
-        onConflict:
-          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-      })
-
-    if (!upsertError) return
-
-    console.error("Error upserting latest advanced punctuation result:", {
-      message: upsertError.message,
-      details: upsertError.details,
-      hint: upsertError.hint,
-      code: upsertError.code,
-      payload,
-    })
-
-    const { error: deleteError } = await supabase
-      .from("latest_test_results")
-      .delete()
+      .select("id")
       .eq("user_id", userId)
       .eq("subject", "english")
       .eq("category", RESULT_CATEGORY)
@@ -564,14 +547,44 @@ export default function AdvancedPunctuationTestPage() {
       .eq("subcategory_two", "")
       .eq("subcategory_three", "")
       .eq("test_id", test.id)
+      .maybeSingle()
 
-    if (deleteError) {
-      console.error("Error deleting old advanced punctuation result:", {
-        message: deleteError.message,
-        details: deleteError.details,
-        hint: deleteError.hint,
-        code: deleteError.code,
+    if (findError) {
+      console.error("Error checking existing advanced punctuation result:", {
+        message: findError.message,
+        details: findError.details,
+        hint: findError.hint,
+        code: findError.code,
       })
+
+      setErrorMessage(
+        "The test was completed, but the full result could not be checked."
+      )
+      return
+    }
+
+    if (existingResult?.id) {
+      const { error: updateError } = await supabase
+        .from("latest_test_results")
+        .update(payload)
+        .eq("id", existingResult.id)
+        .eq("user_id", userId)
+
+      if (updateError) {
+        console.error("Error updating latest advanced punctuation result:", {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+          payload,
+        })
+
+        setErrorMessage(
+          "The test was completed, but the full result could not be updated."
+        )
+      }
+
+      return
     }
 
     const { error: insertError } = await supabase
@@ -588,7 +601,7 @@ export default function AdvancedPunctuationTestPage() {
       })
 
       setErrorMessage(
-        "Progress was saved, but the full test result could not be saved."
+        "The test was completed, but the full result could not be saved."
       )
     }
   }
@@ -676,13 +689,6 @@ export default function AdvancedPunctuationTestPage() {
       return
     }
 
-    await saveLatestTestResult(
-      finalAnswers,
-      correctAnswers,
-      totalQuestions,
-      successRate
-    )
-
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
         const { error: deleteReviewError } = await supabase
@@ -733,6 +739,13 @@ export default function AdvancedPunctuationTestPage() {
 
       setStoredReviewIds(updatedReviewIds)
     }
+
+    await saveLatestTestResult(
+      finalAnswers,
+      correctAnswers,
+      totalQuestions,
+      successRate
+    )
 
     setScore(correctAnswers)
     setFinished(true)
@@ -947,8 +960,8 @@ export default function AdvancedPunctuationTestPage() {
             <div style={styles.heroCard}>
               <h1 style={styles.title}>
                 {mode === "review"
-                  ? "🖋️ Review Complete"
-                  : "🖋️ Advanced Punctuation Test Complete"}
+                  ? "🧩 Review Complete"
+                  : "🧩 Advanced Punctuation Test Complete"}
               </h1>
 
               <p style={styles.subtitle}>{test.title}</p>
@@ -992,14 +1005,16 @@ export default function AdvancedPunctuationTestPage() {
                   Retry This Set
                 </button>
 
-                <Link
-                  href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
-                  style={styles.resultLinkButton}
+                <button
+                  onClick={() =>
+                    router.push(`/results/english/${RESULT_CATEGORY}/${test.id}`)
+                  }
+                  style={styles.primaryButton}
                 >
-                  Review Full Result
-                </Link>
+                  View Full Result
+                </button>
 
-                <button onClick={goBackSafely} style={styles.primaryButton}>
+                <button onClick={goBackSafely} style={styles.secondaryButton}>
                   Back to Advanced Punctuation
                 </button>
               </div>
@@ -1022,7 +1037,7 @@ export default function AdvancedPunctuationTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>
-                  {mode === "review" ? "🖋️ Review:" : "🖋️"} {test.title}
+                  {mode === "review" ? "🧩 Review:" : "🧩"} {test.title}
                 </h1>
               </div>
 
@@ -1134,6 +1149,15 @@ export default function AdvancedPunctuationTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <div style={styles.reportWrap}>
+                  <ReportQuestionButton
+                    subject="english"
+                    category="advanced_punctuation"
+                    testId={testId}
+                    questionId={currentQuestion.id}
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1191,7 +1215,7 @@ export default function AdvancedPunctuationTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1200,9 +1224,7 @@ export default function AdvancedPunctuationTestPage() {
                       ...styles.primaryButton,
                       opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
                       cursor:
-                        submitting || timeExpiredProcessing
-                          ? "not-allowed"
-                          : "pointer",
+                        submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
                     }}
                   >
                     {submitting
@@ -1214,12 +1236,6 @@ export default function AdvancedPunctuationTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Advanced Punctuation
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1423,9 +1439,28 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  reportWrap: {
+    display: "flex",
+    alignItems: "center",
   },
 
   backRow: {
@@ -1456,20 +1491,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
-  },
-
-  resultLinkButton: {
-    padding: "12px 20px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontSize: "16px",
-    fontWeight: 600,
-    minWidth: "180px",
-    textAlign: "center",
-    textDecoration: "none",
   },
 
   centerCard: {
