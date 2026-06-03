@@ -1164,7 +1164,7 @@ export default function AlgebraReasoningTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1444,6 +1444,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "22px",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "flex-end",
     alignItems: "center",
     gap: "12px",
     flexWrap: "wrap",
