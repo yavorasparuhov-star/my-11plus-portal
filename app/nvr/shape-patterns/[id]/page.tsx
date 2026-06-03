@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
@@ -1039,6 +1040,13 @@ export default function NVRShapePatternsTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="nvr"
+                  category="shape-patterns"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1092,7 +1100,7 @@ export default function NVRShapePatternsTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1113,12 +1121,6 @@ export default function NVRShapePatternsTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1353,9 +1355,20 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
   },
 
   backRow: {

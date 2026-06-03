@@ -1,82 +1,77 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import Header from "../../../../components/Header"
-import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
-
-const MAIN_CATEGORY = "nvr"
-const RESULT_CATEGORY = "codes-spatial-logic"
-const NVR_CATEGORY = "codes-spatial-logic"
-const QUESTION_TIME = 60
-const TIMER_STORAGE_KEY = "nvr_codes_spatial_logic_timer_enabled"
+import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import { supabase } from "../../../../lib/supabaseClient"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
-type NVRTest = {
+const QUESTION_TIME = 60
+const TIMER_STORAGE_KEY = "math_shape_space_timer_enabled"
+
+type MathTest = {
   id: number
   title: string
-  category: string | null
+  category: string
   difficulty: number | null
-  access_level?: string | null
-  is_free?: boolean | null
+  access_level: string | null
   created_at: string
 }
 
-type NVRQuestion = {
+type MathQuestion = {
   id: number
   test_id: number
   question_text: string
   image_url: string | null
-  option_a: string | null
-  option_b: string | null
-  option_c: string | null
-  option_d: string | null
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
   option_a_image_url: string | null
   option_b_image_url: string | null
   option_c_image_url: string | null
   option_d_image_url: string | null
   correct_answer: AnswerOption
   explanation: string | null
-  difficulty: number | null
   question_order: number
   created_at: string
-}
-
-type SavedQuestionReview = {
-  question_id: number
-  question_order: number
-  question_text: string
-  question_image_url?: string | null
-  options: Record<AnswerOption, string | null>
-  option_images?: Partial<Record<AnswerOption, string | null>>
-  user_answer: AnswerOption | null
-  correct_answer: AnswerOption
-  user_answer_text: string | null
-  correct_answer_text: string | null
-  user_answer_image_url?: string | null
-  correct_answer_image_url?: string | null
-  is_correct: boolean
-  explanation: string | null
-  explanation_image_url?: string | null
-  difficulty: number | null
 }
 
 type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+type CompletedQuestionReview = {
+  question_id: number
+  question_order: number
+  question_text: string
+  question_image_url: string | null
+  options: Record<AnswerOption, string>
+  option_images: Partial<Record<AnswerOption, string | null>>
+  user_answer: AnswerOption | null
+  correct_answer: AnswerOption
+  user_answer_text: string | null
+  correct_answer_text: string
+  user_answer_image_url: string | null
+  correct_answer_image_url: string | null
+  is_correct: boolean
+  explanation: string | null
+  explanation_image_url: string | null
+  difficulty: number | null
+}
+
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
-function isFreeTest(test: NVRTest) {
-  return test.is_free === true || test.access_level === "free"
+function isFreeTest(accessLevel: string | null) {
+  return accessLevel === "free"
 }
 
-export default function NVRCodesSpatialLogicTestPage() {
+export default function ShapeAndSpaceTestPage() {
   const params = useParams()
   const router = useRouter()
 
@@ -85,10 +80,11 @@ export default function NVRCodesSpatialLogicTestPage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [plan, setPlan] = useState<UserPlan>("guest")
-  const [test, setTest] = useState<NVRTest | null>(null)
-  const [questions, setQuestions] = useState<NVRQuestion[]>([])
+  const [test, setTest] = useState<MathTest | null>(null)
+  const [questions, setQuestions] = useState<MathQuestion[]>([])
 
   const [answers, setAnswers] = useState<UserAnswerMap>({})
+  const [completedReview, setCompletedReview] = useState<CompletedQuestionReview[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
@@ -107,11 +103,10 @@ export default function NVRCodesSpatialLogicTestPage() {
 
   const currentQuestion = questions[currentIndex]
 
-  const resultHref = `/results/nvr/${RESULT_CATEGORY}/${testId}`
-
   const canAccessTest = useMemo(() => {
     if (!test) return false
-    return hasFullAccess(plan) || (plan === "free" && isFreeTest(test))
+
+    return hasFullAccess(plan) || (plan === "free" && isFreeTest(test.access_level))
   }, [plan, test])
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
@@ -120,7 +115,7 @@ export default function NVRCodesSpatialLogicTestPage() {
 
   const selectedAnswerText = useMemo(() => {
     if (!currentQuestion || !selectedAnswer) return ""
-    return getOptionText(currentQuestion, selectedAnswer) || ""
+    return getOptionText(currentQuestion, selectedAnswer)
   }, [currentQuestion, selectedAnswer])
 
   useEffect(() => {
@@ -129,6 +124,7 @@ export default function NVRCodesSpatialLogicTestPage() {
       setErrorMessage("")
       setQuestions([])
       setAnswers({})
+      setCompletedReview([])
       setCurrentIndex(0)
       setSelectedAnswer(null)
       setShowFeedback(false)
@@ -140,33 +136,33 @@ export default function NVRCodesSpatialLogicTestPage() {
       setSubmitting(false)
 
       if (!rawId || Number.isNaN(testId)) {
-        setErrorMessage("Invalid NVR test ID.")
+        setErrorMessage("Invalid math test ID.")
         setLoading(false)
         return
       }
 
       const { data: testData, error: testError } = await supabase
-        .from("nvr_tests")
+        .from("math_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", NVR_CATEGORY)
+        .eq("category", "shape_space")
         .single()
 
-      if (testError || !testData) {
-        console.error("Error loading NVR test:", {
-          message: testError?.message,
-          details: testError?.details,
-          hint: testError?.hint,
-          code: testError?.code,
+      if (testError) {
+        console.error("Error loading math test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
           full: testError,
         })
 
-        setErrorMessage("Could not load this Codes & Spatial Logic test.")
+        setErrorMessage("Could not load this Shape & Space test.")
         setLoading(false)
         return
       }
 
-      const loadedTest = testData as NVRTest
+      const loadedTest = testData as MathTest
       setTest(loadedTest)
 
       const {
@@ -212,7 +208,8 @@ export default function NVRCodesSpatialLogicTestPage() {
       setPlan(safePlan)
 
       const canOpenTest =
-        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
+        hasFullAccess(safePlan) ||
+        (safePlan === "free" && isFreeTest(loadedTest.access_level))
 
       if (!canOpenTest) {
         setLoading(false)
@@ -220,13 +217,13 @@ export default function NVRCodesSpatialLogicTestPage() {
       }
 
       const { data: questionData, error: questionError } = await supabase
-        .from("nvr_questions")
+        .from("math_questions")
         .select("*")
         .eq("test_id", testId)
         .order("question_order", { ascending: true })
 
       if (questionError) {
-        console.error("Error loading NVR questions:", {
+        console.error("Error loading math questions:", {
           message: questionError.message,
           details: questionError.details,
           hint: questionError.hint,
@@ -239,7 +236,7 @@ export default function NVRCodesSpatialLogicTestPage() {
         return
       }
 
-      setQuestions((questionData || []) as NVRQuestion[])
+      setQuestions((questionData || []) as MathQuestion[])
       setLoading(false)
     }
 
@@ -322,7 +319,7 @@ export default function NVRCodesSpatialLogicTestPage() {
     const confirmed = confirmLeaveIfNeeded()
     if (!confirmed) return
 
-    router.push("/nvr/codes-spatial-logic")
+    router.push("/math/shape-space")
   }
 
   function handleSelectAnswer(option: AnswerOption) {
@@ -375,7 +372,7 @@ export default function NVRCodesSpatialLogicTestPage() {
     setCurrentIndex((prev) => prev + 1)
     setSelectedAnswer(null)
     setShowFeedback(false)
-    setTimeLeft(QUESTION_TIME)
+        setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -408,14 +405,56 @@ export default function NVRCodesSpatialLogicTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
-    return questions.map((question, index) => {
-      const userAnswer = finalAnswers[question.id] ?? null
-      const correctAnswer = question.correct_answer
+  async function submitResults(finalAnswers: UserAnswerMap) {
+    if (submitting) return
+    if (!userId || !test) return
+    if (questions.length === 0) return
+
+    setSubmitting(true)
+    setErrorMessage("")
+
+    let correctAnswers = 0
+
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      category: string
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+    }[] = []
+
+    for (const question of questions) {
+      const selected = finalAnswers[question.id]
+
+      if (selected === question.correct_answer) {
+        correctAnswers += 1
+      } else {
+        wrongAnswersForReview.push({
+          user_id: userId,
+          test_id: test.id,
+          question_id: question.id,
+          category: test.category,
+          question_text: question.question_text,
+          user_answer: selected ?? null,
+          correct_answer: question.correct_answer,
+          difficulty: test.difficulty ?? null,
+        })
+      }
+    }
+
+    const totalQuestions = questions.length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+      const selected = finalAnswers[question.id] ?? null
 
       return {
         question_id: question.id,
-        question_order: question.question_order ?? index + 1,
+        question_order: question.question_order,
         question_text: question.question_text,
         question_image_url: question.image_url,
         options: {
@@ -430,149 +469,29 @@ export default function NVRCodesSpatialLogicTestPage() {
           C: question.option_c_image_url,
           D: question.option_d_image_url,
         },
-        user_answer: userAnswer,
-        correct_answer: correctAnswer,
-        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
-        correct_answer_text: getOptionText(question, correctAnswer),
-        user_answer_image_url: userAnswer
-          ? getOptionImage(question, userAnswer)
-          : null,
-        correct_answer_image_url: getOptionImage(question, correctAnswer),
-        is_correct: userAnswer === correctAnswer,
+        user_answer: selected,
+        correct_answer: question.correct_answer,
+        user_answer_text: selected ? getOptionText(question, selected) : null,
+        correct_answer_text: getOptionText(question, question.correct_answer),
+        user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
+        correct_answer_image_url: getOptionImageUrl(
+          question,
+          question.correct_answer
+        ),
+        is_correct: selected === question.correct_answer,
         explanation: question.explanation,
         explanation_image_url: null,
-        difficulty: question.difficulty ?? test?.difficulty ?? null,
+        difficulty: test.difficulty ?? null,
       }
     })
-  }
 
-  async function saveLatestTestResult(
-    finalAnswers: UserAnswerMap,
-    correctAnswers: number,
-    totalQuestions: number,
-    successRate: number
-  ) {
-    if (!userId || !test) return
-
-    const completedAt = new Date().toISOString()
-
-    const payload = {
-      user_id: userId,
-      subject: "nvr",
-      category: RESULT_CATEGORY,
-      subcategory: "",
-      subcategory_two: "",
-      subcategory_three: "",
-      test_id: test.id,
-      test_title: test.title,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: test.difficulty ?? null,
-      answers: buildSavedAnswers(finalAnswers),
-      completed_at: completedAt,
-      updated_at: completedAt,
-    }
-
-    const { error: upsertError } = await supabase
-      .from("latest_test_results")
-      .upsert([payload], {
-        onConflict:
-          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-      })
-
-    if (!upsertError) return
-
-    console.error("Error upserting latest NVR result:", {
-      message: upsertError.message,
-      details: upsertError.details,
-      hint: upsertError.hint,
-      code: upsertError.code,
-      payload,
-    })
-
-    const { error: deleteError } = await supabase
-      .from("latest_test_results")
-      .delete()
-      .eq("user_id", userId)
-      .eq("subject", "nvr")
-      .eq("category", RESULT_CATEGORY)
-      .eq("subcategory", "")
-      .eq("subcategory_two", "")
-      .eq("subcategory_three", "")
-      .eq("test_id", test.id)
-
-    if (deleteError) {
-      console.error("Error deleting old NVR result:", {
-        message: deleteError.message,
-        details: deleteError.details,
-        hint: deleteError.hint,
-        code: deleteError.code,
-      })
-    }
-
-    const { error: insertError } = await supabase
-      .from("latest_test_results")
-      .insert([payload])
-
-    if (insertError) {
-      console.error("Error saving latest NVR result:", {
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint,
-        code: insertError.code,
-        payload,
-      })
-
-      setErrorMessage("Progress was saved, but the full test result could not be saved.")
-    }
-  }
-
-  async function submitResults(finalAnswers: UserAnswerMap) {
-    if (submitting) return
-    if (!userId || !test) return
-    if (questions.length === 0) return
-
-    setSubmitting(true)
-    setErrorMessage("")
+    setAnswers(finalAnswers)
+    setCompletedReview(fullReview)
+    setScore(correctAnswers)
+    setFinished(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
 
     try {
-      let correctAnswers = 0
-
-      const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string | null
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-      }[] = []
-
-      for (const question of questions) {
-        const selected = finalAnswers[question.id]
-
-        if (selected === question.correct_answer) {
-          correctAnswers += 1
-        } else {
-          wrongAnswersForReview.push({
-            user_id: userId,
-            test_id: test.id,
-            question_id: question.id,
-            category: test.category,
-            question_text: question.question_text,
-            user_answer: selected ?? null,
-            correct_answer: question.correct_answer,
-            difficulty: question.difficulty ?? test.difficulty ?? null,
-          })
-        }
-      }
-
-      const totalQuestions = questions.length
-      const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
       const progressPayload = {
         user_id: userId,
         test_id: test.id,
@@ -584,11 +503,11 @@ export default function NVRCodesSpatialLogicTestPage() {
       }
 
       const { error: progressError } = await supabase
-        .from("nvr_progress")
+        .from("math_progress")
         .insert([progressPayload])
 
       if (progressError) {
-        console.error("Error saving NVR progress:", {
+        console.error("Error saving math progress:", {
           message: progressError.message,
           details: progressError.details,
           hint: progressError.hint,
@@ -598,26 +517,60 @@ export default function NVRCodesSpatialLogicTestPage() {
         })
 
         setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
+          "Your result is shown below, but the progress history could not be saved."
         )
-        setSubmitting(false)
-        return
       }
 
-      await saveLatestTestResult(
-        finalAnswers,
-        correctAnswers,
-        totalQuestions,
-        successRate
-      )
+      const latestResultPayload = {
+        user_id: userId,
+        subject: "math",
+        category: test.category,
+        subcategory: "",
+        subcategory_two: "",
+        subcategory_three: "",
+        test_id: test.id,
+        test_title: test.title,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+        answers: fullReview,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data: savedLatestResult, error: latestResultError } = await supabase
+        .from("latest_test_results")
+        .upsert([latestResultPayload], {
+          onConflict:
+            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+        })
+        .select()
+
+      if (latestResultError) {
+        console.error("Error saving latest full test result:", {
+          message: latestResultError.message,
+          details: latestResultError.details,
+          hint: latestResultError.hint,
+          code: latestResultError.code,
+          full: latestResultError,
+          payload: latestResultPayload,
+        })
+
+        setErrorMessage(
+          "Your result is shown below, but the full test result could not be saved for later."
+        )
+      } else {
+        console.log("Latest Shape & Space result saved:", savedLatestResult)
+      }
 
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
-          .from("nvr_review")
+          .from("math_review")
           .insert(wrongAnswersForReview)
 
         if (reviewError) {
-          console.error("Error saving NVR review:", {
+          console.error("Error saving math review:", {
             message: reviewError.message,
             details: reviewError.details,
             hint: reviewError.hint,
@@ -626,28 +579,25 @@ export default function NVRCodesSpatialLogicTestPage() {
           })
         }
       }
-
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (error) {
-      console.error("Unexpected NVR submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
+      console.error("Unexpected math submit error:", error)
+      setErrorMessage(
+        "Your result is shown below, but something went wrong while saving it."
+      )
+    } finally {
       setSubmitting(false)
       setTimeExpiredProcessing(false)
     }
   }
 
-  function getOptionText(question: NVRQuestion, option: AnswerOption) {
+  function getOptionText(question: MathQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
     return question.option_d
   }
 
-  function getOptionImage(question: NVRQuestion, option: AnswerOption) {
+  function getOptionImageUrl(question: MathQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a_image_url
     if (option === "B") return question.option_b_image_url
     if (option === "C") return question.option_c_image_url
@@ -656,6 +606,7 @@ export default function NVRCodesSpatialLogicTestPage() {
 
   function restartSameTest() {
     setAnswers({})
+    setCompletedReview([])
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
@@ -695,7 +646,9 @@ export default function NVRCodesSpatialLogicTestPage() {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Codes & Spatial Logic test...</p>
+        <div style={styles.page}>
+          <p style={styles.message}>Loading Shape & Space test...</p>
+        </div>
       </>
     )
   }
@@ -724,7 +677,7 @@ export default function NVRCodesSpatialLogicTestPage() {
         <Header />
         <div style={styles.page}>
           <div style={styles.centerCard}>
-            <h1 style={styles.title}>NVR test not found</h1>
+            <h1 style={styles.title}>Math test not found</h1>
 
             <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
               Back to Topic
@@ -745,7 +698,7 @@ export default function NVRCodesSpatialLogicTestPage() {
 
             <p style={styles.subtitle}>
               Please sign in or create a free account to access YanBo Learning
-              NVR tests.
+              maths tests.
             </p>
 
             <div style={styles.accessButtonRow}>
@@ -777,7 +730,7 @@ export default function NVRCodesSpatialLogicTestPage() {
 
             <p style={styles.subtitle}>
               Free members can access free tests only. Monthly and annual members
-              can access all YanBo Learning NVR tests.
+              can access all YanBo Learning maths tests.
             </p>
 
             <div style={styles.accessButtonRow}>
@@ -788,8 +741,7 @@ export default function NVRCodesSpatialLogicTestPage() {
               >
                 View Membership Options
               </button>
-
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
+                            <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
                 Back to Topic
               </button>
             </div>
@@ -832,7 +784,7 @@ export default function NVRCodesSpatialLogicTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>🧠 Codes & Spatial Logic Test Complete</h1>
+              <h1 style={styles.title}>📐 Shape & Space Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -861,7 +813,7 @@ export default function NVRCodesSpatialLogicTestPage() {
                 </p>
 
                 <p style={styles.resultText}>
-                  <strong>Category:</strong> Codes & Spatial Logic
+                  <strong>Category:</strong> Shape & Space
                 </p>
 
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
@@ -870,10 +822,6 @@ export default function NVRCodesSpatialLogicTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
-                <Link href={resultHref} style={styles.primaryLinkButton}>
-                  View Full Result
-                </Link>
-
                 <button type="button" onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Test
                 </button>
@@ -881,6 +829,127 @@ export default function NVRCodesSpatialLogicTestPage() {
                 <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
                   Back to Topic
                 </button>
+              </div>
+            </div>
+
+            <div style={styles.reviewCard}>
+              <h2 style={styles.sectionTitle}>Full Test Review</h2>
+
+              <p style={styles.subtitle}>
+                Here are all the questions, your answers, and the correct answers.
+              </p>
+
+              <div style={styles.reviewList}>
+                {completedReview.map((item, index) => (
+                  <div
+                    key={item.question_id}
+                    style={{
+                      ...styles.reviewQuestionCard,
+                      borderColor: item.is_correct ? "#86efac" : "#fecaca",
+                      background: item.is_correct ? "#f0fdf4" : "#fef2f2",
+                    }}
+                  >
+                    <div style={styles.reviewQuestionTop}>
+                      <h3 style={styles.reviewQuestionTitle}>
+                        Question {index + 1}
+                      </h3>
+
+                      <span
+                        style={{
+                          ...styles.reviewStatusBadge,
+                          background: item.is_correct ? "#dcfce7" : "#fee2e2",
+                          color: item.is_correct ? "#166534" : "#991b1b",
+                        }}
+                      >
+                        {item.is_correct ? "Correct" : "Incorrect"}
+                      </span>
+                    </div>
+
+                    <p style={styles.reviewQuestionText}>{item.question_text}</p>
+
+                    {item.question_image_url && (
+                      <div style={styles.reviewQuestionImageWrap}>
+                        <img
+                          src={item.question_image_url}
+                          alt={`Question ${index + 1} diagram`}
+                          style={styles.reviewQuestionImage}
+                        />
+                      </div>
+                    )}
+
+                    <div style={styles.reviewOptionsGrid}>
+                      {(["A", "B", "C", "D"] as const).map((option) => {
+                        const isUserAnswer = item.user_answer === option
+                        const isCorrectAnswer = item.correct_answer === option
+                        const optionImageUrl = item.option_images[option]
+
+                        let background = "white"
+                        let borderColor = "#e5e7eb"
+
+                        if (isCorrectAnswer) {
+                          background = "#dcfce7"
+                          borderColor = "#16a34a"
+                        }
+
+                        if (isUserAnswer && !isCorrectAnswer) {
+                          background = "#fee2e2"
+                          borderColor = "#dc2626"
+                        }
+
+                        return (
+                          <div
+                            key={option}
+                            style={{
+                              ...styles.reviewOption,
+                              background,
+                              borderColor,
+                            }}
+                          >
+                            <strong>{option}.</strong>{" "}
+
+                            {optionImageUrl ? (
+                              <img
+                                src={optionImageUrl}
+                                alt={`Option ${option}`}
+                                style={styles.reviewOptionImage}
+                              />
+                            ) : (
+                              item.options[option]
+                            )}
+
+                            {isCorrectAnswer && (
+                              <span style={styles.optionTag}>Correct answer</span>
+                            )}
+
+                            {isUserAnswer && (
+                              <span style={styles.optionTag}>Your answer</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div style={styles.reviewAnswerBox}>
+                      <p>
+                        <strong>Your answer:</strong>{" "}
+                        {item.user_answer
+                          ? `${item.user_answer} — ${item.user_answer_text}`
+                          : "No answer"}
+                      </p>
+
+                      <p>
+                        <strong>Correct answer:</strong>{" "}
+                        {item.correct_answer} — {item.correct_answer_text}
+                      </p>
+
+                      {item.explanation && item.explanation.trim() !== "" && (
+                        <p>
+                          <strong>Explanation:</strong> {item.explanation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -900,7 +969,7 @@ export default function NVRCodesSpatialLogicTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>🧠 {test.title}</h1>
+                <h1 style={styles.title}>📐 {test.title}</h1>
               </div>
 
               <div
@@ -925,15 +994,14 @@ export default function NVRCodesSpatialLogicTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
+              <span style={styles.progressText}>
+                Answered: {answeredCount} / {questions.length}
+              </span>
+
               <div style={styles.timerControls}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setTimerEnabled((prev) => !prev)
-                    setTimeLeft(QUESTION_TIME)
-                    setTimeUpMessage("")
-                    setTimeExpiredProcessing(false)
-                  }}
+                  onClick={() => setTimerEnabled((prev) => !prev)}
                   disabled={submitting || timeExpiredProcessing}
                   style={{
                     ...styles.timerButton,
@@ -966,7 +1034,7 @@ export default function NVRCodesSpatialLogicTestPage() {
               <div style={styles.questionImageWrap}>
                 <img
                   src={currentQuestion.image_url}
-                  alt={`Question ${currentIndex + 1} visual`}
+                  alt="Maths question diagram"
                   style={styles.questionImage}
                 />
               </div>
@@ -975,7 +1043,7 @@ export default function NVRCodesSpatialLogicTestPage() {
             <div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
                 const optionText = getOptionText(currentQuestion, option)
-                const optionImage = getOptionImage(currentQuestion, option)
+                const optionImageUrl = getOptionImageUrl(currentQuestion, option)
 
                 let backgroundColor = "#f3f4f6"
                 let borderColor = "transparent"
@@ -1016,17 +1084,17 @@ export default function NVRCodesSpatialLogicTestPage() {
                   >
                     <span style={styles.optionLetter}>{option}.</span>
 
-                    <div style={styles.optionContent}>
-                      {optionText && <span>{optionText}</span>}
-
-                      {optionImage && (
+                    <span style={styles.optionContent}>
+                      {optionImageUrl ? (
                         <img
-                          src={optionImage}
+                          src={optionImageUrl}
                           alt={`Option ${option}`}
                           style={styles.optionImage}
                         />
+                      ) : (
+                        optionText
                       )}
-                    </div>
+                    </span>
                   </button>
                 )
               })}
@@ -1034,6 +1102,13 @@ export default function NVRCodesSpatialLogicTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="nvr"
+                  category="codes-spatial-logic"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1067,14 +1142,18 @@ export default function NVRCodesSpatialLogicTestPage() {
                   {!isCorrect && (
                     <p style={{ margin: "8px 0 0 0" }}>
                       <strong>Correct answer:</strong>{" "}
-                      {currentQuestion.correct_answer}
+                      {currentQuestion.correct_answer} —{" "}
+                      {getOptionText(
+                        currentQuestion,
+                        currentQuestion.correct_answer
+                      )}
                     </p>
                   )}
 
                   {selectedAnswer && (
                     <p style={{ margin: "8px 0 0 0" }}>
-                      <strong>Your answer:</strong> {selectedAnswer}
-                      {selectedAnswerText ? ` — ${selectedAnswerText}` : ""}
+                      <strong>Your answer:</strong> {selectedAnswer} —{" "}
+                      {selectedAnswerText}
                     </p>
                   )}
 
@@ -1087,7 +1166,7 @@ export default function NVRCodesSpatialLogicTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1108,12 +1187,6 @@ export default function NVRCodesSpatialLogicTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1252,7 +1325,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "12px",
     flexWrap: "wrap",
     marginTop: "18px",
-    justifyContent: "center",
   },
 
   questionsCard: {
@@ -1279,24 +1351,26 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   questionTitle: {
     marginTop: 0,
-    marginBottom: "16px",
+    marginBottom: "24px",
     fontSize: "26px",
     lineHeight: 1.5,
     color: "#111827",
   },
 
   questionImageWrap: {
-    marginBottom: "18px",
-    textAlign: "center",
+    margin: "0 0 24px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "16px",
   },
 
   questionImage: {
     maxWidth: "100%",
-    maxHeight: "340px",
-    borderRadius: "14px",
-    border: "1px solid #e5e7eb",
+    maxHeight: "360px",
     objectFit: "contain",
-    background: "#fff",
   },
 
   optionsGrid: {
@@ -1324,19 +1398,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   optionContent: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    width: "100%",
+    flex: 1,
   },
 
   optionImage: {
-    maxWidth: "220px",
-    maxHeight: "150px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
+    maxWidth: "100%",
+    maxHeight: "160px",
     objectFit: "contain",
-    background: "#fff",
+    display: "block",
   },
 
   feedbackBox: {
@@ -1348,9 +1417,20 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
   },
 
   backRow: {
@@ -1369,21 +1449,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
-  },
-
-  primaryLinkButton: {
-    display: "inline-block",
-    padding: "12px 20px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontSize: "16px",
-    fontWeight: 600,
-    minWidth: "180px",
-    textAlign: "center",
-    textDecoration: "none",
   },
 
   secondaryButton: {
@@ -1428,5 +1493,105 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     marginTop: "40px",
     fontSize: "18px",
+  },
+
+  reviewCard: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "28px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+    marginTop: "24px",
+  },
+
+  reviewList: {
+    display: "grid",
+    gap: "18px",
+    marginTop: "24px",
+  },
+
+  reviewQuestionCard: {
+    border: "2px solid",
+    borderRadius: "16px",
+    padding: "20px",
+  },
+
+  reviewQuestionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
+
+  reviewQuestionTitle: {
+    margin: 0,
+    fontSize: "22px",
+    color: "#111827",
+  },
+
+  reviewStatusBadge: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "14px",
+  },
+
+  reviewQuestionText: {
+    fontSize: "18px",
+    lineHeight: 1.6,
+    color: "#111827",
+    marginBottom: "16px",
+  },
+
+  reviewQuestionImageWrap: {
+    margin: "0 0 16px 0",
+    display: "flex",
+    justifyContent: "center",
+    background: "rgba(255,255,255,0.75)",
+    border: "1px solid #e5e7eb",
+    borderRadius: "14px",
+    padding: "14px",
+  },
+
+  reviewQuestionImage: {
+    maxWidth: "100%",
+    maxHeight: "320px",
+    objectFit: "contain",
+  },
+
+  reviewOptionsGrid: {
+    display: "grid",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+
+  reviewOption: {
+    border: "2px solid",
+    borderRadius: "12px",
+    padding: "12px",
+    lineHeight: 1.5,
+  },
+
+  reviewOptionImage: {
+    maxWidth: "100%",
+    maxHeight: "120px",
+    objectFit: "contain",
+    display: "block",
+    marginTop: "8px",
+  },
+
+  optionTag: {
+    display: "inline-block",
+    marginLeft: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  reviewAnswerBox: {
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "12px",
+    padding: "14px",
+    lineHeight: 1.6,
   },
 }
