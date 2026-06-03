@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
@@ -1091,14 +1092,25 @@ export default function DataHandlingTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="math"
+                  category="data_handling"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting}
+                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
                     ...styles.primaryButton,
-                    opacity: selectedAnswer && !submitting ? 1 : 0.6,
-                    cursor: selectedAnswer && !submitting ? "pointer" : "not-allowed",
+                    opacity:
+                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? "pointer"
+                        : "not-allowed",
                   }}
                 >
                   Check Answer
@@ -1150,7 +1162,7 @@ export default function DataHandlingTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1170,12 +1182,6 @@ export default function DataHandlingTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1430,9 +1436,21 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
 
   backRow: {
