@@ -1231,16 +1231,16 @@ export default function PrimaryWordClassesTestPage() {
                     !selectedAnswer || submitting || timeExpiredProcessing
                   }
                   style={{
-                    ...styles.primaryButton,
-                    opacity:
-                      selectedAnswer && !submitting && !timeExpiredProcessing
-                        ? 1
-                        : 0.6,
-                    cursor:
-                      selectedAnswer && !submitting && !timeExpiredProcessing
-                        ? "pointer"
-                        : "not-allowed",
-                  }}
+  ...styles.checkButton,
+  opacity:
+    selectedAnswer && !submitting && !timeExpiredProcessing
+      ? 1
+      : 0.6,
+  cursor:
+    selectedAnswer && !submitting && !timeExpiredProcessing
+      ? "pointer"
+      : "not-allowed",
+}}
                 >
                   Check Answer
                 </button>
@@ -1291,13 +1291,13 @@ export default function PrimaryWordClassesTestPage() {
                     onClick={handleNext}
                     disabled={submitting || timeExpiredProcessing}
                     style={{
-                      ...styles.primaryButton,
-                      opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
-                      cursor:
-                        submitting || timeExpiredProcessing
-                          ? "not-allowed"
-                          : "pointer",
-                    }}
+  ...styles.nextButton,
+  opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
+  cursor:
+    submitting || timeExpiredProcessing
+      ? "not-allowed"
+      : "pointer",
+}}
                   >
                     {submitting
                       ? "Saving..."
@@ -1560,7 +1560,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 600,
     minWidth: "180px",
   },
+checkButton: {
+  padding: "12px 20px",
+  borderRadius: "12px",
+  border: "none",
+  background: "#2563eb",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "16px",
+  fontWeight: 600,
+  minWidth: "180px",
+},
 
+nextButton: {
+  padding: "12px 20px",
+  borderRadius: "12px",
+  border: "none",
+  background: "#16a34a",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "16px",
+  fontWeight: 600,
+  minWidth: "180px",
+},
   secondaryButton: {
     padding: "12px 20px",
     borderRadius: "12px",
