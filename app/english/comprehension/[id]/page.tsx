@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
@@ -1004,6 +1005,15 @@ export default function ComprehensionTestPage() {
 
             {!submitted && questions.length > 0 && (
               <div style={styles.submitRow}>
+                <div style={styles.reportWrap}>
+                  <ReportQuestionButton
+                    subject="english"
+                    category="comprehension"
+                    testId={testId}
+                    questionId={questions[0]?.id ?? 0}
+                  />
+                </div>
+
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || timeExpiredProcessing || questions.length === 0}
@@ -1256,9 +1266,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
     marginTop: "28px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  reportWrap: {
+    display: "flex",
+    alignItems: "center",
   },
 
   primaryButton: {
