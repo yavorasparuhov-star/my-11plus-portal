@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
@@ -1091,6 +1092,13 @@ export default function NumberPlaceValueTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="math"
+                  category="number_place_value"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
@@ -1148,7 +1156,7 @@ export default function NumberPlaceValueTestPage() {
                     )}
                 </div>
 
-                <div style={styles.submitRow}>
+                <div style={styles.feedbackActionRow}>
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1169,12 +1177,6 @@ export default function NumberPlaceValueTestPage() {
                 </div>
               </>
             )}
-
-            <div style={styles.backRow}>
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Topic
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -1405,9 +1407,20 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "flex-end",
   },
 
   backRow: {
