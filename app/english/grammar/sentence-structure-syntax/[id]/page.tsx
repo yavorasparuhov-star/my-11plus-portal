@@ -1163,7 +1163,7 @@ export default function SentenceStructureSyntaxTestPage() {
                   onClick={handleCheckAnswer}
                   disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
-                    ...styles.primaryButton,
+                    ...styles.checkButton,
                     opacity:
                       selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
                     cursor:
@@ -1221,7 +1221,7 @@ export default function SentenceStructureSyntaxTestPage() {
                     onClick={handleNext}
                     disabled={submitting || timeExpiredProcessing}
                     style={{
-                      ...styles.primaryButton,
+                      ...styles.nextButton,
                       opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
                       cursor:
                         submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
@@ -1474,6 +1474,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "12px",
     border: "none",
     background: "#4f46e5",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+
+  checkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#2563eb",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+
+  nextButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#16a34a",
     color: "white",
     cursor: "pointer",
     fontSize: "16px",
