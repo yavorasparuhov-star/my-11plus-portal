@@ -1371,6 +1371,27 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
   },
 
+  submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "20px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+
   backRow: {
     marginTop: "16px",
     display: "flex",
