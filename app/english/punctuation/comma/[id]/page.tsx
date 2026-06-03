@@ -1,32 +1,30 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import Header from "../../../../../components/Header"
-import ReportQuestionButton from "../../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
-const MAIN_CATEGORY = "punctuation"
-const SUBCATEGORY = "comma"
-const RESULT_CATEGORY = "comma"
-const REVIEW_STORAGE_KEY = "comma_review_ids"
+const MAIN_CATEGORY = "grammar"
+const SUBCATEGORY = "sentence_structure_syntax"
+const RESULT_CATEGORY = "sentence_structure_syntax"
+const REVIEW_STORAGE_KEY = "sentence_structure_syntax_review_ids"
 const QUESTION_TIME = 60
-const TIMER_STORAGE_KEY = "comma_timer_enabled"
+const TIMER_STORAGE_KEY = "sentence_structure_syntax_timer_enabled"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 
-type CommaTest = {
+type SentenceStructureSyntaxTest = {
   id: number
   title: string
   description: string | null
   difficulty: number | null
   created_at: string
-  is_free: boolean
+  is_free: boolean | null
 }
 
-type CommaQuestion = {
+type SentenceStructureSyntaxQuestion = {
   id: number
   test_id: number
   question_text: string
@@ -68,7 +66,11 @@ function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
 
-export default function CommaTestPage() {
+function isFreeTest(test: SentenceStructureSyntaxTest) {
+  return test.is_free === true
+}
+
+export default function SentenceStructureSyntaxTestPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -78,21 +80,13 @@ export default function CommaTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
-  const [test, setTest] = useState<CommaTest | null>(null)
-  const [questions, setQuestions] = useState<CommaQuestion[]>([])
+  const [test, setTest] = useState<SentenceStructureSyntaxTest | null>(null)
+  const [questions, setQuestions] = useState<SentenceStructureSyntaxQuestion[]>([])
 
   const [answers, setAnswers] = useState<UserAnswerMap>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
-
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [finished, setFinished] = useState(false)
-  const [score, setScore] = useState(0)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [reviewIds, setReviewIds] = useState<number[]>([])
 
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
@@ -100,12 +94,17 @@ export default function CommaTestPage() {
   const [timeUpMessage, setTimeUpMessage] = useState("")
   const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
 
-  const currentQuestion = questions[currentIndex]
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [score, setScore] = useState(0)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [reviewIds, setReviewIds] = useState<number[]>([])
+  const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
+    null
+  )
 
-  const canAccessTest = useMemo(() => {
-    if (!test) return false
-    return hasFullAccess(plan) || (plan === "free" && test.is_free)
-  }, [plan, test])
+  const currentQuestion = questions[currentIndex]
 
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
 
@@ -146,47 +145,24 @@ export default function CommaTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
-      setQuestions([])
-      setAnswers({})
+      setAccessBlocked(null)
+      setFinished(false)
+      setSubmitting(false)
       setCurrentIndex(0)
+      setAnswers({})
       setSelectedAnswer(null)
       setShowFeedback(false)
-      setFinished(false)
-      setScore(0)
-      setSubmitting(false)
       setTimeLeft(QUESTION_TIME)
       setTimeUpMessage("")
       setTimeExpiredProcessing(false)
+      setScore(0)
+      setQuestions([])
 
       if (!rawId || Number.isNaN(testId)) {
-        setErrorMessage("Invalid Comma test ID.")
+        setErrorMessage("Invalid Sentence Structure & Syntax test ID.")
         setLoading(false)
         return
       }
-
-      const { data: testData, error: testError } = await supabase
-        .from("english_tests")
-        .select("id, title, description, difficulty, created_at, is_free")
-        .eq("id", testId)
-        .eq("main_category", MAIN_CATEGORY)
-        .eq("subcategory", SUBCATEGORY)
-        .single()
-
-      if (testError) {
-        console.error("Error loading comma test:", {
-          message: testError.message,
-          details: testError.details,
-          hint: testError.hint,
-          code: testError.code,
-        })
-
-        setErrorMessage("Could not load this Comma test.")
-        setLoading(false)
-        return
-      }
-
-      const loadedTest = testData as CommaTest
-      setTest(loadedTest)
 
       const {
         data: { session },
@@ -200,8 +176,7 @@ export default function CommaTestPage() {
       const user = session?.user ?? null
 
       if (!user) {
-        setUserId(null)
-        setPlan("guest")
+        setAccessBlocked("guest")
         setLoading(false)
         return
       }
@@ -228,12 +203,37 @@ export default function CommaTestPage() {
           ? dbPlan
           : "free"
 
-      setPlan(safePlan)
+      const { data: testData, error: testError } = await supabase
+        .from("english_tests")
+        .select("id, title, description, difficulty, created_at, is_free")
+        .eq("id", testId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
+        .single()
+
+      if (testError) {
+        console.error("Error loading sentence structure syntax test:", {
+          message: testError.message,
+          details: testError.details,
+          hint: testError.hint,
+          code: testError.code,
+          full: testError,
+          testId,
+        })
+
+        setErrorMessage("Could not load this Sentence Structure & Syntax test.")
+        setLoading(false)
+        return
+      }
+
+      const loadedTest = testData as SentenceStructureSyntaxTest
+      setTest(loadedTest)
 
       const canOpenTest =
-        hasFullAccess(safePlan) || (safePlan === "free" && loadedTest.is_free)
+        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
 
       if (!canOpenTest) {
+        setAccessBlocked("upgrade")
         setLoading(false)
         return
       }
@@ -261,11 +261,12 @@ export default function CommaTestPage() {
       const { data: questionData, error: questionError } = await questionQuery
 
       if (questionError) {
-        console.error("Error loading comma questions:", {
+        console.error("Error loading sentence structure syntax questions:", {
           message: questionError.message,
           details: questionError.details,
           hint: questionError.hint,
           code: questionError.code,
+          full: questionError,
         })
 
         setErrorMessage("Could not load the questions for this test.")
@@ -273,7 +274,7 @@ export default function CommaTestPage() {
         return
       }
 
-      setQuestions((questionData || []) as CommaQuestion[])
+      setQuestions((questionData || []) as SentenceStructureSyntaxQuestion[])
       setLoading(false)
     }
 
@@ -357,11 +358,11 @@ export default function CommaTestPage() {
     if (!confirmed) return
 
     if (mode === "review") {
-      router.push("/english/punctuation/comma?mode=review")
+      router.push("/english/grammar/sentence-structure-syntax?mode=review")
       return
     }
 
-    router.push("/english/punctuation/comma")
+    router.push("/english/grammar/sentence-structure-syntax")
   }
 
   function getStoredReviewIds() {
@@ -535,26 +536,9 @@ export default function CommaTestPage() {
       updated_at: completedAt,
     }
 
-    const { error: upsertError } = await supabase
+    const { data: existingResult, error: findError } = await supabase
       .from("latest_test_results")
-      .upsert([payload], {
-        onConflict:
-          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-      })
-
-    if (!upsertError) return
-
-    console.error("Error upserting latest comma result:", {
-      message: upsertError.message,
-      details: upsertError.details,
-      hint: upsertError.hint,
-      code: upsertError.code,
-      payload,
-    })
-
-    const { error: deleteError } = await supabase
-      .from("latest_test_results")
-      .delete()
+      .select("id")
       .eq("user_id", userId)
       .eq("subject", "english")
       .eq("category", RESULT_CATEGORY)
@@ -562,14 +546,44 @@ export default function CommaTestPage() {
       .eq("subcategory_two", "")
       .eq("subcategory_three", "")
       .eq("test_id", test.id)
+      .maybeSingle()
 
-    if (deleteError) {
-      console.error("Error deleting old comma result:", {
-        message: deleteError.message,
-        details: deleteError.details,
-        hint: deleteError.hint,
-        code: deleteError.code,
+    if (findError) {
+      console.error("Error checking existing sentence structure syntax result:", {
+        message: findError.message,
+        details: findError.details,
+        hint: findError.hint,
+        code: findError.code,
       })
+
+      setErrorMessage(
+        "The test was completed, but the full result could not be checked."
+      )
+      return
+    }
+
+    if (existingResult?.id) {
+      const { error: updateError } = await supabase
+        .from("latest_test_results")
+        .update(payload)
+        .eq("id", existingResult.id)
+        .eq("user_id", userId)
+
+      if (updateError) {
+        console.error("Error updating latest sentence structure syntax result:", {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+          payload,
+        })
+
+        setErrorMessage(
+          "The test was completed, but the full result could not be updated."
+        )
+      }
+
+      return
     }
 
     const { error: insertError } = await supabase
@@ -577,7 +591,7 @@ export default function CommaTestPage() {
       .insert([payload])
 
     if (insertError) {
-      console.error("Error saving latest comma result:", {
+      console.error("Error saving latest sentence structure syntax result:", {
         message: insertError.message,
         details: insertError.details,
         hint: insertError.hint,
@@ -586,7 +600,7 @@ export default function CommaTestPage() {
       })
 
       setErrorMessage(
-        "Progress was saved, but the full test result could not be saved."
+        "The test was completed, but the full result could not be saved."
       )
     }
   }
@@ -659,7 +673,7 @@ export default function CommaTestPage() {
       .insert([progressPayload])
 
     if (progressError) {
-      console.error("Error saving comma progress:", {
+      console.error("Error saving sentence structure syntax progress:", {
         message: progressError.message,
         details: progressError.details,
         hint: progressError.hint,
@@ -674,13 +688,6 @@ export default function CommaTestPage() {
       return
     }
 
-    await saveLatestTestResult(
-      finalAnswers,
-      correctAnswers,
-      totalQuestions,
-      successRate
-    )
-
     if (mode === "review") {
       if (correctlyAnsweredReviewQuestionIds.length > 0) {
         const { error: deleteReviewError } = await supabase
@@ -692,12 +699,15 @@ export default function CommaTestPage() {
           .in("question_id", correctlyAnsweredReviewQuestionIds)
 
         if (deleteReviewError) {
-          console.error("Error removing correctly answered comma review items:", {
-            message: deleteReviewError.message,
-            details: deleteReviewError.details,
-            hint: deleteReviewError.hint,
-            code: deleteReviewError.code,
-          })
+          console.error(
+            "Error removing correctly answered sentence structure syntax review items:",
+            {
+              message: deleteReviewError.message,
+              details: deleteReviewError.details,
+              hint: deleteReviewError.hint,
+              code: deleteReviewError.code,
+            }
+          )
         }
       }
 
@@ -712,7 +722,7 @@ export default function CommaTestPage() {
         .insert(wrongAnswersForReview)
 
       if (reviewError) {
-        console.error("Error saving comma review:", {
+        console.error("Error saving sentence structure syntax review:", {
           message: reviewError.message,
           details: reviewError.details,
           hint: reviewError.hint,
@@ -729,6 +739,13 @@ export default function CommaTestPage() {
       setStoredReviewIds(updatedReviewIds)
     }
 
+    await saveLatestTestResult(
+      finalAnswers,
+      correctAnswers,
+      totalQuestions,
+      successRate
+    )
+
     setScore(correctAnswers)
     setFinished(true)
     setSubmitting(false)
@@ -736,7 +753,10 @@ export default function CommaTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function getOptionText(question: CommaQuestion, option: AnswerOption) {
+  function getOptionText(
+    question: SentenceStructureSyntaxQuestion,
+    option: AnswerOption
+  ) {
     if (option === "A") return question.option_a
     if (option === "B") return question.option_b
     if (option === "C") return question.option_c
@@ -748,20 +768,20 @@ export default function CommaTestPage() {
     setCurrentIndex(0)
     setSelectedAnswer(null)
     setShowFeedback(false)
-    setFinished(false)
-    setScore(0)
-    setErrorMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
+    setFinished(false)
+    setScore(0)
+    setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function formatTime(totalSeconds: number) {
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
+  function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
 
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
   }
 
   function getDifficultyLabel(difficulty: number | null) {
@@ -792,8 +812,72 @@ export default function CommaTestPage() {
       <>
         <Header />
         <p style={styles.message}>
-          {mode === "review" ? "Loading Comma review..." : "Loading Comma test..."}
+          {mode === "review"
+            ? "Loading Sentence Structure & Syntax review..."
+            : "Loading Sentence Structure & Syntax test..."}
         </p>
+      </>
+    )
+  }
+
+  if (accessBlocked === "guest") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Please sign in</h1>
+
+            <p style={styles.subtitle}>
+              Guests can browse the tests, but you need to sign in before starting
+              a test.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button
+                onClick={() => router.push("/login")}
+                style={styles.primaryButton}
+              >
+                Sign In
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Structure & Syntax
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (accessBlocked === "upgrade") {
+    return (
+      <>
+        <Header />
+        <div style={styles.page}>
+          <div style={styles.centerCard}>
+            <h1 style={styles.title}>Members-only test</h1>
+
+            <p style={styles.subtitle}>
+              This test is not included in the free plan. Upgrade your plan to
+              unlock it.
+            </p>
+
+            <div style={styles.resultButtons}>
+              <button
+                onClick={() => router.push("/profile")}
+                style={styles.primaryButton}
+              >
+                View Membership
+              </button>
+
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Structure & Syntax
+              </button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }
@@ -808,7 +892,7 @@ export default function CommaTestPage() {
             <p>{errorMessage}</p>
 
             <button onClick={goBackSafely} style={styles.primaryButton}>
-              Back to Comma
+              Back to Sentence Structure & Syntax
             </button>
           </div>
         </div>
@@ -822,73 +906,11 @@ export default function CommaTestPage() {
         <Header />
         <div style={styles.page}>
           <div style={styles.centerCard}>
-            <h1 style={styles.title}>Comma test not found</h1>
+            <h1 style={styles.title}>Sentence Structure & Syntax test not found</h1>
 
             <button onClick={goBackSafely} style={styles.primaryButton}>
-              Back to Comma
+              Back to Sentence Structure & Syntax
             </button>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  if (plan === "guest") {
-    return (
-      <>
-        <Header />
-        <div style={styles.page}>
-          <div style={styles.centerCard}>
-            <h1 style={styles.title}>Sign in to start this test</h1>
-
-            <p style={styles.subtitle}>
-              Please sign in or create a free account to access YanBo Learning
-              tests.
-            </p>
-
-            <div style={styles.accessButtonRow}>
-              <button
-                onClick={() => router.push("/login")}
-                style={styles.primaryButton}
-              >
-                Sign In
-              </button>
-
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Comma
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  if (!canAccessTest) {
-    return (
-      <>
-        <Header />
-        <div style={styles.page}>
-          <div style={styles.centerCard}>
-            <h1 style={styles.title}>This test is for paid members</h1>
-
-            <p style={styles.subtitle}>
-              Free members can access free tests only. Monthly and annual members
-              can access all YanBo Learning tests.
-            </p>
-
-            <div style={styles.accessButtonRow}>
-              <button
-                onClick={() => router.push("/profile")}
-                style={styles.primaryButton}
-              >
-                View Membership Options
-              </button>
-
-              <button onClick={goBackSafely} style={styles.secondaryButton}>
-                Back to Comma
-              </button>
-            </div>
           </div>
         </div>
       </>
@@ -913,7 +935,7 @@ export default function CommaTestPage() {
               </p>
 
               <button onClick={goBackSafely} style={styles.primaryButton}>
-                Back to Comma
+                Back to Sentence Structure & Syntax
               </button>
             </div>
           </div>
@@ -936,7 +958,9 @@ export default function CommaTestPage() {
           <div style={styles.container}>
             <div style={styles.heroCard}>
               <h1 style={styles.title}>
-                {mode === "review" ? "🔹 Review Complete" : "🔹 Comma Test Complete"}
+                {mode === "review"
+                  ? "🧩 Review Complete"
+                  : "🧩 Sentence Structure & Syntax Test Complete"}
               </h1>
 
               <p style={styles.subtitle}>{test.title}</p>
@@ -967,7 +991,7 @@ export default function CommaTestPage() {
                 </p>
 
                 <p style={styles.resultText}>
-                  <strong>Category:</strong> Comma
+                  <strong>Category:</strong> Sentence Structure & Syntax
                 </p>
 
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
@@ -976,19 +1000,21 @@ export default function CommaTestPage() {
               </div>
 
               <div style={styles.resultButtons}>
-                <Link
-                  href={`/results/english/${RESULT_CATEGORY}/${test.id}`}
-                  style={styles.primaryLinkButton}
-                >
-                  View Full Result
-                </Link>
-
                 <button onClick={restartSameTest} style={styles.secondaryButton}>
                   Retry This Set
                 </button>
 
+                <button
+                  onClick={() =>
+                    router.push(`/results/english/${RESULT_CATEGORY}/${test.id}`)
+                  }
+                  style={styles.primaryButton}
+                >
+                  View Full Result
+                </button>
+
                 <button onClick={goBackSafely} style={styles.secondaryButton}>
-                  Back to Comma
+                  Back to Sentence Structure & Syntax
                 </button>
               </div>
             </div>
@@ -1010,7 +1036,7 @@ export default function CommaTestPage() {
             <div style={styles.heroTop}>
               <div>
                 <h1 style={styles.title}>
-                  {mode === "review" ? "🔹 Review:" : "🔹"} {test.title}
+                  {mode === "review" ? "🧩 Review:" : "🧩"} {test.title}
                 </h1>
               </div>
 
@@ -1122,21 +1148,12 @@ export default function CommaTestPage() {
 
             {!showFeedback ? (
               <div style={styles.submitRow}>
-                <div style={styles.reportWrap}>
-                  <ReportQuestionButton
-                    subject="english"
-                    category="comma"
-                    testId={testId}
-                    questionId={currentQuestion.id}
-                  />
-                </div>
-
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
                   disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
-                    ...styles.primaryButton,
+                    ...styles.checkButton,
                     opacity:
                       selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
                     cursor:
@@ -1188,13 +1205,13 @@ export default function CommaTestPage() {
                     )}
                 </div>
 
-                <div style={styles.feedbackActionRow}>
+                <div style={styles.submitRow}>
                   <button
                     type="button"
                     onClick={handleNext}
                     disabled={submitting || timeExpiredProcessing}
                     style={{
-                      ...styles.primaryButton,
+                      ...styles.nextButton,
                       opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
                       cursor:
                         submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
@@ -1209,6 +1226,12 @@ export default function CommaTestPage() {
                 </div>
               </>
             )}
+
+            <div style={styles.backRow}>
+              <button onClick={goBackSafely} style={styles.secondaryButton}>
+                Back to Sentence Structure & Syntax
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1412,28 +1435,9 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   submitRow: {
-    width: "100%",
     marginTop: "24px",
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-
-  feedbackActionRow: {
-    width: "100%",
-    marginTop: "24px",
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-
-  reportWrap: {
-    display: "flex",
-    alignItems: "center",
+    justifyContent: "center",
   },
 
   backRow: {
@@ -1454,19 +1458,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "180px",
   },
 
-  primaryLinkButton: {
-    display: "inline-block",
+  checkButton: {
     padding: "12px 20px",
     borderRadius: "12px",
     border: "none",
-    background: "#4f46e5",
-    color: "white",
+    background: "#d4f5d0",
+    color: "#065f46",
     cursor: "pointer",
     fontSize: "16px",
     fontWeight: 600,
     minWidth: "180px",
-    textAlign: "center",
-    textDecoration: "none",
+  },
+
+  nextButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
   },
 
   secondaryButton: {
@@ -1489,14 +1502,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "32px",
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     textAlign: "center",
-  },
-
-  accessButtonRow: {
-    marginTop: "24px",
-    display: "flex",
-    justifyContent: "center",
-    gap: "12px",
-    flexWrap: "wrap",
   },
 
   emptyCard: {

@@ -1136,7 +1136,7 @@ export default function ApostrophesTestPage() {
                   onClick={handleCheckAnswer}
                   disabled={!selectedAnswer || submitting || timeExpiredProcessing}
                   style={{
-                    ...styles.primaryButton,
+                    ...styles.checkButton,
                     opacity:
                       selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
                     cursor:
@@ -1194,7 +1194,7 @@ export default function ApostrophesTestPage() {
                     onClick={handleNext}
                     disabled={submitting || timeExpiredProcessing}
                     style={{
-                      ...styles.primaryButton,
+                      ...styles.nextButton,
                       opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
                       cursor:
                         submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
@@ -1463,6 +1463,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "none",
     background: "#4f46e5",
     color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+
+  checkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+
+  nextButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
     cursor: "pointer",
     fontSize: "16px",
     fontWeight: 600,
