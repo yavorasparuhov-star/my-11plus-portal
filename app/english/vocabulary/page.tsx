@@ -956,7 +956,7 @@ function VocabularyContent() {
                   onClick={handleCheckAnswer}
                   disabled={selectedAnswer === null}
                   style={{
-                    ...styles.primaryButton,
+                    ...styles.checkButton,
                     opacity: selectedAnswer !== null ? 1 : 0.6,
                     cursor: selectedAnswer !== null ? "pointer" : "not-allowed",
                   }}
@@ -1001,7 +1001,7 @@ function VocabularyContent() {
                 </div>
 
                 <div style={styles.feedbackActionRow}>
-                  <button type="button" onClick={handleContinue} style={styles.primaryButton}>
+                  <button type="button" onClick={handleContinue} style={styles.nextButton}>
                     {currentIndex === testWords.length - 1
                       ? "Finish Test"
                       : "Next Question"}
@@ -1373,6 +1373,30 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textDecoration: "none",
     textAlign: "center",
+  },
+
+  checkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+
+  nextButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
   },
 
   secondaryButton: {

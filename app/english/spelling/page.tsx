@@ -1114,7 +1114,7 @@ function SpellingContent() {
               onClick={handleCheckAnswer}
               disabled={!selected}
               style={{
-                ...styles.primaryButton,
+                ...styles.checkButton,
                 opacity: selected ? 1 : 0.6,
                 cursor: selected ? "pointer" : "not-allowed",
               }}
@@ -1146,7 +1146,7 @@ function SpellingContent() {
               <button
                 type="button"
                 onClick={() => void nextQuestion(score, spellingResults)}
-                style={styles.primaryButton}
+                style={styles.nextButton}
               >
                 {currentIndex < words.length - 1 ? "Next Question" : "Finish Test"}
               </button>
@@ -1361,6 +1361,28 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textDecoration: "none",
     textAlign: "center",
+  },
+  checkButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
+  },
+  nextButton: {
+    padding: "12px 20px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d4f5d0",
+    color: "#065f46",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 600,
+    minWidth: "180px",
   },
   secondaryButton: {
     padding: "12px 20px",
