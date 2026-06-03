@@ -2,6 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
+import ReportQuestionButton from "../../../components/ReportQuestionButton"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -87,6 +88,7 @@ function SpellingContent() {
   const [options, setOptions] = useState<string[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [feedback, setFeedback] = useState("")
+  const [showFeedback, setShowFeedback] = useState(false)
   const [score, setScore] = useState(0)
   const [hintUsed, setHintUsed] = useState(false)
   const [progressSaved, setProgressSaved] = useState(false)
@@ -261,6 +263,7 @@ function SpellingContent() {
     setCurrentIndex(0)
     setSelected(null)
     setFeedback("")
+    setShowFeedback(false)
     setScore(0)
     setHintUsed(false)
     setShowHint(false)
@@ -298,7 +301,7 @@ function SpellingContent() {
 
     if (!testStarted) return
     if (!currentWord) return
-    if (selected) return
+    if (showFeedback) return
 
     setTimeLeft(15)
 
@@ -315,7 +318,7 @@ function SpellingContent() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [currentIndex, timerEnabled, selected, currentWord, testStarted])
+  }, [currentIndex, timerEnabled, showFeedback, currentWord, testStarted])
 
   function shuffle(array: string[]) {
     return [...array].sort(() => Math.random() - 0.5)
@@ -377,6 +380,7 @@ function SpellingContent() {
     setOptions(allOptions)
     setSelected(null)
     setFeedback("")
+    setShowFeedback(false)
     setHintUsed(false)
     setShowHint(false)
   }
@@ -588,23 +592,29 @@ function SpellingContent() {
   }
 
   function handleHint() {
-    if (hintUsed || selected) return
+    if (hintUsed || showFeedback) return
     setShowHint(true)
     setHintUsed(true)
   }
 
-  async function handleAnswer(option: string) {
-    if (selected || !currentWord) return
+  function handleAnswer(option: string) {
+    if (showFeedback || !currentWord) return
+    setSelected(option)
+    setFeedback("")
+  }
+
+  async function handleCheckAnswer() {
+    if (!selected || showFeedback || !currentWord) return
 
     const correct = currentWord.word
-    const isCorrect = option === correct
+    const isCorrect = selected === correct
     const updatedScore = isCorrect ? score + 1 : score
 
-    const newResult = buildSpellingResult(currentWord, option, options)
+    const newResult = buildSpellingResult(currentWord, selected, options)
     const updatedResults = [...spellingResults, newResult]
 
     setSpellingResults(updatedResults)
-    setSelected(option)
+    setShowFeedback(true)
 
     if (isCorrect) {
       setFeedback("Correct ✅")
@@ -615,36 +625,28 @@ function SpellingContent() {
         removeWordIdFromStoredReviewIds(currentWord.id)
       }
     } else {
-      setFeedback(`Incorrect ❌ (Correct: ${correct})`)
+      setFeedback("Not quite ❌")
 
       if (!reviewMode) {
         await saveWrongSpellingReview(currentWord)
       }
     }
-
-    setTimeout(() => {
-      void nextQuestion(updatedScore, updatedResults)
-    }, 1500)
   }
 
   async function handleTimeout() {
-    if (selected || !currentWord) return
+    if (showFeedback || !currentWord) return
 
-    const correct = currentWord.word
     const newResult = buildSpellingResult(currentWord, null, options)
     const updatedResults = [...spellingResults, newResult]
 
     setSpellingResults(updatedResults)
     setSelected("TIMEOUT")
-    setFeedback(`⏰ Time's up! Correct: ${correct}`)
+    setShowFeedback(true)
+    setFeedback("⏰ Time's up!")
 
     if (!reviewMode) {
       await saveWrongSpellingReview(currentWord)
     }
-
-    setTimeout(() => {
-      void nextQuestion(score, updatedResults)
-    }, 1500)
   }
 
   async function nextQuestion(finalScore: number, finalResults: SpellingResult[]) {
@@ -666,6 +668,7 @@ function SpellingContent() {
     setCurrentIndex(0)
     setSelected(null)
     setFeedback("")
+    setShowFeedback(false)
     setOptions([])
     setHintUsed(false)
     setShowHint(false)
@@ -1049,7 +1052,7 @@ function SpellingContent() {
           <p style={styles.promptText}>Choose the correct spelling:</p>
         </div>
 
-        {showHint && (
+        {showHint && !showFeedback && (
           <p style={styles.hintText}>
             <strong>Definition:</strong> {currentWord.definition || "No definition available."}
           </p>
@@ -1057,26 +1060,38 @@ function SpellingContent() {
 
         <div style={{ marginTop: "20px" }}>
           {options.map((opt, index) => {
+            const isSelected = selected === opt
+            const isCorrectAnswer = opt === correctAnswer
             let bg = "#f3f4f6"
+            let borderColor = "#e5e7eb"
+            let textColor = "black"
 
-            if (selected) {
-              if (opt === correctAnswer) bg = "#22c55e"
-              else if (opt === selected) bg = "#ef4444"
+            if (showFeedback) {
+              if (isCorrectAnswer) {
+                bg = "#22c55e"
+                borderColor = "#16a34a"
+                textColor = "white"
+              } else if (isSelected) {
+                bg = "#ef4444"
+                borderColor = "#dc2626"
+                textColor = "white"
+              }
+            } else if (isSelected) {
+              bg = "#eef2ff"
+              borderColor = "#4f46e5"
             }
 
             return (
               <button
                 key={`${opt}-${index}`}
                 onClick={() => handleAnswer(opt)}
-                disabled={!!selected}
+                disabled={showFeedback}
                 style={{
                   ...styles.answerButton,
                   backgroundColor: bg,
-                  color:
-                    selected && (opt === correctAnswer || opt === selected)
-                      ? "white"
-                      : "black",
-                  cursor: selected ? "not-allowed" : "pointer",
+                  border: `2px solid ${borderColor}`,
+                  color: textColor,
+                  cursor: showFeedback ? "not-allowed" : "pointer",
                 }}
               >
                 {opt}
@@ -1085,7 +1100,59 @@ function SpellingContent() {
           })}
         </div>
 
-        {feedback && <p style={styles.feedbackText}>{feedback}</p>}
+        {!showFeedback ? (
+          <div style={styles.submitRow}>
+            <ReportQuestionButton
+              subject="english"
+              category="spelling"
+              testId={RESULT_TEST_ID}
+              questionId={currentWord.id}
+            />
+
+            <button
+              type="button"
+              onClick={handleCheckAnswer}
+              disabled={!selected}
+              style={{
+                ...styles.primaryButton,
+                opacity: selected ? 1 : 0.6,
+                cursor: selected ? "pointer" : "not-allowed",
+              }}
+            >
+              Check Answer
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={styles.feedbackBox}>
+              <p style={styles.feedbackText}>{feedback}</p>
+
+              <p style={styles.feedbackDetail}>
+                <strong>Your answer:</strong>{" "}
+                {selected && selected !== "TIMEOUT" ? selected : "No answer"}
+              </p>
+
+              <p style={styles.feedbackDetail}>
+                <strong>Correct answer:</strong> {correctAnswer}
+              </p>
+
+              <p style={styles.feedbackDetail}>
+                <strong>Definition:</strong>{" "}
+                {currentWord.definition || "No definition available."}
+              </p>
+            </div>
+
+            <div style={styles.feedbackActionRow}>
+              <button
+                type="button"
+                onClick={() => void nextQuestion(score, spellingResults)}
+                style={styles.primaryButton}
+              >
+                {currentIndex < words.length - 1 ? "Next Question" : "Finish Test"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </>
   )
@@ -1215,10 +1282,38 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
   feedbackText: {
-    marginTop: "18px",
+    margin: "0 0 12px 0",
     textAlign: "center",
     fontSize: "22px",
     fontWeight: "bold",
+  },
+  submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+  feedbackBox: {
+    marginTop: "22px",
+    padding: "18px",
+    borderRadius: "14px",
+    border: "1px solid #d1fae5",
+    background: "#f0fdf4",
+  },
+  feedbackDetail: {
+    margin: "8px 0",
+    fontSize: "18px",
+    color: "#111827",
+  },
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "18px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   resultCard: {
     background: "white",
