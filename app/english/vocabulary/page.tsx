@@ -895,7 +895,7 @@ function VocabularyContent() {
               <h2 style={styles.word}>{currentWord.word}</h2>
             </div>
 
-            {showHint && currentWord.example_sentence && (
+            {showHint && !showFeedback && currentWord.example_sentence && (
               <p style={styles.hintText}>{currentWord.example_sentence}</p>
             )}
 
