@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
+import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
@@ -1032,18 +1033,28 @@ export default function VRWordRelationshipsTestPage() {
             </div>
 
             {!showFeedback ? (
-              <button
-                onClick={handleCheckAnswer}
-                disabled={!selectedAnswer || savingResults}
-                style={{
-                  ...styles.startButton,
-                  opacity: selectedAnswer && !savingResults ? 1 : 0.6,
-                  cursor:
-                    selectedAnswer && !savingResults ? "pointer" : "not-allowed",
-                }}
-              >
-                Check Answer
-              </button>
+              <div style={styles.submitRow}>
+                <ReportQuestionButton
+                  subject="vr"
+                  category="word-relationships"
+                  testId={testId}
+                  questionId={currentQuestion.id}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleCheckAnswer}
+                  disabled={!selectedAnswer || savingResults}
+                  style={{
+                    ...styles.startButton,
+                    opacity: selectedAnswer && !savingResults ? 1 : 0.6,
+                    cursor:
+                      selectedAnswer && !savingResults ? "pointer" : "not-allowed",
+                  }}
+                >
+                  Check Answer
+                </button>
+              </div>
             ) : (
               <>
                 <div
@@ -1080,21 +1091,24 @@ export default function VRWordRelationshipsTestPage() {
                     )}
                 </div>
 
-                <button
-                  onClick={handleNext}
-                  disabled={savingResults}
-                  style={{
-                    ...styles.startButton,
-                    opacity: savingResults ? 0.7 : 1,
-                    cursor: savingResults ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {savingResults
-                    ? "Saving..."
-                    : currentIndex === questions.length - 1
-                      ? "Finish Test"
-                      : "Next Question"}
-                </button>
+                <div style={styles.feedbackActionRow}>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={savingResults}
+                    style={{
+                      ...styles.startButton,
+                      opacity: savingResults ? 0.7 : 1,
+                      cursor: savingResults ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {savingResults
+                      ? "Saving..."
+                      : currentIndex === questions.length - 1
+                        ? "Finish Test"
+                        : "Next Question"}
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -1278,6 +1292,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "left",
     fontSize: "16px",
     lineHeight: 1.5,
+  },
+
+  submitRow: {
+    width: "100%",
+    marginTop: "22px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  feedbackActionRow: {
+    width: "100%",
+    marginTop: "20px",
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
   },
 
   feedbackBox: {
