@@ -19,25 +19,25 @@ import type {
 
 type VRCategory = "word_relationships" | "code_logic" | "sequence_patterns"
 
-type VRReviewRow = {
+type VRReviewDbRow = {
   id: number
   user_id: string
   question_id: number | null
-  question_text: string
+  question_text: string | null
   knew_it: boolean | null
   difficulty: number | null
   created_at: string
   category: string | null
 }
 
-type VRQuestionRow = {
+type VRQuestionLookupRow = {
   id: number
   explanation: string | null
   difficulty: number | null
   test_id: number | null
 }
 
-type VRTestRow = {
+type VRTestLookupRow = {
   id: number
   category: string | null
 }
@@ -97,29 +97,42 @@ function getCutoffDate(filter: TimeFilter) {
 function normaliseVRCategory(category: string | null | undefined) {
   if (!category) return "unknown"
 
-  const clean = category.trim()
+  const cleaned = category
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
 
-  if (clean === "word_relationships") return "word_relationships"
-  if (clean === "code_logic") return "code_logic"
-  if (clean === "sequence_patterns") return "sequence_patterns"
+  if (
+    cleaned === "word relationship" ||
+    cleaned === "word relationships" ||
+    cleaned === "wordrelationship" ||
+    cleaned === "wordrelationships"
+  ) {
+    return "word_relationships"
+  }
 
-  if (clean === "word-relationships") return "word_relationships"
-  if (clean === "word relationships") return "word_relationships"
-  if (clean === "Word Relationships") return "word_relationships"
+  if (
+    cleaned === "code logic" ||
+    cleaned === "codes logic" ||
+    cleaned === "code and logic" ||
+    cleaned === "codes and logic" ||
+    cleaned === "codelogic" ||
+    cleaned === "codeslogic"
+  ) {
+    return "code_logic"
+  }
 
-  if (clean === "code-logic") return "code_logic"
-  if (clean === "codes-logic") return "code_logic"
-  if (clean === "code logic") return "code_logic"
-  if (clean === "codes logic") return "code_logic"
-  if (clean === "Code & Logic") return "code_logic"
-  if (clean === "Codes & Logic") return "code_logic"
-
-  if (clean === "sequence-pattern") return "sequence_patterns"
-  if (clean === "sequence-patterns") return "sequence_patterns"
-  if (clean === "sequence patterns") return "sequence_patterns"
-  if (clean === "Sequence Pattern") return "sequence_patterns"
-  if (clean === "Sequence Patterns") return "sequence_patterns"
-  if (clean === "Sequence & Patterns") return "sequence_patterns"
+  if (
+    cleaned === "sequence pattern" ||
+    cleaned === "sequence patterns" ||
+    cleaned === "sequence and patterns" ||
+    cleaned === "sequencepattern" ||
+    cleaned === "sequencepatterns"
+  ) {
+    return "sequence_patterns"
+  }
 
   return "unknown"
 }
@@ -138,7 +151,9 @@ function getCategoryLabel(category: string | null | undefined) {
   return "Not set"
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—"
+
   const date = new Date(value)
 
   return date.toLocaleString("en-GB", {
@@ -150,7 +165,7 @@ function formatDateTime(value: string) {
   })
 }
 
-function truncateText(text: string, maxLength = 160) {
+function truncateText(text: string | null | undefined, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }
@@ -363,7 +378,7 @@ function ChartBox({
     return () => {
       observer.disconnect()
     }
-  }, [])
+  }, [height])
 
   return (
     <div
@@ -424,23 +439,16 @@ export default function VRReviewPage() {
         if (!mounted) return
 
         if (error) {
-          console.error("Error loading VR review:", {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            full: error,
-          })
-
+          console.error("Error loading VR review:", error)
           setReviewQuestions([])
           return
         }
 
-        const reviewData = (data || []) as VRReviewRow[]
+        const reviewRows = (data ?? []) as VRReviewDbRow[]
 
         const questionIds = Array.from(
           new Set(
-            reviewData
+            reviewRows
               .map((row) => row.question_id)
               .filter((id): id is number => id !== null)
           )
@@ -462,23 +470,19 @@ export default function VRReviewPage() {
             .in("id", questionIds)
 
           if (questionsError) {
-            console.error("Error loading VR explanations/questions:", {
-              message: questionsError.message,
-              details: questionsError.details,
-              hint: questionsError.hint,
-              code: questionsError.code,
-              full: questionsError,
-            })
+            console.error("Error loading VR question lookup:", questionsError)
           } else {
             questionMap = new Map(
-              ((questionsData || []) as VRQuestionRow[]).map((question) => [
-                question.id,
-                {
-                  explanation: question.explanation || "",
-                  difficulty: question.difficulty,
-                  test_id: question.test_id,
-                },
-              ])
+              ((questionsData ?? []) as VRQuestionLookupRow[]).map(
+                (question) => [
+                  question.id,
+                  {
+                    explanation: question.explanation || "",
+                    difficulty: question.difficulty ?? null,
+                    test_id: question.test_id ?? null,
+                  },
+                ]
+              )
             )
           }
         }
@@ -486,12 +490,12 @@ export default function VRReviewPage() {
         const testIds = Array.from(
           new Set(
             Array.from(questionMap.values())
-              .map((item) => item.test_id)
+              .map((question) => question.test_id)
               .filter((id): id is number => id !== null)
           )
         )
 
-        let testMap = new Map<number, VRTestRow>()
+        let testMap = new Map<number, VRTestLookupRow>()
 
         if (testIds.length > 0) {
           const { data: testsData, error: testsError } = await supabase
@@ -500,30 +504,25 @@ export default function VRReviewPage() {
             .in("id", testIds)
 
           if (testsError) {
-            console.error("Error loading VR test categories:", {
-              message: testsError.message,
-              details: testsError.details,
-              hint: testsError.hint,
-              code: testsError.code,
-              full: testsError,
-            })
+            console.error("Error loading VR test lookup:", testsError)
           } else {
             testMap = new Map(
-              ((testsData || []) as VRTestRow[]).map((test) => [test.id, test])
+              ((testsData ?? []) as VRTestLookupRow[]).map((test) => [
+                test.id,
+                test,
+              ])
             )
           }
         }
 
-        const mergedData: VRReviewItem[] = reviewData.map((row) => {
+        const mergedRows: VRReviewItem[] = reviewRows.map((row) => {
           const questionInfo =
-            row.question_id !== null
-              ? questionMap.get(row.question_id)
-              : undefined
+            row.question_id !== null ? questionMap.get(row.question_id) : null
 
           const linkedTest =
             questionInfo?.test_id !== null && questionInfo?.test_id !== undefined
               ? testMap.get(questionInfo.test_id)
-              : undefined
+              : null
 
           const categoryFromReview = normaliseVRCategory(row.category)
           const categoryFromTest = normaliseVRCategory(linkedTest?.category)
@@ -531,8 +530,8 @@ export default function VRReviewPage() {
           return {
             id: String(row.id),
             user_id: row.user_id,
-            question_id: row.question_id,
-            question_text: row.question_text,
+            question_id: row.question_id ?? null,
+            question_text: row.question_text || "Question text unavailable.",
             created_at: row.created_at,
             explanation: questionInfo?.explanation || "",
             difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
@@ -546,7 +545,7 @@ export default function VRReviewPage() {
 
         if (!mounted) return
 
-        setReviewQuestions(mergedData)
+        setReviewQuestions(mergedRows)
       } finally {
         if (mounted) {
           setLoadingData(false)
@@ -579,13 +578,7 @@ export default function VRReviewPage() {
     const { error } = await query
 
     if (error) {
-      console.error("Error deleting VR review question:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        full: error,
-      })
+      console.error("Error deleting VR review question:", error)
       return
     }
 
@@ -613,20 +606,20 @@ export default function VRReviewPage() {
     const cutoff = getCutoffDate(timeFilter)
 
     return uniqueQuestions.filter((question) => {
-      const matchesCategory =
-        categoryFilter === "all" || question.category === categoryFilter
+      const matchesTime = cutoff
+        ? new Date(question.created_at) >= cutoff
+        : true
 
       const matchesDifficulty =
         difficultyFilter === "all" ||
         String(question.difficulty ?? "") === difficultyFilter
 
-      const matchesTime = cutoff
-        ? new Date(question.created_at) >= cutoff
-        : true
+      const matchesCategory =
+        categoryFilter === "all" || question.category === categoryFilter
 
-      return matchesCategory && matchesDifficulty && matchesTime
+      return matchesTime && matchesDifficulty && matchesCategory
     })
-  }, [uniqueQuestions, categoryFilter, difficultyFilter, timeFilter])
+  }, [uniqueQuestions, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredQuestions() {
     const targetCategory =
@@ -641,25 +634,23 @@ export default function VRReviewPage() {
     const config = getReviewStorageConfig(targetCategory)
     if (!config) return
 
-    const reviewQuestionIds = filteredQuestions
+    const ids = filteredQuestions
       .filter((row) => row.category === targetCategory)
       .map((row) => row.question_id)
       .filter((id): id is number => id !== null)
 
-    const uniqueIds = Array.from(new Set(reviewQuestionIds))
+    const uniqueIds = Array.from(new Set(ids))
 
     if (uniqueIds.length === 0) return
 
     localStorage.setItem(config.key, JSON.stringify(uniqueIds))
-
-    // Fallback for older VR review-running logic.
     localStorage.setItem("vr_review_question_ids", JSON.stringify(uniqueIds))
 
     router.push(config.route)
   }
 
   const reviewStats = useMemo(() => {
-    const totalQuestions = filteredQuestions.length
+    const totalItems = filteredQuestions.length
     const allUnique = uniqueQuestions.length
 
     const byCategory = Object.entries(
@@ -698,7 +689,7 @@ export default function VRReviewPage() {
     ).length
 
     return {
-      totalQuestions,
+      totalItems,
       allUnique,
       mostCommonCategory,
       mostRecentItem,
@@ -752,7 +743,7 @@ export default function VRReviewPage() {
       ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
       : "N/A"
 
-    return `You currently have ${reviewStats.totalQuestions} verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
+    return `You currently have ${reviewStats.totalItems} verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
   }, [filteredQuestions, reviewStats])
 
   if (loadingUser || loadingData) {
@@ -910,7 +901,7 @@ export default function VRReviewPage() {
         >
           <StatCard
             title="Questions to Review"
-            value={String(reviewStats.totalQuestions)}
+            value={String(reviewStats.totalItems)}
           />
 
           <StatCard
@@ -1033,7 +1024,7 @@ export default function VRReviewPage() {
                     color: "#0f172a",
                   }}
                 >
-                  {reviewStats.totalQuestions}
+                  {reviewStats.totalItems}
                 </div>
               </div>
 
