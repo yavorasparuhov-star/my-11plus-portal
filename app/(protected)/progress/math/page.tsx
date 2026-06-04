@@ -18,6 +18,23 @@ import type {
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent"
 
+type MathProgressDbRow = {
+  id: number
+  user_id: string
+  test_id: number
+  category: string
+  correct_answers: number
+  total_questions: number
+  success_rate: number
+  created_at: string
+  difficulty?: number | null
+}
+
+type MathTestLookupRow = {
+  id: number
+  difficulty: number | null
+}
+
 type MathProgressRow = {
   id: number
   user_id: string
@@ -27,9 +44,11 @@ type MathProgressRow = {
   total_questions: number
   success_rate: number
   created_at: string
+  difficulty: number | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
+type DifficultyFilter = "all" | "1" | "2" | "3"
 
 type CategoryFilter =
   | "all"
@@ -75,6 +94,13 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "algebra_reasoning", label: "Algebra & Reasoning" },
 ]
 
+const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
+  { value: "all", label: "All Levels" },
+  { value: "1", label: "Easy" },
+  { value: "2", label: "Medium" },
+  { value: "3", label: "Hard" },
+]
+
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
@@ -99,6 +125,13 @@ function getCutoffDate(filter: TimeFilter) {
 
 function formatCategory(category: string) {
   return CATEGORY_LABELS[category] ?? category
+}
+
+function getLevelLabel(level: number | null | undefined) {
+  if (level === 1) return "Easy"
+  if (level === 2) return "Medium"
+  if (level === 3) return "Hard"
+  return "Not set"
 }
 
 function formatDateTime(value: string) {
@@ -338,40 +371,94 @@ export default function MathProgressPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [rows, setRows] = useState<MathProgressRow[]>([])
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
     async function loadData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (!user) {
-        router.push("/login")
-        return
-      }
+        if (!user) {
+          router.push("/login")
+          return
+        }
 
-      setLoadingUser(false)
+        setLoadingUser(false)
 
-      const { data, error } = await supabase
-        .from("math_progress")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        const { data, error } = await supabase
+          .from("math_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
 
-      if (error) {
-        console.error("Error loading math progress:", error)
-        setRows([])
-      } else {
-        setRows((data ?? []) as MathProgressRow[])
-      }
+        if (!mounted) return
 
-      if (mounted) {
-        setLoadingData(false)
+        if (error) {
+          console.error("Error loading math progress:", error)
+          setRows([])
+          return
+        }
+
+        const progressRows = (data ?? []) as MathProgressDbRow[]
+
+        const testIds = Array.from(
+          new Set(
+            progressRows
+              .map((row) => row.test_id)
+              .filter((id): id is number => typeof id === "number")
+          )
+        )
+
+        let testDifficultyMap = new Map<number, number | null>()
+
+        if (testIds.length > 0) {
+          const { data: testsData, error: testsError } = await supabase
+            .from("math_tests")
+            .select("id, difficulty")
+            .in("id", testIds)
+
+          if (testsError) {
+            console.error("Error loading math test difficulties:", testsError)
+          } else {
+            testDifficultyMap = new Map(
+              ((testsData ?? []) as MathTestLookupRow[]).map((test) => [
+                test.id,
+                test.difficulty ?? null,
+              ])
+            )
+          }
+        }
+
+        const mergedRows: MathProgressRow[] = progressRows.map((row) => ({
+          id: row.id,
+          user_id: row.user_id,
+          test_id: row.test_id,
+          category: row.category,
+          correct_answers: row.correct_answers,
+          total_questions: row.total_questions,
+          success_rate: Number(row.success_rate),
+          created_at: row.created_at,
+          difficulty:
+            row.difficulty ??
+            testDifficultyMap.get(row.test_id) ??
+            null,
+        }))
+
+        if (!mounted) return
+
+        setRows(mergedRows)
+      } finally {
+        if (mounted) {
+          setLoadingData(false)
+        }
       }
     }
 
@@ -387,15 +474,20 @@ export default function MathProgressPage() {
 
     return rows.filter((row) => {
       const matchesTime = cutoff ? new Date(row.created_at) >= cutoff : true
+
+      const matchesDifficulty =
+        difficultyFilter === "all" ||
+        String(row.difficulty ?? "") === difficultyFilter
+
       const matchesCategory =
         categoryFilter === "all" || row.category === categoryFilter
 
-      return matchesTime && matchesCategory
+      return matchesTime && matchesDifficulty && matchesCategory
     })
-  }, [rows, timeFilter, categoryFilter])
+  }, [rows, timeFilter, difficultyFilter, categoryFilter])
 
   const overallStats = useMemo(() => {
-    const testsCompleted = filteredRows.length
+    const attemptsCompleted = filteredRows.length
 
     const questionsPractised = filteredRows.reduce(
       (sum, row) => sum + row.total_questions,
@@ -408,13 +500,13 @@ export default function MathProgressPage() {
     )
 
     const averageSuccess =
-      testsCompleted > 0
+      attemptsCompleted > 0
         ? filteredRows.reduce((sum, row) => sum + Number(row.success_rate), 0) /
-          testsCompleted
+          attemptsCompleted
         : 0
 
     const bestScore =
-      testsCompleted > 0
+      attemptsCompleted > 0
         ? Math.max(...filteredRows.map((row) => Number(row.success_rate)))
         : 0
 
@@ -452,7 +544,7 @@ export default function MathProgressPage() {
         : null
 
     return {
-      testsCompleted,
+      attemptsCompleted,
       questionsPractised,
       totalCorrect,
       averageSuccess,
@@ -473,6 +565,7 @@ export default function MathProgressPage() {
       date: formatShortDate(row.created_at),
       success: Number(row.success_rate),
       scoreLabel: `${row.correct_answers}/${row.total_questions}`,
+      difficulty: getLevelLabel(row.difficulty),
       category: formatCategory(row.category),
     }))
   }, [filteredRows])
@@ -568,7 +661,7 @@ export default function MathProgressPage() {
         )} (${overallStats.weakestCategory.avgSuccess.toFixed(1)}%)`
       : "N/A"
 
-    return `You answered ${overallStats.totalCorrect} maths questions correctly across ${overallStats.testsCompleted} completed tests. Your strongest area is ${strongest}, while your weakest area is ${weakest}.`
+    return `You answered ${overallStats.totalCorrect} maths questions correctly across ${overallStats.attemptsCompleted} completed attempts. Your strongest category is ${strongest}, while your weakest category is ${weakest}.`
   }, [filteredRows, overallStats])
 
   if (loadingUser || loadingData) {
@@ -634,7 +727,7 @@ export default function MathProgressPage() {
               }}
             >
               Explore maths performance across all seven categories with live
-              filters, trend tracking, category insights, and recent test
+              filters, trend tracking, category insights, and recent attempt
               history.
             </p>
           </div>
@@ -646,7 +739,7 @@ export default function MathProgressPage() {
               gap: "12px",
               alignItems: "center",
               width: "100%",
-              maxWidth: "540px",
+              maxWidth: "1100px",
               minWidth: 0,
             }}
           >
@@ -660,6 +753,22 @@ export default function MathProgressPage() {
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              id="math-progress-difficulty-filter"
+              name="mathProgressDifficultyFilter"
+              value={difficultyFilter}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
+              style={selectStyle}
+            >
+              {difficultyOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -687,15 +796,16 @@ export default function MathProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
             minWidth: 0,
           }}
         >
           <StatCard
-            title="Tests Completed"
-            value={String(overallStats.testsCompleted)}
+            title="Attempts Completed"
+            value={String(overallStats.attemptsCompleted)}
           />
           <StatCard
             title="Questions Practised"
@@ -763,7 +873,7 @@ export default function MathProgressPage() {
                         const point = payload?.[0]?.payload
 
                         return point
-                          ? `${point.date} • ${point.category} • ${point.scoreLabel}`
+                          ? `${point.date} • ${point.category} • ${point.difficulty} • ${point.scoreLabel}`
                           : label
                       }}
                     />
@@ -833,7 +943,7 @@ export default function MathProgressPage() {
                     marginBottom: "6px",
                   }}
                 >
-                  Best Area
+                  Best Category
                 </div>
                 <div
                   style={{
@@ -925,22 +1035,15 @@ export default function MathProgressPage() {
                     width={width}
                     height={height}
                     data={successByCategoryData}
-                    layout="vertical"
-                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 100]} />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      width={135}
-                      tick={{ fontSize: 11 }}
-                    />
+                    <XAxis dataKey="category" />
+                    <YAxis domain={[0, 100]} />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
                     <Bar
                       dataKey="avgSuccess"
                       fill="#16a34a"
-                      radius={[0, 10, 10, 0]}
+                      radius={[10, 10, 0, 0]}
                     />
                   </BarChart>
                 ) : (
@@ -963,22 +1066,15 @@ export default function MathProgressPage() {
                     width={width}
                     height={height}
                     data={attemptsByCategoryData}
-                    layout="vertical"
-                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      width={135}
-                      tick={{ fontSize: 11 }}
-                    />
+                    <XAxis dataKey="category" />
+                    <YAxis allowDecimals={false} />
                     <Tooltip formatter={attemptsTooltipFormatter} />
                     <Bar
                       dataKey="attempts"
                       fill="#10b981"
-                      radius={[0, 10, 10, 0]}
+                      radius={[10, 10, 0, 0]}
                     />
                   </BarChart>
                 ) : (
@@ -993,7 +1089,7 @@ export default function MathProgressPage() {
 
         <SectionCard
           title="Recent Attempts"
-          subtitle="Your most recent maths test results for the selected filters."
+          subtitle="Your most recent maths results for the selected filters."
         >
           {recentAttempts.length ? (
             <div style={{ overflowX: "auto", maxWidth: "100%" }}>
@@ -1001,13 +1097,14 @@ export default function MathProgressPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "760px",
+                  minWidth: "900px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Category</th>
+                    <th style={thStyle}>Difficulty</th>
                     <th style={thStyle}>Correct</th>
                     <th style={thStyle}>Questions</th>
                     <th style={thStyle}>Success</th>
@@ -1024,6 +1121,7 @@ export default function MathProgressPage() {
                     >
                       <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
                       <td style={tdStyle}>{formatCategory(row.category)}</td>
+                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                       <td style={tdStyle}>{row.correct_answers}</td>
                       <td style={tdStyle}>{row.total_questions}</td>
                       <td style={tdStyle}>
