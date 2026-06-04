@@ -17,46 +17,34 @@ import type {
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent"
 
-type VRCategory = "word_relationships" | "code_logic" | "sequence_patterns"
-
-type VRReviewDbRow = {
-  id: number
+type VRReviewRow = {
+  id: string
   user_id: string
+  test_id: number | null
   question_id: number | null
-  question_text: string | null
-  knew_it: boolean | null
-  difficulty: number | null
-  created_at: string
   category: string | null
+  question_text: string
+  user_answer: string | null
+  correct_answer: string | null
+  created_at: string
+  explanation?: string
+  difficulty?: number | null
 }
 
-type VRQuestionLookupRow = {
+type VRQuestionRow = {
   id: number
   explanation: string | null
   difficulty: number | null
-  test_id: number | null
-}
-
-type VRTestLookupRow = {
-  id: number
-  category: string | null
-}
-
-type VRReviewItem = {
-  id: string
-  user_id: string
-  question_id: number | null
-  question_text: string
-  difficulty: number | null
-  created_at: string
-  explanation: string
-  category: VRCategory | "unknown"
-  test_id: number | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-type CategoryFilter = "all" | VRCategory
+
+type CategoryFilter =
+  | "all"
+  | "word-relationships"
+  | "codes-logic"
+  | "sequence-pattern"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -74,9 +62,9 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
 
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
-  { value: "word_relationships", label: "Word Relationships" },
-  { value: "code_logic", label: "Code & Logic" },
-  { value: "sequence_patterns", label: "Sequence Patterns" },
+  { value: "word-relationships", label: "Word Relationships" },
+  { value: "codes-logic", label: "Codes & Logic" },
+  { value: "sequence-pattern", label: "Sequence Patterns" },
 ]
 
 function getCutoffDate(filter: TimeFilter) {
@@ -94,8 +82,8 @@ function getCutoffDate(filter: TimeFilter) {
   return now
 }
 
-function normaliseVRCategory(category: string | null | undefined) {
-  if (!category) return "unknown"
+function normaliseCategory(category: string | null | undefined) {
+  if (!category) return null
 
   const cleaned = category
     .trim()
@@ -110,7 +98,7 @@ function normaliseVRCategory(category: string | null | undefined) {
     cleaned === "wordrelationship" ||
     cleaned === "wordrelationships"
   ) {
-    return "word_relationships"
+    return "word-relationships"
   }
 
   if (
@@ -121,7 +109,7 @@ function normaliseVRCategory(category: string | null | undefined) {
     cleaned === "codelogic" ||
     cleaned === "codeslogic"
   ) {
-    return "code_logic"
+    return "codes-logic"
   }
 
   if (
@@ -131,10 +119,10 @@ function normaliseVRCategory(category: string | null | undefined) {
     cleaned === "sequencepattern" ||
     cleaned === "sequencepatterns"
   ) {
-    return "sequence_patterns"
+    return "sequence-pattern"
   }
 
-  return "unknown"
+  return category
 }
 
 function getLevelLabel(level: number | null | undefined) {
@@ -145,15 +133,16 @@ function getLevelLabel(level: number | null | undefined) {
 }
 
 function getCategoryLabel(category: string | null | undefined) {
-  if (category === "word_relationships") return "Word Relationships"
-  if (category === "code_logic") return "Code & Logic"
-  if (category === "sequence_patterns") return "Sequence Patterns"
+  const normalised = normaliseCategory(category)
+
+  if (normalised === "word-relationships") return "Word Relationships"
+  if (normalised === "codes-logic") return "Codes & Logic"
+  if (normalised === "sequence-pattern") return "Sequence Patterns"
+
   return "Not set"
 }
 
-function formatDateTime(value: string | null | undefined) {
-  if (!value) return "—"
-
+function formatDateTime(value: string) {
   const date = new Date(value)
 
   return date.toLocaleString("en-GB", {
@@ -165,7 +154,7 @@ function formatDateTime(value: string | null | undefined) {
   })
 }
 
-function truncateText(text: string | null | undefined, maxLength = 160) {
+function truncateText(text: string, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }
@@ -183,16 +172,6 @@ function questionsTooltipFormatter(
 ): [number, string] {
   const numericValue = toNumericValue(value)
   return [numericValue, "Questions"]
-}
-
-function isSameReviewItem(a: VRReviewItem, b: VRReviewItem) {
-  if (a.category !== b.category) return false
-
-  if (a.question_id !== null && b.question_id !== null) {
-    return a.question_id === b.question_id
-  }
-
-  return a.question_text.toLowerCase() === b.question_text.toLowerCase()
 }
 
 function StatCard({
@@ -353,7 +332,7 @@ function ChartBox({
     return () => {
       observer.disconnect()
     }
-  }, [height])
+  }, [])
 
   return (
     <div
@@ -380,151 +359,108 @@ export default function VRReviewPage() {
 
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
-  const [reviewQuestions, setReviewQuestions] = useState<VRReviewItem[]>([])
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
+  const [reviewQuestions, setReviewQuestions] = useState<VRReviewRow[]>([])
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
     async function fetchReviewQuestions() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-        if (!mounted) return
+      if (!mounted) return
 
-        if (!user) {
-          router.push("/login")
-          return
-        }
+      if (!user) {
+        router.push("/login")
+        return
+      }
 
-        setLoadingUser(false)
+      setLoadingUser(false)
 
-        const { data, error } = await supabase
-          .from("vr_review")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("knew_it", false)
-          .order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("vr_review")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
 
-        if (!mounted) return
+      if (!mounted) return
 
-        if (error) {
-          console.error("Error loading VR review:", error)
-          setReviewQuestions([])
-          return
-        }
-
-        const reviewRows = (data ?? []) as VRReviewDbRow[]
-
-        const questionIds = Array.from(
-          new Set(
-            reviewRows
-              .map((row) => row.question_id)
-              .filter((id): id is number => id !== null)
-          )
-        )
-
-        let questionMap = new Map<
-          number,
-          {
-            explanation: string
-            difficulty: number | null
-            test_id: number | null
-          }
-        >()
-
-        if (questionIds.length > 0) {
-          const { data: questionsData, error: questionsError } = await supabase
-            .from("vr_questions")
-            .select("id, explanation, difficulty, test_id")
-            .in("id", questionIds)
-
-          if (questionsError) {
-            console.error("Error loading VR question lookup:", questionsError)
-          } else {
-            questionMap = new Map(
-              ((questionsData ?? []) as VRQuestionLookupRow[]).map(
-                (question) => [
-                  question.id,
-                  {
-                    explanation: question.explanation || "",
-                    difficulty: question.difficulty ?? null,
-                    test_id: question.test_id ?? null,
-                  },
-                ]
-              )
-            )
-          }
-        }
-
-        const testIds = Array.from(
-          new Set(
-            Array.from(questionMap.values())
-              .map((question) => question.test_id)
-              .filter((id): id is number => id !== null)
-          )
-        )
-
-        let testMap = new Map<number, VRTestLookupRow>()
-
-        if (testIds.length > 0) {
-          const { data: testsData, error: testsError } = await supabase
-            .from("vr_tests")
-            .select("id, category")
-            .in("id", testIds)
-
-          if (testsError) {
-            console.error("Error loading VR test lookup:", testsError)
-          } else {
-            testMap = new Map(
-              ((testsData ?? []) as VRTestLookupRow[]).map((test) => [
-                test.id,
-                test,
-              ])
-            )
-          }
-        }
-
-        const mergedRows: VRReviewItem[] = reviewRows.map((row) => {
-          const questionInfo =
-            row.question_id !== null ? questionMap.get(row.question_id) : null
-
-          const linkedTest =
-            questionInfo?.test_id !== null && questionInfo?.test_id !== undefined
-              ? testMap.get(questionInfo.test_id)
-              : null
-
-          const categoryFromReview = normaliseVRCategory(row.category)
-          const categoryFromTest = normaliseVRCategory(linkedTest?.category)
-
-          return {
-            id: String(row.id),
-            user_id: row.user_id,
-            question_id: row.question_id ?? null,
-            question_text: row.question_text || "Question text unavailable.",
-            created_at: row.created_at,
-            explanation: questionInfo?.explanation || "",
-            difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
-            test_id: questionInfo?.test_id ?? null,
-            category:
-              categoryFromReview !== "unknown"
-                ? categoryFromReview
-                : categoryFromTest,
-          }
+      if (error) {
+        console.error("Error loading VR review:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          full: error,
         })
 
-        if (!mounted) return
+        setReviewQuestions([])
+        setLoadingData(false)
+        return
+      }
 
-        setReviewQuestions(mergedRows)
-      } finally {
-        if (mounted) {
-          setLoadingData(false)
+      const reviewData = (data || []) as VRReviewRow[]
+
+      const questionIds = reviewData
+        .map((row) => row.question_id)
+        .filter((id): id is number => id !== null)
+
+      let questionMap = new Map<
+        number,
+        {
+          explanation: string
+          difficulty: number | null
         }
+      >()
+
+      if (questionIds.length > 0) {
+        const { data: questionsData, error: questionsError } = await supabase
+          .from("vr_questions")
+          .select("id, explanation, difficulty")
+          .in("id", questionIds)
+
+        if (questionsError) {
+          console.error("Error loading VR explanations:", {
+            message: questionsError.message,
+            details: questionsError.details,
+            hint: questionsError.hint,
+            code: questionsError.code,
+            full: questionsError,
+          })
+        } else {
+          questionMap = new Map(
+            ((questionsData || []) as VRQuestionRow[]).map((question) => [
+              question.id,
+              {
+                explanation: question.explanation || "",
+                difficulty: question.difficulty,
+              },
+            ])
+          )
+        }
+      }
+
+      const mergedData = reviewData.map((row) => {
+        const questionInfo =
+          row.question_id !== null ? questionMap.get(row.question_id) : undefined
+
+        return {
+          ...row,
+          id: String(row.id),
+          category: normaliseCategory(row.category),
+          explanation: questionInfo?.explanation || "",
+          difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
+        }
+      })
+
+      if (mounted) {
+        setReviewQuestions(mergedData)
+        setLoadingData(false)
       }
     }
 
@@ -535,44 +471,42 @@ export default function VRReviewPage() {
     }
   }, [router])
 
-  async function removeQuestion(item: VRReviewItem) {
+  async function removeQuestion(reviewId: string) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
     if (!user) return
 
-    let query = supabase.from("vr_review").delete().eq("user_id", user.id)
-
-    if (item.question_id !== null) {
-      query = query.eq("question_id", item.question_id)
-    } else {
-      query = query.ilike("question_text", item.question_text)
-    }
-
-    const { error } = await query
+    const { error } = await supabase
+      .from("vr_review")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("id", reviewId)
 
     if (error) {
-      console.error("Error deleting VR review question:", error)
+      console.error("Error deleting VR review question:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        full: error,
+      })
       return
     }
 
     setReviewQuestions((previous) =>
-      previous.filter((row) => !isSameReviewItem(row, item))
+      previous.filter((row) => row.id !== reviewId)
     )
   }
 
   const uniqueQuestions = useMemo(() => {
     return Array.from(
       new Map(
-        reviewQuestions.map((item) => {
-          const key =
-            item.question_id !== null
-              ? `${item.category}::id::${item.question_id}`
-              : `${item.category}::text::${item.question_text.toLowerCase()}`
-
-          return [key, item]
-        })
+        reviewQuestions.map((item) => [
+          `${item.question_id ?? "text"}-${item.question_text.toLowerCase()}`,
+          item,
+        ])
       ).values()
     )
   }, [reviewQuestions])
@@ -581,37 +515,39 @@ export default function VRReviewPage() {
     const cutoff = getCutoffDate(timeFilter)
 
     return uniqueQuestions.filter((question) => {
-      const matchesTime = cutoff
-        ? new Date(question.created_at) >= cutoff
-        : true
-
       const matchesDifficulty =
         difficultyFilter === "all" ||
         String(question.difficulty ?? "") === difficultyFilter
 
-      const matchesCategory =
-        categoryFilter === "all" || question.category === categoryFilter
+      const matchesTime = cutoff
+        ? new Date(question.created_at) >= cutoff
+        : true
 
-      return matchesTime && matchesDifficulty && matchesCategory
+      const matchesCategory =
+        categoryFilter === "all" ||
+        normaliseCategory(question.category) === categoryFilter
+
+      return matchesDifficulty && matchesTime && matchesCategory
     })
-  }, [uniqueQuestions, timeFilter, difficultyFilter, categoryFilter])
+  }, [uniqueQuestions, difficultyFilter, timeFilter, categoryFilter])
 
   function retryFilteredQuestions() {
-    const ids = filteredQuestions
+    const reviewQuestionIds = filteredQuestions
       .map((row) => row.question_id)
       .filter((id): id is number => id !== null)
 
-    const uniqueIds = Array.from(new Set(ids))
+    if (reviewQuestionIds.length === 0) return
 
-    if (uniqueIds.length === 0) return
-
-    localStorage.setItem("vr_review_question_ids", JSON.stringify(uniqueIds))
+    localStorage.setItem(
+      "vr_review_question_ids",
+      JSON.stringify(reviewQuestionIds)
+    )
 
     router.push("/vr-test?mode=review")
   }
 
   const reviewStats = useMemo(() => {
-    const totalItems = filteredQuestions.length
+    const totalQuestions = filteredQuestions.length
     const allUnique = uniqueQuestions.length
 
     const byCategory = Object.entries(
@@ -650,7 +586,7 @@ export default function VRReviewPage() {
     ).length
 
     return {
-      totalItems,
+      totalQuestions,
       allUnique,
       mostCommonCategory,
       mostRecentItem,
@@ -675,7 +611,7 @@ export default function VRReviewPage() {
 
     const order = [
       "Word Relationships",
-      "Code & Logic",
+      "Codes & Logic",
       "Sequence Patterns",
       "Not set",
     ]
@@ -704,7 +640,7 @@ export default function VRReviewPage() {
       ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
       : "N/A"
 
-    return `You currently have ${reviewStats.totalItems} verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
+    return `You currently have ${reviewStats.totalQuestions} verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
   }, [filteredQuestions, reviewStats])
 
   if (loadingUser || loadingData) {
@@ -862,7 +798,7 @@ export default function VRReviewPage() {
         >
           <StatCard
             title="Questions to Review"
-            value={String(reviewStats.totalItems)}
+            value={String(reviewStats.totalQuestions)}
           />
 
           <StatCard
@@ -985,7 +921,7 @@ export default function VRReviewPage() {
                     color: "#0f172a",
                   }}
                 >
-                  {reviewStats.totalItems}
+                  {reviewStats.totalQuestions}
                 </div>
               </div>
 
@@ -1103,7 +1039,7 @@ export default function VRReviewPage() {
                       <td style={tdStyle}>
                         <button
                           type="button"
-                          onClick={() => removeQuestion(row)}
+                          onClick={() => removeQuestion(row.id)}
                           style={removeButtonStyle}
                         >
                           Remove
@@ -1136,8 +1072,7 @@ export default function VRReviewPage() {
               <div
                 key={row.id}
                 style={{
-                  background:
-                    "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
                   border: "1px solid #dcfce7",
                   borderRadius: "24px",
                   padding: "20px",
@@ -1260,7 +1195,7 @@ export default function VRReviewPage() {
 
                 <button
                   type="button"
-                  onClick={() => removeQuestion(row)}
+                  onClick={() => removeQuestion(row.id)}
                   style={removeButtonStyle}
                 >
                   Remove from review
