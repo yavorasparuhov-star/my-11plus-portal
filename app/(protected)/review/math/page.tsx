@@ -15,8 +15,7 @@ import {
   Cell,
 } from "recharts"
 
-type TimeFilter = "all" | "week" | "month" | "3months"
-type AnswerFilter = "all" | "wrong" | "unanswered"
+type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
 
 type MathCategory =
@@ -55,11 +54,18 @@ type ReviewItem = {
   created_at: string
 }
 
-const timeFilterOptions: { value: TimeFilter; label: string }[] = [
-  { value: "all", label: "All Time" },
-  { value: "week", label: "Past Week" },
-  { value: "month", label: "Past Month" },
-  { value: "3months", label: "Past 3 Months" },
+const timeOptions: { value: TimeFilter; label: string }[] = [
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "90d", label: "Last 90 days" },
+  { value: "all", label: "All time" },
+]
+
+const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
+  { value: "all", label: "All Levels" },
+  { value: "1", label: "Easy" },
+  { value: "2", label: "Medium" },
+  { value: "3", label: "Hard" },
 ]
 
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
@@ -76,19 +82,6 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "algebra_reasoning", label: "Algebra & Reasoning" },
 ]
 
-const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
-  { value: "all", label: "All Difficulties" },
-  { value: "1", label: "Easy" },
-  { value: "2", label: "Medium" },
-  { value: "3", label: "Hard" },
-]
-
-const answerOptions: { value: AnswerFilter; label: string }[] = [
-  { value: "all", label: "All Answers" },
-  { value: "wrong", label: "Incorrect Only" },
-  { value: "unanswered", label: "Unanswered Only" },
-]
-
 const CATEGORY_COLORS = [
   "#22c55e",
   "#16a34a",
@@ -102,18 +95,18 @@ const CATEGORY_COLORS = [
 const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
 
 function getCutoffDate(filter: TimeFilter) {
+  if (filter === "all") return null
+
   const now = new Date()
 
-  switch (filter) {
-    case "week":
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    case "month":
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    case "3months":
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-    default:
-      return null
+  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
   }
+
+  now.setDate(now.getDate() - daysMap[filter])
+  return now
 }
 
 function normaliseMathCategory(category: string | null | undefined) {
@@ -145,7 +138,7 @@ function normaliseMathCategory(category: string | null | undefined) {
   return "unknown"
 }
 
-function formatCategory(category: string | null | undefined) {
+function getCategoryLabel(category: string | null | undefined) {
   if (!category) return "Unknown"
 
   if (category === "number_place_value") return "Number & Place Value"
@@ -161,10 +154,10 @@ function formatCategory(category: string | null | undefined) {
   return "Unknown"
 }
 
-function formatDifficulty(difficulty: number | null | undefined) {
-  if (difficulty === 1) return "Easy"
-  if (difficulty === 2) return "Medium"
-  if (difficulty === 3) return "Hard"
+function getLevelLabel(level: number | null | undefined) {
+  if (level === 1) return "Easy"
+  if (level === 2) return "Medium"
+  if (level === 3) return "Hard"
   return "Not set"
 }
 
@@ -202,6 +195,12 @@ function isIncorrect(row: ReviewItem) {
     row.correct_answer !== null &&
     row.user_answer.trim() !== row.correct_answer.trim()
   )
+}
+
+function getStatusLabel(row: ReviewItem) {
+  if (isUnanswered(row)) return "Unanswered"
+  if (isIncorrect(row)) return "Incorrect"
+  return "Review"
 }
 
 function getReviewStorageConfig(category: MathCategory | "unknown") {
@@ -307,11 +306,13 @@ function StatCard({
 
       <div
         style={{
-          fontSize: value.length > 18 ? "22px" : "28px",
+          fontSize: value.length > 18 ? "22px" : "34px",
           fontWeight: 800,
-          color: "#166534",
-          lineHeight: 1.2,
+          color: "#0f172a",
+          lineHeight: 1.15,
           overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
           maxWidth: "100%",
         }}
       >
@@ -347,11 +348,11 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "white",
-        borderRadius: "24px",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
+        borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        border: "1px solid #e2e8f0",
         marginBottom: "20px",
         minWidth: 0,
         maxWidth: "100%",
@@ -359,7 +360,7 @@ function SectionCard({
         boxSizing: "border-box",
       }}
     >
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "18px" }}>
         <h2
           style={{
             margin: 0,
@@ -375,9 +376,9 @@ function SectionCard({
         {subtitle ? (
           <p
             style={{
-              margin: "10px 0 0 0",
+              margin: "8px 0 0 0",
               color: "#64748b",
-              fontSize: "15px",
+              fontSize: "14px",
               lineHeight: 1.5,
               overflowWrap: "break-word",
             }}
@@ -400,10 +401,9 @@ export default function MathReviewPage() {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
-  const [answerFilter, setAnswerFilter] = useState<AnswerFilter>("all")
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
 
   useEffect(() => {
     let mounted = true
@@ -508,50 +508,29 @@ export default function MathReviewPage() {
     )
   }, [reviewItems])
 
-  const filteredRows = useMemo(() => {
-    let rows = [...uniqueItems]
+  const filteredItems = useMemo(() => {
+    const cutoff = getCutoffDate(timeFilter)
 
-    const cutoffDate = getCutoffDate(timeFilter)
+    return uniqueItems.filter((item) => {
+      const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
 
-    if (cutoffDate) {
-      rows = rows.filter(
-        (row) => row.created_at && new Date(row.created_at) >= cutoffDate
-      )
-    }
+      const matchesDifficulty =
+        difficultyFilter === "all" ||
+        String(item.difficulty ?? "") === difficultyFilter
 
-    if (categoryFilter !== "all") {
-      rows = rows.filter((row) => row.category === categoryFilter)
-    }
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter
 
-    if (difficultyFilter !== "all") {
-      rows = rows.filter(
-        (row) => String(row.difficulty ?? "") === difficultyFilter
-      )
-    }
-
-    if (answerFilter === "wrong") {
-      rows = rows.filter((row) => isIncorrect(row))
-    }
-
-    if (answerFilter === "unanswered") {
-      rows = rows.filter((row) => isUnanswered(row))
-    }
-
-    return rows
-  }, [
-    uniqueItems,
-    categoryFilter,
-    timeFilter,
-    difficultyFilter,
-    answerFilter,
-  ])
+      return matchesTime && matchesDifficulty && matchesCategory
+    })
+  }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredItems() {
     const targetCategory =
       categoryFilter !== "all"
         ? categoryFilter
-        : filteredRows.length > 0
-          ? filteredRows[0].category
+        : filteredItems.length > 0
+          ? filteredItems[0].category
           : null
 
     if (!targetCategory || targetCategory === "unknown") return
@@ -559,7 +538,7 @@ export default function MathReviewPage() {
     const config = getReviewStorageConfig(targetCategory)
     if (!config) return
 
-    const ids = filteredRows
+    const ids = filteredItems
       .filter((row) => row.category === targetCategory)
       .map((row) => row.question_id)
       .filter((id): id is number => id !== null)
@@ -573,72 +552,70 @@ export default function MathReviewPage() {
   }
 
   const reviewStats = useMemo(() => {
-    const totalQuestions = filteredRows.length
-
-    const unansweredCount = filteredRows.filter((row) =>
-      isUnanswered(row)
-    ).length
-
-    const wrongAnsweredCount = filteredRows.filter((row) =>
-      isIncorrect(row)
-    ).length
-
-    const uniqueCategories = new Set(
-      filteredRows
-        .map((row) => row.category)
-        .filter((category) => category !== "unknown")
-    ).size
+    const totalItems = filteredItems.length
+    const allUnique = uniqueItems.length
 
     const byCategory = Object.entries(
-      filteredRows.reduce((acc, row) => {
-        const label = formatCategory(row.category)
+      filteredItems.reduce((acc, row) => {
+        const key = getCategoryLabel(row.category)
 
-        if (!acc[label]) {
-          acc[label] = 0
+        if (!acc[key]) {
+          acc[key] = 0
         }
 
-        acc[label] += 1
+        acc[key] += 1
         return acc
       }, {} as Record<string, number>)
-    ).map(([category, count]) => ({ category, count }))
+    ).map(([category, count]) => ({
+      category,
+      count,
+    }))
 
-    const mostMissedCategory =
+    const mostCommonCategory =
       byCategory.length > 0
         ? byCategory.reduce((max, current) =>
             current.count > max.count ? current : max
           )
         : null
 
-    const mostRecentMistake = filteredRows.length
-      ? [...filteredRows].sort(
+    const mostRecentItem = filteredItems.length
+      ? [...filteredItems].sort(
           (a, b) =>
             new Date(b.created_at).getTime() -
             new Date(a.created_at).getTime()
         )[0]
       : null
 
+    const unansweredCount = filteredItems.filter((row) =>
+      isUnanswered(row)
+    ).length
+
+    const wrongAnsweredCount = filteredItems.filter((row) =>
+      isIncorrect(row)
+    ).length
+
     return {
-      totalQuestions,
+      totalItems,
+      allUnique,
+      mostCommonCategory,
+      mostRecentItem,
       unansweredCount,
       wrongAnsweredCount,
-      uniqueCategories,
-      mostMissedCategory,
-      mostRecentMistake,
     }
-  }, [filteredRows])
+  }, [filteredItems, uniqueItems])
 
-  const mistakesByCategoryData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const label = formatCategory(row.category)
+  const reviewByCategoryData = useMemo(() => {
+    const grouped = filteredItems.reduce((acc, row) => {
+      const key = getCategoryLabel(row.category)
 
-      if (!acc[label]) {
-        acc[label] = {
-          category: label,
+      if (!acc[key]) {
+        acc[key] = {
+          category: key,
           count: 0,
         }
       }
 
-      acc[label].count += 1
+      acc[key].count += 1
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
@@ -656,15 +633,15 @@ export default function MathReviewPage() {
     return Object.values(grouped)
       .sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category))
       .map((item, index) => ({
-        name: item.category,
-        mistakes: item.count,
+        category: item.category,
+        count: item.count,
         fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
       }))
-  }, [filteredRows])
+  }, [filteredItems])
 
-  const mistakesByDifficultyData = useMemo(() => {
-    const grouped = filteredRows.reduce((acc, row) => {
-      const label = formatDifficulty(row.difficulty)
+  const reviewByDifficultyData = useMemo(() => {
+    const grouped = filteredItems.reduce((acc, row) => {
+      const label = getLevelLabel(row.difficulty)
 
       if (!acc[label]) {
         acc[label] = 0
@@ -680,68 +657,46 @@ export default function MathReviewPage() {
       .filter((difficulty) => grouped[difficulty])
       .map((difficulty, index) => ({
         name: difficulty,
-        mistakes: grouped[difficulty],
+        count: grouped[difficulty],
         fill: DIFFICULTY_COLORS[index % DIFFICULTY_COLORS.length],
       }))
-  }, [filteredRows])
+  }, [filteredItems])
 
-  const recentMistakes = useMemo(() => {
-    return [...filteredRows]
+  const recentItems = useMemo(() => {
+    return [...filteredItems]
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
-      .slice(0, 20)
-  }, [filteredRows])
+      .slice(0, 12)
+  }, [filteredItems])
 
   const summaryText = useMemo(() => {
-    if (!filteredRows.length) {
+    if (!filteredItems.length) {
       return "No maths review items found for the selected filters."
     }
 
-    const {
-      totalQuestions,
-      unansweredCount,
-      wrongAnsweredCount,
-      uniqueCategories,
-    } = reviewStats
+    const mostCommon = reviewStats.mostCommonCategory
+      ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
+      : "N/A"
 
-    let text = `You have ${totalQuestions} maths review items across ${uniqueCategories} categories.`
+    let text = `You currently have ${reviewStats.totalItems} maths items to review. The biggest review category is ${mostCommon}.`
 
-    if (unansweredCount > 0) {
-      text += ` ${unansweredCount} questions were left unanswered.`
+    if (reviewStats.unansweredCount > 0) {
+      text += ` ${reviewStats.unansweredCount} questions were left unanswered.`
     }
 
-    if (wrongAnsweredCount > 0) {
-      text += ` ${wrongAnsweredCount} questions were answered incorrectly.`
+    if (reviewStats.wrongAnsweredCount > 0) {
+      text += ` ${reviewStats.wrongAnsweredCount} questions were answered incorrectly.`
     }
 
     return text
-  }, [filteredRows, reviewStats])
+  }, [filteredItems, reviewStats])
 
   if (loadingUser || loadingData) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f8fafc",
-          padding: "24px",
-          boxSizing: "border-box",
-        }}
-      >
-        <p
-          style={{
-            color: "#64748b",
-            fontSize: "18px",
-            fontWeight: 600,
-            textAlign: "center",
-          }}
-        >
-          Loading maths review...
-        </p>
+      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
+        Loading maths review...
       </div>
     )
   }
@@ -776,11 +731,11 @@ export default function MathReviewPage() {
             minWidth: 0,
           }}
         >
-          <div style={{ minWidth: 0, flex: "1 1 300px" }}>
+          <div style={{ minWidth: 0 }}>
             <h1
               style={{
                 margin: 0,
-                fontSize: "clamp(28px, 8vw, 42px)",
+                fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
@@ -794,14 +749,15 @@ export default function MathReviewPage() {
               style={{
                 margin: "10px 0 0 0",
                 color: "#475569",
-                fontSize: "clamp(14px, 2vw, 17px)",
+                fontSize: "17px",
                 maxWidth: "760px",
                 lineHeight: 1.6,
                 overflowWrap: "break-word",
               }}
             >
-              Review individual maths questions from your review bank, spot
-              common problem areas, and focus revision where it matters most.
+              Review maths items across number, operations, fractions,
+              shape, measurement, data handling, and algebra with live filters,
+              category insights, and quick retry access.
             </p>
           </div>
 
@@ -833,22 +789,6 @@ export default function MathReviewPage() {
             </select>
 
             <select
-              id="math-review-time-filter"
-              name="mathReviewTimeFilter"
-              value={timeFilter}
-              onChange={(event) =>
-                setTimeFilter(event.target.value as TimeFilter)
-              }
-              style={selectStyle}
-            >
-              {timeFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <select
               id="math-review-difficulty-filter"
               name="mathReviewDifficultyFilter"
               value={difficultyFilter}
@@ -865,15 +805,15 @@ export default function MathReviewPage() {
             </select>
 
             <select
-              id="math-review-answer-filter"
-              name="mathReviewAnswerFilter"
-              value={answerFilter}
+              id="math-review-time-filter"
+              name="mathReviewTimeFilter"
+              value={timeFilter}
               onChange={(event) =>
-                setAnswerFilter(event.target.value as AnswerFilter)
+                setTimeFilter(event.target.value as TimeFilter)
               }
               style={selectStyle}
             >
-              {answerOptions.map((option) => (
+              {timeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -883,11 +823,11 @@ export default function MathReviewPage() {
             <button
               type="button"
               onClick={retryFilteredItems}
-              disabled={filteredRows.length === 0}
+              disabled={filteredItems.length === 0}
               style={{
                 ...actionButtonStyle,
-                opacity: filteredRows.length === 0 ? 0.5 : 1,
-                cursor: filteredRows.length === 0 ? "not-allowed" : "pointer",
+                opacity: filteredItems.length === 0 ? 0.5 : 1,
+                cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
             >
               Retry filtered items
@@ -906,33 +846,31 @@ export default function MathReviewPage() {
           }}
         >
           <StatCard
-            title="Total Review Items"
-            value={reviewStats.totalQuestions.toString()}
-            subtitle={`Across ${reviewStats.uniqueCategories} categories`}
+            title="Items to Review"
+            value={String(reviewStats.totalItems)}
           />
 
           <StatCard
-            title="Unanswered"
-            value={reviewStats.unansweredCount.toString()}
-            subtitle="Questions without an answer"
+            title="Total Review Bank"
+            value={String(reviewStats.allUnique)}
           />
 
           <StatCard
             title="Incorrect"
-            value={reviewStats.wrongAnsweredCount.toString()}
+            value={String(reviewStats.wrongAnsweredCount)}
             subtitle="Questions answered incorrectly"
           />
 
           <StatCard
-            title="Most Missed Category"
+            title="Most Common Category"
             value={
-              reviewStats.mostMissedCategory
-                ? reviewStats.mostMissedCategory.category
+              reviewStats.mostCommonCategory
+                ? reviewStats.mostCommonCategory.category
                 : "—"
             }
             subtitle={
-              reviewStats.mostMissedCategory
-                ? `${reviewStats.mostMissedCategory.count} review items`
+              reviewStats.mostCommonCategory
+                ? `${reviewStats.mostCommonCategory.count} items`
                 : undefined
             }
           />
@@ -940,14 +878,26 @@ export default function MathReviewPage() {
           <StatCard
             title="Most Recent Item"
             value={
-              reviewStats.mostRecentMistake
-                ? formatCategory(reviewStats.mostRecentMistake.category)
+              reviewStats.mostRecentItem
+                ? getCategoryLabel(reviewStats.mostRecentItem.category)
                 : "—"
             }
             subtitle={
-              reviewStats.mostRecentMistake
-                ? formatDateTime(reviewStats.mostRecentMistake.created_at)
+              reviewStats.mostRecentItem
+                ? formatDateTime(reviewStats.mostRecentItem.created_at)
                 : undefined
+            }
+          />
+
+          <StatCard
+            title="Current Filter"
+            value={
+              categoryFilter === "all"
+                ? "All Categories"
+                : getCategoryLabel(categoryFilter)
+            }
+            subtitle={
+              timeOptions.find((option) => option.value === timeFilter)?.label
             }
           />
         </div>
@@ -955,13 +905,13 @@ export default function MathReviewPage() {
         <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Review Items by Category"
-            subtitle="Which maths topics need more revision?"
+            subtitle="See which maths categories currently need the most revision."
           >
-            {mistakesByCategoryData.length > 0 ? (
+            {reviewByCategoryData.length ? (
               <div style={chartWrapperStyle}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={mistakesByCategoryData}
+                    data={reviewByCategoryData}
                     layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
@@ -973,20 +923,13 @@ export default function MathReviewPage() {
                     />
                     <YAxis
                       type="category"
-                      dataKey="name"
+                      dataKey="category"
                       width={155}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                     />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.1)",
-                      }}
-                    />
-                    <Bar dataKey="mistakes" radius={[0, 8, 8, 0]}>
-                      {mistakesByCategoryData.map((entry, index) => (
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                      {reviewByCategoryData.map((entry, index) => (
                         <Cell
                           key={`category-cell-${index}`}
                           fill={entry.fill}
@@ -997,19 +940,21 @@ export default function MathReviewPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div style={emptyStateStyle}>No category data available.</div>
+              <div style={emptyStateStyle}>
+                No data available for this filter.
+              </div>
             )}
           </SectionCard>
 
           <SectionCard
             title="Review Items by Difficulty"
-            subtitle="Which difficulty level has the most review items?"
+            subtitle="See which difficulty level currently needs the most revision."
           >
-            {mistakesByDifficultyData.length > 0 ? (
+            {reviewByDifficultyData.length ? (
               <div style={chartWrapperStyle}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={mistakesByDifficultyData}
+                    data={reviewByDifficultyData}
                     margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1021,16 +966,9 @@ export default function MathReviewPage() {
                       allowDecimals={false}
                       tick={{ fontSize: 12, fill: "#64748b" }}
                     />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.1)",
-                      }}
-                    />
-                    <Bar dataKey="mistakes" radius={[8, 8, 0, 0]}>
-                      {mistakesByDifficultyData.map((entry, index) => (
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {reviewByDifficultyData.map((entry, index) => (
                         <Cell
                           key={`difficulty-cell-${index}`}
                           fill={entry.fill}
@@ -1041,16 +979,18 @@ export default function MathReviewPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div style={emptyStateStyle}>No difficulty data available.</div>
+              <div style={emptyStateStyle}>
+                No data available for this filter.
+              </div>
             )}
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your latest maths questions to revisit for the selected filters."
+          subtitle="Your most recent maths review items for the selected filters."
         >
-          {recentMistakes.length ? (
+          {recentItems.length ? (
             <div style={{ overflowX: "auto", maxWidth: "100%" }}>
               <table
                 style={{
@@ -1063,7 +1003,7 @@ export default function MathReviewPage() {
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Difficulty</th>
+                    <th style={thStyle}>Level</th>
                     <th style={thStyle}>Question</th>
                     <th style={thStyle}>Your Answer</th>
                     <th style={thStyle}>Correct Answer</th>
@@ -1073,8 +1013,9 @@ export default function MathReviewPage() {
                 </thead>
 
                 <tbody>
-                  {recentMistakes.map((row) => {
-                    const unanswered = isUnanswered(row)
+                  {recentItems.map((row) => {
+                    const status = getStatusLabel(row)
+                    const unanswered = status === "Unanswered"
 
                     return (
                       <tr
@@ -1084,10 +1025,8 @@ export default function MathReviewPage() {
                         }}
                       >
                         <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
-                        <td style={tdStyle}>{formatCategory(row.category)}</td>
-                        <td style={tdStyle}>
-                          {formatDifficulty(row.difficulty)}
-                        </td>
+                        <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
+                        <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                         <td style={{ ...tdStyle, maxWidth: "300px" }}>
                           {truncateText(row.question_text, 140)}
                         </td>
@@ -1110,7 +1049,7 @@ export default function MathReviewPage() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {unanswered ? "Unanswered" : "Incorrect"}
+                            {status}
                           </span>
                         </td>
                         <td style={tdStyle}>
@@ -1135,7 +1074,7 @@ export default function MathReviewPage() {
           )}
         </SectionCard>
 
-        {filteredRows.length > 0 ? (
+        {filteredItems.length > 0 ? (
           <div
             style={{
               display: "grid",
@@ -1146,7 +1085,7 @@ export default function MathReviewPage() {
               minWidth: 0,
             }}
           >
-            {filteredRows.slice(0, 9).map((row) => (
+            {filteredItems.slice(0, 9).map((row) => (
               <div
                 key={row.id}
                 style={{
@@ -1183,7 +1122,7 @@ export default function MathReviewPage() {
                       overflowWrap: "break-word",
                     }}
                   >
-                    {formatCategory(row.category)}
+                    {getCategoryLabel(row.category)}
                   </span>
 
                   <span
@@ -1197,7 +1136,7 @@ export default function MathReviewPage() {
                       fontWeight: 700,
                     }}
                   >
-                    {formatDifficulty(row.difficulty)}
+                    {getLevelLabel(row.difficulty)}
                   </span>
                 </div>
 
@@ -1370,7 +1309,7 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
 const chartWrapperStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100%",
-  height: 320,
+  height: 340,
   minWidth: 0,
   overflow: "hidden",
 }
