@@ -17,26 +17,42 @@ import {
 
 type TimeFilter = "all" | "week" | "month" | "3months"
 type AnswerFilter = "all" | "wrong" | "unanswered"
+type DifficultyFilter = "all" | "1" | "2" | "3"
 
-type MathTest = {
-  id: string
-  title: string
-  category: string
+type MathCategory =
+  | "number_place_value"
+  | "four_operations"
+  | "fractions_decimals_percentages"
+  | "shape_space"
+  | "measurement"
+  | "data_handling"
+  | "algebra_reasoning"
+
+type CategoryFilter = "all" | MathCategory
+
+type MathReviewDbRow = {
+  id: number
+  user_id: string
+  test_id: number | null
+  question_id: number | null
+  category: string | null
+  question_text: string | null
+  correct_answer: string | null
+  user_answer: string | null
+  created_at: string
   difficulty: number | null
 }
 
-type MathProgress = {
-  test_id: string
-  user_id: string
-  created_at: string
+type ReviewItem = {
+  id: string
+  test_id: number | null
+  question_id: number | null
+  category: MathCategory | "unknown"
+  question_text: string
   user_answer: string | null
   correct_answer: string | null
-}
-
-type ReviewItem = MathTest & {
+  difficulty: number | null
   created_at: string
-  user_answer: string | null
-  correct_answer: string | null
 }
 
 const timeFilterOptions: { value: TimeFilter; label: string }[] = [
@@ -46,18 +62,21 @@ const timeFilterOptions: { value: TimeFilter; label: string }[] = [
   { value: "3months", label: "Past 3 Months" },
 ]
 
-const categoryOptions: { value: string; label: string }[] = [
+const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
-  { value: "Number Place Value", label: "Number Place Value" },
-  { value: "Four Operations", label: "Four Operations" },
-  { value: "Mental Maths", label: "Mental Maths" },
-  { value: "Algebra & Reasoning", label: "Algebra & Reasoning" },
-  { value: "Fractions & Decimals", label: "Fractions & Decimals" },
-  { value: "Percentages", label: "Percentages" },
-  { value: "Measurement", label: "Measurement" },
+  { value: "number_place_value", label: "Number & Place Value" },
+  { value: "four_operations", label: "Four Operations" },
+  {
+    value: "fractions_decimals_percentages",
+    label: "Fractions, Decimals & Percentages",
+  },
+  { value: "shape_space", label: "Shape & Space" },
+  { value: "measurement", label: "Measurement" },
+  { value: "data_handling", label: "Data Handling" },
+  { value: "algebra_reasoning", label: "Algebra & Reasoning" },
 ]
 
-const difficultyOptions: { value: string; label: string }[] = [
+const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
   { value: "all", label: "All Difficulties" },
   { value: "1", label: "Easy" },
   { value: "2", label: "Medium" },
@@ -97,11 +116,52 @@ function getCutoffDate(filter: TimeFilter) {
   }
 }
 
-function formatCategory(category: string | null | undefined) {
-  return category || "Unknown"
+function normaliseMathCategory(category: string | null | undefined) {
+  if (!category) return "unknown"
+
+  const clean = category.trim()
+
+  if (clean === "number_place_value") return "number_place_value"
+  if (clean === "four_operations") return "four_operations"
+  if (clean === "fractions_decimals_percentages") {
+    return "fractions_decimals_percentages"
+  }
+  if (clean === "shape_space") return "shape_space"
+  if (clean === "measurement") return "measurement"
+  if (clean === "data_handling") return "data_handling"
+  if (clean === "algebra_reasoning") return "algebra_reasoning"
+
+  if (clean === "Number Place Value") return "number_place_value"
+  if (clean === "Four Operations") return "four_operations"
+  if (clean === "Fractions & Decimals") {
+    return "fractions_decimals_percentages"
+  }
+  if (clean === "Percentages") return "fractions_decimals_percentages"
+  if (clean === "Shape & Space") return "shape_space"
+  if (clean === "Measurement") return "measurement"
+  if (clean === "Data Handling") return "data_handling"
+  if (clean === "Algebra & Reasoning") return "algebra_reasoning"
+
+  return "unknown"
 }
 
-function formatDifficulty(difficulty: number | null) {
+function formatCategory(category: string | null | undefined) {
+  if (!category) return "Unknown"
+
+  if (category === "number_place_value") return "Number & Place Value"
+  if (category === "four_operations") return "Four Operations"
+  if (category === "fractions_decimals_percentages") {
+    return "Fractions, Decimals & Percentages"
+  }
+  if (category === "shape_space") return "Shape & Space"
+  if (category === "measurement") return "Measurement"
+  if (category === "data_handling") return "Data Handling"
+  if (category === "algebra_reasoning") return "Algebra & Reasoning"
+
+  return "Unknown"
+}
+
+function formatDifficulty(difficulty: number | null | undefined) {
   if (difficulty === 1) return "Easy"
   if (difficulty === 2) return "Medium"
   if (difficulty === 3) return "Hard"
@@ -113,10 +173,12 @@ function formatDateTime(value: string | null | undefined) {
 
   const date = new Date(value)
 
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
     month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   })
 }
 
@@ -137,8 +199,72 @@ function isIncorrect(row: ReviewItem) {
   return (
     row.user_answer !== null &&
     row.user_answer.trim() !== "" &&
-    row.user_answer !== row.correct_answer
+    row.correct_answer !== null &&
+    row.user_answer.trim() !== row.correct_answer.trim()
   )
+}
+
+function getReviewStorageConfig(category: MathCategory | "unknown") {
+  if (category === "number_place_value") {
+    return {
+      key: "number_place_value_review_ids",
+      route: "/math/number-place-value?mode=review",
+    }
+  }
+
+  if (category === "four_operations") {
+    return {
+      key: "four_operations_review_ids",
+      route: "/math/four-operations?mode=review",
+    }
+  }
+
+  if (category === "fractions_decimals_percentages") {
+    return {
+      key: "fractions_decimals_percentages_review_ids",
+      route: "/math/fractions-decimals-percentages?mode=review",
+    }
+  }
+
+  if (category === "shape_space") {
+    return {
+      key: "shape_space_review_ids",
+      route: "/math/shape-space?mode=review",
+    }
+  }
+
+  if (category === "measurement") {
+    return {
+      key: "measurement_review_ids",
+      route: "/math/measurement?mode=review",
+    }
+  }
+
+  if (category === "data_handling") {
+    return {
+      key: "data_handling_review_ids",
+      route: "/math/data-handling?mode=review",
+    }
+  }
+
+  if (category === "algebra_reasoning") {
+    return {
+      key: "algebra_reasoning_review_ids",
+      route: "/math/algebra-reasoning?mode=review",
+    }
+  }
+
+  return null
+}
+
+function isSameReviewItem(a: ReviewItem, b: ReviewItem) {
+  if (a.category !== b.category) return false
+
+  if (a.question_id !== null && b.question_id !== null) {
+    return a.question_id === b.question_id
+  }
+
+  return a.question_text.toLowerCase() === b.question_text.toLowerCase()
 }
 
 function StatCard({
@@ -269,93 +395,68 @@ function SectionCard({
 export default function MathReviewPage() {
   const router = useRouter()
 
-  const [loading, setLoading] = useState(true)
+  const [loadingUser, setLoadingUser] = useState(true)
+  const [loadingData, setLoadingData] = useState(true)
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
 
-  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [difficultyFilter, setDifficultyFilter] = useState("all")
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all")
   const [answerFilter, setAnswerFilter] = useState<AnswerFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
     async function loadReviewItems() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (!user) {
-        router.replace("/login")
-        return
+        if (!user) {
+          router.replace("/login")
+          return
+        }
+
+        setLoadingUser(false)
+
+        const { data, error } = await supabase
+          .from("math_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+
+        if (!mounted) return
+
+        if (error) {
+          console.error("Error loading maths review:", error)
+          setReviewItems([])
+          return
+        }
+
+        const rows = (data ?? []) as MathReviewDbRow[]
+
+        const items: ReviewItem[] = rows.map((row) => ({
+          id: String(row.id),
+          test_id: row.test_id ?? null,
+          question_id: row.question_id ?? null,
+          category: normaliseMathCategory(row.category),
+          question_text: row.question_text || "Question text unavailable.",
+          user_answer: row.user_answer,
+          correct_answer: row.correct_answer,
+          difficulty: row.difficulty ?? null,
+          created_at: row.created_at,
+        }))
+
+        setReviewItems(items)
+      } finally {
+        if (mounted) {
+          setLoadingData(false)
+        }
       }
-
-      const { data: progressData, error: progressError } = (await supabase
-        .from("math_progress")
-        .select("test_id, user_id, created_at, user_answer, correct_answer")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })) as {
-        data: MathProgress[] | null
-        error: any
-      }
-
-      if (!mounted) return
-
-      if (progressError) {
-        console.error("Error loading progress:", progressError)
-        setLoading(false)
-        return
-      }
-
-      const testIds = [
-        ...new Set(
-          progressData?.map((progress) => progress.test_id).filter(Boolean) ||
-            []
-        ),
-      ]
-
-      if (testIds.length === 0) {
-        setReviewItems([])
-        setLoading(false)
-        return
-      }
-
-      const { data: testsData, error: testsError } = (await supabase
-        .from("math_tests")
-        .select("id, title, category, difficulty")
-        .in("id", testIds)) as { data: MathTest[] | null; error: any }
-
-      if (!mounted) return
-
-      if (testsError) {
-        console.error("Error loading tests:", testsError)
-        setLoading(false)
-        return
-      }
-
-      const testMap = new Map(
-        testsData?.map((test: MathTest) => [test.id, test]) || []
-      )
-
-      const items = progressData
-        ?.map((progress: MathProgress) => {
-          const test = testMap.get(progress.test_id)
-
-          if (!test) return null
-
-          return {
-            ...test,
-            created_at: progress.created_at,
-            user_answer: progress.user_answer,
-            correct_answer: progress.correct_answer,
-          }
-        })
-        .filter((item): item is ReviewItem => !!item && !!item.category)
-
-      setReviewItems(items || [])
-      setLoading(false)
     }
 
     void loadReviewItems()
@@ -365,8 +466,50 @@ export default function MathReviewPage() {
     }
   }, [router])
 
+  async function removeItem(item: ReviewItem) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    let query = supabase.from("math_review").delete().eq("user_id", user.id)
+
+    if (item.question_id !== null) {
+      query = query.eq("question_id", item.question_id)
+    } else {
+      query = query.ilike("question_text", item.question_text)
+    }
+
+    const { error } = await query
+
+    if (error) {
+      console.error("Error deleting maths review item:", error)
+      return
+    }
+
+    setReviewItems((previous) =>
+      previous.filter((row) => !isSameReviewItem(row, item))
+    )
+  }
+
+  const uniqueItems = useMemo(() => {
+    return Array.from(
+      new Map(
+        reviewItems.map((item) => {
+          const key =
+            item.question_id !== null
+              ? `${item.category}::id::${item.question_id}`
+              : `${item.category}::text::${item.question_text.toLowerCase()}`
+
+          return [key, item]
+        })
+      ).values()
+    )
+  }, [reviewItems])
+
   const filteredRows = useMemo(() => {
-    let rows = [...reviewItems]
+    let rows = [...uniqueItems]
 
     const cutoffDate = getCutoffDate(timeFilter)
 
@@ -381,7 +524,9 @@ export default function MathReviewPage() {
     }
 
     if (difficultyFilter !== "all") {
-      rows = rows.filter((row) => String(row.difficulty) === difficultyFilter)
+      rows = rows.filter(
+        (row) => String(row.difficulty ?? "") === difficultyFilter
+      )
     }
 
     if (answerFilter === "wrong") {
@@ -393,7 +538,39 @@ export default function MathReviewPage() {
     }
 
     return rows
-  }, [reviewItems, categoryFilter, timeFilter, difficultyFilter, answerFilter])
+  }, [
+    uniqueItems,
+    categoryFilter,
+    timeFilter,
+    difficultyFilter,
+    answerFilter,
+  ])
+
+  function retryFilteredItems() {
+    const targetCategory =
+      categoryFilter !== "all"
+        ? categoryFilter
+        : filteredRows.length > 0
+          ? filteredRows[0].category
+          : null
+
+    if (!targetCategory || targetCategory === "unknown") return
+
+    const config = getReviewStorageConfig(targetCategory)
+    if (!config) return
+
+    const ids = filteredRows
+      .filter((row) => row.category === targetCategory)
+      .map((row) => row.question_id)
+      .filter((id): id is number => id !== null)
+
+    const uniqueIds = Array.from(new Set(ids))
+
+    if (uniqueIds.length === 0) return
+
+    localStorage.setItem(config.key, JSON.stringify(uniqueIds))
+    router.push(config.route)
+  }
 
   const reviewStats = useMemo(() => {
     const totalQuestions = filteredRows.length
@@ -406,16 +583,21 @@ export default function MathReviewPage() {
       isIncorrect(row)
     ).length
 
-    const uniqueCategories = new Set(filteredRows.map((row) => row.category))
-      .size
+    const uniqueCategories = new Set(
+      filteredRows
+        .map((row) => row.category)
+        .filter((category) => category !== "unknown")
+    ).size
 
     const byCategory = Object.entries(
       filteredRows.reduce((acc, row) => {
-        if (!acc[row.category]) {
-          acc[row.category] = 0
+        const label = formatCategory(row.category)
+
+        if (!acc[label]) {
+          acc[label] = 0
         }
 
-        acc[row.category] += 1
+        acc[label] += 1
         return acc
       }, {} as Record<string, number>)
     ).map(([category, count]) => ({ category, count }))
@@ -447,24 +629,37 @@ export default function MathReviewPage() {
 
   const mistakesByCategoryData = useMemo(() => {
     const grouped = filteredRows.reduce((acc, row) => {
-      if (!acc[row.category]) {
-        acc[row.category] = {
-          category: row.category,
+      const label = formatCategory(row.category)
+
+      if (!acc[label]) {
+        acc[label] = {
+          category: label,
           count: 0,
         }
       }
 
-      acc[row.category].count += 1
+      acc[label].count += 1
       return acc
     }, {} as Record<string, { category: string; count: number }>)
 
+    const order = [
+      "Number & Place Value",
+      "Four Operations",
+      "Fractions, Decimals & Percentages",
+      "Shape & Space",
+      "Measurement",
+      "Data Handling",
+      "Algebra & Reasoning",
+      "Unknown",
+    ]
+
     return Object.values(grouped)
+      .sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category))
       .map((item, index) => ({
-        name: formatCategory(item.category),
+        name: item.category,
         mistakes: item.count,
         fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
       }))
-      .sort((a, b) => b.mistakes - a.mistakes)
   }, [filteredRows])
 
   const mistakesByDifficultyData = useMemo(() => {
@@ -501,13 +696,17 @@ export default function MathReviewPage() {
 
   const summaryText = useMemo(() => {
     if (!filteredRows.length) {
-      return "No review items found. Complete some maths tests to see your review data here."
+      return "No maths review items found for the selected filters."
     }
 
-    const { totalQuestions, unansweredCount, wrongAnsweredCount, uniqueCategories } =
-      reviewStats
+    const {
+      totalQuestions,
+      unansweredCount,
+      wrongAnsweredCount,
+      uniqueCategories,
+    } = reviewStats
 
-    let text = `You have ${totalQuestions} total review items across ${uniqueCategories} categories.`
+    let text = `You have ${totalQuestions} maths review items across ${uniqueCategories} categories.`
 
     if (unansweredCount > 0) {
       text += ` ${unansweredCount} questions were left unanswered.`
@@ -520,7 +719,7 @@ export default function MathReviewPage() {
     return text
   }, [filteredRows, reviewStats])
 
-  if (loading) {
+  if (loadingUser || loadingData) {
     return (
       <div
         style={{
@@ -588,7 +787,7 @@ export default function MathReviewPage() {
                 overflowWrap: "break-word",
               }}
             >
-              📝 Maths Review
+              🧮 Maths Review
             </h1>
 
             <p
@@ -601,8 +800,8 @@ export default function MathReviewPage() {
                 overflowWrap: "break-word",
               }}
             >
-              Review mistakes across all seven maths categories, spot common
-              problem areas, and focus revision where it matters most.
+              Review individual maths questions from your review bank, spot
+              common problem areas, and focus revision where it matters most.
             </p>
           </div>
 
@@ -621,7 +820,9 @@ export default function MathReviewPage() {
               id="math-review-category-filter"
               name="mathReviewCategoryFilter"
               value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
               style={selectStyle}
             >
               {categoryOptions.map((option) => (
@@ -651,7 +852,9 @@ export default function MathReviewPage() {
               id="math-review-difficulty-filter"
               name="mathReviewDifficultyFilter"
               value={difficultyFilter}
-              onChange={(event) => setDifficultyFilter(event.target.value)}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
               style={selectStyle}
             >
               {difficultyOptions.map((option) => (
@@ -676,6 +879,19 @@ export default function MathReviewPage() {
                 </option>
               ))}
             </select>
+
+            <button
+              type="button"
+              onClick={retryFilteredItems}
+              disabled={filteredRows.length === 0}
+              style={{
+                ...actionButtonStyle,
+                opacity: filteredRows.length === 0 ? 0.5 : 1,
+                cursor: filteredRows.length === 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              Retry filtered items
+            </button>
           </div>
         </div>
 
@@ -711,7 +927,7 @@ export default function MathReviewPage() {
             title="Most Missed Category"
             value={
               reviewStats.mostMissedCategory
-                ? formatCategory(reviewStats.mostMissedCategory.category)
+                ? reviewStats.mostMissedCategory.category
                 : "—"
             }
             subtitle={
@@ -722,7 +938,7 @@ export default function MathReviewPage() {
           />
 
           <StatCard
-            title="Most Recent Mistake"
+            title="Most Recent Item"
             value={
               reviewStats.mostRecentMistake
                 ? formatCategory(reviewStats.mostRecentMistake.category)
@@ -738,7 +954,7 @@ export default function MathReviewPage() {
 
         <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
-            title="Mistakes by Category"
+            title="Review Items by Category"
             subtitle="Which maths topics need more revision?"
           >
             {mistakesByCategoryData.length > 0 ? (
@@ -758,7 +974,7 @@ export default function MathReviewPage() {
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={135}
+                      width={155}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                     />
                     <Tooltip
@@ -771,7 +987,10 @@ export default function MathReviewPage() {
                     />
                     <Bar dataKey="mistakes" radius={[0, 8, 8, 0]}>
                       {mistakesByCategoryData.map((entry, index) => (
-                        <Cell key={`category-cell-${index}`} fill={entry.fill} />
+                        <Cell
+                          key={`category-cell-${index}`}
+                          fill={entry.fill}
+                        />
                       ))}
                     </Bar>
                   </BarChart>
@@ -783,8 +1002,8 @@ export default function MathReviewPage() {
           </SectionCard>
 
           <SectionCard
-            title="Mistakes by Difficulty"
-            subtitle="Which difficulty level has the most mistakes?"
+            title="Review Items by Difficulty"
+            subtitle="Which difficulty level has the most review items?"
           >
             {mistakesByDifficultyData.length > 0 ? (
               <div style={chartWrapperStyle}>
@@ -837,7 +1056,7 @@ export default function MathReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "820px",
+                  minWidth: "960px",
                 }}
               >
                 <thead>
@@ -849,16 +1068,17 @@ export default function MathReviewPage() {
                     <th style={thStyle}>Your Answer</th>
                     <th style={thStyle}>Correct Answer</th>
                     <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {recentMistakes.map((row, index) => {
+                  {recentMistakes.map((row) => {
                     const unanswered = isUnanswered(row)
 
                     return (
                       <tr
-                        key={`${row.id}-${row.created_at}-${index}`}
+                        key={row.id}
                         style={{
                           borderBottom: "1px solid #f1f5f9",
                         }}
@@ -868,8 +1088,8 @@ export default function MathReviewPage() {
                         <td style={tdStyle}>
                           {formatDifficulty(row.difficulty)}
                         </td>
-                        <td style={{ ...tdStyle, maxWidth: "260px" }}>
-                          {truncateText(row.title)}
+                        <td style={{ ...tdStyle, maxWidth: "300px" }}>
+                          {truncateText(row.question_text, 140)}
                         </td>
                         <td style={{ ...tdStyle, maxWidth: "180px" }}>
                           {formatAnswer(row.user_answer)}
@@ -893,6 +1113,15 @@ export default function MathReviewPage() {
                             {unanswered ? "Unanswered" : "Incorrect"}
                           </span>
                         </td>
+                        <td style={tdStyle}>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(row)}
+                            style={removeButtonStyle}
+                          >
+                            Remove
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -905,6 +1134,188 @@ export default function MathReviewPage() {
             </div>
           )}
         </SectionCard>
+
+        {filteredRows.length > 0 ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+              gap: "18px",
+              marginTop: "20px",
+              minWidth: 0,
+            }}
+          >
+            {filteredRows.slice(0, 9).map((row) => (
+              <div
+                key={row.id}
+                style={{
+                  background:
+                    "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                  border: "1px solid #dcfce7",
+                  borderRadius: "24px",
+                  padding: "20px",
+                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  boxSizing: "border-box",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#dcfce7",
+                      color: "#166534",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      maxWidth: "100%",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {formatCategory(row.category)}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#ecfdf5",
+                      color: "#15803d",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {formatDifficulty(row.difficulty)}
+                  </span>
+                </div>
+
+                <h3
+                  style={{
+                    margin: "0 0 10px 0",
+                    color: "#0f172a",
+                    fontSize: "18px",
+                    fontWeight: 800,
+                  }}
+                >
+                  Question
+                </h3>
+
+                <p
+                  style={{
+                    margin: "0 0 14px 0",
+                    color: "#0f172a",
+                    lineHeight: 1.6,
+                    fontWeight: 500,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {row.question_text}
+                </p>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(min(100%, 150px), 1fr))",
+                    gap: "12px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "14px",
+                      background: "#fff7ed",
+                      border: "1px solid #fed7aa",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        color: "#c2410c",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      Your Answer
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#0f172a",
+                        fontWeight: 700,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {formatAnswer(row.user_answer)}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "14px",
+                      background: "#ecfdf5",
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        color: "#15803d",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      Correct Answer
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#0f172a",
+                        fontWeight: 700,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {formatAnswer(row.correct_answer)}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#64748b",
+                    marginBottom: "14px",
+                    overflowWrap: "break-word",
+                  }}
+                >
+                  Added: {formatDateTime(row.created_at)}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeItem(row)}
+                  style={removeButtonStyle}
+                >
+                  Remove from review
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -979,6 +1390,33 @@ const selectStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
+const actionButtonStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: "14px",
+  border: "none",
+  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+  color: "white",
+  fontSize: "14px",
+  fontWeight: 800,
+  boxShadow: "0 8px 20px rgba(22, 163, 74, 0.22)",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxSizing: "border-box",
+}
+
+const removeButtonStyle: React.CSSProperties = {
+  padding: "9px 12px",
+  borderRadius: "12px",
+  border: "1px solid #fecaca",
+  background: "#fff1f2",
+  color: "#be123c",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+}
+
 const emptyStateStyle: React.CSSProperties = {
   height: "100%",
   minHeight: "180px",
@@ -988,6 +1426,8 @@ const emptyStateStyle: React.CSSProperties = {
   color: "#94a3b8",
   fontSize: "15px",
   textAlign: "center",
+  padding: "20px",
+  boxSizing: "border-box",
 }
 
 const thStyle: React.CSSProperties = {
