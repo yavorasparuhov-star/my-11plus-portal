@@ -185,31 +185,6 @@ function questionsTooltipFormatter(
   return [numericValue, "Questions"]
 }
 
-function getReviewStorageConfig(category: VRCategory | "unknown") {
-  if (category === "word_relationships") {
-    return {
-      key: "word_relationships_review_ids",
-      route: "/vr/word-relationships?mode=review",
-    }
-  }
-
-  if (category === "code_logic") {
-    return {
-      key: "code_logic_review_ids",
-      route: "/vr/code-logic?mode=review",
-    }
-  }
-
-  if (category === "sequence_patterns") {
-    return {
-      key: "sequence_patterns_review_ids",
-      route: "/vr/sequence-patterns?mode=review",
-    }
-  }
-
-  return null
-}
-
 function isSameReviewItem(a: VRReviewItem, b: VRReviewItem) {
   if (a.category !== b.category) return false
 
@@ -622,20 +597,7 @@ export default function VRReviewPage() {
   }, [uniqueQuestions, timeFilter, difficultyFilter, categoryFilter])
 
   function retryFilteredQuestions() {
-    const targetCategory =
-      categoryFilter !== "all"
-        ? categoryFilter
-        : filteredQuestions.length > 0
-          ? filteredQuestions[0].category
-          : null
-
-    if (!targetCategory || targetCategory === "unknown") return
-
-    const config = getReviewStorageConfig(targetCategory)
-    if (!config) return
-
     const ids = filteredQuestions
-      .filter((row) => row.category === targetCategory)
       .map((row) => row.question_id)
       .filter((id): id is number => id !== null)
 
@@ -643,10 +605,9 @@ export default function VRReviewPage() {
 
     if (uniqueIds.length === 0) return
 
-    localStorage.setItem(config.key, JSON.stringify(uniqueIds))
     localStorage.setItem("vr_review_question_ids", JSON.stringify(uniqueIds))
 
-    router.push(config.route)
+    router.push("/vr-test?mode=review")
   }
 
   const reviewStats = useMemo(() => {
