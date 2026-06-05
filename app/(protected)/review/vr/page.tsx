@@ -37,10 +37,13 @@ type VRReviewRow = {
   option_d?: string | null
   user_answer_text?: string | null
   correct_answer_text?: string | null
+  test_title?: string | null
+  question_order?: number | null
 }
 
 type VRQuestionRow = {
   id: number
+  test_id: number | null
   question_text: string
   option_a: string | null
   option_b: string | null
@@ -49,6 +52,13 @@ type VRQuestionRow = {
   correct_answer: string | null
   explanation: string | null
   difficulty: number | null
+  question_order: number | null
+}
+
+type VRTestRow = {
+  id: number
+  category: string | null
+  title: string | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
@@ -471,7 +481,7 @@ export default function VRReviewPage() {
       if (questionIds.length > 0) {
         const { data: questionsData, error: questionsError } = await supabase
           .from("vr_questions")
-          .select("id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty")
+          .select("id, test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, question_order")
           .in("id", questionIds)
 
         if (questionsError) {
@@ -492,18 +502,58 @@ export default function VRReviewPage() {
         }
       }
 
+      const testIds = Array.from(
+        new Set(
+          reviewData
+            .map((row) => row.test_id)
+            .concat(Array.from(questionMap.values()).map((question) => question.test_id))
+            .filter((id): id is number => typeof id === "number")
+        )
+      )
+
+      let testMap = new Map<number, VRTestRow>()
+
+      if (testIds.length > 0) {
+        const { data: testsData, error: testsError } = await supabase
+          .from("vr_tests")
+          .select("id, category, title")
+          .in("id", testIds)
+
+        if (testsError) {
+          console.error("Error loading VR test details:", {
+            message: testsError.message,
+            details: testsError.details,
+            hint: testsError.hint,
+            code: testsError.code,
+            full: testsError,
+          })
+        } else {
+          testMap = new Map(
+            ((testsData || []) as VRTestRow[]).map((test) => [test.id, test])
+          )
+        }
+      }
+
       const mergedData = reviewData.map((row) => {
         const questionInfo =
           row.question_id !== null ? questionMap.get(row.question_id) : undefined
 
+        const testId = row.test_id ?? questionInfo?.test_id ?? null
+        const testInfo = testId !== null ? testMap.get(testId) : undefined
+        const reviewCategory = normaliseCategory(row.category)
+        const testCategory = normaliseCategory(testInfo?.category)
+
         const mergedRow: VRReviewRow = {
           ...row,
           id: String(row.id),
-          category: normaliseCategory(row.category),
+          test_id: testId,
+          category: reviewCategory || testCategory,
           question_text: questionInfo?.question_text || row.question_text,
           correct_answer: row.correct_answer || questionInfo?.correct_answer || null,
           explanation: questionInfo?.explanation || row.explanation || "",
           difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
+          question_order: questionInfo?.question_order ?? null,
+          test_title: testInfo?.title ?? null,
           option_a: questionInfo?.option_a || null,
           option_b: questionInfo?.option_b || null,
           option_c: questionInfo?.option_c || null,
@@ -1067,6 +1117,54 @@ export default function VRReviewPage() {
                     >
                       {getLevelLabel(row.difficulty)}
                     </span>
+
+                    {row.test_title ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          maxWidth: "100%",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {row.test_title}
+                      </span>
+                    ) : row.test_id ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Test {row.test_id}
+                      </span>
+                    ) : null}
+
+                    {row.question_order ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Question {row.question_order}
+                      </span>
+                    ) : null}
                   </div>
 
                   <h3
