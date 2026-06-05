@@ -556,6 +556,8 @@ export default function PrimaryWordClassesTestPage() {
 
     let correctAnswers = 0;
 
+    const completedAt = new Date().toISOString();
+
     const wrongAnswersForReview: {
       user_id: string;
       test_id: number;
@@ -566,6 +568,8 @@ export default function PrimaryWordClassesTestPage() {
       user_answer: AnswerOption | null;
       correct_answer: AnswerOption;
       difficulty: number | null;
+      updated_at: string;
+      last_attempted_at: string;
     }[] = [];
 
     const correctlyAnsweredReviewQuestionIds: number[] = [];
@@ -575,10 +579,7 @@ export default function PrimaryWordClassesTestPage() {
 
       if (selected === question.correct_answer) {
         correctAnswers += 1;
-
-        if (mode === "review") {
-          correctlyAnsweredReviewQuestionIds.push(question.id);
-        }
+        correctlyAnsweredReviewQuestionIds.push(question.id);
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
@@ -590,6 +591,8 @@ export default function PrimaryWordClassesTestPage() {
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: completedAt,
+          last_attempted_at: completedAt,
         });
       }
     }
@@ -634,38 +637,34 @@ export default function PrimaryWordClassesTestPage() {
 
     await saveLatestTestResult(finalAnswers, correctAnswers, successRate);
 
-    if (mode === "review") {
-      if (correctlyAnsweredReviewQuestionIds.length > 0) {
-        const { error: deleteReviewError } = await supabase
-          .from("english_review")
-          .delete()
-          .eq("user_id", userId)
-          .eq("main_category", MAIN_CATEGORY)
-          .eq("subcategory", SUBCATEGORY)
-          .in("question_id", correctlyAnsweredReviewQuestionIds);
+    if (correctlyAnsweredReviewQuestionIds.length > 0) {
+      const { error: deleteReviewError } = await supabase
+        .from("english_review")
+        .delete()
+        .eq("user_id", userId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
+        .in("question_id", correctlyAnsweredReviewQuestionIds);
 
-        if (deleteReviewError) {
-          console.error(
-            "Error removing correctly answered primary word classes review items:",
-            {
-              message: deleteReviewError.message,
-              details: deleteReviewError.details,
-              hint: deleteReviewError.hint,
-              code: deleteReviewError.code,
-            },
-          );
-        }
+      if (deleteReviewError) {
+        console.error(
+          "Error removing correctly answered primary word classes review items:",
+          {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+          },
+        );
       }
+    }
 
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id),
-      );
-
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds));
-    } else if (wrongAnswersForReview.length > 0) {
+    if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
-        .insert(wrongAnswersForReview);
+        .upsert(wrongAnswersForReview, {
+          onConflict: "user_id,question_id",
+        });
 
       if (reviewError) {
         console.error("Error saving primary word classes review:", {
@@ -675,18 +674,15 @@ export default function PrimaryWordClassesTestPage() {
           code: reviewError.code,
         });
       }
-
-      const existingReviewIds = Array.from(new Set(reviewIds));
-      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id);
-      const updatedReviewIds = Array.from(
-        new Set([...existingReviewIds, ...newWrongIds]),
-      );
-
-      localStorage.setItem(
-        REVIEW_STORAGE_KEY,
-        JSON.stringify(updatedReviewIds),
-      );
     }
+
+    const existingReviewIds = Array.from(new Set(reviewIds));
+    const newWrongIds = wrongAnswersForReview.map((row) => row.question_id);
+    const updatedReviewIds = Array.from(
+      new Set([...existingReviewIds, ...newWrongIds]),
+    ).filter((id) => !correctlyAnsweredReviewQuestionIds.includes(id));
+
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds));
 
     setFinalReviewAnswers(finalAnswers);
     setScore(correctAnswers);
