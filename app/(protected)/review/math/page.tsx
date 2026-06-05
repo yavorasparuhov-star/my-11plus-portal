@@ -42,14 +42,44 @@ type MathReviewDbRow = {
   difficulty: number | null
 }
 
+type MathQuestionLookupRow = {
+  id: number
+  test_id: number | null
+  question_order: number | null
+  question_text: string | null
+  image_url: string | null
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
+  correct_answer: string | null
+  explanation: string | null
+  difficulty: number | null
+}
+
 type ReviewItem = {
   id: string
   test_id: number | null
   question_id: number | null
+  question_order: number | null
   category: MathCategory | "unknown"
   question_text: string
+  question_image_url: string | null
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
   user_answer: string | null
   correct_answer: string | null
+  explanation: string | null
   difficulty: number | null
   created_at: string
 }
@@ -182,6 +212,90 @@ function truncateText(text: string | null | undefined, maxLength = 120) {
 
 function formatAnswer(answer: string | null | undefined) {
   return answer && answer.trim() ? answer : "No answer"
+}
+
+function getOptionText(item: ReviewItem, answer: string | null | undefined) {
+  if (!answer) return null
+
+  if (answer === "A") return item.option_a
+  if (answer === "B") return item.option_b
+  if (answer === "C") return item.option_c
+  if (answer === "D") return item.option_d
+
+  return null
+}
+
+function getOptionImageUrl(item: ReviewItem, answer: string | null | undefined) {
+  if (!answer) return null
+
+  if (answer === "A") return item.option_a_image_url
+  if (answer === "B") return item.option_b_image_url
+  if (answer === "C") return item.option_c_image_url
+  if (answer === "D") return item.option_d_image_url
+
+  return null
+}
+
+function formatAnswerWithText(item: ReviewItem, answer: string | null | undefined) {
+  if (!answer || !answer.trim()) return "No answer"
+
+  const optionText = getOptionText(item, answer)
+
+  return optionText && optionText.trim()
+    ? `${answer} — ${optionText}`
+    : answer
+}
+
+function AnswerDisplay({
+  item,
+  answer,
+}: {
+  item: ReviewItem
+  answer: string | null | undefined
+}) {
+  const answerImageUrl = getOptionImageUrl(item, answer)
+
+  return (
+    <div style={{ display: "grid", gap: "8px" }}>
+      <div>{formatAnswerWithText(item, answer)}</div>
+
+      {answerImageUrl ? (
+        <img
+          src={answerImageUrl}
+          alt="Answer option"
+          style={{
+            maxWidth: "160px",
+            maxHeight: "110px",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            background: "white",
+            objectFit: "contain",
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function QuestionPreviewImage({ item }: { item: ReviewItem }) {
+  if (!item.question_image_url) return null
+
+  return (
+    <img
+      src={item.question_image_url}
+      alt="Question"
+      style={{
+        width: "100%",
+        maxWidth: "420px",
+        maxHeight: "240px",
+        objectFit: "contain",
+        borderRadius: "16px",
+        border: "1px solid #e2e8f0",
+        background: "white",
+        margin: "0 0 14px 0",
+      }}
+    />
+  )
 }
 
 function isUnanswered(row: ReviewItem) {
@@ -439,17 +553,65 @@ export default function MathReviewPage() {
 
         const rows = (data ?? []) as MathReviewDbRow[]
 
-        const items: ReviewItem[] = rows.map((row) => ({
-          id: String(row.id),
-          test_id: row.test_id ?? null,
-          question_id: row.question_id ?? null,
-          category: normaliseMathCategory(row.category),
-          question_text: row.question_text || "Question text unavailable.",
-          user_answer: row.user_answer,
-          correct_answer: row.correct_answer,
-          difficulty: row.difficulty ?? null,
-          created_at: row.created_at,
-        }))
+        const questionIds = Array.from(
+          new Set(
+            rows
+              .map((row) => row.question_id)
+              .filter((id): id is number => id !== null)
+          )
+        )
+
+        let questionMap = new Map<number, MathQuestionLookupRow>()
+
+        if (questionIds.length > 0) {
+          const { data: questionData, error: questionError } = await supabase
+            .from("math_questions")
+            .select(
+              "id, test_id, question_order, question_text, image_url, option_a, option_b, option_c, option_d, option_a_image_url, option_b_image_url, option_c_image_url, option_d_image_url, correct_answer, explanation, difficulty"
+            )
+            .in("id", questionIds)
+
+          if (questionError) {
+            console.error("Error loading maths question details:", questionError)
+          } else {
+            questionMap = new Map(
+              ((questionData ?? []) as MathQuestionLookupRow[]).map(
+                (question) => [question.id, question]
+              )
+            )
+          }
+        }
+
+        const items: ReviewItem[] = rows.map((row) => {
+          const question =
+            row.question_id !== null ? questionMap.get(row.question_id) : null
+
+          return {
+            id: String(row.id),
+            test_id: row.test_id ?? question?.test_id ?? null,
+            question_id: row.question_id ?? null,
+            question_order: question?.question_order ?? null,
+            category: normaliseMathCategory(row.category),
+            question_text:
+              question?.question_text ||
+              row.question_text ||
+              "Question text unavailable.",
+            question_image_url: question?.image_url ?? null,
+            option_a: question?.option_a ?? null,
+            option_b: question?.option_b ?? null,
+            option_c: question?.option_c ?? null,
+            option_d: question?.option_d ?? null,
+            option_a_image_url: question?.option_a_image_url ?? null,
+            option_b_image_url: question?.option_b_image_url ?? null,
+            option_c_image_url: question?.option_c_image_url ?? null,
+            option_d_image_url: question?.option_d_image_url ?? null,
+            user_answer: row.user_answer,
+            correct_answer: row.correct_answer ?? question?.correct_answer ?? null,
+            explanation: question?.explanation ?? null,
+            difficulty: row.difficulty ?? question?.difficulty ?? null,
+            created_at: row.created_at,
+          }
+        })
 
         setReviewItems(items)
       } finally {
@@ -996,7 +1158,7 @@ export default function MathReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "960px",
+                  minWidth: "1120px",
                 }}
               >
                 <thead>
@@ -1028,13 +1190,25 @@ export default function MathReviewPage() {
                         <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                         <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                         <td style={{ ...tdStyle, maxWidth: "300px" }}>
+                          {row.question_order !== null ? (
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#64748b",
+                                fontWeight: 700,
+                                marginBottom: "4px",
+                              }}
+                            >
+                              Question {row.question_order}
+                            </div>
+                          ) : null}
                           {truncateText(row.question_text, 140)}
                         </td>
-                        <td style={{ ...tdStyle, maxWidth: "180px" }}>
-                          {formatAnswer(row.user_answer)}
+                        <td style={{ ...tdStyle, maxWidth: "240px" }}>
+                          <AnswerDisplay item={row} answer={row.user_answer} />
                         </td>
-                        <td style={{ ...tdStyle, maxWidth: "180px" }}>
-                          {formatAnswer(row.correct_answer)}
+                        <td style={{ ...tdStyle, maxWidth: "240px" }}>
+                          <AnswerDisplay item={row} answer={row.correct_answer} />
                         </td>
                         <td style={tdStyle}>
                           <span
@@ -1151,6 +1325,8 @@ export default function MathReviewPage() {
                   Question
                 </h3>
 
+                <QuestionPreviewImage item={row} />
+
                 <p
                   style={{
                     margin: "0 0 14px 0",
@@ -1160,7 +1336,9 @@ export default function MathReviewPage() {
                     overflowWrap: "anywhere",
                   }}
                 >
-                  {row.question_text}
+                  {row.question_order !== null
+                    ? `Question ${row.question_order}: ${row.question_text}`
+                    : row.question_text}
                 </p>
 
                 <div
@@ -1198,7 +1376,7 @@ export default function MathReviewPage() {
                         overflowWrap: "anywhere",
                       }}
                     >
-                      {formatAnswer(row.user_answer)}
+                      <AnswerDisplay item={row} answer={row.user_answer} />
                     </div>
                   </div>
 
@@ -1228,8 +1406,45 @@ export default function MathReviewPage() {
                         overflowWrap: "anywhere",
                       }}
                     >
-                      {formatAnswer(row.correct_answer)}
+                      <AnswerDisplay item={row} answer={row.correct_answer} />
                     </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "14px",
+                    borderRadius: "16px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    marginBottom: "14px",
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "#475569",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Explanation
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#334155",
+                      lineHeight: 1.6,
+                      fontSize: "14px",
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {row.explanation && row.explanation.trim()
+                      ? row.explanation
+                      : "No explanation available."}
                   </div>
                 </div>
 
