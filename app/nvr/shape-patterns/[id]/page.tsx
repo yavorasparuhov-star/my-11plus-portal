@@ -645,23 +645,33 @@ export default function NVRShapePatternsTestPage() {
       }
     }
 
-    if (wrongAnswersForReview.length > 0) {
-      const { error: reviewError } = await supabase
-        .from("nvr_review")
-        .upsert(wrongAnswersForReview, {
-          onConflict: "user_id,question_id",
-        })
+  console.log("NVR wrongAnswersForReview:", wrongAnswersForReview)
 
-      if (reviewError) {
-        console.error("Error saving NVR review:", {
-          message: reviewError.message,
-          details: reviewError.details,
-          hint: reviewError.hint,
-          code: reviewError.code,
-          full: reviewError,
-        })
-      }
-    }
+if (wrongAnswersForReview.length > 0) {
+  const { data: savedReviewRows, error: reviewError } = await supabase
+    .from("nvr_review")
+    .upsert(wrongAnswersForReview, {
+      onConflict: "user_id,question_id",
+    })
+    .select()
+
+  if (reviewError) {
+    console.error("Error saving NVR review:", {
+      message: reviewError.message,
+      details: reviewError.details,
+      hint: reviewError.hint,
+      code: reviewError.code,
+      full: reviewError,
+      payload: wrongAnswersForReview,
+    })
+
+    setErrorMessage(
+      `NVR review could not be saved: ${reviewError.message}`
+    )
+  } else {
+    console.log("NVR review rows saved:", savedReviewRows)
+  }
+}
 
     setScore(correctAnswers)
     setFinished(true)
