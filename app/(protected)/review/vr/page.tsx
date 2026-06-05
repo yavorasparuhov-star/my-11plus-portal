@@ -27,12 +27,26 @@ type VRReviewRow = {
   user_answer: string | null
   correct_answer: string | null
   created_at: string
+  updated_at?: string | null
+  last_attempted_at?: string | null
   explanation?: string
   difficulty?: number | null
+  option_a?: string | null
+  option_b?: string | null
+  option_c?: string | null
+  option_d?: string | null
+  user_answer_text?: string | null
+  correct_answer_text?: string | null
 }
 
 type VRQuestionRow = {
   id: number
+  question_text: string
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  correct_answer: string | null
   explanation: string | null
   difficulty: number | null
 }
@@ -43,7 +57,7 @@ type DifficultyFilter = "all" | "1" | "2" | "3"
 type CategoryFilter =
   | "all"
   | "word-relationships"
-  | "codes-logic"
+  | "code-logic"
   | "sequence-pattern"
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
@@ -63,7 +77,7 @@ const difficultyOptions: { value: DifficultyFilter; label: string }[] = [
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
   { value: "word-relationships", label: "Word Relationships" },
-  { value: "codes-logic", label: "Codes & Logic" },
+  { value: "code-logic", label: "Codes & Logic" },
   { value: "sequence-pattern", label: "Sequence Patterns" },
 ]
 
@@ -109,7 +123,7 @@ function normaliseCategory(category: string | null | undefined) {
     cleaned === "codelogic" ||
     cleaned === "codeslogic"
   ) {
-    return "codes-logic"
+    return "code-logic"
   }
 
   if (
@@ -136,7 +150,7 @@ function getCategoryLabel(category: string | null | undefined) {
   const normalised = normaliseCategory(category)
 
   if (normalised === "word-relationships") return "Word Relationships"
-  if (normalised === "codes-logic") return "Codes & Logic"
+  if (normalised === "code-logic") return "Codes & Logic"
   if (normalised === "sequence-pattern") return "Sequence Patterns"
 
   return "Not set"
@@ -157,6 +171,53 @@ function formatDateTime(value: string) {
 function truncateText(text: string, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+
+function cleanText(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return null
+
+  const text = String(value).trim()
+
+  if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "nan") {
+    return null
+  }
+
+  return text
+}
+
+function normaliseAnswer(answer: string | null | undefined): "A" | "B" | "C" | "D" | null {
+  if (!answer) return null
+
+  const clean = answer.trim().toUpperCase()
+
+  if (clean === "A" || clean === "B" || clean === "C" || clean === "D") {
+    return clean
+  }
+
+  return null
+}
+
+function getOptionText(item: VRReviewRow, answer: string | null | undefined) {
+  const option = normaliseAnswer(answer)
+
+  if (option === "A") return cleanText(item.option_a)
+  if (option === "B") return cleanText(item.option_b)
+  if (option === "C") return cleanText(item.option_c)
+  if (option === "D") return cleanText(item.option_d)
+
+  return null
+}
+
+function getReviewDisplayDate(item: VRReviewRow) {
+  return item.last_attempted_at || item.updated_at || item.created_at
+}
+
+function getReviewFilterDate(item: VRReviewRow) {
+  // For the time filter, avoid using updated_at as the main date.
+  // Old rows can receive a fresh updated_at during database maintenance/migrations,
+  // which would incorrectly make old rows appear inside "Last 7 days".
+  return item.last_attempted_at || item.created_at
 }
 
 function toNumericValue(value: ValueType | undefined) {
@@ -386,6 +447,7 @@ export default function VRReviewPage() {
         .from("vr_review")
         .select("*")
         .eq("user_id", user.id)
+        .order("updated_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
 
       if (!mounted) return
@@ -410,18 +472,12 @@ export default function VRReviewPage() {
         .map((row) => row.question_id)
         .filter((id): id is number => id !== null)
 
-      let questionMap = new Map<
-        number,
-        {
-          explanation: string
-          difficulty: number | null
-        }
-      >()
+      let questionMap = new Map<number, VRQuestionRow>()
 
       if (questionIds.length > 0) {
         const { data: questionsData, error: questionsError } = await supabase
           .from("vr_questions")
-          .select("id, explanation, difficulty")
+          .select("id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty")
           .in("id", questionIds)
 
         if (questionsError) {
@@ -436,10 +492,7 @@ export default function VRReviewPage() {
           questionMap = new Map(
             ((questionsData || []) as VRQuestionRow[]).map((question) => [
               question.id,
-              {
-                explanation: question.explanation || "",
-                difficulty: question.difficulty,
-              },
+              question,
             ])
           )
         }
@@ -449,12 +502,24 @@ export default function VRReviewPage() {
         const questionInfo =
           row.question_id !== null ? questionMap.get(row.question_id) : undefined
 
-        return {
+        const mergedRow: VRReviewRow = {
           ...row,
           id: String(row.id),
           category: normaliseCategory(row.category),
-          explanation: questionInfo?.explanation || "",
+          question_text: questionInfo?.question_text || row.question_text,
+          correct_answer: row.correct_answer || questionInfo?.correct_answer || null,
+          explanation: questionInfo?.explanation || row.explanation || "",
           difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
+          option_a: questionInfo?.option_a || null,
+          option_b: questionInfo?.option_b || null,
+          option_c: questionInfo?.option_c || null,
+          option_d: questionInfo?.option_d || null,
+        }
+
+        return {
+          ...mergedRow,
+          user_answer_text: getOptionText(mergedRow, mergedRow.user_answer),
+          correct_answer_text: getOptionText(mergedRow, mergedRow.correct_answer),
         }
       })
 
@@ -520,7 +585,7 @@ export default function VRReviewPage() {
         String(question.difficulty ?? "") === difficultyFilter
 
       const matchesTime = cutoff
-        ? new Date(question.created_at) >= cutoff
+        ? new Date(getReviewFilterDate(question)) >= cutoff
         : true
 
       const matchesCategory =
@@ -576,8 +641,8 @@ export default function VRReviewPage() {
     const mostRecentItem = filteredQuestions.length
       ? [...filteredQuestions].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(getReviewDisplayDate(b)).getTime() -
+            new Date(getReviewDisplayDate(a)).getTime()
         )[0]
       : null
 
@@ -625,8 +690,8 @@ export default function VRReviewPage() {
     return [...filteredQuestions]
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime()
+          new Date(getReviewDisplayDate(b)).getTime() -
+          new Date(getReviewDisplayDate(a)).getTime()
       )
       .slice(0, 12)
   }, [filteredQuestions])
@@ -834,7 +899,7 @@ export default function VRReviewPage() {
             }
             subtitle={
               reviewStats.mostRecentItem
-                ? formatDateTime(reviewStats.mostRecentItem.created_at)
+                ? formatDateTime(getReviewDisplayDate(reviewStats.mostRecentItem))
                 : undefined
             }
           />
@@ -1009,6 +1074,8 @@ export default function VRReviewPage() {
                     <th style={thStyle}>Category</th>
                     <th style={thStyle}>Level</th>
                     <th style={thStyle}>Question</th>
+                    <th style={thStyle}>Your Answer</th>
+                    <th style={thStyle}>Correct Answer</th>
                     <th style={thStyle}>Explanation</th>
                     <th style={thStyle}>Action</th>
                   </tr>
@@ -1022,12 +1089,22 @@ export default function VRReviewPage() {
                         borderBottom: "1px solid #f1f5f9",
                       }}
                     >
-                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{formatDateTime(getReviewDisplayDate(row))}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
 
                       <td style={{ ...tdStyle, maxWidth: "300px" }}>
                         {truncateText(row.question_text, 130)}
+                      </td>
+
+                      <td style={{ ...tdStyle, maxWidth: "220px" }}>
+                        <strong>{row.user_answer || "—"}</strong>
+                        {row.user_answer_text ? ` — ${truncateText(row.user_answer_text, 90)}` : ""}
+                      </td>
+
+                      <td style={{ ...tdStyle, maxWidth: "220px" }}>
+                        <strong>{row.correct_answer || "—"}</strong>
+                        {row.correct_answer_text ? ` — ${truncateText(row.correct_answer_text, 90)}` : ""}
                       </td>
 
                       <td style={{ ...tdStyle, maxWidth: "320px" }}>
@@ -1147,6 +1224,49 @@ export default function VRReviewPage() {
 
                 <div
                   style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "12px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "14px",
+                      background: "#fff7ed",
+                      border: "1px solid #fed7aa",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#9a3412", marginBottom: "5px" }}>
+                      Your answer
+                    </div>
+                    <div style={{ color: "#7c2d12", fontWeight: 700, overflowWrap: "anywhere" }}>
+                      {row.user_answer || "—"}
+                      {row.user_answer_text ? ` — ${row.user_answer_text}` : ""}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "14px",
+                      background: "#ecfdf5",
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#166534", marginBottom: "5px" }}>
+                      Correct answer
+                    </div>
+                    <div style={{ color: "#14532d", fontWeight: 700, overflowWrap: "anywhere" }}>
+                      {row.correct_answer || "—"}
+                      {row.correct_answer_text ? ` — ${row.correct_answer_text}` : ""}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
                     padding: "14px",
                     borderRadius: "16px",
                     background: "#f8fafc",
@@ -1190,7 +1310,7 @@ export default function VRReviewPage() {
                     overflowWrap: "break-word",
                   }}
                 >
-                  Added: {formatDateTime(row.created_at)}
+                  Last attempted: {formatDateTime(getReviewDisplayDate(row))}
                 </div>
 
                 <button
