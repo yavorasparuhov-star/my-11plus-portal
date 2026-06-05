@@ -280,6 +280,15 @@ function getReviewDate(item: ReviewItem) {
   return item.last_attempted_at || item.updated_at || item.created_at
 }
 
+function getReviewFilterDate(item: ReviewItem) {
+  // For the time filter, avoid using updated_at as the main date.
+  // Old rows can receive a fresh updated_at during database maintenance/migrations,
+  // which would incorrectly make old April rows appear inside "Last 7 days".
+  // last_attempted_at is the best active-review date for newly updated rows.
+  // created_at is the safest fallback for older rows that existed before last_attempted_at.
+  return item.last_attempted_at || item.created_at
+}
+
 function StatCard({
   title,
   value,
@@ -738,7 +747,7 @@ export default function NVRReviewPage() {
 
     return uniqueItems.filter((item) => {
       const matchesTime = cutoff
-        ? new Date(getReviewDate(item)) >= cutoff
+        ? new Date(getReviewFilterDate(item)) >= cutoff
         : true
 
       const matchesDifficulty =
