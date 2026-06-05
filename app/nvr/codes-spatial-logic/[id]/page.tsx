@@ -76,7 +76,7 @@ function isFreeTest(test: NVRTest) {
   return test.is_free === true || test.access_level === "free"
 }
 
-export default function NVRCodesSpatialLogicTestPage() {
+export default function NVRRotationsReflectionsTestPage() {
   const params = useParams()
   const router = useRouter()
 
@@ -545,6 +545,8 @@ export default function NVRCodesSpatialLogicTestPage() {
     try {
       let correctAnswers = 0
 
+      const attemptedAt = new Date().toISOString()
+
       const wrongAnswersForReview: {
         user_id: string
         test_id: number
@@ -554,13 +556,18 @@ export default function NVRCodesSpatialLogicTestPage() {
         user_answer: string | null
         correct_answer: string
         difficulty: number | null
+        updated_at: string
+        last_attempted_at: string
       }[] = []
+
+      const correctedReviewQuestionIds: number[] = []
 
       for (const question of questions) {
         const selected = finalAnswers[question.id]
 
         if (selected === question.correct_answer) {
           correctAnswers += 1
+          correctedReviewQuestionIds.push(question.id)
         } else {
           wrongAnswersForReview.push({
             user_id: userId,
@@ -571,6 +578,8 @@ export default function NVRCodesSpatialLogicTestPage() {
             user_answer: selected ?? null,
             correct_answer: question.correct_answer,
             difficulty: question.difficulty ?? test.difficulty ?? null,
+            updated_at: attemptedAt,
+            last_attempted_at: attemptedAt,
           })
         }
       }
@@ -620,7 +629,9 @@ export default function NVRCodesSpatialLogicTestPage() {
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
           .from("nvr_review")
-          .insert(wrongAnswersForReview)
+          .upsert(wrongAnswersForReview, {
+            onConflict: "user_id,question_id",
+          })
 
         if (reviewError) {
           console.error("Error saving NVR review:", {
@@ -629,6 +640,24 @@ export default function NVRCodesSpatialLogicTestPage() {
             hint: reviewError.hint,
             code: reviewError.code,
             full: reviewError,
+          })
+        }
+      }
+
+      if (correctedReviewQuestionIds.length > 0) {
+        const { error: deleteReviewError } = await supabase
+          .from("nvr_review")
+          .delete()
+          .eq("user_id", userId)
+          .in("question_id", correctedReviewQuestionIds)
+
+        if (deleteReviewError) {
+          console.error("Error removing corrected NVR review items:", {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+            full: deleteReviewError,
           })
         }
       }
@@ -838,7 +867,7 @@ export default function NVRCodesSpatialLogicTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>🧠 Codes & Spatial Logic Test Complete</h1>
+              <h1 style={styles.title}>🧩 Codes & Spatial Logic Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -1042,7 +1071,7 @@ export default function NVRCodesSpatialLogicTestPage() {
               <div style={styles.submitRow}>
                 <ReportQuestionButton
                   subject="nvr"
-                  category="codes-spatial-logic"
+                  category={NVR_CATEGORY}
                   testId={testId}
                   questionId={currentQuestion.id}
                 />
@@ -1365,7 +1394,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   feedbackActionRow: {
-    width: "100%",
     marginTop: "24px",
     display: "flex",
     justifyContent: "flex-end",
