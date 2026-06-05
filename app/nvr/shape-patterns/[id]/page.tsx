@@ -565,6 +565,15 @@ export default function NVRShapePatternsTestPage() {
     for (const question of questions) {
       const selected = finalAnswers[question.id] ?? null
 
+console.log("NVR question check:", {
+  question_id: question.id,
+  question_order: question.question_order,
+  question_text: question.question_text,
+  selected,
+  correct_answer: question.correct_answer,
+  is_correct: selected === question.correct_answer,
+})
+
       if (selected === question.correct_answer) {
         correctAnswers += 1
         correctQuestionIds.push(question.id)
