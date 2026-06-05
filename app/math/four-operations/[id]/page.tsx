@@ -395,189 +395,218 @@ export default function FourOperationsTestPage() {
   }
 
   async function submitResults(finalAnswers: UserAnswerMap) {
-    if (submitting) return
-    if (!userId || !test) return
-    if (questions.length === 0) return
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
-    setSubmitting(true)
-    setErrorMessage("")
+  setSubmitting(true)
+  setErrorMessage("")
 
-    let correctAnswers = 0
+  let correctAnswers = 0
 
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      category: string
-      question_text: string
-      user_answer: string | null
-      correct_answer: string
-      difficulty: number | null
-    }[] = []
+  const nowIso = new Date().toISOString()
 
-    for (const question of questions) {
-      const selected = finalAnswers[question.id]
+  const wrongAnswersForReview: {
+    user_id: string
+    test_id: number
+    question_id: number
+    category: string
+    question_text: string
+    user_answer: string | null
+    correct_answer: string
+    difficulty: number | null
+    updated_at: string
+    last_attempted_at: string
+  }[] = []
 
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          category: test.category,
-          question_text: question.question_text,
-          user_answer: selected ?? null,
-          correct_answer: question.correct_answer,
-          difficulty: test.difficulty ?? null,
-        })
-      }
-    }
+  const correctQuestionIds: number[] = []
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+  for (const question of questions) {
+    const selected = finalAnswers[question.id] ?? null
 
-    const fullReview: CompletedQuestionReview[] = questions.map((question) => {
-      const selected = finalAnswers[question.id] ?? null
-
-      return {
+    if (selected === question.correct_answer) {
+      correctAnswers += 1
+      correctQuestionIds.push(question.id)
+    } else {
+      wrongAnswersForReview.push({
+        user_id: userId,
+        test_id: test.id,
         question_id: question.id,
-        question_order: question.question_order,
+        category: test.category,
         question_text: question.question_text,
-        question_image_url: question.image_url,
-        options: {
-          A: question.option_a,
-          B: question.option_b,
-          C: question.option_c,
-          D: question.option_d,
-        },
-        option_images: {
-          A: question.option_a_image_url,
-          B: question.option_b_image_url,
-          C: question.option_c_image_url,
-          D: question.option_d_image_url,
-        },
         user_answer: selected,
         correct_answer: question.correct_answer,
-        user_answer_text: selected ? getOptionText(question, selected) : null,
-        correct_answer_text: getOptionText(question, question.correct_answer),
-        user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
-        correct_answer_image_url: getOptionImageUrl(
-          question,
-          question.correct_answer
-        ),
-        is_correct: selected === question.correct_answer,
-        explanation: question.explanation,
-        explanation_image_url: null,
         difficulty: test.difficulty ?? null,
-      }
-    })
-
-    setAnswers(finalAnswers)
-    setCompletedReview(fullReview)
-    setScore(correctAnswers)
-    setFinished(true)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-
-    try {
-      const progressPayload = {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
-      }
-
-      const { error: progressError } = await supabase
-        .from("math_progress")
-        .insert([progressPayload])
-
-      if (progressError) {
-        console.error("Error saving math progress:", {
-          message: progressError.message,
-          details: progressError.details,
-          hint: progressError.hint,
-          code: progressError.code,
-          full: progressError,
-          payload: progressPayload,
-        })
-
-        setErrorMessage(
-          "Your result is shown below, but the progress history could not be saved."
-        )
-      }
-
-      const latestResultPayload = {
-        user_id: userId,
-        subject: "math",
-        category: test.category,
-        subcategory: "",
-        subcategory_two: "",
-        subcategory_three: "",
-        test_id: test.id,
-        test_title: test.title,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
-        answers: fullReview,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      const { data: savedLatestResult, error: latestResultError } = await supabase
-        .from("latest_test_results")
-        .upsert([latestResultPayload], {
-          onConflict:
-            "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-        })
-        .select()
-
-      if (latestResultError) {
-        console.error("Error saving latest full test result:", {
-          message: latestResultError.message,
-          details: latestResultError.details,
-          hint: latestResultError.hint,
-          code: latestResultError.code,
-          full: latestResultError,
-          payload: latestResultPayload,
-        })
-
-        setErrorMessage(
-          "Your result is shown below, but the full test result could not be saved for later."
-        )
-      } else {
-        console.log("Latest Four Operations result saved:", savedLatestResult)
-      }
-
-      if (wrongAnswersForReview.length > 0) {
-        const { error: reviewError } = await supabase
-          .from("math_review")
-          .insert(wrongAnswersForReview)
-
-        if (reviewError) {
-          console.error("Error saving math review:", {
-            message: reviewError.message,
-            details: reviewError.details,
-            hint: reviewError.hint,
-            code: reviewError.code,
-            full: reviewError,
-          })
-        }
-      }
-    } catch (error) {
-      console.error("Unexpected math submit error:", error)
-      setErrorMessage(
-        "Your result is shown below, but something went wrong while saving it."
-      )
-    } finally {
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
+        updated_at: nowIso,
+        last_attempted_at: nowIso,
+      })
     }
   }
+
+  const totalQuestions = questions.length
+  const successRate =
+    totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+  const fullReview: CompletedQuestionReview[] = questions.map((question) => {
+    const selected = finalAnswers[question.id] ?? null
+
+    return {
+      question_id: question.id,
+      question_order: question.question_order,
+      question_text: question.question_text,
+      question_image_url: question.image_url,
+      options: {
+        A: question.option_a,
+        B: question.option_b,
+        C: question.option_c,
+        D: question.option_d,
+      },
+      option_images: {
+        A: question.option_a_image_url,
+        B: question.option_b_image_url,
+        C: question.option_c_image_url,
+        D: question.option_d_image_url,
+      },
+      user_answer: selected,
+      correct_answer: question.correct_answer,
+      user_answer_text: selected ? getOptionText(question, selected) : null,
+      correct_answer_text: getOptionText(question, question.correct_answer),
+      user_answer_image_url: selected ? getOptionImageUrl(question, selected) : null,
+      correct_answer_image_url: getOptionImageUrl(
+        question,
+        question.correct_answer
+      ),
+      is_correct: selected === question.correct_answer,
+      explanation: question.explanation,
+      explanation_image_url: null,
+      difficulty: test.difficulty ?? null,
+    }
+  })
+
+  setAnswers(finalAnswers)
+  setCompletedReview(fullReview)
+  setScore(correctAnswers)
+  setFinished(true)
+  window.scrollTo({ top: 0, behavior: "smooth" })
+
+  try {
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      category: test.category,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+    }
+
+    const { error: progressError } = await supabase
+      .from("math_progress")
+      .insert([progressPayload])
+
+    if (progressError) {
+      console.error("Error saving math progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+        payload: progressPayload,
+      })
+
+      setErrorMessage(
+        "Your result is shown below, but the progress history could not be saved."
+      )
+    }
+
+    const latestResultPayload = {
+      user_id: userId,
+      subject: "math",
+      category: test.category,
+      subcategory: "",
+      subcategory_two: "",
+      subcategory_three: "",
+      test_id: test.id,
+      test_title: test.title,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+      answers: fullReview,
+      completed_at: nowIso,
+      updated_at: nowIso,
+    }
+
+    const { data: savedLatestResult, error: latestResultError } = await supabase
+      .from("latest_test_results")
+      .upsert([latestResultPayload], {
+        onConflict:
+          "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
+      })
+      .select()
+
+    if (latestResultError) {
+      console.error("Error saving latest full test result:", {
+        message: latestResultError.message,
+        details: latestResultError.details,
+        hint: latestResultError.hint,
+        code: latestResultError.code,
+        full: latestResultError,
+        payload: latestResultPayload,
+      })
+
+      setErrorMessage(
+        "Your result is shown below, but the full test result could not be saved for later."
+      )
+    } else {
+      console.log("Latest Four Operations result saved:", savedLatestResult)
+    }
+
+    if (correctQuestionIds.length > 0) {
+      const { error: removeReviewError } = await supabase
+        .from("math_review")
+        .delete()
+        .eq("user_id", userId)
+        .in("question_id", correctQuestionIds)
+
+      if (removeReviewError) {
+        console.error("Error removing corrected math review items:", {
+          message: removeReviewError.message,
+          details: removeReviewError.details,
+          hint: removeReviewError.hint,
+          code: removeReviewError.code,
+          full: removeReviewError,
+        })
+      }
+    }
+
+    if (wrongAnswersForReview.length > 0) {
+      const { error: reviewError } = await supabase
+        .from("math_review")
+        .upsert(wrongAnswersForReview, {
+          onConflict: "user_id,question_id",
+        })
+
+      if (reviewError) {
+        console.error("Error saving math review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
+      }
+    }
+  } catch (error) {
+    console.error("Unexpected math submit error:", error)
+    setErrorMessage(
+      "Your result is shown below, but something went wrong while saving it."
+    )
+  } finally {
+    setSubmitting(false)
+    setTimeExpiredProcessing(false)
+  }
+}
 
   function restartSameTest() {
     setAnswers({})
