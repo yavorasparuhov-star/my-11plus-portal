@@ -535,116 +535,146 @@ export default function NVRShapePatternsTestPage() {
   }
 
   async function submitResults(finalAnswers: UserAnswerMap) {
-    if (submitting) return
-    if (!userId || !test) return
-    if (questions.length === 0) return
+  if (submitting) return
+  if (!userId || !test) return
+  if (questions.length === 0) return
 
-    setSubmitting(true)
-    setErrorMessage("")
+  setSubmitting(true)
+  setErrorMessage("")
 
-    try {
-      let correctAnswers = 0
+  try {
+    let correctAnswers = 0
 
-      const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string | null
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-      }[] = []
+    const nowIso = new Date().toISOString()
 
-      for (const question of questions) {
-        const selected = finalAnswers[question.id]
+    const wrongAnswersForReview: {
+      user_id: string
+      test_id: number
+      question_id: number
+      category: string | null
+      question_text: string
+      user_answer: string | null
+      correct_answer: string
+      difficulty: number | null
+      updated_at: string
+      last_attempted_at: string
+    }[] = []
 
-        if (selected === question.correct_answer) {
-          correctAnswers += 1
-        } else {
-          wrongAnswersForReview.push({
-            user_id: userId,
-            test_id: test.id,
-            question_id: question.id,
-            category: test.category,
-            question_text: question.question_text,
-            user_answer: selected ?? null,
-            correct_answer: question.correct_answer,
-            difficulty: question.difficulty ?? test.difficulty ?? null,
-          })
-        }
+    const correctQuestionIds: number[] = []
+
+    for (const question of questions) {
+      const selected = finalAnswers[question.id] ?? null
+
+      if (selected === question.correct_answer) {
+        correctAnswers += 1
+        correctQuestionIds.push(question.id)
+      } else {
+        wrongAnswersForReview.push({
+          user_id: userId,
+          test_id: test.id,
+          question_id: question.id,
+          category: test.category,
+          question_text: question.question_text,
+          user_answer: selected,
+          correct_answer: question.correct_answer,
+          difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: nowIso,
+          last_attempted_at: nowIso,
+        })
       }
+    }
 
-      const totalQuestions = questions.length
-      const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+    const totalQuestions = questions.length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
 
-      const progressPayload = {
-        user_id: userId,
-        test_id: test.id,
-        category: test.category,
-        total_questions: totalQuestions,
-        correct_answers: correctAnswers,
-        success_rate: successRate,
-        difficulty: test.difficulty ?? null,
+    const progressPayload = {
+      user_id: userId,
+      test_id: test.id,
+      category: test.category,
+      total_questions: totalQuestions,
+      correct_answers: correctAnswers,
+      success_rate: successRate,
+      difficulty: test.difficulty ?? null,
+    }
+
+    const { error: progressError } = await supabase
+      .from("nvr_progress")
+      .insert([progressPayload])
+
+    if (progressError) {
+      console.error("Error saving NVR progress:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        full: progressError,
+        payload: progressPayload,
+      })
+
+      setErrorMessage(
+        progressError.message || "Could not save your progress. Please try again."
+      )
+      setSubmitting(false)
+      setTimeExpiredProcessing(false)
+      return
+    }
+
+    await saveLatestTestResult(
+      finalAnswers,
+      correctAnswers,
+      totalQuestions,
+      successRate
+    )
+
+    if (correctQuestionIds.length > 0) {
+      const { error: removeReviewError } = await supabase
+        .from("nvr_review")
+        .delete()
+        .eq("user_id", userId)
+        .in("question_id", correctQuestionIds)
+
+      if (removeReviewError) {
+        console.error("Error removing corrected NVR review items:", {
+          message: removeReviewError.message,
+          details: removeReviewError.details,
+          hint: removeReviewError.hint,
+          code: removeReviewError.code,
+          full: removeReviewError,
+        })
       }
+    }
 
-      const { error: progressError } = await supabase
-        .from("nvr_progress")
-        .insert([progressPayload])
-
-      if (progressError) {
-        console.error("Error saving NVR progress:", {
-          message: progressError.message,
-          details: progressError.details,
-          hint: progressError.hint,
-          code: progressError.code,
-          full: progressError,
-          payload: progressPayload,
+    if (wrongAnswersForReview.length > 0) {
+      const { error: reviewError } = await supabase
+        .from("nvr_review")
+        .upsert(wrongAnswersForReview, {
+          onConflict: "user_id,question_id",
         })
 
-        setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
-        )
-        setSubmitting(false)
-        return
+      if (reviewError) {
+        console.error("Error saving NVR review:", {
+          message: reviewError.message,
+          details: reviewError.details,
+          hint: reviewError.hint,
+          code: reviewError.code,
+          full: reviewError,
+        })
       }
-
-      await saveLatestTestResult(
-        finalAnswers,
-        correctAnswers,
-        totalQuestions,
-        successRate
-      )
-
-      if (wrongAnswersForReview.length > 0) {
-        const { error: reviewError } = await supabase
-          .from("nvr_review")
-          .insert(wrongAnswersForReview)
-
-        if (reviewError) {
-          console.error("Error saving NVR review:", {
-            message: reviewError.message,
-            details: reviewError.details,
-            hint: reviewError.hint,
-            code: reviewError.code,
-            full: reviewError,
-          })
-        }
-      }
-
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    } catch (error) {
-      console.error("Unexpected NVR submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
     }
+
+    setScore(correctAnswers)
+    setFinished(true)
+    setSubmitting(false)
+    setTimeExpiredProcessing(false)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  } catch (error) {
+    console.error("Unexpected NVR submit error:", error)
+    setErrorMessage("Something went wrong while submitting. Please try again.")
+    setSubmitting(false)
+    setTimeExpiredProcessing(false)
   }
+}
 
   function getOptionText(question: NVRQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
