@@ -168,12 +168,6 @@ function formatDateTime(value: string) {
   })
 }
 
-function truncateText(text: string, maxLength = 160) {
-  if (!text) return "—"
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
-}
-
-
 function cleanText(value: string | number | null | undefined) {
   if (value === null || value === undefined) return null
 
@@ -686,6 +680,28 @@ export default function VRReviewPage() {
     )
   }, [filteredQuestions])
 
+  const reviewByDifficultyData = useMemo(() => {
+    const grouped = filteredQuestions.reduce((acc, row) => {
+      const key = getLevelLabel(row.difficulty)
+
+      if (!acc[key]) {
+        acc[key] = 0
+      }
+
+      acc[key] += 1
+      return acc
+    }, {} as Record<string, number>)
+
+    const order = ["Easy", "Medium", "Hard", "Not set"]
+
+    return order
+      .filter((difficulty) => grouped[difficulty])
+      .map((difficulty) => ({
+        name: difficulty,
+        count: grouped[difficulty],
+      }))
+  }, [filteredQuestions])
+
   const recentQuestions = useMemo(() => {
     return [...filteredQuestions]
       .sort(
@@ -846,7 +862,7 @@ export default function VRReviewPage() {
                   filteredQuestions.length === 0 ? "not-allowed" : "pointer",
               }}
             >
-              Retry filtered questions
+              Retry filtered items
             </button>
           </div>
         </div>
@@ -862,7 +878,7 @@ export default function VRReviewPage() {
           }}
         >
           <StatCard
-            title="Questions to Review"
+            title="Items to Review"
             value={String(reviewStats.totalQuestions)}
           />
 
@@ -957,321 +973,58 @@ export default function VRReviewPage() {
           </SectionCard>
 
           <SectionCard
-            title="Quick Insights"
-            subtitle="A snapshot of current revision needs."
+            title="Review Items by Difficulty"
+            subtitle="See which difficulty level currently needs the most revision."
           >
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#ecfdf5",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Review Queue
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.totalQuestions}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Explanations Ready
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.withExplanation}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fff7ed",
-                  border: "1px solid #fed7aa",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#c2410c",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Main Focus
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    overflowWrap: "break-word",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {reviewStats.mostCommonCategory
-                    ? reviewStats.mostCommonCategory.category
-                    : "—"}
-                </div>
-              </div>
-            </div>
+            <ChartBox>
+              {({ width, height }) =>
+                reviewByDifficultyData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={reviewByDifficultyData}
+                    margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Bar dataKey="count" fill="#f97316" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                ) : (
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your latest verbal reasoning questions to revisit."
+          subtitle="Your most recent VR review items for the selected filters."
         >
           {recentQuestions.length ? (
-            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "860px",
-                }}
-              >
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={thStyle}>Date</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Level</th>
-                    <th style={thStyle}>Question</th>
-                    <th style={thStyle}>Your Answer</th>
-                    <th style={thStyle}>Correct Answer</th>
-                    <th style={thStyle}>Explanation</th>
-                    <th style={thStyle}>Action</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {recentQuestions.map((row) => (
-                    <tr
-                      key={row.id}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                      }}
-                    >
-                      <td style={tdStyle}>{formatDateTime(getReviewDisplayDate(row))}</td>
-                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-
-                      <td style={{ ...tdStyle, maxWidth: "300px" }}>
-                        {truncateText(row.question_text, 130)}
-                      </td>
-
-                      <td style={{ ...tdStyle, maxWidth: "220px" }}>
-                        <strong>{row.user_answer || "—"}</strong>
-                        {row.user_answer_text ? ` — ${truncateText(row.user_answer_text, 90)}` : ""}
-                      </td>
-
-                      <td style={{ ...tdStyle, maxWidth: "220px" }}>
-                        <strong>{row.correct_answer || "—"}</strong>
-                        {row.correct_answer_text ? ` — ${truncateText(row.correct_answer_text, 90)}` : ""}
-                      </td>
-
-                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
-                        {row.explanation && row.explanation.trim()
-                          ? truncateText(row.explanation, 140)
-                          : "No explanation available."}
-                      </td>
-
-                      <td style={tdStyle}>
-                        <button
-                          type="button"
-                          onClick={() => removeQuestion(row.id)}
-                          style={removeButtonStyle}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={emptyStateStyle}>
-              No review items found for the selected filters.
-            </div>
-          )}
-        </SectionCard>
-
-        {filteredQuestions.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
-              gap: "18px",
-              marginTop: "20px",
-              minWidth: 0,
-            }}
-          >
-            {filteredQuestions.slice(0, 9).map((row) => (
-              <div
-                key={row.id}
-                style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-                  border: "1px solid #dcfce7",
-                  borderRadius: "24px",
-                  padding: "20px",
-                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                  boxSizing: "border-box",
-                }}
-              >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                gap: "18px",
+                minWidth: 0,
+              }}
+            >
+              {recentQuestions.map((row) => (
                 <div
+                  key={row.id}
                   style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#dcfce7",
-                      color: "#166534",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      maxWidth: "100%",
-                      overflowWrap: "break-word",
-                    }}
-                  >
-                    {getCategoryLabel(row.category)}
-                  </span>
-
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#ecfdf5",
-                      color: "#15803d",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {getLevelLabel(row.difficulty)}
-                  </span>
-                </div>
-
-                <h3
-                  style={{
-                    margin: "0 0 10px 0",
-                    color: "#0f172a",
-                    fontSize: "18px",
-                    fontWeight: 800,
-                  }}
-                >
-                  Question
-                </h3>
-
-                <p
-                  style={{
-                    margin: "0 0 14px 0",
-                    color: "#0f172a",
-                    lineHeight: 1.6,
-                    fontWeight: 500,
-                    overflowWrap: "anywhere",
-                  }}
-                >
-                  {row.question_text}
-                </p>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                    gap: "12px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "12px",
-                      borderRadius: "14px",
-                      background: "#fff7ed",
-                      border: "1px solid #fed7aa",
-                    }}
-                  >
-                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#9a3412", marginBottom: "5px" }}>
-                      Your answer
-                    </div>
-                    <div style={{ color: "#7c2d12", fontWeight: 700, overflowWrap: "anywhere" }}>
-                      {row.user_answer || "—"}
-                      {row.user_answer_text ? ` — ${row.user_answer_text}` : ""}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "12px",
-                      borderRadius: "14px",
-                      background: "#ecfdf5",
-                      border: "1px solid #bbf7d0",
-                    }}
-                  >
-                    <div style={{ fontSize: "12px", fontWeight: 800, color: "#166534", marginBottom: "5px" }}>
-                      Correct answer
-                    </div>
-                    <div style={{ color: "#14532d", fontWeight: 700, overflowWrap: "anywhere" }}>
-                      {row.correct_answer || "—"}
-                      {row.correct_answer_text ? ` — ${row.correct_answer_text}` : ""}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "14px",
-                    borderRadius: "16px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    marginBottom: "14px",
+                    background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                    border: "1px solid #dcfce7",
+                    borderRadius: "24px",
+                    padding: "20px",
+                    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                    minWidth: 0,
                     maxWidth: "100%",
                     overflow: "hidden",
                     boxSizing: "border-box",
@@ -1279,51 +1032,199 @@ export default function VRReviewPage() {
                 >
                   <div
                     style={{
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "#475569",
-                      marginBottom: "6px",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                      marginBottom: "14px",
                     }}
                   >
-                    Explanation
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 10px",
+                        borderRadius: "999px",
+                        background: "#dcfce7",
+                        color: "#166534",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        maxWidth: "100%",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      {getCategoryLabel(row.category)}
+                    </span>
+
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 10px",
+                        borderRadius: "999px",
+                        background: "#ecfdf5",
+                        color: "#15803d",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {getLevelLabel(row.difficulty)}
+                    </span>
+                  </div>
+
+                  <h3
+                    style={{
+                      margin: "0 0 10px 0",
+                      color: "#0f172a",
+                      fontSize: "18px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    Question
+                  </h3>
+
+                  <p
+                    style={{
+                      margin: "0 0 14px 0",
+                      color: "#0f172a",
+                      lineHeight: 1.6,
+                      fontWeight: 500,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {row.question_text}
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: "12px",
+                      marginBottom: "14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "12px",
+                        borderRadius: "14px",
+                        background: "#fff7ed",
+                        border: "1px solid #fed7aa",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          color: "#9a3412",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        Your answer
+                      </div>
+                      <div
+                        style={{
+                          color: "#7c2d12",
+                          fontWeight: 700,
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {row.user_answer || "—"}
+                        {row.user_answer_text ? ` — ${row.user_answer_text}` : ""}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        borderRadius: "14px",
+                        background: "#ecfdf5",
+                        border: "1px solid #bbf7d0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          color: "#166534",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        Correct answer
+                      </div>
+                      <div
+                        style={{
+                          color: "#14532d",
+                          fontWeight: 700,
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {row.correct_answer || "—"}
+                        {row.correct_answer_text ? ` — ${row.correct_answer_text}` : ""}
+                      </div>
+                    </div>
                   </div>
 
                   <div
                     style={{
-                      color: "#334155",
-                      lineHeight: 1.6,
-                      fontSize: "14px",
-                      overflowWrap: "anywhere",
+                      padding: "14px",
+                      borderRadius: "16px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      marginBottom: "14px",
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      boxSizing: "border-box",
                     }}
                   >
-                    {row.explanation && row.explanation.trim()
-                      ? row.explanation
-                      : "No explanation available."}
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        color: "#475569",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      Explanation
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#334155",
+                        lineHeight: 1.6,
+                        fontSize: "14px",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {row.explanation && row.explanation.trim()
+                        ? row.explanation
+                        : "No explanation available."}
+                    </div>
                   </div>
-                </div>
 
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#64748b",
-                    marginBottom: "14px",
-                    overflowWrap: "break-word",
-                  }}
-                >
-                  Last attempted: {formatDateTime(getReviewDisplayDate(row))}
-                </div>
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#64748b",
+                      marginBottom: "14px",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    Last attempted: {formatDateTime(getReviewDisplayDate(row))}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeQuestion(row.id)}
-                  style={removeButtonStyle}
-                >
-                  Remove from review
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(row.id)}
+                    style={removeButtonStyle}
+                  >
+                    Remove from review
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={emptyStateStyle}>
+              No review items found for the selected filters.
+            </div>
+          )}
+        </SectionCard>
 
         <div
           style={{
@@ -1424,21 +1325,4 @@ const emptyStateStyle: React.CSSProperties = {
   color: "#94a3b8",
   fontSize: "15px",
   textAlign: "center",
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "14px 12px",
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "16px 12px",
-  fontSize: "14px",
-  color: "#0f172a",
-  fontWeight: 500,
-  verticalAlign: "top",
 }
