@@ -824,15 +824,6 @@ export default function MathReviewPage() {
       }))
   }, [filteredItems])
 
-  const recentItems = useMemo(() => {
-    return [...filteredItems]
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      .slice(0, 12)
-  }, [filteredItems])
-
   const summaryText = useMemo(() => {
     if (!filteredItems.length) {
       return "No maths review items found for the selected filters."
@@ -1148,105 +1139,36 @@ export default function MathReviewPage() {
           </SectionCard>
         </div>
 
-        <SectionCard
-          title="Recent Review Items"
-          subtitle="Your most recent maths review items for the selected filters."
+        <div
+          style={{
+            marginTop: "20px",
+            marginBottom: "18px",
+          }}
         >
-          {recentItems.length ? (
-            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "1120px",
-                }}
-              >
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={thStyle}>Date</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Level</th>
-                    <th style={thStyle}>Question</th>
-                    <th style={thStyle}>Your Answer</th>
-                    <th style={thStyle}>Correct Answer</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Action</th>
-                  </tr>
-                </thead>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: 800,
+              color: "#0f172a",
+              overflowWrap: "break-word",
+            }}
+          >
+            Recent Review Items
+          </h2>
 
-                <tbody>
-                  {recentItems.map((row) => {
-                    const status = getStatusLabel(row)
-                    const unanswered = status === "Unanswered"
-
-                    return (
-                      <tr
-                        key={row.id}
-                        style={{
-                          borderBottom: "1px solid #f1f5f9",
-                        }}
-                      >
-                        <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
-                        <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                        <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-                        <td style={{ ...tdStyle, maxWidth: "300px" }}>
-                          {row.question_order !== null ? (
-                            <div
-                              style={{
-                                fontSize: "12px",
-                                color: "#64748b",
-                                fontWeight: 700,
-                                marginBottom: "4px",
-                              }}
-                            >
-                              Question {row.question_order}
-                            </div>
-                          ) : null}
-                          {truncateText(row.question_text, 140)}
-                        </td>
-                        <td style={{ ...tdStyle, maxWidth: "240px" }}>
-                          <AnswerDisplay item={row} answer={row.user_answer} />
-                        </td>
-                        <td style={{ ...tdStyle, maxWidth: "240px" }}>
-                          <AnswerDisplay item={row} answer={row.correct_answer} />
-                        </td>
-                        <td style={tdStyle}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "6px 10px",
-                              borderRadius: "999px",
-                              background: unanswered ? "#fef3c7" : "#fee2e2",
-                              color: unanswered ? "#92400e" : "#991b1b",
-                              fontWeight: 700,
-                              fontSize: "13px",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {status}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(row)}
-                            style={removeButtonStyle}
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div style={emptyStateStyle}>
-              No review items found for the selected filters.
-            </div>
-          )}
-        </SectionCard>
+          <p
+            style={{
+              margin: "8px 0 0 0",
+              color: "#64748b",
+              fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
+            }}
+          >
+            Your most recent maths review items for the selected filters.
+          </p>
+        </div>
 
         {filteredItems.length > 0 ? (
           <div
@@ -1582,21 +1504,4 @@ const emptyStateStyle: React.CSSProperties = {
   textAlign: "center",
   padding: "20px",
   boxSizing: "border-box",
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "14px 12px",
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "16px 12px",
-  fontSize: "14px",
-  color: "#0f172a",
-  fontWeight: 500,
-  verticalAlign: "top",
 }
