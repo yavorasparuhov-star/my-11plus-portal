@@ -532,6 +532,8 @@ export default function VRWordRelationshipsTestPage() {
         )
       }
 
+      const reviewAttemptedAt = new Date().toISOString()
+
       const reviewRows = questions
         .filter((question) => finalAnswers[question.id] !== question.correct_answer)
         .map((question) => ({
@@ -543,12 +545,20 @@ export default function VRWordRelationshipsTestPage() {
           user_answer: finalAnswers[question.id] ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: reviewAttemptedAt,
+          last_attempted_at: reviewAttemptedAt,
         }))
+
+      const correctedReviewQuestionIds = questions
+        .filter((question) => finalAnswers[question.id] === question.correct_answer)
+        .map((question) => question.id)
 
       if (reviewRows.length > 0) {
         const { error: reviewError } = await supabase
           .from("vr_review")
-          .insert(reviewRows)
+          .upsert(reviewRows, {
+            onConflict: "user_id,question_id",
+          })
 
         if (reviewError) {
           console.error("Error saving VR review:", {
@@ -557,6 +567,24 @@ export default function VRWordRelationshipsTestPage() {
             hint: reviewError.hint,
             code: reviewError.code,
             full: reviewError,
+          })
+        }
+      }
+
+      if (correctedReviewQuestionIds.length > 0) {
+        const { error: reviewDeleteError } = await supabase
+          .from("vr_review")
+          .delete()
+          .eq("user_id", userId)
+          .in("question_id", correctedReviewQuestionIds)
+
+        if (reviewDeleteError) {
+          console.error("Error removing corrected VR review questions:", {
+            message: reviewDeleteError.message,
+            details: reviewDeleteError.details,
+            hint: reviewDeleteError.hint,
+            code: reviewDeleteError.code,
+            full: reviewDeleteError,
           })
         }
       }
