@@ -423,6 +423,8 @@ export default function VRCodesLogicTestPage() {
 
     let correctAnswers = 0
 
+    const reviewAttemptedAt = new Date().toISOString()
+
     const wrongAnswersForReview: {
       user_id: string
       test_id: number
@@ -432,13 +434,18 @@ export default function VRCodesLogicTestPage() {
       user_answer: string | null
       correct_answer: string
       difficulty: number | null
+      updated_at: string
+      last_attempted_at: string
     }[] = []
+
+    const correctedReviewQuestionIds: number[] = []
 
     for (const question of questions) {
       const selected = finalAnswers[question.id]
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
+        correctedReviewQuestionIds.push(question.id)
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
@@ -449,6 +456,8 @@ export default function VRCodesLogicTestPage() {
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: reviewAttemptedAt,
+          last_attempted_at: reviewAttemptedAt,
         })
       }
     }
@@ -572,7 +581,9 @@ export default function VRCodesLogicTestPage() {
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
           .from("vr_review")
-          .insert(wrongAnswersForReview)
+          .upsert(wrongAnswersForReview, {
+            onConflict: "user_id,question_id",
+          })
 
         if (reviewError) {
           console.error("Error saving VR review:", {
@@ -581,6 +592,24 @@ export default function VRCodesLogicTestPage() {
             hint: reviewError.hint,
             code: reviewError.code,
             full: reviewError,
+          })
+        }
+      }
+
+      if (correctedReviewQuestionIds.length > 0) {
+        const { error: reviewDeleteError } = await supabase
+          .from("vr_review")
+          .delete()
+          .eq("user_id", userId)
+          .in("question_id", correctedReviewQuestionIds)
+
+        if (reviewDeleteError) {
+          console.error("Error removing corrected VR review questions:", {
+            message: reviewDeleteError.message,
+            details: reviewDeleteError.details,
+            hint: reviewDeleteError.hint,
+            code: reviewDeleteError.code,
+            full: reviewDeleteError,
           })
         }
       }
