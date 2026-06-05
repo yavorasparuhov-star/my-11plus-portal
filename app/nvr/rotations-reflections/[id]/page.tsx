@@ -544,6 +544,7 @@ export default function NVRRotationsReflectionsTestPage() {
 
     try {
       let correctAnswers = 0
+      const completedAt = new Date().toISOString()
 
       const wrongAnswersForReview: {
         user_id: string
@@ -554,13 +555,18 @@ export default function NVRRotationsReflectionsTestPage() {
         user_answer: string | null
         correct_answer: string
         difficulty: number | null
+        updated_at: string
+        last_attempted_at: string
       }[] = []
+
+      const correctedReviewQuestionIds: number[] = []
 
       for (const question of questions) {
         const selected = finalAnswers[question.id]
 
         if (selected === question.correct_answer) {
           correctAnswers += 1
+          correctedReviewQuestionIds.push(question.id)
         } else {
           wrongAnswersForReview.push({
             user_id: userId,
@@ -571,6 +577,8 @@ export default function NVRRotationsReflectionsTestPage() {
             user_answer: selected ?? null,
             correct_answer: question.correct_answer,
             difficulty: question.difficulty ?? test.difficulty ?? null,
+            updated_at: completedAt,
+            last_attempted_at: completedAt,
           })
         }
       }
@@ -617,10 +625,31 @@ export default function NVRRotationsReflectionsTestPage() {
         successRate
       )
 
+      if (correctedReviewQuestionIds.length > 0) {
+        const { error: deleteReviewError } = await supabase
+          .from("nvr_review")
+          .delete()
+          .eq("user_id", userId)
+          .in("question_id", correctedReviewQuestionIds)
+
+        if (deleteReviewError) {
+          console.error("Error removing corrected NVR review items:", {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+            full: deleteReviewError,
+            correctedReviewQuestionIds,
+          })
+        }
+      }
+
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
           .from("nvr_review")
-          .insert(wrongAnswersForReview)
+          .upsert(wrongAnswersForReview, {
+            onConflict: "user_id,question_id",
+          })
 
         if (reviewError) {
           console.error("Error saving NVR review:", {
@@ -629,6 +658,7 @@ export default function NVRRotationsReflectionsTestPage() {
             hint: reviewError.hint,
             code: reviewError.code,
             full: reviewError,
+            payload: wrongAnswersForReview,
           })
         }
       }
