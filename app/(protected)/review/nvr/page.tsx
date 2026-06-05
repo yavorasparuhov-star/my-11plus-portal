@@ -1,3 +1,4 @@
+// app/(protected)/review/nvr/page.tsx
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
@@ -10,40 +11,89 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from "recharts"
-import type {
-  NameType,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent"
-
-type NVRReviewRow = {
-  id: string
-  user_id: string
-  test_id: number | null
-  question_id: number | null
-  category: string | null
-  question_text: string
-  user_answer: string | null
-  correct_answer: string | null
-  created_at: string
-  explanation?: string
-  difficulty?: number | null
-}
-
-type NVRQuestionRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
-}
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
 
-type CategoryFilter =
-  | "all"
+type NVRCategory =
   | "shape-patterns"
   | "rotations-reflections"
   | "codes-spatial-logic"
+
+type CategoryFilter = "all" | NVRCategory
+
+type AnswerOption = "A" | "B" | "C" | "D"
+
+type NVRReviewDbRow = {
+  id: number | string
+  user_id: string
+  test_id: number | null
+  question_id: number | null
+  category: string | null
+  question_text: string | null
+  user_answer: string | null
+  correct_answer: string | null
+  difficulty: number | null
+  created_at: string
+  updated_at?: string | null
+  last_attempted_at?: string | null
+  knew_it?: boolean | null
+}
+
+type NVRQuestionDbRow = {
+  id: number
+  test_id: number | null
+  question_text: string | null
+  image_url: string | null
+  option_a: string | number | null
+  option_b: string | number | null
+  option_c: string | number | null
+  option_d: string | number | null
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
+  correct_answer: string | null
+  explanation: string | null
+  difficulty: number | null
+  question_order: number | null
+}
+
+type NVRTestDbRow = {
+  id: number
+  category: string | null
+  title?: string | null
+}
+
+type ReviewItem = {
+  id: string
+  user_id: string
+  test_id: number | null
+  question_id: number | null
+  category: NVRCategory | "unknown"
+  question_text: string
+  question_image_url: string | null
+  option_a: string | number | null
+  option_b: string | number | null
+  option_c: string | number | null
+  option_d: string | number | null
+  option_a_image_url: string | null
+  option_b_image_url: string | null
+  option_c_image_url: string | null
+  option_d_image_url: string | null
+  user_answer: string | null
+  correct_answer: string | null
+  explanation: string
+  difficulty: number | null
+  question_order: number | null
+  test_title: string | null
+  created_at: string
+  updated_at: string | null
+  last_attempted_at: string | null
+}
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -66,6 +116,9 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "codes-spatial-logic", label: "Codes & Spatial Logic" },
 ]
 
+const CATEGORY_COLORS = ["#22c55e", "#16a34a", "#15803d", "#0f766e"]
+const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
+
 function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
@@ -81,11 +134,43 @@ function getCutoffDate(filter: TimeFilter) {
   return now
 }
 
-function getLevelLabel(level: number | null | undefined) {
-  if (level === 1) return "Easy"
-  if (level === 2) return "Medium"
-  if (level === 3) return "Hard"
-  return "Not set"
+function normaliseNVRCategory(category: string | null | undefined) {
+  if (!category) return "unknown"
+
+  const clean = category
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[_\s]+/g, "-")
+    .replace(/-+/g, "-")
+
+  if (
+    clean === "shape-pattern" ||
+    clean === "shape-patterns" ||
+    clean === "shape-patterns-and-series"
+  ) {
+    return "shape-patterns"
+  }
+
+  if (
+    clean === "rotation-reflection" ||
+    clean === "rotations-reflections" ||
+    clean === "rotations-and-reflections" ||
+    clean === "rotation-and-reflection"
+  ) {
+    return "rotations-reflections"
+  }
+
+  if (
+    clean === "codes-spatial-logic" ||
+    clean === "code-spatial-logic" ||
+    clean === "codes-and-spatial-logic" ||
+    clean === "code-and-spatial-logic"
+  ) {
+    return "codes-spatial-logic"
+  }
+
+  return "unknown"
 }
 
 function getCategoryLabel(category: string | null | undefined) {
@@ -95,7 +180,16 @@ function getCategoryLabel(category: string | null | undefined) {
   return "Not set"
 }
 
-function formatDateTime(value: string) {
+function getLevelLabel(level: number | null | undefined) {
+  if (level === 1) return "Easy"
+  if (level === 2) return "Medium"
+  if (level === 3) return "Hard"
+  return "Not set"
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—"
+
   const date = new Date(value)
 
   return date.toLocaleString("en-GB", {
@@ -107,24 +201,83 @@ function formatDateTime(value: string) {
   })
 }
 
-function truncateText(text: string, maxLength = 160) {
+function truncateText(text: string | null | undefined, maxLength = 160) {
   if (!text) return "—"
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }
 
-function toNumericValue(value: ValueType | undefined) {
-  if (typeof value === "number") return value
-  if (typeof value === "string") return Number(value)
-  if (Array.isArray(value)) return Number(value[0])
-  return 0
+function cleanText(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return null
+
+  const text = String(value).trim()
+
+  if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "nan") {
+    return null
+  }
+
+  return text
 }
 
-function questionsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [number, string] {
-  const numericValue = toNumericValue(value)
-  return [numericValue, "Questions"]
+function isUsableImageUrl(value: string | null | undefined) {
+  const text = cleanText(value)
+  if (!text) return false
+
+  return (
+    text.startsWith("http://") ||
+    text.startsWith("https://") ||
+    text.startsWith("/") ||
+    text.startsWith("data:image/")
+  )
+}
+
+function normaliseAnswer(answer: string | null | undefined): AnswerOption | null {
+  if (!answer) return null
+
+  const clean = answer.trim().toUpperCase()
+
+  if (clean === "A" || clean === "B" || clean === "C" || clean === "D") {
+    return clean
+  }
+
+  return null
+}
+
+function getOptionText(item: ReviewItem, answer: string | null | undefined) {
+  const option = normaliseAnswer(answer)
+
+  if (option === "A") return cleanText(item.option_a)
+  if (option === "B") return cleanText(item.option_b)
+  if (option === "C") return cleanText(item.option_c)
+  if (option === "D") return cleanText(item.option_d)
+
+  return null
+}
+
+function getOptionImageUrl(item: ReviewItem, answer: string | null | undefined) {
+  const option = normaliseAnswer(answer)
+
+  if (option === "A") return isUsableImageUrl(item.option_a_image_url) ? item.option_a_image_url : null
+  if (option === "B") return isUsableImageUrl(item.option_b_image_url) ? item.option_b_image_url : null
+  if (option === "C") return isUsableImageUrl(item.option_c_image_url) ? item.option_c_image_url : null
+  if (option === "D") return isUsableImageUrl(item.option_d_image_url) ? item.option_d_image_url : null
+
+  return null
+}
+
+function formatAnswerLabel(item: ReviewItem, answer: string | null | undefined) {
+  const option = normaliseAnswer(answer)
+
+  if (!option) return "No answer"
+
+  const optionText = getOptionText(item, option)
+
+  if (optionText) return `${option} — ${optionText}`
+
+  return option
+}
+
+function getReviewDate(item: ReviewItem) {
+  return item.last_attempted_at || item.updated_at || item.created_at
 }
 
 function StatCard({
@@ -214,6 +367,7 @@ function SectionCard({
         borderRadius: "28px",
         padding: "24px",
         boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        marginBottom: "20px",
         minWidth: 0,
         maxWidth: "100%",
         overflow: "hidden",
@@ -253,56 +407,91 @@ function SectionCard({
   )
 }
 
-function ChartBox({
-  children,
-  height = 340,
+function ImageBox({
+  src,
+  alt,
+  maxHeight = 220,
 }: {
-  children: (size: { width: number; height: number }) => React.ReactNode
-  height?: number
+  src: string | null | undefined
+  alt: string
+  maxHeight?: number
 }) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const [size, setSize] = useState({ width: 0, height })
-
-  useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
-
-    const updateSize = () => {
-      const rect = element.getBoundingClientRect()
-      const width = Math.max(0, Math.floor(rect.width))
-      const measuredHeight = Math.max(0, Math.floor(rect.height))
-      setSize({ width, height: measuredHeight })
-    }
-
-    updateSize()
-
-    const observer = new ResizeObserver(() => {
-      updateSize()
-    })
-
-    observer.observe(element)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
+  if (!isUsableImageUrl(src)) return null
 
   return (
     <div
-      ref={containerRef}
       style={{
-        width: "100%",
+        background: "white",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        padding: "12px",
+        marginTop: "10px",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         maxWidth: "100%",
-        height,
+        overflow: "hidden",
+      }}
+    >
+      <img
+        src={src || ""}
+        alt={alt}
+        style={{
+          maxWidth: "100%",
+          maxHeight,
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
+    </div>
+  )
+}
+
+function AnswerBox({
+  title,
+  answer,
+  imageUrl,
+  tone,
+}: {
+  title: string
+  answer: string
+  imageUrl: string | null
+  tone: "wrong" | "correct"
+}) {
+  return (
+    <div
+      style={{
+        padding: "12px",
+        borderRadius: "14px",
+        background: tone === "correct" ? "#ecfdf5" : "#fff7ed",
+        border: tone === "correct" ? "1px solid #bbf7d0" : "1px solid #fed7aa",
         minWidth: 0,
         overflow: "hidden",
       }}
     >
-      {size.width > 0 && size.height > 0 ? (
-        children(size)
-      ) : (
-        <div style={emptyStateStyle}>Loading chart...</div>
-      )}
+      <div
+        style={{
+          fontSize: "12px",
+          fontWeight: 700,
+          color: tone === "correct" ? "#15803d" : "#c2410c",
+          marginBottom: "6px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          color: "#0f172a",
+          fontWeight: 800,
+          overflowWrap: "anywhere",
+          lineHeight: 1.4,
+        }}
+      >
+        {answer}
+      </div>
+
+      <ImageBox src={imageUrl} alt={title} maxHeight={150} />
     </div>
   )
 }
@@ -312,117 +501,197 @@ export default function NVRReviewPage() {
 
   const [loadingUser, setLoadingUser] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
-  const [reviewQuestions, setReviewQuestions] = useState<NVRReviewRow[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
+
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
 
   useEffect(() => {
     let mounted = true
 
-    async function fetchReviewQuestions() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    async function loadReviewItems() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (!user) {
-        router.push("/login")
-        return
-      }
+        if (!user) {
+          router.replace("/login")
+          return
+        }
 
-      setLoadingUser(false)
+        setLoadingUser(false)
 
-      const { data, error } = await supabase
-        .from("nvr_review")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        const { data, error } = await supabase
+          .from("nvr_review")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (error) {
-        console.error("Error loading NVR review:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          full: error,
+        if (error) {
+          console.error("Error loading NVR review:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            full: error,
+          })
+
+          setLoadError(error.message)
+          setReviewItems([])
+          return
+        }
+
+        const reviewRows = (data ?? []) as NVRReviewDbRow[]
+
+        const questionIds = Array.from(
+          new Set(
+            reviewRows
+              .map((row) => row.question_id)
+              .filter((id): id is number => typeof id === "number")
+          )
+        )
+
+        let questionMap = new Map<number, NVRQuestionDbRow>()
+
+        if (questionIds.length > 0) {
+          const { data: questionData, error: questionError } = await supabase
+            .from("nvr_questions")
+            .select(
+              "id, test_id, question_text, image_url, option_a, option_b, option_c, option_d, option_a_image_url, option_b_image_url, option_c_image_url, option_d_image_url, correct_answer, explanation, difficulty, question_order"
+            )
+            .in("id", questionIds)
+
+          if (questionError) {
+            console.error("Error loading NVR question details:", {
+              message: questionError.message,
+              details: questionError.details,
+              hint: questionError.hint,
+              code: questionError.code,
+              full: questionError,
+            })
+          } else {
+            questionMap = new Map(
+              ((questionData ?? []) as NVRQuestionDbRow[]).map((question) => [
+                question.id,
+                question,
+              ])
+            )
+          }
+        }
+
+        const testIds = Array.from(
+          new Set(
+            reviewRows
+              .map((row) => row.test_id)
+              .concat(Array.from(questionMap.values()).map((question) => question.test_id))
+              .filter((id): id is number => typeof id === "number")
+          )
+        )
+
+        let testMap = new Map<number, NVRTestDbRow>()
+
+        if (testIds.length > 0) {
+          const { data: testData, error: testError } = await supabase
+            .from("nvr_tests")
+            .select("id, category, title")
+            .in("id", testIds)
+
+          if (testError) {
+            console.error("Error loading NVR test details:", {
+              message: testError.message,
+              details: testError.details,
+              hint: testError.hint,
+              code: testError.code,
+              full: testError,
+            })
+          } else {
+            testMap = new Map(
+              ((testData ?? []) as NVRTestDbRow[]).map((test) => [test.id, test])
+            )
+          }
+        }
+
+        const items: ReviewItem[] = reviewRows.map((row) => {
+          const question =
+            typeof row.question_id === "number"
+              ? questionMap.get(row.question_id)
+              : undefined
+
+          const testId = row.test_id ?? question?.test_id ?? null
+          const test = testId !== null ? testMap.get(testId) : undefined
+
+          const reviewCategory = normaliseNVRCategory(row.category)
+          const testCategory = normaliseNVRCategory(test?.category)
+
+          return {
+            id: String(row.id),
+            user_id: row.user_id,
+            test_id: testId,
+            question_id: row.question_id ?? null,
+            category:
+              reviewCategory !== "unknown"
+                ? reviewCategory
+                : testCategory,
+            question_text:
+              question?.question_text ||
+              row.question_text ||
+              "Question text unavailable.",
+            question_image_url: question?.image_url ?? null,
+            option_a: question?.option_a ?? null,
+            option_b: question?.option_b ?? null,
+            option_c: question?.option_c ?? null,
+            option_d: question?.option_d ?? null,
+            option_a_image_url: question?.option_a_image_url ?? null,
+            option_b_image_url: question?.option_b_image_url ?? null,
+            option_c_image_url: question?.option_c_image_url ?? null,
+            option_d_image_url: question?.option_d_image_url ?? null,
+            user_answer: row.user_answer ?? null,
+            correct_answer: row.correct_answer ?? question?.correct_answer ?? null,
+            explanation: question?.explanation || "",
+            difficulty: row.difficulty ?? question?.difficulty ?? null,
+            question_order: question?.question_order ?? null,
+            test_title: test?.title ?? null,
+            created_at: row.created_at,
+            updated_at: row.updated_at ?? null,
+            last_attempted_at: row.last_attempted_at ?? null,
+          }
         })
 
-        setReviewQuestions([])
-        setLoadingData(false)
-        return
-      }
+        if (!mounted) return
 
-      const reviewData = (data || []) as NVRReviewRow[]
+        setLoadError(null)
+        setReviewItems(items)
+      } catch (error) {
+        console.error("Unexpected NVR review error:", error)
 
-      const questionIds = reviewData
-        .map((row) => row.question_id)
-        .filter((id): id is number => id !== null)
-
-      let questionMap = new Map<
-        number,
-        {
-          explanation: string
-          difficulty: number | null
+        if (mounted) {
+          setLoadError("Unexpected error loading NVR review.")
+          setReviewItems([])
         }
-      >()
-
-      if (questionIds.length > 0) {
-        const { data: questionsData, error: questionsError } = await supabase
-          .from("nvr_questions")
-          .select("id, explanation, difficulty")
-          .in("id", questionIds)
-
-        if (questionsError) {
-          console.error("Error loading NVR explanations:", {
-            message: questionsError.message,
-            details: questionsError.details,
-            hint: questionsError.hint,
-            code: questionsError.code,
-            full: questionsError,
-          })
-        } else {
-          questionMap = new Map(
-            ((questionsData || []) as NVRQuestionRow[]).map((question) => [
-              question.id,
-              {
-                explanation: question.explanation || "",
-                difficulty: question.difficulty,
-              },
-            ])
-          )
+      } finally {
+        if (mounted) {
+          setLoadingData(false)
         }
-      }
-
-      const mergedData = reviewData.map((row) => {
-        const questionInfo =
-          row.question_id !== null ? questionMap.get(row.question_id) : undefined
-
-        return {
-          ...row,
-          explanation: questionInfo?.explanation || "",
-          difficulty: row.difficulty ?? questionInfo?.difficulty ?? null,
-        }
-      })
-
-      if (mounted) {
-        setReviewQuestions(mergedData)
-        setLoadingData(false)
       }
     }
 
-    void fetchReviewQuestions()
+    void loadReviewItems()
 
     return () => {
       mounted = false
     }
   }, [router])
 
-  async function removeQuestion(reviewId: string) {
+  async function removeItem(reviewId: string) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -436,7 +705,7 @@ export default function NVRReviewPage() {
       .eq("id", reviewId)
 
     if (error) {
-      console.error("Error deleting NVR review question:", {
+      console.error("Error deleting NVR review item:", {
         message: error.message,
         details: error.details,
         hint: error.hint,
@@ -446,58 +715,64 @@ export default function NVRReviewPage() {
       return
     }
 
-    setReviewQuestions((previous) =>
-      previous.filter((row) => row.id !== reviewId)
-    )
+    setReviewItems((previous) => previous.filter((row) => row.id !== reviewId))
   }
 
-  const uniqueQuestions = useMemo(() => {
+  const uniqueItems = useMemo(() => {
     return Array.from(
       new Map(
-        reviewQuestions.map((item) => [item.question_text.toLowerCase(), item])
+        reviewItems.map((item) => {
+          const key =
+            item.question_id !== null
+              ? `id-${item.question_id}`
+              : `text-${item.question_text.toLowerCase()}`
+
+          return [key, item]
+        })
       ).values()
     )
-  }, [reviewQuestions])
+  }, [reviewItems])
 
-  const filteredQuestions = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const cutoff = getCutoffDate(timeFilter)
 
-    return uniqueQuestions.filter((question) => {
-      const matchesDifficulty =
-        difficultyFilter === "all" ||
-        String(question.difficulty ?? "") === difficultyFilter
-
+    return uniqueItems.filter((item) => {
       const matchesTime = cutoff
-        ? new Date(question.created_at) >= cutoff
+        ? new Date(getReviewDate(item)) >= cutoff
         : true
 
+      const matchesDifficulty =
+        difficultyFilter === "all" ||
+        String(item.difficulty ?? "") === difficultyFilter
+
       const matchesCategory =
-        categoryFilter === "all" || (question.category ?? "") === categoryFilter
+        categoryFilter === "all" || item.category === categoryFilter
 
-      return matchesDifficulty && matchesTime && matchesCategory
+      return matchesTime && matchesDifficulty && matchesCategory
     })
-  }, [uniqueQuestions, difficultyFilter, timeFilter, categoryFilter])
+  }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
-  function retryFilteredQuestions() {
-    const reviewQuestionIds = filteredQuestions
-      .map((row) => row.question_id)
-      .filter((id): id is number => id !== null)
-
-    if (reviewQuestionIds.length === 0) return
-
-    localStorage.setItem(
-      "nvr_review_question_ids",
-      JSON.stringify(reviewQuestionIds)
+  function retryFilteredItems() {
+    const ids = Array.from(
+      new Set(
+        filteredItems
+          .map((row) => row.question_id)
+          .filter((id): id is number => id !== null)
+      )
     )
+
+    if (ids.length === 0) return
+
+    localStorage.setItem("nvr_review_question_ids", JSON.stringify(ids))
     router.push("/nvr-test?mode=review")
   }
 
   const reviewStats = useMemo(() => {
-    const totalQuestions = filteredQuestions.length
-    const allUnique = uniqueQuestions.length
+    const totalItems = filteredItems.length
+    const allUnique = uniqueItems.length
 
     const byCategory = Object.entries(
-      filteredQuestions.reduce((acc, row) => {
+      filteredItems.reduce((acc, row) => {
         const key = getCategoryLabel(row.category)
 
         if (!acc[key]) {
@@ -519,29 +794,32 @@ export default function NVRReviewPage() {
           )
         : null
 
-    const mostRecentItem = filteredQuestions.length
-      ? [...filteredQuestions].sort(
+    const mostRecentItem = filteredItems.length
+      ? [...filteredItems].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(getReviewDate(b)).getTime() -
+            new Date(getReviewDate(a)).getTime()
         )[0]
       : null
 
-    const withExplanation = filteredQuestions.filter(
-      (row) => row.explanation && row.explanation.trim() !== ""
+    const withImages = filteredItems.filter(
+      (row) =>
+        isUsableImageUrl(row.question_image_url) ||
+        isUsableImageUrl(getOptionImageUrl(row, row.user_answer)) ||
+        isUsableImageUrl(getOptionImageUrl(row, row.correct_answer))
     ).length
 
     return {
-      totalQuestions,
+      totalItems,
       allUnique,
       mostCommonCategory,
       mostRecentItem,
-      withExplanation,
+      withImages,
     }
-  }, [filteredQuestions, uniqueQuestions])
+  }, [filteredItems, uniqueItems])
 
   const reviewByCategoryData = useMemo(() => {
-    const grouped = filteredQuestions.reduce((acc, row) => {
+    const grouped = filteredItems.reduce((acc, row) => {
       const key = getCategoryLabel(row.category)
 
       if (!acc[key]) {
@@ -562,32 +840,59 @@ export default function NVRReviewPage() {
       "Not set",
     ]
 
-    return Object.values(grouped).sort(
-      (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
-    )
-  }, [filteredQuestions])
+    return Object.values(grouped)
+      .sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category))
+      .map((item, index) => ({
+        category: item.category,
+        count: item.count,
+        fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+      }))
+  }, [filteredItems])
 
-  const recentQuestions = useMemo(() => {
-    return [...filteredQuestions]
+  const reviewByDifficultyData = useMemo(() => {
+    const grouped = filteredItems.reduce((acc, row) => {
+      const key = getLevelLabel(row.difficulty)
+
+      if (!acc[key]) {
+        acc[key] = 0
+      }
+
+      acc[key] += 1
+      return acc
+    }, {} as Record<string, number>)
+
+    const order = ["Easy", "Medium", "Hard", "Not set"]
+
+    return order
+      .filter((difficulty) => grouped[difficulty])
+      .map((difficulty, index) => ({
+        name: difficulty,
+        count: grouped[difficulty],
+        fill: DIFFICULTY_COLORS[index % DIFFICULTY_COLORS.length],
+      }))
+  }, [filteredItems])
+
+  const recentItems = useMemo(() => {
+    return [...filteredItems]
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime()
+          new Date(getReviewDate(b)).getTime() -
+          new Date(getReviewDate(a)).getTime()
       )
       .slice(0, 12)
-  }, [filteredQuestions])
+  }, [filteredItems])
 
   const summaryText = useMemo(() => {
-    if (!filteredQuestions.length) {
-      return "No non-verbal reasoning review questions found for the selected filters."
+    if (!filteredItems.length) {
+      return "No NVR review items found for the selected filters."
     }
 
     const mostCommon = reviewStats.mostCommonCategory
       ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
       : "N/A"
 
-    return `You currently have ${reviewStats.totalQuestions} non-verbal reasoning questions to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these questions already include an explanation to support revision.`
-  }, [filteredQuestions, reviewStats])
+    return `You currently have ${reviewStats.totalItems} NVR items to review. The biggest review category is ${mostCommon}, and ${reviewStats.withImages} of these items include images to support visual revision.`
+  }, [filteredItems, reviewStats])
 
   if (loadingUser || loadingData) {
     return (
@@ -638,7 +943,7 @@ export default function NVRReviewPage() {
                 overflowWrap: "break-word",
               }}
             >
-              🔷 NVR Review
+              🧩 NVR Review
             </h1>
 
             <p
@@ -651,9 +956,9 @@ export default function NVRReviewPage() {
                 overflowWrap: "break-word",
               }}
             >
-              Review non-verbal reasoning questions that need more practice,
-              filter by category and difficulty, and jump straight into a
-              focused retry session.
+              Review non-verbal reasoning items that need more practice, see the
+              full visual question context, and retry filtered items in a focused
+              review session.
             </p>
           </div>
 
@@ -718,19 +1023,34 @@ export default function NVRReviewPage() {
 
             <button
               type="button"
-              onClick={retryFilteredQuestions}
-              disabled={filteredQuestions.length === 0}
+              onClick={retryFilteredItems}
+              disabled={filteredItems.length === 0}
               style={{
                 ...actionButtonStyle,
-                opacity: filteredQuestions.length === 0 ? 0.5 : 1,
-                cursor:
-                  filteredQuestions.length === 0 ? "not-allowed" : "pointer",
+                opacity: filteredItems.length === 0 ? 0.5 : 1,
+                cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
             >
-              Retry filtered questions
+              Retry filtered items
             </button>
           </div>
         </div>
+
+        {loadError ? (
+          <div
+            style={{
+              background: "#fff1f2",
+              border: "1px solid #fecdd3",
+              color: "#9f1239",
+              borderRadius: "18px",
+              padding: "16px",
+              marginBottom: "20px",
+              fontWeight: 700,
+            }}
+          >
+            Error loading NVR review: {loadError}
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -743,8 +1063,8 @@ export default function NVRReviewPage() {
           }}
         >
           <StatCard
-            title="Questions to Review"
-            value={String(reviewStats.totalQuestions)}
+            title="Items to Review"
+            value={String(reviewStats.totalItems)}
           />
 
           <StatCard
@@ -753,8 +1073,9 @@ export default function NVRReviewPage() {
           />
 
           <StatCard
-            title="With Explanations"
-            value={String(reviewStats.withExplanation)}
+            title="With Images"
+            value={String(reviewStats.withImages)}
+            subtitle="Items with visual question or answer content"
           />
 
           <StatCard
@@ -766,7 +1087,7 @@ export default function NVRReviewPage() {
             }
             subtitle={
               reviewStats.mostCommonCategory
-                ? `${reviewStats.mostCommonCategory.count} questions`
+                ? `${reviewStats.mostCommonCategory.count} items`
                 : undefined
             }
           />
@@ -780,7 +1101,7 @@ export default function NVRReviewPage() {
             }
             subtitle={
               reviewStats.mostRecentItem
-                ? formatDateTime(reviewStats.mostRecentItem.created_at)
+                ? formatDateTime(getReviewDate(reviewStats.mostRecentItem))
                 : undefined
             }
           />
@@ -800,201 +1121,309 @@ export default function NVRReviewPage() {
 
         <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
-            title="Review Questions by Category"
-            subtitle="See which NVR categories need the most revision."
+            title="Review Items by Category"
+            subtitle="See which NVR categories currently need the most revision."
           >
-            <ChartBox>
-              {({ width, height }) =>
-                reviewByCategoryData.length ? (
+            {reviewByCategoryData.length ? (
+              <div style={chartWrapperStyle}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    width={width}
-                    height={height}
                     data={reviewByCategoryData}
                     layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                    />
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={135}
-                      tick={{ fontSize: 11 }}
+                      width={150}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
                     />
-                    <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar
-                      dataKey="count"
-                      fill="#16a34a"
-                      radius={[0, 10, 10, 0]}
-                    />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                      {reviewByCategoryData.map((entry, index) => (
+                        <Cell
+                          key={`category-cell-${index}`}
+                          fill={entry.fill}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
-                ) : (
-                  <div style={emptyStateStyle}>
-                    No data available for this filter.
-                  </div>
-                )
-              }
-            </ChartBox>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div style={emptyStateStyle}>
+                No data available for this filter.
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
-            title="Quick Insights"
-            subtitle="A snapshot of current revision needs."
+            title="Review Items by Difficulty"
+            subtitle="See which difficulty level currently needs the most revision."
           >
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#ecfdf5",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Review Queue
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.totalQuestions}
-                </div>
+            {reviewByDifficultyData.length ? (
+              <div style={chartWrapperStyle}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={reviewByDifficultyData}
+                    margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {reviewByDifficultyData.map((entry, index) => (
+                        <Cell
+                          key={`difficulty-cell-${index}`}
+                          fill={entry.fill}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Explanations Ready
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.withExplanation}
-                </div>
+            ) : (
+              <div style={emptyStateStyle}>
+                No data available for this filter.
               </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fff7ed",
-                  border: "1px solid #fed7aa",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#c2410c",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Main Focus
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    overflowWrap: "break-word",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {reviewStats.mostCommonCategory
-                    ? reviewStats.mostCommonCategory.category
-                    : "—"}
-                </div>
-              </div>
-            </div>
+            )}
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your latest non-verbal reasoning questions to revisit."
+          subtitle="Your most recent NVR review items for the selected filters."
         >
-          {recentQuestions.length ? (
-            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "860px",
-                }}
-              >
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={thStyle}>Date</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Level</th>
-                    <th style={thStyle}>Question</th>
-                    <th style={thStyle}>Explanation</th>
-                    <th style={thStyle}>Action</th>
-                  </tr>
-                </thead>
+          {recentItems.length ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                gap: "18px",
+                minWidth: 0,
+              }}
+            >
+              {recentItems.map((row) => {
+                const userAnswerImage = getOptionImageUrl(row, row.user_answer)
+                const correctAnswerImage = getOptionImageUrl(
+                  row,
+                  row.correct_answer
+                )
 
-                <tbody>
-                  {recentQuestions.map((row) => (
-                    <tr
-                      key={row.id}
+                return (
+                  <div
+                    key={row.id}
+                    style={{
+                      background:
+                        "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                      border: "1px solid #dcfce7",
+                      borderRadius: "24px",
+                      padding: "20px",
+                      boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <div
                       style={{
-                        borderBottom: "1px solid #f1f5f9",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        marginBottom: "14px",
                       }}
                     >
-                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
-                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#dcfce7",
+                          color: "#166534",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          maxWidth: "100%",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {getCategoryLabel(row.category)}
+                      </span>
 
-                      <td style={{ ...tdStyle, maxWidth: "300px" }}>
-                        {truncateText(row.question_text, 130)}
-                      </td>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#ecfdf5",
+                          color: "#15803d",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {getLevelLabel(row.difficulty)}
+                      </span>
 
-                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
-                        {row.explanation && row.explanation.trim()
-                          ? truncateText(row.explanation, 140)
-                          : "No explanation available."}
-                      </td>
-
-                      <td style={tdStyle}>
-                        <button
-                          type="button"
-                          onClick={() => removeQuestion(row.id)}
-                          style={removeButtonStyle}
+                      {row.test_title ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "6px 10px",
+                            borderRadius: "999px",
+                            background: "#f8fafc",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            maxWidth: "100%",
+                            overflowWrap: "break-word",
+                          }}
                         >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {row.test_title}
+                        </span>
+                      ) : null}
+
+                      {row.question_order ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "6px 10px",
+                            borderRadius: "999px",
+                            background: "#f8fafc",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Question {row.question_order}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <h3
+                      style={{
+                        margin: "0 0 10px 0",
+                        color: "#0f172a",
+                        fontSize: "18px",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Question
+                    </h3>
+
+                    <p
+                      style={{
+                        margin: "0 0 14px 0",
+                        color: "#0f172a",
+                        lineHeight: 1.6,
+                        fontWeight: 500,
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {row.question_text}
+                    </p>
+
+                    <ImageBox
+                      src={row.question_image_url}
+                      alt="NVR question image"
+                    />
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(min(100%, 150px), 1fr))",
+                        gap: "12px",
+                        marginTop: "14px",
+                        marginBottom: "14px",
+                      }}
+                    >
+                      <AnswerBox
+                        title="Your Answer"
+                        answer={formatAnswerLabel(row, row.user_answer)}
+                        imageUrl={userAnswerImage}
+                        tone="wrong"
+                      />
+
+                      <AnswerBox
+                        title="Correct Answer"
+                        answer={formatAnswerLabel(row, row.correct_answer)}
+                        imageUrl={correctAnswerImage}
+                        tone="correct"
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "14px",
+                        borderRadius: "16px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        marginBottom: "14px",
+                        maxWidth: "100%",
+                        overflow: "hidden",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          color: "#475569",
+                          marginBottom: "6px",
+                        }}
+                      >
+                        Explanation
+                      </div>
+
+                      <div
+                        style={{
+                          color: "#334155",
+                          lineHeight: 1.6,
+                          fontSize: "14px",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
+                        {row.explanation && row.explanation.trim()
+                          ? row.explanation
+                          : "No explanation available."}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#64748b",
+                        marginBottom: "14px",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      Last reviewed: {formatDateTime(getReviewDate(row))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeItem(row.id)}
+                      style={removeButtonStyle}
+                    >
+                      Remove from review
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <div style={emptyStateStyle}>
@@ -1002,154 +1431,6 @@ export default function NVRReviewPage() {
             </div>
           )}
         </SectionCard>
-
-        {filteredQuestions.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
-              gap: "18px",
-              marginTop: "20px",
-              minWidth: 0,
-            }}
-          >
-            {filteredQuestions.slice(0, 9).map((row) => (
-              <div
-                key={row.id}
-                style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-                  border: "1px solid #dcfce7",
-                  borderRadius: "24px",
-                  padding: "20px",
-                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-                  minWidth: 0,
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                  boxSizing: "border-box",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#dcfce7",
-                      color: "#166534",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      maxWidth: "100%",
-                      overflowWrap: "break-word",
-                    }}
-                  >
-                    {getCategoryLabel(row.category)}
-                  </span>
-
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#ecfdf5",
-                      color: "#15803d",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {getLevelLabel(row.difficulty)}
-                  </span>
-                </div>
-
-                <h3
-                  style={{
-                    margin: "0 0 10px 0",
-                    color: "#0f172a",
-                    fontSize: "18px",
-                    fontWeight: 800,
-                  }}
-                >
-                  Question
-                </h3>
-
-                <p
-                  style={{
-                    margin: "0 0 14px 0",
-                    color: "#0f172a",
-                    lineHeight: 1.6,
-                    fontWeight: 500,
-                    overflowWrap: "anywhere",
-                  }}
-                >
-                  {row.question_text}
-                </p>
-
-                <div
-                  style={{
-                    padding: "14px",
-                    borderRadius: "16px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    marginBottom: "14px",
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "#475569",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Explanation
-                  </div>
-
-                  <div
-                    style={{
-                      color: "#334155",
-                      lineHeight: 1.6,
-                      fontSize: "14px",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {row.explanation && row.explanation.trim()
-                      ? row.explanation
-                      : "No explanation available."}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#64748b",
-                    marginBottom: "14px",
-                    overflowWrap: "break-word",
-                  }}
-                >
-                  Added: {formatDateTime(row.created_at)}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeQuestion(row.id)}
-                  style={removeButtonStyle}
-                >
-                  Remove from review
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
 
         <div
           style={{
@@ -1166,7 +1447,7 @@ export default function NVRReviewPage() {
         >
           <div
             style={{
-              fontSize: "22px",
+              fontSize: "clamp(18px, 3vw, 22px)",
               fontWeight: 800,
               marginBottom: "8px",
             }}
@@ -1177,7 +1458,7 @@ export default function NVRReviewPage() {
           <div
             style={{
               color: "#dcfce7",
-              fontSize: "16px",
+              fontSize: "clamp(14px, 2vw, 16px)",
               lineHeight: 1.7,
               overflowWrap: "break-word",
             }}
@@ -1201,6 +1482,14 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
+const chartWrapperStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  height: 340,
+  minWidth: 0,
+  overflow: "hidden",
+}
+
 const selectStyle: React.CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
@@ -1220,10 +1509,11 @@ const actionButtonStyle: React.CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
-  background: "#16a34a",
+  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
   color: "white",
-  fontWeight: 700,
-  boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
+  fontSize: "14px",
+  fontWeight: 800,
+  boxShadow: "0 8px 20px rgba(22, 163, 74, 0.22)",
   width: "100%",
   maxWidth: "260px",
   flex: "1 1 220px",
@@ -1231,12 +1521,13 @@ const actionButtonStyle: React.CSSProperties = {
 }
 
 const removeButtonStyle: React.CSSProperties = {
-  padding: "10px 14px",
+  padding: "9px 12px",
   borderRadius: "12px",
-  border: "none",
-  background: "#e11d48",
-  color: "white",
-  fontWeight: 700,
+  border: "1px solid #fecaca",
+  background: "#fff1f2",
+  color: "#be123c",
+  fontSize: "13px",
+  fontWeight: 800,
   cursor: "pointer",
   whiteSpace: "nowrap",
 }
@@ -1250,21 +1541,6 @@ const emptyStateStyle: React.CSSProperties = {
   color: "#94a3b8",
   fontSize: "15px",
   textAlign: "center",
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "14px 12px",
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "16px 12px",
-  fontSize: "14px",
-  color: "#0f172a",
-  fontWeight: 500,
-  verticalAlign: "top",
+  padding: "20px",
+  boxSizing: "border-box",
 }
