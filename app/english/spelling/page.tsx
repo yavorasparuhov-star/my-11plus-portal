@@ -220,6 +220,38 @@ function SpellingContent() {
     setStoredReviewIds(remainingIds)
   }
 
+  async function getDatabaseReviewIds() {
+    if (!userId) return []
+
+    const { data, error } = await supabase
+      .from("spelling_review")
+      .select("word_id")
+      .eq("user_id", userId)
+
+    if (error) {
+      console.error("Error loading spelling review IDs:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+
+      setErrorMessage(
+        "Could not load spelling review words from Supabase. Using the local backup list instead."
+      )
+
+      return []
+    }
+
+    return Array.from(
+      new Set(
+        (data || [])
+          .map((item) => item.word_id)
+          .filter((id): id is number => typeof id === "number")
+      )
+    )
+  }
+
   function getProgressDifficulty(testWords: WordRow[]) {
     if (!reviewMode) return difficulty
 
@@ -251,7 +283,12 @@ function SpellingContent() {
     let selectedWords: WordRow[] = []
 
     if (reviewMode) {
-      const reviewIds = getStoredReviewIds()
+      const databaseReviewIds = await getDatabaseReviewIds()
+      const localReviewIds = getStoredReviewIds()
+      const reviewIds =
+        databaseReviewIds.length > 0 ? databaseReviewIds : localReviewIds
+
+      setStoredReviewIds(reviewIds)
       selectedWords = allWords.filter((word) => reviewIds.includes(word.id))
     } else {
       selectedWords = allWords.filter((word) => word.difficulty === difficulty)
@@ -548,7 +585,7 @@ function SpellingContent() {
   }
 
   async function saveWrongSpellingReview(wordItem: WordRow) {
-    if (!userId) return
+    if (!userId) return false
 
     const cleanedWord = wordItem.word.trim().toLowerCase()
     const now = new Date().toISOString()
@@ -577,11 +614,21 @@ function SpellingContent() {
         hint: error.hint,
         code: error.code,
       })
+
+      setErrorMessage(
+        "This word was answered incorrectly, but it could not be saved to spelling review."
+      )
+
+      return false
     }
+
+    const existingIds = getStoredReviewIds()
+    setStoredReviewIds([...existingIds, wordItem.id])
+    return true
   }
 
   async function removeWordFromReview(wordId: number) {
-    if (!userId) return
+    if (!userId) return false
 
     const { error } = await supabase
       .from("spelling_review")
@@ -590,8 +637,22 @@ function SpellingContent() {
       .eq("word_id", wordId)
 
     if (error) {
-      console.error("Error removing spelling review word:", error)
+      console.error("Error removing spelling review word:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+
+      setErrorMessage(
+        "This word was answered correctly, but it could not be removed from spelling review."
+      )
+
+      return false
     }
+
+    removeWordIdFromStoredReviewIds(wordId)
+    return true
   }
 
   function handleHint() {
@@ -624,13 +685,13 @@ function SpellingContent() {
       setScore(updatedScore)
 
       await removeWordFromReview(currentWord.id)
-
-      if (reviewMode) {
-        removeWordIdFromStoredReviewIds(currentWord.id)
-      }
     } else {
-      setFeedback("Not quite ❌")
-      await saveWrongSpellingReview(currentWord)
+      const savedToReview = await saveWrongSpellingReview(currentWord)
+      setFeedback(
+        savedToReview
+          ? "Not quite ❌ Added to spelling review."
+          : "Not quite ❌ This word could not be saved to spelling review."
+      )
     }
   }
 
@@ -645,7 +706,13 @@ function SpellingContent() {
     setShowFeedback(true)
     setFeedback("⏰ Time's up!")
 
-    await saveWrongSpellingReview(currentWord)
+    const savedToReview = await saveWrongSpellingReview(currentWord)
+
+    if (savedToReview) {
+      setFeedback("⏰ Time's up! Added to spelling review.")
+    } else {
+      setFeedback("⏰ Time's up! This word could not be saved to spelling review.")
+    }
   }
 
   async function nextQuestion(finalScore: number, finalResults: SpellingResult[]) {
