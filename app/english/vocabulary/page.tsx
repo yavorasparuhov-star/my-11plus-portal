@@ -195,35 +195,96 @@ function VocabularyContent() {
     }
   }
 
+  function setStoredReviewIds(ids: number[]) {
+    const uniqueIds = Array.from(new Set(ids))
+
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(uniqueIds))
+    localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+  }
+
+  function addStoredReviewId(wordId: number) {
+    const ids = getStoredReviewIds()
+
+    if (!ids.includes(wordId)) {
+      setStoredReviewIds([...ids, wordId])
+    }
+  }
+
+  function removeStoredReviewId(wordId: number) {
+    const ids = getStoredReviewIds().filter((id) => id !== wordId)
+
+    setStoredReviewIds(ids)
+  }
+
+  async function getSupabaseReviewIds() {
+    if (!userId) return getStoredReviewIds()
+
+    const { data, error } = await supabase
+      .from("vocabulary_review")
+      .select("word_id")
+      .eq("user_id", userId)
+      .order("last_attempted_at", { ascending: false })
+
+    if (error) {
+      console.error("Error loading vocabulary review words:", error)
+      setErrorMessage("Could not load your vocabulary review queue. Using local saved review words instead.")
+      return getStoredReviewIds()
+    }
+
+    return Array.from(
+      new Set(
+        (data || [])
+          .map((row) => row.word_id)
+          .filter((id): id is number => typeof id === "number")
+      )
+    )
+  }
+
   useEffect(() => {
     if (!userId || !testStarted || words.length === 0) return
 
-    let selectedWords: WordRow[] = []
+    let cancelled = false
 
-    if (reviewMode) {
-      const reviewIds = getStoredReviewIds()
-      selectedWords = words.filter((word) => reviewIds.includes(word.id))
-    } else {
-      selectedWords = words.filter((word) => word.difficulty === difficulty)
+    async function prepareTestWords() {
+      let selectedWords: WordRow[] = []
+
+      if (reviewMode) {
+        const reviewIds = await getSupabaseReviewIds()
+        const fallbackIds = getStoredReviewIds()
+        const activeReviewIds = reviewIds.length > 0 ? reviewIds : fallbackIds
+
+        setStoredReviewIds(activeReviewIds)
+        selectedWords = words.filter((word) => activeReviewIds.includes(word.id))
+      } else {
+        selectedWords = words.filter((word) => word.difficulty === difficulty)
+      }
+
+      const shuffled = [...selectedWords].sort(() => Math.random() - 0.5).slice(0, 10)
+
+      if (cancelled) return
+
+      setTestWords(shuffled)
+      setCurrentIndex(0)
+      setPracticeResults([])
+      setTestCompleted(false)
+      setProgressSaved(false)
+      setResultSaved(false)
+      setTimer(15)
+      setTotalTimer(90)
+      setIsTimerActive(timerEnabled && shuffled.length > 0)
+      setSelectedAnswer(null)
+      setShowHint(false)
+      setShowFeedback(false)
+      setIsAnswerLocked(false)
+      setClearedReviewWordIds([])
+      setErrorMessage("")
     }
 
-    const shuffled = [...selectedWords].sort(() => Math.random() - 0.5).slice(0, 10)
+    void prepareTestWords()
 
-    setTestWords(shuffled)
-    setCurrentIndex(0)
-    setPracticeResults([])
-    setTestCompleted(false)
-    setProgressSaved(false)
-    setResultSaved(false)
-    setTimer(15)
-    setTotalTimer(90)
-    setIsTimerActive(timerEnabled && shuffled.length > 0)
-    setSelectedAnswer(null)
-    setShowHint(false)
-    setShowFeedback(false)
-    setIsAnswerLocked(false)
-    setClearedReviewWordIds([])
-    setErrorMessage("")
+    return () => {
+      cancelled = true
+    }
   }, [difficulty, words, userId, testStarted, reviewMode, timerEnabled])
 
   function generateOptions(correctWord: WordRow, allWords: WordRow[]) {
@@ -285,7 +346,7 @@ function VocabularyContent() {
     if (!isTimerActive || !timerEnabled) return
 
     if (totalTimer === 0) {
-      void finishTest(practiceResults)
+      void finishTest(practiceResults, clearedReviewWordIds)
       return
     }
 
@@ -373,7 +434,7 @@ function VocabularyContent() {
   }
 
   async function removeWordFromReview(wordId: number) {
-    if (!userId) return
+    if (!userId) return false
 
     const { error } = await supabase
       .from("vocabulary_review")
@@ -383,11 +444,16 @@ function VocabularyContent() {
 
     if (error) {
       console.error("Error removing vocabulary review word:", error)
+      setErrorMessage("This answer was correct, but the vocabulary review item could not be cleared.")
+      return false
     }
+
+    removeStoredReviewId(wordId)
+    return true
   }
 
   async function upsertWordToReview(word: WordRow) {
-    if (!userId) return
+    if (!userId) return false
 
     const now = new Date().toISOString()
 
@@ -412,7 +478,12 @@ function VocabularyContent() {
 
     if (error) {
       console.error("Error saving vocabulary review:", error)
+      setErrorMessage("This word was answered incorrectly, but it could not be saved to vocabulary review.")
+      return false
     }
+
+    addStoredReviewId(word.id)
+    return true
   }
 
   async function saveVocabularyProgress(results: PracticeResult[]) {
@@ -539,7 +610,10 @@ function VocabularyContent() {
   setResultSaved(true)
 }
 
-  async function finishTest(results: PracticeResult[]) {
+  async function finishTest(
+    results: PracticeResult[],
+    clearedIds: number[] = clearedReviewWordIds
+  ) {
     setTestCompleted(true)
     setIsTimerActive(false)
     setIsAnswerLocked(true)
@@ -549,12 +623,9 @@ function VocabularyContent() {
 
     if (reviewMode) {
       const storedIds = getStoredReviewIds()
-      const remainingIds = storedIds.filter(
-        (id) => !clearedReviewWordIds.includes(id)
-      )
+      const remainingIds = storedIds.filter((id) => !clearedIds.includes(id))
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
-      localStorage.removeItem(LEGACY_REVIEW_STORAGE_KEY)
+      setStoredReviewIds(remainingIds)
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -585,10 +656,12 @@ function VocabularyContent() {
       setPracticeResults(updatedResults)
 
       if (knewIt) {
-        await removeWordFromReview(currentWord.id)
+        const removed = await removeWordFromReview(currentWord.id)
 
-        if (reviewMode) {
-          updatedClearedReviewIds = [...clearedReviewWordIds, currentWord.id]
+        if (removed) {
+          updatedClearedReviewIds = Array.from(
+            new Set([...clearedReviewWordIds, currentWord.id])
+          )
           setClearedReviewWordIds(updatedClearedReviewIds)
         }
       } else {
@@ -597,7 +670,7 @@ function VocabularyContent() {
     }
 
     if (currentIndex + 1 >= testWords.length) {
-      await finishTest(updatedResults)
+      await finishTest(updatedResults, updatedClearedReviewIds)
       return
     }
 

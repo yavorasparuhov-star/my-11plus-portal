@@ -660,8 +660,10 @@ export default function ComprehensionTestPage() {
     ).filter((id) => !correctlyAnsweredReviewQuestionIds.includes(id))
 
     localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
-    setReviewIds(updatedReviewIds)
 
+    // Do not call setReviewIds here. reviewIds is part of the page-loading
+    // effect dependency for review mode. Updating it after submit can reload
+    // the whole page and make the finished test look like it restarted.
     setScore(correctAnswers)
     setSubmitted(true)
     setSubmitting(false)
