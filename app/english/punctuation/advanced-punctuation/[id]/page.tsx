@@ -639,10 +639,7 @@ export default function AdvancedPunctuationTestPage() {
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
-
-        if (mode === "review") {
-          correctlyAnsweredReviewQuestionIds.push(question.id)
-        }
+        correctlyAnsweredReviewQuestionIds.push(question.id)
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
@@ -734,21 +731,16 @@ export default function AdvancedPunctuationTestPage() {
       }
     }
 
-    if (mode === "review") {
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
-      )
+    const existingReviewIds = mode === "review" ? reviewIds : getStoredReviewIds()
+    const remainingReviewIds = existingReviewIds.filter(
+      (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+    )
+    const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+    const updatedReviewIds = Array.from(
+      new Set([...remainingReviewIds, ...newWrongIds])
+    )
 
-      setStoredReviewIds(remainingIds)
-    } else if (wrongAnswersForReview.length > 0) {
-      const existingReviewIds = getStoredReviewIds()
-      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
-      const updatedReviewIds = Array.from(
-        new Set([...existingReviewIds, ...newWrongIds])
-      )
-
-      setStoredReviewIds(updatedReviewIds)
-    }
+    setStoredReviewIds(updatedReviewIds)
 
     await saveLatestTestResult(
       finalAnswers,
