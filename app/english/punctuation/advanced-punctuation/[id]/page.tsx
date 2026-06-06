@@ -616,6 +616,8 @@ export default function AdvancedPunctuationTestPage() {
 
     let correctAnswers = 0
 
+    const attemptTimestamp = new Date().toISOString()
+
     const wrongAnswersForReview: {
       user_id: string
       test_id: number
@@ -626,6 +628,8 @@ export default function AdvancedPunctuationTestPage() {
       user_answer: AnswerOption | null
       correct_answer: AnswerOption
       difficulty: number | null
+      updated_at: string
+      last_attempted_at: string
     }[] = []
 
     const correctlyAnsweredReviewQuestionIds: number[] = []
@@ -650,6 +654,8 @@ export default function AdvancedPunctuationTestPage() {
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: attemptTimestamp,
+          last_attempted_at: attemptTimestamp,
         })
       }
     }
@@ -689,38 +695,34 @@ export default function AdvancedPunctuationTestPage() {
       return
     }
 
-    if (mode === "review") {
-      if (correctlyAnsweredReviewQuestionIds.length > 0) {
-        const { error: deleteReviewError } = await supabase
-          .from("english_review")
-          .delete()
-          .eq("user_id", userId)
-          .eq("main_category", MAIN_CATEGORY)
-          .eq("subcategory", SUBCATEGORY)
-          .in("question_id", correctlyAnsweredReviewQuestionIds)
+    if (correctlyAnsweredReviewQuestionIds.length > 0) {
+      const { error: deleteReviewError } = await supabase
+        .from("english_review")
+        .delete()
+        .eq("user_id", userId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
+        .in("question_id", correctlyAnsweredReviewQuestionIds)
 
-        if (deleteReviewError) {
-          console.error(
-            "Error removing correctly answered advanced punctuation review items:",
-            {
-              message: deleteReviewError.message,
-              details: deleteReviewError.details,
-              hint: deleteReviewError.hint,
-              code: deleteReviewError.code,
-            }
-          )
-        }
+      if (deleteReviewError) {
+        console.error(
+          "Error removing correctly answered advanced punctuation review items:",
+          {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+          }
+        )
       }
+    }
 
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
-      )
-
-      setStoredReviewIds(remainingIds)
-    } else if (wrongAnswersForReview.length > 0) {
+    if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
-        .insert(wrongAnswersForReview)
+        .upsert(wrongAnswersForReview, {
+          onConflict: "user_id,question_id",
+        })
 
       if (reviewError) {
         console.error("Error saving advanced punctuation review:", {
@@ -730,7 +732,15 @@ export default function AdvancedPunctuationTestPage() {
           code: reviewError.code,
         })
       }
+    }
 
+    if (mode === "review") {
+      const remainingIds = reviewIds.filter(
+        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
+      )
+
+      setStoredReviewIds(remainingIds)
+    } else if (wrongAnswersForReview.length > 0) {
       const existingReviewIds = getStoredReviewIds()
       const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
       const updatedReviewIds = Array.from(
