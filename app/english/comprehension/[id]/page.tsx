@@ -107,47 +107,89 @@ export default function ComprehensionTestPage() {
         return
       }
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error("Error getting auth session for comprehension review IDs:", sessionError)
+      }
+
+      const activeUserId = session?.user?.id ?? null
+
+      let localReviewIds: number[] = []
       const raw = localStorage.getItem(REVIEW_STORAGE_KEY)
 
-      if (!raw) {
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw)
+
+          if (Array.isArray(parsed)) {
+            localReviewIds = parsed.filter((id) => typeof id === "number")
+          }
+        } catch {
+          localReviewIds = []
+        }
+      }
+
+      let databaseReviewIds: number[] = []
+
+      if (activeUserId) {
+        const { data: reviewRows, error: reviewRowsError } = await supabase
+          .from("english_review")
+          .select("question_id")
+          .eq("user_id", activeUserId)
+          .eq("main_category", MAIN_CATEGORY)
+          .eq("subcategory", SUBCATEGORY)
+          .order("last_attempted_at", { ascending: false, nullsFirst: false })
+          .order("updated_at", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+
+        if (reviewRowsError) {
+          console.error("Error loading comprehension review rows:", {
+            message: reviewRowsError.message,
+            details: reviewRowsError.details,
+            hint: reviewRowsError.hint,
+            code: reviewRowsError.code,
+          })
+        } else {
+          databaseReviewIds = (reviewRows ?? [])
+            .map((row) => row.question_id)
+            .filter((id): id is number => typeof id === "number")
+        }
+      }
+
+      const combinedIds = Array.from(new Set([...databaseReviewIds, ...localReviewIds]))
+
+      if (combinedIds.length === 0) {
         setReviewIds([])
         return
       }
 
-      try {
-        const parsed = JSON.parse(raw)
+      const { data: directRows, error: directRowsError } = await supabase
+        .from("english_questions")
+        .select("id")
+        .in("id", combinedIds)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
 
-        if (!Array.isArray(parsed)) {
-          setReviewIds([])
-          return
-        }
-
-        const rawIds = parsed.filter((id) => typeof id === "number") as number[]
-
-        if (rawIds.length === 0) {
-          setReviewIds([])
-          return
-        }
-
-        const { data: directRows, error: directRowsError } = await supabase
-          .from("english_questions")
-          .select("id")
-          .in("id", rawIds)
-          .eq("main_category", MAIN_CATEGORY)
-          .eq("subcategory", SUBCATEGORY)
-
-        if (directRowsError) {
-          console.error("Error loading comprehension review IDs:", directRowsError)
-          setReviewIds([])
-          return
-        }
-
-        const directIds = (directRows ?? []).map((row) => row.id)
-
-        setReviewIds(Array.from(new Set(directIds)))
-      } catch {
+      if (directRowsError) {
+        console.error("Error validating comprehension review question IDs:", {
+          message: directRowsError.message,
+          details: directRowsError.details,
+          hint: directRowsError.hint,
+          code: directRowsError.code,
+        })
         setReviewIds([])
+        return
       }
+
+      const validIds = (directRows ?? []).map((row) => row.id)
+      const sortedValidIds = combinedIds.filter((id) => validIds.includes(id))
+
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(sortedValidIds))
+      setReviewIds(sortedValidIds)
     }
 
     loadReviewIds()
@@ -567,6 +609,11 @@ export default function ComprehensionTestPage() {
           hint: deleteReviewError.hint,
           code: deleteReviewError.code,
         })
+
+        setErrorMessage(
+          deleteReviewError.message ||
+            "Your score was saved, but the corrected comprehension review items could not be cleared."
+        )
       }
     }
 
@@ -584,6 +631,11 @@ export default function ComprehensionTestPage() {
           hint: reviewError.hint,
           code: reviewError.code,
         })
+
+        setErrorMessage(
+          reviewError.message ||
+            "Your score was saved, but the comprehension review items could not be saved."
+        )
       }
     }
 
