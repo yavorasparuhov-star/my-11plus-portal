@@ -94,6 +94,8 @@ function SpellingContent() {
   const [progressSaved, setProgressSaved] = useState(false)
   const [resultSaved, setResultSaved] = useState(false)
   const [spellingResults, setSpellingResults] = useState<SpellingResult[]>([])
+  const [pendingScore, setPendingScore] = useState(0)
+  const [pendingResults, setPendingResults] = useState<SpellingResult[]>([])
   const [errorMessage, setErrorMessage] = useState("")
 
   const [timerEnabled, setTimerEnabled] = useState(false)
@@ -308,6 +310,8 @@ function SpellingContent() {
     setProgressSaved(false)
     setResultSaved(false)
     setSpellingResults([])
+    setPendingScore(0)
+    setPendingResults([])
     setErrorMessage("")
   }
 
@@ -462,7 +466,7 @@ function SpellingContent() {
   }
 
   async function saveSpellingProgress(finalScore: number) {
-    if (!userId || words.length === 0) return
+    if (!userId || words.length === 0) return false
 
     const successRate = Math.round((finalScore / words.length) * 100)
     const progressDifficulty = getProgressDifficulty(words)
@@ -478,10 +482,22 @@ function SpellingContent() {
     ])
 
     if (error) {
-      console.error("Error saving spelling progress:", error)
-    } else {
-      setProgressSaved(true)
+      console.error("Error saving spelling progress:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+
+      setErrorMessage(
+        `The test finished, but spelling progress was not saved: ${error.message}`
+      )
+
+      return false
     }
+
+    setProgressSaved(true)
+    return true
   }
 
   async function saveLatestSpellingResult(results: SpellingResult[]) {
@@ -590,33 +606,89 @@ function SpellingContent() {
     const cleanedWord = wordItem.word.trim().toLowerCase()
     const now = new Date().toISOString()
 
-    const { error } = await supabase.from("spelling_review").upsert(
-      [
-        {
-          user_id: userId,
-          word_id: wordItem.id,
-          word: cleanedWord,
-          knew_it: false,
-          difficulty: wordItem.difficulty,
-          updated_at: now,
-          last_attempted_at: now,
-        },
-      ],
+    const fullPayload = {
+      user_id: userId,
+      word_id: wordItem.id,
+      word: cleanedWord,
+      knew_it: false,
+      difficulty: wordItem.difficulty,
+      updated_at: now,
+      last_attempted_at: now,
+    }
+
+    const minimalPayload = {
+      user_id: userId,
+      word_id: wordItem.id,
+      word: cleanedWord,
+      knew_it: false,
+      difficulty: wordItem.difficulty,
+    }
+
+    const { error: upsertError } = await supabase.from("spelling_review").upsert(
+      [fullPayload],
       {
         onConflict: "user_id,word_id",
       }
     )
 
-    if (error) {
-      console.error("Error saving spelling review:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
+    if (!upsertError) {
+      const existingIds = getStoredReviewIds()
+      setStoredReviewIds([...existingIds, wordItem.id])
+      return true
+    }
+
+    console.error("Error saving spelling review with active-queue fields:", {
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+      code: upsertError.code,
+    })
+
+    /*
+      Fallback for older spelling_review table shapes.
+      This keeps the page working even if updated_at / last_attempted_at
+      or the unique user_id + word_id index have not been added yet.
+    */
+    const { data: updatedRows, error: updateError } = await supabase
+      .from("spelling_review")
+      .update({
+        word: cleanedWord,
+        knew_it: false,
+        difficulty: wordItem.difficulty,
+      })
+      .eq("user_id", userId)
+      .eq("word_id", wordItem.id)
+      .select("id")
+
+    if (!updateError && updatedRows && updatedRows.length > 0) {
+      const existingIds = getStoredReviewIds()
+      setStoredReviewIds([...existingIds, wordItem.id])
+      return true
+    }
+
+    if (updateError) {
+      console.error("Error updating existing spelling review row:", {
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code,
+      })
+    }
+
+    const { error: insertError } = await supabase
+      .from("spelling_review")
+      .insert([minimalPayload])
+
+    if (insertError) {
+      console.error("Error inserting spelling review fallback row:", {
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
       })
 
       setErrorMessage(
-        "This word was answered incorrectly, but it could not be saved to spelling review."
+        `This word was answered incorrectly, but it could not be saved to spelling review: ${insertError.message}`
       )
 
       return false
@@ -678,6 +750,8 @@ function SpellingContent() {
     const updatedResults = [...spellingResults, newResult]
 
     setSpellingResults(updatedResults)
+    setPendingScore(updatedScore)
+    setPendingResults(updatedResults)
     setShowFeedback(true)
 
     if (isCorrect) {
@@ -702,6 +776,8 @@ function SpellingContent() {
     const updatedResults = [...spellingResults, newResult]
 
     setSpellingResults(updatedResults)
+    setPendingScore(score)
+    setPendingResults(updatedResults)
     setSelected("TIMEOUT")
     setShowFeedback(true)
     setFeedback("⏰ Time's up!")
@@ -742,6 +818,8 @@ function SpellingContent() {
     setProgressSaved(false)
     setResultSaved(false)
     setSpellingResults([])
+    setPendingScore(0)
+    setPendingResults([])
     setErrorMessage("")
     void fetchWords()
   }
@@ -1211,7 +1289,7 @@ function SpellingContent() {
             <div style={styles.feedbackActionRow}>
               <button
                 type="button"
-                onClick={() => void nextQuestion(score, spellingResults)}
+                onClick={() => void nextQuestion(pendingScore, pendingResults)}
                 style={styles.nextButton}
               >
                 {currentIndex < words.length - 1 ? "Next Question" : "Finish Test"}
