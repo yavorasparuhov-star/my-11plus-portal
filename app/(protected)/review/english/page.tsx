@@ -4,12 +4,13 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
 } from "recharts"
 import type {
   NameType,
@@ -24,6 +25,8 @@ type VocabularyReviewRow = {
   knew_it: boolean | null
   difficulty: number | null
   created_at: string
+  updated_at?: string | null
+  last_attempted_at?: string | null
 }
 
 type SpellingReviewRow = {
@@ -34,6 +37,8 @@ type SpellingReviewRow = {
   knew_it: boolean | null
   difficulty: number | null
   created_at: string
+  updated_at?: string | null
+  last_attempted_at?: string | null
 }
 
 type EnglishSharedReviewRow = {
@@ -48,18 +53,36 @@ type EnglishSharedReviewRow = {
   correct_answer: string
   difficulty: number | null
   created_at: string
-}
-
-type EnglishQuestionLookupRow = {
-  id: number
-  explanation: string | null
-  difficulty: number | null
+  updated_at?: string | null
+  last_attempted_at?: string | null
 }
 
 type WordLookupRow = {
   id: number
+  word?: string | null
   definition: string | null
   difficulty: number | null
+}
+
+type EnglishQuestionLookupRow = {
+  id: number
+  test_id: number | null
+  question_text: string
+  option_a: string | null
+  option_b: string | null
+  option_c: string | null
+  option_d: string | null
+  correct_answer: string | null
+  explanation: string | null
+  difficulty: number | null
+  question_order: number | null
+}
+
+type EnglishTestLookupRow = {
+  id: number
+  title: string | null
+  main_category: string | null
+  subcategory: string | null
 }
 
 type EnglishReviewCategory =
@@ -74,31 +97,31 @@ type EnglishReviewCategory =
   | "direct_speech_punctuation"
   | "sentence_punctuation"
 
-type EnglishReviewRow = {
+type ReviewSource = "english_review" | "vocabulary_review" | "spelling_review"
+
+type EnglishReviewItem = {
   id: string
+  source: ReviewSource
   category: EnglishReviewCategory
   item_id: number | null
+  test_id: number | null
+  test_title: string | null
+  question_order: number | null
   item_text: string
+  user_answer: string | null
+  user_answer_text: string | null
+  correct_answer: string | null
+  correct_answer_text: string | null
   difficulty: number | null
+  explanation: string
   created_at: string
-  explanation?: string
+  updated_at: string | null
+  last_attempted_at: string | null
 }
 
 type TimeFilter = "7d" | "30d" | "90d" | "all"
 type DifficultyFilter = "all" | "1" | "2" | "3"
-
-type CategoryFilter =
-  | "all"
-  | "vocabulary"
-  | "spelling"
-  | "comprehension"
-  | "primary_word_classes"
-  | "sentence_structure_syntax"
-  | "advanced_punctuation"
-  | "apostrophes"
-  | "comma"
-  | "direct_speech_punctuation"
-  | "sentence_punctuation"
+type CategoryFilter = "all" | EnglishReviewCategory
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -132,7 +155,6 @@ function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
-
   const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
     "7d": 7,
     "30d": 30,
@@ -141,6 +163,21 @@ function getCutoffDate(filter: TimeFilter) {
 
   now.setDate(now.getDate() - daysMap[filter])
   return now
+}
+
+function getRelevantDate(item: {
+  last_attempted_at?: string | null
+  updated_at?: string | null
+  created_at: string
+}) {
+  return item.last_attempted_at || item.updated_at || item.created_at
+}
+
+function getFilterDate(item: {
+  last_attempted_at?: string | null
+  created_at: string
+}) {
+  return item.last_attempted_at || item.created_at
 }
 
 function getLevelLabel(level: number | null | undefined) {
@@ -176,9 +213,9 @@ function formatDateTime(value: string) {
   })
 }
 
-function truncateText(text: string, maxLength = 160) {
-  if (!text) return "—"
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+function truncateText(value: string, maxLength = 160) {
+  if (!value) return "—"
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value
 }
 
 function questionsTooltipFormatter(
@@ -197,6 +234,22 @@ function questionsTooltipFormatter(
   return [numericValue, "Items"]
 }
 
+function getOptionText(
+  question: EnglishQuestionLookupRow | undefined,
+  answer: string | null | undefined
+) {
+  if (!answer) return "—"
+
+  const normalized = answer.trim().toUpperCase()
+
+  if (normalized === "A") return question?.option_a || "A"
+  if (normalized === "B") return question?.option_b || "B"
+  if (normalized === "C") return question?.option_c || "C"
+  if (normalized === "D") return question?.option_d || "D"
+
+  return answer
+}
+
 function mapSharedReviewCategory(
   row: EnglishSharedReviewRow
 ): Exclude<EnglishReviewCategory, "vocabulary" | "spelling"> | null {
@@ -206,7 +259,9 @@ function mapSharedReviewCategory(
 
   if (row.main_category === "grammar") {
     if (row.subcategory === "primary_word_classes") return "primary_word_classes"
-    if (row.subcategory === "sentence_structure_syntax") return "sentence_structure_syntax"
+    if (row.subcategory === "sentence_structure_syntax") {
+      return "sentence_structure_syntax"
+    }
   }
 
   if (row.main_category === "punctuation") {
@@ -224,7 +279,7 @@ function mapSharedReviewCategory(
 
 function getSharedReviewMeta(category: EnglishReviewCategory) {
   if (category === "comprehension") {
-    return { main_category: "comprehension", subcategory: null as string | null }
+    return { main_category: "comprehension", subcategory: "comprehension" }
   }
 
   if (category === "primary_word_classes") {
@@ -261,7 +316,10 @@ function getSharedReviewMeta(category: EnglishReviewCategory) {
   return null
 }
 
-function getReviewStorageConfig(category: EnglishReviewCategory) {
+function getReviewStorageConfig(
+  category: EnglishReviewCategory,
+  item?: EnglishReviewItem
+) {
   if (category === "vocabulary") {
     return {
       key: "vocabulary_review_ids",
@@ -277,9 +335,11 @@ function getReviewStorageConfig(category: EnglishReviewCategory) {
   }
 
   if (category === "comprehension") {
+    if (!item?.test_id) return null
+
     return {
       key: "comprehension_review_ids",
-      route: "/english/comprehension?mode=review",
+      route: `/english/comprehension/${item.test_id}?mode=review`,
     }
   }
 
@@ -335,7 +395,8 @@ function getReviewStorageConfig(category: EnglishReviewCategory) {
   return null
 }
 
-function isSameReviewItem(a: EnglishReviewRow, b: EnglishReviewRow) {
+function isSameReviewItem(a: EnglishReviewItem, b: EnglishReviewItem) {
+  if (a.source !== b.source) return false
   if (a.category !== b.category) return false
 
   if (a.item_id !== null && b.item_id !== null) {
@@ -343,76 +404,6 @@ function isSameReviewItem(a: EnglishReviewRow, b: EnglishReviewRow) {
   }
 
   return a.item_text.toLowerCase() === b.item_text.toLowerCase()
-}
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-}: {
-  title: string
-  value: string
-  subtitle?: string
-}) {
-  return (
-    <div
-      style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-        border: "1px solid #d9f99d",
-        borderRadius: "24px",
-        padding: "22px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        minHeight: "132px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        minWidth: 0,
-        maxWidth: "100%",
-        overflow: "hidden",
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "14px",
-          color: "#64748b",
-          fontWeight: 600,
-          marginBottom: "10px",
-        }}
-      >
-        {title}
-      </div>
-
-      <div
-        style={{
-          fontSize: value.length > 18 ? "22px" : "34px",
-          fontWeight: 800,
-          color: "#0f172a",
-          lineHeight: 1.15,
-          overflowWrap: "break-word",
-          wordBreak: "normal",
-          whiteSpace: "normal",
-          maxWidth: "100%",
-        }}
-      >
-        {value}
-      </div>
-
-      {subtitle ? (
-        <div
-          style={{
-            fontSize: "13px",
-            color: "#64748b",
-            marginTop: "8px",
-            lineHeight: 1.45,
-            overflowWrap: "break-word",
-          }}
-        >
-          {subtitle}
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 function SectionCard({
@@ -427,15 +418,12 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-        border: "1px solid #dcfce7",
+        background: "rgba(255,255,255,0.96)",
+        border: "1px solid rgba(226,232,240,0.9)",
         borderRadius: "28px",
         padding: "24px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
         minWidth: 0,
-        maxWidth: "100%",
-        overflow: "hidden",
-        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -443,9 +431,8 @@ function SectionCard({
           style={{
             margin: 0,
             fontSize: "22px",
-            fontWeight: 800,
+            lineHeight: 1.2,
             color: "#0f172a",
-            overflowWrap: "break-word",
           }}
         >
           {title}
@@ -454,11 +441,10 @@ function SectionCard({
         {subtitle ? (
           <p
             style={{
-              margin: "8px 0 0 0",
+              margin: "8px 0 0",
               color: "#64748b",
               fontSize: "14px",
-              lineHeight: 1.5,
-              overflowWrap: "break-word",
+              lineHeight: 1.6,
             }}
           >
             {subtitle}
@@ -471,65 +457,81 @@ function SectionCard({
   )
 }
 
-function ChartBox({
-  children,
-}: {
-  children: (size: { width: number; height: number }) => React.ReactNode
-}) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const [size, setSize] = useState({ width: 0, height: 340 })
+const thStyle: React.CSSProperties = {
+  textAlign: "left",
+  padding: "12px",
+  fontSize: "13px",
+  color: "#475569",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+}
 
-  useEffect(() => {
-    const element = containerRef.current
-    if (!element) return
+const tdStyle: React.CSSProperties = {
+  padding: "12px",
+  fontSize: "14px",
+  color: "#334155",
+  verticalAlign: "top",
+  lineHeight: 1.45,
+}
 
-    const updateSize = () => {
-      const rect = element.getBoundingClientRect()
-      const width = Math.max(0, Math.floor(rect.width))
-      const height = Math.max(0, Math.floor(rect.height))
-      setSize({ width, height })
-    }
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: "14px",
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#0f172a",
+  fontWeight: 700,
+}
 
-    updateSize()
+const removeButtonStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: "999px",
+  background: "#fee2e2",
+  color: "#991b1b",
+  padding: "9px 13px",
+  fontWeight: 800,
+  cursor: "pointer",
+}
 
-    const observer = new ResizeObserver(() => {
-      updateSize()
-    })
+const retryButtonStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: "999px",
+  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+  color: "#ffffff",
+  padding: "12px 18px",
+  fontWeight: 900,
+  cursor: "pointer",
+  boxShadow: "0 10px 22px rgba(34, 197, 94, 0.25)",
+}
 
-    observer.observe(element)
+const secondaryButtonStyle: React.CSSProperties = {
+  border: "1px solid #cbd5e1",
+  borderRadius: "999px",
+  background: "#ffffff",
+  color: "#0f172a",
+  padding: "12px 18px",
+  fontWeight: 900,
+  cursor: "pointer",
+}
 
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: "100%",
-        maxWidth: "100%",
-        height: "340px",
-        minWidth: 0,
-        overflow: "hidden",
-      }}
-    >
-      {size.width > 0 && size.height > 0 ? (
-        children(size)
-      ) : (
-        <div style={emptyStateStyle}>Loading chart...</div>
-      )}
-    </div>
-  )
+const emptyStateStyle: React.CSSProperties = {
+  border: "1px dashed #cbd5e1",
+  borderRadius: "20px",
+  padding: "24px",
+  color: "#64748b",
+  background: "#f8fafc",
+  textAlign: "center",
 }
 
 export default function EnglishReviewPage() {
   const router = useRouter()
 
-  const [loadingUser, setLoadingUser] = useState(true)
+  const [reviewItems, setReviewItems] = useState<EnglishReviewItem[]>([])
   const [loadingData, setLoadingData] = useState(true)
-  const [reviewItems, setReviewItems] = useState<EnglishReviewRow[]>([])
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [errorMessage, setErrorMessage] = useState("")
+  const [noticeMessage, setNoticeMessage] = useState("")
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("30d")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
@@ -538,58 +540,54 @@ export default function EnglishReviewPage() {
     let mounted = true
 
     async function loadData() {
+      setLoadingData(true)
+      setErrorMessage("")
+      setNoticeMessage("")
+
       try {
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser()
 
-        if (!mounted) return
-
-        if (!user) {
+        if (userError || !user) {
           router.push("/login")
           return
         }
 
-        setLoadingUser(false)
-
-        const [vocabularyResult, spellingResult, englishSharedReviewResult] =
+        const [vocabularyResult, spellingResult, englishReviewResult] =
           await Promise.all([
             supabase
               .from("vocabulary_review")
               .select("*")
               .eq("user_id", user.id)
-              .eq("knew_it", false)
-              .order("created_at", { ascending: false }),
+              .eq("knew_it", false),
             supabase
               .from("spelling_review")
               .select("*")
               .eq("user_id", user.id)
-              .eq("knew_it", false)
-              .order("created_at", { ascending: false }),
+              .eq("knew_it", false),
             supabase
               .from("english_review")
               .select("*")
               .eq("user_id", user.id)
-              .in("main_category", ["comprehension", "grammar", "punctuation"])
-              .order("created_at", { ascending: false }),
+              .in("main_category", ["comprehension", "grammar", "punctuation"]),
           ])
 
-        if (vocabularyResult.error) {
-          console.error(
-            "Error loading vocabulary review:",
-            vocabularyResult.error
-          )
-        }
+        const errors = [
+          vocabularyResult.error
+            ? `Vocabulary review: ${vocabularyResult.error.message}`
+            : "",
+          spellingResult.error
+            ? `Spelling review: ${spellingResult.error.message}`
+            : "",
+          englishReviewResult.error
+            ? `English review: ${englishReviewResult.error.message}`
+            : "",
+        ].filter(Boolean)
 
-        if (spellingResult.error) {
-          console.error("Error loading spelling review:", spellingResult.error)
-        }
-
-        if (englishSharedReviewResult.error) {
-          console.error(
-            "Error loading shared English review:",
-            englishSharedReviewResult.error
-          )
+        if (errors.length > 0) {
+          setErrorMessage(errors.join(" | "))
         }
 
         const vocabularyRows =
@@ -598,10 +596,10 @@ export default function EnglishReviewPage() {
         const spellingRows =
           (spellingResult.data ?? []) as SpellingReviewRow[]
 
-        const englishSharedRows =
-          (englishSharedReviewResult.data ?? []) as EnglishSharedReviewRow[]
+        const englishRows =
+          (englishReviewResult.data ?? []) as EnglishSharedReviewRow[]
 
-        const vocabularyAndSpellingWordIds = Array.from(
+        const wordIds = Array.from(
           new Set(
             [...vocabularyRows, ...spellingRows]
               .map((row) => row.word_id)
@@ -609,9 +607,9 @@ export default function EnglishReviewPage() {
           )
         )
 
-        const englishSharedQuestionIds = Array.from(
+        const questionIds = Array.from(
           new Set(
-            englishSharedRows
+            englishRows
               .map((row) => row.question_id)
               .filter((id): id is number => id !== null)
           )
@@ -619,31 +617,30 @@ export default function EnglishReviewPage() {
 
         let wordLookupMap = new Map<
           number,
-          { definition: string; difficulty: number | null }
+          { word: string; definition: string; difficulty: number | null }
         >()
 
-        let englishSharedQuestionMap = new Map<
-          number,
-          { explanation: string; difficulty: number | null }
-        >()
+        let questionLookupMap = new Map<number, EnglishQuestionLookupRow>()
+        let testLookupMap = new Map<number, EnglishTestLookupRow>()
 
-        if (vocabularyAndSpellingWordIds.length > 0) {
-          const { data: wordLookupData, error: wordLookupError } =
-            await supabase
-              .from("words")
-              .select("id, definition, difficulty")
-              .in("id", vocabularyAndSpellingWordIds)
+        if (wordIds.length > 0) {
+          const { data, error } = await supabase
+            .from("words")
+            .select("id, word, definition, difficulty")
+            .in("id", wordIds)
 
-          if (wordLookupError) {
-            console.error(
-              "Error loading vocabulary/spelling definitions:",
-              wordLookupError
+          if (error) {
+            setErrorMessage((previous) =>
+              previous
+                ? `${previous} | Words lookup: ${error.message}`
+                : `Words lookup: ${error.message}`
             )
           } else {
             wordLookupMap = new Map(
-              ((wordLookupData ?? []) as WordLookupRow[]).map((word) => [
+              ((data ?? []) as WordLookupRow[]).map((word) => [
                 word.id,
                 {
+                  word: word.word || "",
                   definition: word.definition || "",
                   difficulty: word.difficulty ?? null,
                 },
@@ -652,99 +649,151 @@ export default function EnglishReviewPage() {
           }
         }
 
-        if (englishSharedQuestionIds.length > 0) {
-          const { data: englishQuestionsData, error: englishQuestionsError } =
-            await supabase
-              .from("english_questions")
-              .select("id, explanation, difficulty")
-              .in("id", englishSharedQuestionIds)
+        if (questionIds.length > 0) {
+          const { data, error } = await supabase
+            .from("english_questions")
+            .select(
+              "id, test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, difficulty, question_order"
+            )
+            .in("id", questionIds)
 
-          if (englishQuestionsError) {
-            console.error(
-              "Error loading shared English explanations:",
-              englishQuestionsError
+          if (error) {
+            setErrorMessage((previous) =>
+              previous
+                ? `${previous} | English question lookup: ${error.message}`
+                : `English question lookup: ${error.message}`
             )
           } else {
-            englishSharedQuestionMap = new Map(
-              ((englishQuestionsData ?? []) as EnglishQuestionLookupRow[]).map(
-                (question) => [
-                  question.id,
-                  {
-                    explanation: question.explanation || "",
-                    difficulty: question.difficulty ?? null,
-                  },
-                ]
+            const questions = (data ?? []) as EnglishQuestionLookupRow[]
+            questionLookupMap = new Map(
+              questions.map((question) => [question.id, question])
+            )
+
+            const testIds = Array.from(
+              new Set(
+                questions
+                  .map((question) => question.test_id)
+                  .filter((id): id is number => id !== null)
               )
             )
+
+            if (testIds.length > 0) {
+              const testResult = await supabase
+                .from("english_tests")
+                .select("id, title, main_category, subcategory")
+                .in("id", testIds)
+
+              if (testResult.error) {
+                setErrorMessage((previous) =>
+                  previous
+                    ? `${previous} | English test lookup: ${testResult.error.message}`
+                    : `English test lookup: ${testResult.error.message}`
+                )
+              } else {
+                testLookupMap = new Map(
+                  ((testResult.data ?? []) as EnglishTestLookupRow[]).map(
+                    (test) => [test.id, test]
+                  )
+                )
+              }
+            }
           }
         }
 
-        const mergedRows: EnglishReviewRow[] = [
-          ...vocabularyRows.map((row) => ({
-            id: `vocabulary-${row.id}`,
-            category: "vocabulary" as const,
-            item_id: row.word_id,
-            item_text: row.word,
-            difficulty:
-              row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.difficulty ??
-                  row.difficulty ??
-                  null
-                : row.difficulty ?? null,
-            created_at: row.created_at,
-            explanation:
-              row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.definition || ""
-                : "",
-          })),
-          ...spellingRows.map((row) => ({
-            id: `spelling-${row.id}`,
-            category: "spelling" as const,
-            item_id: row.word_id,
-            item_text: row.word,
-            difficulty:
-              row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.difficulty ??
-                  row.difficulty ??
-                  null
-                : row.difficulty ?? null,
-            created_at: row.created_at,
-            explanation:
-              row.word_id !== null
-                ? wordLookupMap.get(row.word_id)?.definition || ""
-                : "",
-          })),
-          ...englishSharedRows.flatMap((row) => {
-            const mappedCategory = mapSharedReviewCategory(row)
+        const mergedRows: EnglishReviewItem[] = [
+          ...vocabularyRows.map((row) => {
+            const lookup =
+              row.word_id !== null ? wordLookupMap.get(row.word_id) : undefined
 
+            return {
+              id: `vocabulary-${row.id}`,
+              source: "vocabulary_review" as const,
+              category: "vocabulary" as const,
+              item_id: row.word_id,
+              test_id: null,
+              test_title: null,
+              question_order: null,
+              item_text: lookup?.word || row.word,
+              user_answer: "Needs review",
+              user_answer_text: "Answered incorrectly",
+              correct_answer: lookup?.word || row.word,
+              correct_answer_text: lookup?.word || row.word,
+              difficulty: lookup?.difficulty ?? row.difficulty ?? null,
+              explanation: lookup?.definition || "",
+              created_at: row.created_at,
+              updated_at: row.updated_at ?? null,
+              last_attempted_at: row.last_attempted_at ?? null,
+            }
+          }),
+          ...spellingRows.map((row) => {
+            const lookup =
+              row.word_id !== null ? wordLookupMap.get(row.word_id) : undefined
+
+            return {
+              id: `spelling-${row.id}`,
+              source: "spelling_review" as const,
+              category: "spelling" as const,
+              item_id: row.word_id,
+              test_id: null,
+              test_title: null,
+              question_order: null,
+              item_text: lookup?.word || row.word,
+              user_answer: "Needs review",
+              user_answer_text: "Spelt incorrectly",
+              correct_answer: lookup?.word || row.word,
+              correct_answer_text: lookup?.word || row.word,
+              difficulty: lookup?.difficulty ?? row.difficulty ?? null,
+              explanation: lookup?.definition || "",
+              created_at: row.created_at,
+              updated_at: row.updated_at ?? null,
+              last_attempted_at: row.last_attempted_at ?? null,
+            }
+          }),
+          ...englishRows.flatMap((row) => {
+            const mappedCategory = mapSharedReviewCategory(row)
             if (!mappedCategory) return []
+
+            const question =
+              row.question_id !== null
+                ? questionLookupMap.get(row.question_id)
+                : undefined
+
+            const test =
+              question?.test_id !== null && question?.test_id !== undefined
+                ? testLookupMap.get(question.test_id)
+                : row.test_id !== null
+                  ? testLookupMap.get(row.test_id)
+                  : undefined
 
             return [
               {
-                id: `english-shared-${row.id}`,
+                id: `english-${row.id}`,
+                source: "english_review" as const,
                 category: mappedCategory,
                 item_id: row.question_id,
-                item_text: row.question_text,
-                difficulty:
-                  row.question_id !== null
-                    ? englishSharedQuestionMap.get(row.question_id)
-                        ?.difficulty ??
-                      row.difficulty ??
-                      null
-                    : row.difficulty ?? null,
+                test_id: question?.test_id ?? row.test_id ?? null,
+                test_title: test?.title || null,
+                question_order: question?.question_order ?? null,
+                item_text: question?.question_text || row.question_text,
+                user_answer: row.user_answer,
+                user_answer_text: getOptionText(question, row.user_answer),
+                correct_answer: row.correct_answer,
+                correct_answer_text: getOptionText(question, row.correct_answer),
+                difficulty: question?.difficulty ?? row.difficulty ?? null,
+                explanation: question?.explanation || "",
                 created_at: row.created_at,
-                explanation:
-                  row.question_id !== null
-                    ? englishSharedQuestionMap.get(row.question_id)
-                        ?.explanation || ""
-                    : "",
+                updated_at: row.updated_at ?? null,
+                last_attempted_at: row.last_attempted_at ?? null,
               },
             ]
           }),
-        ]
+        ].sort(
+          (a, b) =>
+            new Date(getRelevantDate(b)).getTime() -
+            new Date(getRelevantDate(a)).getTime()
+        )
 
         if (!mounted) return
-
         setReviewItems(mergedRows)
       } finally {
         if (mounted) {
@@ -760,7 +809,10 @@ export default function EnglishReviewPage() {
     }
   }, [router])
 
-  async function removeItem(item: EnglishReviewRow) {
+  async function removeItem(item: EnglishReviewItem) {
+    setNoticeMessage("")
+    setErrorMessage("")
+
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -774,7 +826,6 @@ export default function EnglishReviewPage() {
         .from("vocabulary_review")
         .delete()
         .eq("user_id", user.id)
-        .eq("knew_it", false)
 
       const result =
         item.item_id !== null
@@ -787,7 +838,6 @@ export default function EnglishReviewPage() {
         .from("spelling_review")
         .delete()
         .eq("user_id", user.id)
-        .eq("knew_it", false)
 
       const result =
         item.item_id !== null
@@ -797,7 +847,6 @@ export default function EnglishReviewPage() {
       error = result.error
     } else {
       const sharedMeta = getSharedReviewMeta(item.category)
-
       if (!sharedMeta) return
 
       let query = supabase
@@ -806,11 +855,7 @@ export default function EnglishReviewPage() {
         .eq("user_id", user.id)
         .eq("main_category", sharedMeta.main_category)
 
-      if (sharedMeta.subcategory === null) {
-        query = query.is("subcategory", null)
-      } else {
-        query = query.eq("subcategory", sharedMeta.subcategory)
-      }
+      query = query.eq("subcategory", sharedMeta.subcategory)
 
       const result =
         item.item_id !== null
@@ -821,13 +866,81 @@ export default function EnglishReviewPage() {
     }
 
     if (error) {
-      console.error("Error deleting English review item:", error)
+      setErrorMessage(`Could not remove review item: ${error.message}`)
       return
     }
 
     setReviewItems((previous) =>
       previous.filter((row) => !isSameReviewItem(row, item))
     )
+    setNoticeMessage("Review item removed.")
+  }
+
+  function retryItem(item: EnglishReviewItem) {
+    if (item.item_id === null) return
+
+    const config = getReviewStorageConfig(item.category, item)
+    if (!config) {
+      setErrorMessage("This item cannot be retried from here yet.")
+      return
+    }
+
+    localStorage.setItem(config.key, JSON.stringify([item.item_id]))
+    router.push(config.route)
+  }
+
+  function retryFilteredItems() {
+    setErrorMessage("")
+    setNoticeMessage("")
+
+    if (filteredItems.length === 0) return
+
+    const targetCategory =
+      categoryFilter !== "all"
+        ? (categoryFilter as EnglishReviewCategory)
+        : filteredItems[0].category
+
+    const targetItems = filteredItems.filter(
+      (item) => item.category === targetCategory && item.item_id !== null
+    )
+
+    if (targetItems.length === 0) return
+
+    const firstItem = targetItems[0]
+    const config = getReviewStorageConfig(targetCategory, firstItem)
+
+    if (!config) {
+      setErrorMessage(
+        "Please choose a specific category before retrying these items."
+      )
+      return
+    }
+
+    let ids = targetItems
+      .map((item) => item.item_id)
+      .filter((id): id is number => id !== null)
+
+    if (targetCategory === "comprehension") {
+      const testId = firstItem.test_id
+      const sameTestItems = targetItems.filter((item) => item.test_id === testId)
+
+      ids = sameTestItems
+        .map((item) => item.item_id)
+        .filter((id): id is number => id !== null)
+
+      if (sameTestItems.length !== targetItems.length) {
+        setNoticeMessage(
+          "Comprehension review opens one passage at a time. I have opened the most recent passage group."
+        )
+      }
+    } else if (categoryFilter === "all") {
+      setNoticeMessage(
+        `Opening ${getCategoryLabel(targetCategory)} review first. Use the category filter to retry a different group.`
+      )
+    }
+
+    localStorage.setItem(config.key, JSON.stringify(Array.from(new Set(ids))))
+    router.push(config.route)
   }
 
   const uniqueItems = useMemo(() => {
@@ -836,8 +949,8 @@ export default function EnglishReviewPage() {
         reviewItems.map((item) => {
           const key =
             item.item_id !== null
-              ? `${item.category}::id::${item.item_id}`
-              : `${item.category}::text::${item.item_text.toLowerCase()}`
+              ? `${item.source}::${item.category}::id::${item.item_id}`
+              : `${item.source}::${item.category}::text::${item.item_text.toLowerCase()}`
 
           return [key, item]
         })
@@ -849,7 +962,7 @@ export default function EnglishReviewPage() {
     const cutoff = getCutoffDate(timeFilter)
 
     return uniqueItems.filter((item) => {
-      const matchesTime = cutoff ? new Date(item.created_at) >= cutoff : true
+      const matchesTime = cutoff ? new Date(getFilterDate(item)) >= cutoff : true
 
       const matchesDifficulty =
         difficultyFilter === "all" ||
@@ -862,40 +975,15 @@ export default function EnglishReviewPage() {
     })
   }, [uniqueItems, timeFilter, difficultyFilter, categoryFilter])
 
-  function retryFilteredItems() {
-    const groupedIds = filteredItems.reduce(
-      (acc, row) => {
-        const itemId = row.item_id
-        if (itemId === null) return acc
-
-        const category = row.category
-        const existing = acc[category] ?? []
-        acc[category] = existing.includes(itemId)
-          ? existing
-          : [...existing, itemId]
-
-        return acc
-      },
-      {} as Partial<Record<EnglishReviewCategory, number[]>>
-    )
-
-    const targetCategory =
-      categoryFilter !== "all"
-        ? (categoryFilter as EnglishReviewCategory)
-        : filteredItems.length > 0
-          ? filteredItems[0].category
-          : null
-
-    if (!targetCategory) return
-
-    const config = getReviewStorageConfig(targetCategory)
-    const ids = groupedIds[targetCategory] ?? []
-
-    if (!config || ids.length === 0) return
-
-    localStorage.setItem(config.key, JSON.stringify(ids))
-    router.push(config.route)
-  }
+  const recentItems = useMemo(() => {
+    return [...filteredItems]
+      .sort(
+        (a, b) =>
+          new Date(getRelevantDate(b)).getTime() -
+          new Date(getRelevantDate(a)).getTime()
+      )
+      .slice(0, 20)
+  }, [filteredItems])
 
   const reviewStats = useMemo(() => {
     const totalItems = filteredItems.length
@@ -905,12 +993,7 @@ export default function EnglishReviewPage() {
       filteredItems.reduce(
         (acc, row) => {
           const key = getCategoryLabel(row.category)
-
-          if (!acc[key]) {
-            acc[key] = 0
-          }
-
-          acc[key] += 1
+          acc[key] = (acc[key] ?? 0) + 1
           return acc
         },
         {} as Record<string, number>
@@ -930,460 +1013,401 @@ export default function EnglishReviewPage() {
     const mostRecentItem = filteredItems.length
       ? [...filteredItems].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(getRelevantDate(b)).getTime() -
+            new Date(getRelevantDate(a)).getTime()
         )[0]
       : null
-
-    const withExplanation = filteredItems.filter(
-      (row) => row.explanation && row.explanation.trim() !== ""
-    ).length
 
     return {
       totalItems,
       allUnique,
+      byCategory,
       mostCommonCategory,
       mostRecentItem,
-      withExplanation,
     }
   }, [filteredItems, uniqueItems])
 
   const reviewByCategoryData = useMemo(() => {
-    const grouped = filteredItems.reduce(
-      (acc, row) => {
-        const key = getCategoryLabel(row.category)
-
-        if (!acc[key]) {
-          acc[key] = {
-            category: key,
-            count: 0,
-          }
-        }
-
-        acc[key].count += 1
-        return acc
-      },
-      {} as Record<string, { category: string; count: number }>
-    )
-
-    const order = [
-      "Vocabulary",
-      "Spelling",
-      "Comprehension",
-      "Primary Word Classes",
-      "Sentence Structure & Syntax",
-      "Advanced Punctuation",
-      "Apostrophes",
-      "Comma",
-      "Direct Speech Punctuation",
-      "Sentence Punctuation",
-      "Not set",
-    ]
-
-    return Object.values(grouped).sort(
-      (a, b) => order.indexOf(a.category) - order.indexOf(b.category)
-    )
-  }, [filteredItems])
-
-  const recentItems = useMemo(() => {
-    return [...filteredItems]
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      .slice(0, 12)
-  }, [filteredItems])
-
-  const summaryText = useMemo(() => {
-    if (!filteredItems.length) {
-      return "No English review items found for the selected filters."
-    }
-
-    const mostCommon = reviewStats.mostCommonCategory
-      ? `${reviewStats.mostCommonCategory.category} (${reviewStats.mostCommonCategory.count})`
-      : "N/A"
-
-    return `You currently have ${reviewStats.totalItems} English items to review. The biggest review category is ${mostCommon}, and ${reviewStats.withExplanation} of these items already include an explanation to support revision.`
-  }, [filteredItems, reviewStats])
-
-  if (loadingUser || loadingData) {
-    return (
-      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
-        Loading English review...
-      </div>
-    )
-  }
+    return reviewStats.byCategory.sort((a, b) => b.count - a.count)
+  }, [reviewStats.byCategory])
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100vh",
         background:
-          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-        padding: "28px 14px 50px",
-        boxSizing: "border-box",
-        overflowX: "hidden",
+          "linear-gradient(135deg, #ecfdf5 0%, #f8fafc 48%, #eff6ff 100%)",
+        padding: "32px 16px 56px",
       }}
     >
-      <div
-        style={{
-          maxWidth: "1320px",
-          width: "100%",
-          margin: "0 auto",
-          minWidth: 0,
-        }}
-      >
-        <div
+      <div style={{ maxWidth: "1180px", margin: "0 auto" }}>
+        <button
+          type="button"
+          onClick={() => router.push("/english")}
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "16px",
-            marginBottom: "28px",
-            minWidth: 0,
+            border: "none",
+            background: "transparent",
+            color: "#166534",
+            fontWeight: 900,
+            cursor: "pointer",
+            marginBottom: "18px",
           }}
         >
-          <div style={{ minWidth: 0 }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "clamp(30px, 8vw, 42px)",
-                fontWeight: 900,
-                color: "#0f172a",
-                letterSpacing: "-0.02em",
-                overflowWrap: "break-word",
-              }}
-            >
-              📘 English Review
-            </h1>
+          ← Back to English
+        </button>
 
-            <p
-              style={{
-                margin: "10px 0 0 0",
-                color: "#475569",
-                fontSize: "17px",
-                maxWidth: "760px",
-                lineHeight: 1.6,
-                overflowWrap: "break-word",
-              }}
-            >
-              Review English items across vocabulary, spelling, comprehension,
-              grammar, and punctuation with live filters, category insights, and
-              quick retry access.
-            </p>
-          </div>
-
+        <section
+          style={{
+            background: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
+            borderRadius: "32px",
+            padding: "28px",
+            color: "#ffffff",
+            boxShadow: "0 24px 60px rgba(20, 83, 45, 0.28)",
+            marginBottom: "24px",
+          }}
+        >
           <div
             style={{
               display: "flex",
+              justifyContent: "space-between",
+              gap: "18px",
               flexWrap: "wrap",
-              gap: "12px",
               alignItems: "center",
-              width: "100%",
-              maxWidth: "1100px",
-              minWidth: 0,
             }}
           >
-            <select
-              id="english-review-category-filter"
-              name="englishReviewCategoryFilter"
-              value={categoryFilter}
-              onChange={(event) =>
-                setCategoryFilter(event.target.value as CategoryFilter)
-              }
-              style={selectStyle}
-            >
-              {categoryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div>
+              <p
+                style={{
+                  margin: "0 0 8px",
+                  color: "#bbf7d0",
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  fontSize: "12px",
+                }}
+              >
+                English Review
+              </p>
 
-            <select
-              id="english-review-difficulty-filter"
-              name="englishReviewDifficultyFilter"
-              value={difficultyFilter}
-              onChange={(event) =>
-                setDifficultyFilter(event.target.value as DifficultyFilter)
-              }
-              style={selectStyle}
-            >
-              {difficultyOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: "clamp(30px, 5vw, 48px)",
+                  lineHeight: 1.05,
+                }}
+              >
+                Active Review Queue
+              </h1>
 
-            <select
-              id="english-review-time-filter"
-              name="englishReviewTimeFilter"
-              value={timeFilter}
-              onChange={(event) =>
-                setTimeFilter(event.target.value as TimeFilter)
-              }
-              style={selectStyle}
-            >
-              {timeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "#dcfce7",
+                  maxWidth: "760px",
+                  lineHeight: 1.7,
+                  fontSize: "16px",
+                }}
+              >
+                Review all active English weak spots in one place: grammar,
+                punctuation, comprehension, vocabulary and spelling. Items stay
+                here until they are answered correctly or removed.
+              </p>
+            </div>
 
             <button
               type="button"
               onClick={retryFilteredItems}
               disabled={filteredItems.length === 0}
               style={{
-                ...actionButtonStyle,
-                opacity: filteredItems.length === 0 ? 0.5 : 1,
+                ...retryButtonStyle,
+                opacity: filteredItems.length === 0 ? 0.55 : 1,
                 cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
             >
               Retry filtered items
             </button>
           </div>
-        </div>
+        </section>
+
+        {errorMessage ? (
+          <div
+            style={{
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#991b1b",
+              borderRadius: "18px",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              fontWeight: 700,
+            }}
+          >
+            {errorMessage}
+          </div>
+        ) : null}
+
+        {noticeMessage ? (
+          <div
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1e40af",
+              borderRadius: "18px",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              fontWeight: 700,
+            }}
+          >
+            {noticeMessage}
+          </div>
+        ) : null}
+
+        <SectionCard
+          title="Filters"
+          subtitle="Use these filters before retrying a focused group of review items."
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+              gap: "14px",
+            }}
+          >
+            <label>
+              <div style={{ fontWeight: 900, marginBottom: "8px" }}>Time</div>
+              <select
+                value={timeFilter}
+                onChange={(event) =>
+                  setTimeFilter(event.target.value as TimeFilter)
+                }
+                style={selectStyle}
+              >
+                {timeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <div style={{ fontWeight: 900, marginBottom: "8px" }}>
+                Difficulty
+              </div>
+              <select
+                value={difficultyFilter}
+                onChange={(event) =>
+                  setDifficultyFilter(event.target.value as DifficultyFilter)
+                }
+                style={selectStyle}
+              >
+                {difficultyOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <div style={{ fontWeight: 900, marginBottom: "8px" }}>
+                Category
+              </div>
+              <select
+                value={categoryFilter}
+                onChange={(event) =>
+                  setCategoryFilter(event.target.value as CategoryFilter)
+                }
+                style={selectStyle}
+              >
+                {categoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </SectionCard>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-            gap: "18px",
-            marginBottom: "24px",
-            minWidth: 0,
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
+            gap: "20px",
+            marginTop: "20px",
+            marginBottom: "20px",
           }}
         >
-          <StatCard
-            title="Items to Review"
-            value={String(reviewStats.totalItems)}
-          />
-
-          <StatCard
-            title="Total Review Bank"
-            value={String(reviewStats.allUnique)}
-          />
-
-          <StatCard
-            title="With Explanations"
-            value={String(reviewStats.withExplanation)}
-          />
-
-          <StatCard
-            title="Most Common Category"
-            value={
-              reviewStats.mostCommonCategory
-                ? reviewStats.mostCommonCategory.category
-                : "—"
-            }
-            subtitle={
-              reviewStats.mostCommonCategory
-                ? `${reviewStats.mostCommonCategory.count} items`
-                : undefined
-            }
-          />
-
-          <StatCard
-            title="Most Recent Item"
-            value={
-              reviewStats.mostRecentItem
-                ? getCategoryLabel(reviewStats.mostRecentItem.category)
-                : "—"
-            }
-            subtitle={
-              reviewStats.mostRecentItem
-                ? formatDateTime(reviewStats.mostRecentItem.created_at)
-                : undefined
-            }
-          />
-
-          <StatCard
-            title="Current Filter"
-            value={
-              categoryFilter === "all"
-                ? "All Categories"
-                : getCategoryLabel(categoryFilter)
-            }
-            subtitle={
-              timeOptions.find((option) => option.value === timeFilter)?.label
-            }
-          />
-        </div>
-
-        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
-            title="Review Items by Category"
-            subtitle="See which English categories currently need the most revision."
+            title="Review Summary"
+            subtitle="Current active review items for the selected filters."
           >
-            <ChartBox>
-              {({ width, height }) =>
-                reviewByCategoryData.length ? (
-                  <BarChart
-                    width={width}
-                    height={height}
-                    data={reviewByCategoryData}
-                    layout="vertical"
-                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+            {loadingData ? (
+              <div style={emptyStateStyle}>Loading English review items...</div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: "14px",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#166534",
+                      fontWeight: 800,
+                      marginBottom: "6px",
+                    }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      width={135}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar
-                      dataKey="count"
-                      fill="#16a34a"
-                      radius={[0, 10, 10, 0]}
-                    />
-                  </BarChart>
-                ) : (
-                  <div style={emptyStateStyle}>
-                    No data available for this filter.
+                    Items to Review
                   </div>
-                )
-              }
-            </ChartBox>
+
+                  <div
+                    style={{
+                      fontSize: "30px",
+                      fontWeight: 900,
+                      color: "#14532d",
+                    }}
+                  >
+                    {reviewStats.totalItems}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#475569",
+                      fontWeight: 800,
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Total Review Bank
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "30px",
+                      fontWeight: 900,
+                      color: "#0f172a",
+                    }}
+                  >
+                    {reviewStats.allUnique}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#1d4ed8",
+                      fontWeight: 800,
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Main Focus
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: 900,
+                      color: "#1e3a8a",
+                    }}
+                  >
+                    {reviewStats.mostCommonCategory
+                      ? reviewStats.mostCommonCategory.category
+                      : "—"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "18px",
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "#92400e",
+                      fontWeight: 800,
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Most Recent
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 800,
+                      color: "#78350f",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {reviewStats.mostRecentItem
+                      ? formatDateTime(getRelevantDate(reviewStats.mostRecentItem))
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
-            title="Quick Insights"
-            subtitle="A snapshot of current English revision needs."
+            title="By Category"
+            subtitle="Where the current review queue is concentrated."
           >
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#ecfdf5",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Review Queue
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.totalItems}
-                </div>
+            {reviewByCategoryData.length ? (
+              <div style={{ width: "100%", height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reviewByCategoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="category"
+                      tick={{ fontSize: 11 }}
+                      interval={0}
+                      angle={-18}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#15803d",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Explanations Ready
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.withExplanation}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#fff7ed",
-                  border: "1px solid #fed7aa",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#c2410c",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Main Focus
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                    overflowWrap: "break-word",
-                    lineHeight: 1.25,
-                  }}
-                >
-                  {reviewStats.mostCommonCategory
-                    ? reviewStats.mostCommonCategory.category
-                    : "—"}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: "16px",
-                  borderRadius: "18px",
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div
-                  style={{
-                    color: "#475569",
-                    fontWeight: 700,
-                    marginBottom: "6px",
-                  }}
-                >
-                  Total Review Bank
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}
-                >
-                  {reviewStats.allUnique}
-                </div>
-              </div>
-            </div>
+            ) : (
+              <div style={emptyStateStyle}>No category data yet.</div>
+            )}
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="Your most recent English review items for the selected filters."
+          subtitle="The table shows the newest active items first. The detailed cards underneath show answer text and explanations where available."
         >
           {recentItems.length ? (
             <div style={{ overflowX: "auto", maxWidth: "100%" }}>
@@ -1391,16 +1415,17 @@ export default function EnglishReviewPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: "860px",
+                  minWidth: "980px",
                 }}
               >
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Last Attempt</th>
                     <th style={thStyle}>Category</th>
+                    <th style={thStyle}>Test</th>
                     <th style={thStyle}>Level</th>
                     <th style={thStyle}>Item</th>
-                    <th style={thStyle}>Explanation</th>
+                    <th style={thStyle}>Correct Answer</th>
                     <th style={thStyle}>Action</th>
                   </tr>
                 </thead>
@@ -1413,25 +1438,40 @@ export default function EnglishReviewPage() {
                         borderBottom: "1px solid #f1f5f9",
                       }}
                     >
-                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{formatDateTime(getRelevantDate(row))}</td>
                       <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
+                      <td style={tdStyle}>
+                        {row.test_title
+                          ? row.question_order
+                            ? `${row.test_title} · Q${row.question_order}`
+                            : row.test_title
+                          : "—"}
+                      </td>
                       <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
                       <td style={{ ...tdStyle, maxWidth: "300px" }}>
-                        {truncateText(row.item_text, 130)}
+                        {truncateText(row.item_text, 110)}
                       </td>
-                      <td style={{ ...tdStyle, maxWidth: "320px" }}>
-                        {row.explanation && row.explanation.trim()
-                          ? truncateText(row.explanation, 140)
-                          : "No explanation available."}
+                      <td style={{ ...tdStyle, maxWidth: "240px" }}>
+                        {truncateText(row.correct_answer_text || "—", 90)}
                       </td>
                       <td style={tdStyle}>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(row)}
-                          style={removeButtonStyle}
-                        >
-                          Remove
-                        </button>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            type="button"
+                            onClick={() => retryItem(row)}
+                            style={secondaryButtonStyle}
+                          >
+                            Retry
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => removeItem(row)}
+                            style={removeButtonStyle}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1450,14 +1490,13 @@ export default function EnglishReviewPage() {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                "repeat(auto-fit, minmax(min(100%, 330px), 1fr))",
               gap: "18px",
               marginTop: "20px",
-              minWidth: 0,
             }}
           >
-            {filteredItems.slice(0, 9).map((row) => (
-              <div
+            {filteredItems.slice(0, 12).map((row) => (
+              <article
                 key={row.id}
                 style={{
                   background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
@@ -1466,9 +1505,7 @@ export default function EnglishReviewPage() {
                   padding: "20px",
                   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
                   minWidth: 0,
-                  maxWidth: "100%",
                   overflow: "hidden",
-                  boxSizing: "border-box",
                 }}
               >
                 <div
@@ -1487,9 +1524,7 @@ export default function EnglishReviewPage() {
                       background: "#dcfce7",
                       color: "#166534",
                       fontSize: "12px",
-                      fontWeight: 700,
-                      maxWidth: "100%",
-                      overflowWrap: "break-word",
+                      fontWeight: 900,
                     }}
                   >
                     {getCategoryLabel(row.category)}
@@ -1500,213 +1535,154 @@ export default function EnglishReviewPage() {
                       display: "inline-block",
                       padding: "6px 10px",
                       borderRadius: "999px",
-                      background: "#ecfdf5",
-                      color: "#15803d",
+                      background: "#e0f2fe",
+                      color: "#075985",
                       fontSize: "12px",
-                      fontWeight: 700,
+                      fontWeight: 900,
                     }}
                   >
                     {getLevelLabel(row.difficulty)}
                   </span>
+
+                  {row.test_title ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 10px",
+                        borderRadius: "999px",
+                        background: "#fef3c7",
+                        color: "#92400e",
+                        fontSize: "12px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {row.question_order
+                        ? `${row.test_title} · Q${row.question_order}`
+                        : row.test_title}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                    marginBottom: "8px",
+                  }}
+                >
+                  Last attempted: {formatDateTime(getRelevantDate(row))}
                 </div>
 
                 <h3
                   style={{
-                    margin: "0 0 10px 0",
+                    margin: "0 0 14px",
                     color: "#0f172a",
                     fontSize: "18px",
-                    fontWeight: 800,
-                  }}
-                >
-                  Item
-                </h3>
-
-                <p
-                  style={{
-                    margin: "0 0 14px 0",
-                    color: "#0f172a",
-                    lineHeight: 1.6,
-                    fontWeight: 500,
-                    overflowWrap: "anywhere",
-                  }}
-                >
-                  {row.item_text}
-                </p>
-
-                <div
-                  style={{
-                    padding: "14px",
-                    borderRadius: "16px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    marginBottom: "14px",
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "#475569",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Explanation
-                  </div>
-
-                  <div
-                    style={{
-                      color: "#334155",
-                      lineHeight: 1.6,
-                      fontSize: "14px",
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {row.explanation && row.explanation.trim()
-                      ? row.explanation
-                      : "No explanation available."}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#64748b",
-                    marginBottom: "14px",
+                    lineHeight: 1.35,
                     overflowWrap: "break-word",
                   }}
                 >
-                  Added: {formatDateTime(row.created_at)}
+                  {row.item_text}
+                </h3>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "16px",
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#991b1b",
+                        fontWeight: 900,
+                        fontSize: "13px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Child's answer
+                    </div>
+                    <div style={{ color: "#7f1d1d", lineHeight: 1.5 }}>
+                      {row.user_answer
+                        ? `${row.user_answer}: ${row.user_answer_text || "—"}`
+                        : row.user_answer_text || "Not answered"}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "12px",
+                      borderRadius: "16px",
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#166534",
+                        fontWeight: 900,
+                        fontSize: "13px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Correct answer
+                    </div>
+                    <div style={{ color: "#14532d", lineHeight: 1.5 }}>
+                      {row.correct_answer
+                        ? `${row.correct_answer}: ${row.correct_answer_text || "—"}`
+                        : row.correct_answer_text || "—"}
+                    </div>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeItem(row)}
-                  style={removeButtonStyle}
+                <div
+                  style={{
+                    padding: "12px",
+                    borderRadius: "16px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    color: "#334155",
+                    lineHeight: 1.6,
+                    marginBottom: "16px",
+                  }}
                 >
-                  Remove from review
-                </button>
-              </div>
+                  <strong>Explanation: </strong>
+                  {row.explanation && row.explanation.trim()
+                    ? row.explanation
+                    : "No explanation available yet."}
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => retryItem(row)}
+                    style={secondaryButtonStyle}
+                  >
+                    Retry item
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => removeItem(row)}
+                    style={removeButtonStyle}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
         ) : null}
-
-        <div
-          style={{
-            marginTop: "20px",
-            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
-            color: "white",
-            borderRadius: "28px",
-            padding: "26px",
-            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
-            maxWidth: "100%",
-            overflow: "hidden",
-            boxSizing: "border-box",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "22px",
-              fontWeight: 800,
-              marginBottom: "8px",
-            }}
-          >
-            Overall Summary
-          </div>
-
-          <div
-            style={{
-              color: "#dcfce7",
-              fontSize: "16px",
-              lineHeight: 1.7,
-              overflowWrap: "break-word",
-            }}
-          >
-            {summaryText}
-          </div>
-        </div>
       </div>
-    </div>
+    </main>
   )
-}
-
-const responsiveTwoColumnGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
-  gap: "20px",
-  marginBottom: "20px",
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  overflow: "hidden",
-}
-
-const selectStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  borderRadius: "14px",
-  border: "1px solid #bbf7d0",
-  backgroundColor: "white",
-  fontSize: "14px",
-  fontWeight: 600,
-  color: "#0f172a",
-  width: "100%",
-  maxWidth: "260px",
-  flex: "1 1 220px",
-  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
-  boxSizing: "border-box",
-}
-
-const actionButtonStyle: React.CSSProperties = {
-  padding: "12px 16px",
-  borderRadius: "14px",
-  border: "none",
-  background: "#16a34a",
-  color: "white",
-  fontWeight: 700,
-  boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
-  width: "100%",
-  maxWidth: "260px",
-  flex: "1 1 220px",
-  boxSizing: "border-box",
-}
-
-const removeButtonStyle: React.CSSProperties = {
-  padding: "10px 14px",
-  borderRadius: "12px",
-  border: "none",
-  background: "#e11d48",
-  color: "white",
-  fontWeight: 700,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-}
-
-const emptyStateStyle: React.CSSProperties = {
-  height: "100%",
-  minHeight: "180px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#94a3b8",
-  fontSize: "15px",
-  textAlign: "center",
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "14px 12px",
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "16px 12px",
-  fontSize: "14px",
-  color: "#0f172a",
-  fontWeight: 500,
-  verticalAlign: "top",
 }
