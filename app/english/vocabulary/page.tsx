@@ -386,18 +386,29 @@ function VocabularyContent() {
     }
   }
 
-  async function addWordToReview(word: WordRow) {
+  async function upsertWordToReview(word: WordRow) {
     if (!userId) return
 
-    const { error } = await supabase.from("vocabulary_review").insert([
-      {
-        user_id: userId,
-        word_id: word.id,
-        word: word.word,
-        knew_it: false,
-        difficulty: word.difficulty,
-      },
-    ])
+    const now = new Date().toISOString()
+
+    const { error } = await supabase
+      .from("vocabulary_review")
+      .upsert(
+        [
+          {
+            user_id: userId,
+            word_id: word.id,
+            word: word.word,
+            knew_it: false,
+            difficulty: word.difficulty,
+            updated_at: now,
+            last_attempted_at: now,
+          },
+        ],
+        {
+          onConflict: "user_id,word_id",
+        }
+      )
 
     if (error) {
       console.error("Error saving vocabulary review:", error)
@@ -573,16 +584,15 @@ function VocabularyContent() {
       updatedResults = [...practiceResults, newResult]
       setPracticeResults(updatedResults)
 
-      if (reviewMode) {
-        if (knewIt) {
-          await removeWordFromReview(currentWord.id)
+      if (knewIt) {
+        await removeWordFromReview(currentWord.id)
+
+        if (reviewMode) {
           updatedClearedReviewIds = [...clearedReviewWordIds, currentWord.id]
           setClearedReviewWordIds(updatedClearedReviewIds)
         }
       } else {
-        if (!knewIt) {
-          await addWordToReview(currentWord)
-        }
+        await upsertWordToReview(currentWord)
       }
     }
 

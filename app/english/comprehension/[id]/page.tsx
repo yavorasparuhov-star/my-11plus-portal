@@ -400,6 +400,7 @@ export default function ComprehensionTestPage() {
     setSubmitting(true)
     setErrorMessage("")
 
+    const attemptedAt = new Date().toISOString()
     let correctAnswers = 0
 
     const wrongAnswersForReview: {
@@ -412,6 +413,8 @@ export default function ComprehensionTestPage() {
       user_answer: AnswerOption | null
       correct_answer: AnswerOption
       difficulty: number | null
+      updated_at: string
+      last_attempted_at: string
     }[] = []
 
     const correctlyAnsweredReviewQuestionIds: number[] = []
@@ -421,10 +424,7 @@ export default function ComprehensionTestPage() {
 
       if (selected === question.correct_answer) {
         correctAnswers += 1
-
-        if (mode === "review") {
-          correctlyAnsweredReviewQuestionIds.push(question.id)
-        }
+        correctlyAnsweredReviewQuestionIds.push(question.id)
       } else {
         wrongAnswersForReview.push({
           user_id: userId,
@@ -436,6 +436,8 @@ export default function ComprehensionTestPage() {
           user_answer: selected ?? null,
           correct_answer: question.correct_answer,
           difficulty: question.difficulty ?? test.difficulty ?? null,
+          updated_at: attemptedAt,
+          last_attempted_at: attemptedAt,
         })
       }
     }
@@ -523,8 +525,8 @@ export default function ComprehensionTestPage() {
       success_rate: successRate,
       difficulty: test.difficulty ?? null,
       answers: fullReview,
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      completed_at: attemptedAt,
+      updated_at: attemptedAt,
     }
 
     const { error: latestResultError } = await supabase
@@ -549,32 +551,31 @@ export default function ComprehensionTestPage() {
       )
     }
 
-    if (mode === "review") {
-      if (correctlyAnsweredReviewQuestionIds.length > 0) {
-        const { error: deleteReviewError } = await supabase
-          .from("english_review")
-          .delete()
-          .eq("user_id", userId)
-          .eq("main_category", MAIN_CATEGORY)
-          .eq("subcategory", SUBCATEGORY)
-          .in("question_id", correctlyAnsweredReviewQuestionIds)
+    if (correctlyAnsweredReviewQuestionIds.length > 0) {
+      const { error: deleteReviewError } = await supabase
+        .from("english_review")
+        .delete()
+        .eq("user_id", userId)
+        .eq("main_category", MAIN_CATEGORY)
+        .eq("subcategory", SUBCATEGORY)
+        .in("question_id", correctlyAnsweredReviewQuestionIds)
 
-        if (deleteReviewError) {
-          console.error(
-            "Error removing correctly answered comprehension review items:",
-            {
-              message: deleteReviewError.message,
-              details: deleteReviewError.details,
-              hint: deleteReviewError.hint,
-              code: deleteReviewError.code,
-            }
-          )
-        }
+      if (deleteReviewError) {
+        console.error("Error removing correctly answered comprehension review items:", {
+          message: deleteReviewError.message,
+          details: deleteReviewError.details,
+          hint: deleteReviewError.hint,
+          code: deleteReviewError.code,
+        })
       }
-    } else if (wrongAnswersForReview.length > 0) {
+    }
+
+    if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
-        .insert(wrongAnswersForReview)
+        .upsert(wrongAnswersForReview, {
+          onConflict: "user_id,question_id",
+        })
 
       if (reviewError) {
         console.error("Error saving comprehension review:", {
@@ -584,23 +585,30 @@ export default function ComprehensionTestPage() {
           code: reviewError.code,
         })
       }
-
-      const existingReviewIds = Array.from(new Set(reviewIds))
-      const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
-      const updatedReviewIds = Array.from(
-        new Set([...existingReviewIds, ...newWrongIds])
-      )
-
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
     }
 
-    if (mode === "review") {
-      const remainingIds = reviewIds.filter(
-        (id) => !correctlyAnsweredReviewQuestionIds.includes(id)
-      )
+    const storedReviewIdsRaw = localStorage.getItem(REVIEW_STORAGE_KEY)
+    let storedReviewIds: number[] = []
 
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(remainingIds))
+    if (storedReviewIdsRaw) {
+      try {
+        const parsed = JSON.parse(storedReviewIdsRaw)
+
+        if (Array.isArray(parsed)) {
+          storedReviewIds = parsed.filter((id) => typeof id === "number")
+        }
+      } catch {
+        storedReviewIds = []
+      }
     }
+
+    const newWrongIds = wrongAnswersForReview.map((row) => row.question_id)
+    const updatedReviewIds = Array.from(
+      new Set([...storedReviewIds, ...reviewIds, ...newWrongIds])
+    ).filter((id) => !correctlyAnsweredReviewQuestionIds.includes(id))
+
+    localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
+    setReviewIds(updatedReviewIds)
 
     setScore(correctAnswers)
     setSubmitted(true)

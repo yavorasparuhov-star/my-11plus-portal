@@ -551,6 +551,7 @@ function SpellingContent() {
     if (!userId) return
 
     const cleanedWord = wordItem.word.trim().toLowerCase()
+    const now = new Date().toISOString()
 
     const { error } = await supabase.from("spelling_review").upsert(
       [
@@ -560,10 +561,12 @@ function SpellingContent() {
           word: cleanedWord,
           knew_it: false,
           difficulty: wordItem.difficulty,
+          updated_at: now,
+          last_attempted_at: now,
         },
       ],
       {
-        onConflict: "user_id,word",
+        onConflict: "user_id,word_id",
       }
     )
 
@@ -620,16 +623,14 @@ function SpellingContent() {
       setFeedback("Correct ✅")
       setScore(updatedScore)
 
+      await removeWordFromReview(currentWord.id)
+
       if (reviewMode) {
-        await removeWordFromReview(currentWord.id)
         removeWordIdFromStoredReviewIds(currentWord.id)
       }
     } else {
       setFeedback("Not quite ❌")
-
-      if (!reviewMode) {
-        await saveWrongSpellingReview(currentWord)
-      }
+      await saveWrongSpellingReview(currentWord)
     }
   }
 
@@ -644,9 +645,7 @@ function SpellingContent() {
     setShowFeedback(true)
     setFeedback("⏰ Time's up!")
 
-    if (!reviewMode) {
-      await saveWrongSpellingReview(currentWord)
-    }
+    await saveWrongSpellingReview(currentWord)
   }
 
   async function nextQuestion(finalScore: number, finalResults: SpellingResult[]) {
