@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { VRIcon } from "../../../../components/icons/PortalIcons"
 import {
   BarChart,
   Bar,
@@ -820,10 +821,15 @@ export default function VRReviewPage() {
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
                 overflowWrap: "break-word",
               }}
             >
-              🧠 VR Review
+              <VRIcon size={42} />
+              VR Review
             </h1>
 
             <p

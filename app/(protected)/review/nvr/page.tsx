@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { NVRIcon } from "../../../../components/icons/PortalIcons"
 import {
   BarChart,
   Bar,
@@ -949,10 +950,15 @@ export default function NVRReviewPage() {
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
                 overflowWrap: "break-word",
               }}
             >
-              🧩 NVR Review
+              <NVRIcon size={42} />
+              NVR Review
             </h1>
 
             <p

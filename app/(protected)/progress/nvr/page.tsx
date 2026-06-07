@@ -708,19 +708,23 @@ export default function NVRProgressPage() {
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "clamp(30px, 8vw, 42px)",
-                fontWeight: 900,
-                color: "#0f172a",
-                letterSpacing: "-0.02em",
-                overflowWrap: "break-word",
-              }}
-            >
-              <NVRIcon size={42} />
-              NVR Progress
-            </h1>
+<h1
+  style={{
+    margin: 0,
+    fontSize: "clamp(30px, 8vw, 42px)",
+    fontWeight: 900,
+    color: "#0f172a",
+    letterSpacing: "-0.02em",
+    overflowWrap: "break-word",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  }}
+>
+  <NVRIcon size={42} />
+  NVR Progress
+</h1>
 
             <p
               style={{
