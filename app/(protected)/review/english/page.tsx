@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
+  Cell,
   XAxis,
   YAxis,
 } from "recharts"
@@ -150,6 +151,21 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "direct_speech_punctuation", label: "Direct Speech Punctuation" },
   { value: "sentence_punctuation", label: "Sentence Punctuation" },
 ]
+
+const CATEGORY_COLORS = [
+  "#22c55e",
+  "#16a34a",
+  "#15803d",
+  "#0f766e",
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+  "#f97316",
+  "#ca8a04",
+  "#0891b2",
+]
+
+const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
 
 function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
@@ -406,6 +422,76 @@ function isSameReviewItem(a: EnglishReviewItem, b: EnglishReviewItem) {
   return a.item_text.toLowerCase() === b.item_text.toLowerCase()
 }
 
+function StatCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string
+  value: string
+  subtitle?: string
+}) {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
+        borderRadius: "24px",
+        padding: "22px",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minHeight: "132px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
+        }}
+      >
+        {value}
+      </div>
+
+      {subtitle ? (
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
+          {subtitle}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function SectionCard({
   title,
   subtitle,
@@ -418,12 +504,16 @@ function SectionCard({
   return (
     <section
       style={{
-        background: "rgba(255,255,255,0.96)",
-        border: "1px solid rgba(226,232,240,0.9)",
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
         borderRadius: "28px",
         padding: "24px",
-        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        marginBottom: "20px",
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div style={{ marginBottom: "18px" }}>
@@ -455,6 +545,25 @@ function SectionCard({
       {children}
     </section>
   )
+}
+
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+  gap: "20px",
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
+}
+
+const chartWrapperStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  height: 340,
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const thStyle: React.CSSProperties = {
@@ -1028,8 +1137,47 @@ export default function EnglishReviewPage() {
   }, [filteredItems, uniqueItems])
 
   const reviewByCategoryData = useMemo(() => {
-    return reviewStats.byCategory.sort((a, b) => b.count - a.count)
+    const order = categoryOptions
+      .filter((option) => option.value !== "all")
+      .map((option) => option.label)
+
+    return reviewStats.byCategory
+      .sort((a, b) => {
+        const orderA = order.indexOf(a.category)
+        const orderB = order.indexOf(b.category)
+
+        if (orderA === -1 && orderB === -1) return b.count - a.count
+        if (orderA === -1) return 1
+        if (orderB === -1) return -1
+
+        return orderA - orderB
+      })
+      .map((item, index) => ({
+        ...item,
+        fill: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+      }))
   }, [reviewStats.byCategory])
+
+  const reviewByDifficultyData = useMemo(() => {
+    const grouped = filteredItems.reduce(
+      (acc, row) => {
+        const key = getLevelLabel(row.difficulty)
+        acc[key] = (acc[key] ?? 0) + 1
+        return acc
+      },
+      {} as Record<string, number>
+    )
+
+    const order = ["Easy", "Medium", "Hard", "Not set"]
+
+    return order
+      .filter((difficulty) => grouped[difficulty])
+      .map((difficulty, index) => ({
+        name: difficulty,
+        count: grouped[difficulty],
+        fill: DIFFICULTY_COLORS[index % DIFFICULTY_COLORS.length],
+      }))
+  }, [filteredItems])
 
   return (
     <main
@@ -1040,7 +1188,14 @@ export default function EnglishReviewPage() {
         padding: "32px 16px 56px",
       }}
     >
-      <div style={{ maxWidth: "1180px", margin: "0 auto" }}>
+      <div
+        style={{
+          maxWidth: "1180px",
+          margin: "0 auto",
+          width: "100%",
+          minWidth: 0,
+        }}
+      >
         <button
           type="button"
           onClick={() => router.push("/english")}
@@ -1056,63 +1211,108 @@ export default function EnglishReviewPage() {
           ← Back to English
         </button>
 
-        <section
+        <div
           style={{
-            background: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
+            background: "rgba(255,255,255,0.9)",
+            border: "1px solid #dcfce7",
             borderRadius: "32px",
             padding: "28px",
-            color: "#ffffff",
-            boxShadow: "0 24px 60px rgba(20, 83, 45, 0.28)",
-            marginBottom: "24px",
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "22px",
+            marginBottom: "28px",
+            minWidth: 0,
           }}
         >
+          <div style={{ minWidth: 0 }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "clamp(30px, 8vw, 42px)",
+                fontWeight: 900,
+                color: "#0f172a",
+                letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
+              }}
+            >
+              📚 English Review
+            </h1>
+
+            <p
+              style={{
+                margin: "10px 0 0 0",
+                color: "#475569",
+                fontSize: "17px",
+                maxWidth: "800px",
+                lineHeight: 1.6,
+                overflowWrap: "break-word",
+              }}
+            >
+              Review English items that need more practice across grammar,
+              punctuation, comprehension, vocabulary and spelling. Items stay in
+              this active queue until they are answered correctly or removed.
+            </p>
+          </div>
+
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              gap: "18px",
               flexWrap: "wrap",
+              gap: "12px",
               alignItems: "center",
+              width: "100%",
+              maxWidth: "1100px",
+              minWidth: 0,
             }}
           >
-            <div>
-              <p
-                style={{
-                  margin: "0 0 8px",
-                  color: "#bbf7d0",
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  fontSize: "12px",
-                }}
-              >
-                English Review
-              </p>
+            <select
+              id="english-review-category-filter"
+              name="englishReviewCategoryFilter"
+              value={categoryFilter}
+              onChange={(event) =>
+                setCategoryFilter(event.target.value as CategoryFilter)
+              }
+              style={selectStyle}
+            >
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
 
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: "clamp(30px, 5vw, 48px)",
-                  lineHeight: 1.05,
-                }}
-              >
-                Active Review Queue
-              </h1>
+            <select
+              id="english-review-difficulty-filter"
+              name="englishReviewDifficultyFilter"
+              value={difficultyFilter}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
+              style={selectStyle}
+            >
+              {difficultyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
 
-              <p
-                style={{
-                  margin: "12px 0 0",
-                  color: "#dcfce7",
-                  maxWidth: "760px",
-                  lineHeight: 1.7,
-                  fontSize: "16px",
-                }}
-              >
-                Review all active English weak spots in one place: grammar,
-                punctuation, comprehension, vocabulary and spelling. Items stay
-                here until they are answered correctly or removed.
-              </p>
-            </div>
+            <select
+              id="english-review-time-filter"
+              name="englishReviewTimeFilter"
+              value={timeFilter}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
+              style={selectStyle}
+            >
+              {timeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
 
             <button
               type="button"
@@ -1120,24 +1320,27 @@ export default function EnglishReviewPage() {
               disabled={filteredItems.length === 0}
               style={{
                 ...retryButtonStyle,
-                opacity: filteredItems.length === 0 ? 0.55 : 1,
+                width: "100%",
+                maxWidth: "260px",
+                flex: "1 1 220px",
+                opacity: filteredItems.length === 0 ? 0.5 : 1,
                 cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
             >
               Retry filtered items
             </button>
           </div>
-        </section>
+        </div>
 
         {errorMessage ? (
           <div
             style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              color: "#991b1b",
+              background: "#fff1f2",
+              border: "1px solid #fecdd3",
+              color: "#9f1239",
               borderRadius: "18px",
-              padding: "14px 16px",
-              marginBottom: "18px",
+              padding: "16px",
+              marginBottom: "20px",
               fontWeight: 700,
             }}
           >
@@ -1150,10 +1353,10 @@ export default function EnglishReviewPage() {
             style={{
               background: "#eff6ff",
               border: "1px solid #bfdbfe",
-              color: "#1e40af",
+              color: "#1d4ed8",
               borderRadius: "18px",
-              padding: "14px 16px",
-              marginBottom: "18px",
+              padding: "16px",
+              marginBottom: "20px",
               fontWeight: 700,
             }}
           >
@@ -1161,322 +1364,398 @@ export default function EnglishReviewPage() {
           </div>
         ) : null}
 
-        <SectionCard
-          title="Filters"
-          subtitle="Use these filters before retrying a focused group of review items."
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-              gap: "14px",
-            }}
-          >
-            <label>
-              <div style={{ fontWeight: 900, marginBottom: "8px" }}>Time</div>
-              <select
-                value={timeFilter}
-                onChange={(event) =>
-                  setTimeFilter(event.target.value as TimeFilter)
-                }
-                style={selectStyle}
-              >
-                {timeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <div style={{ fontWeight: 900, marginBottom: "8px" }}>
-                Difficulty
-              </div>
-              <select
-                value={difficultyFilter}
-                onChange={(event) =>
-                  setDifficultyFilter(event.target.value as DifficultyFilter)
-                }
-                style={selectStyle}
-              >
-                {difficultyOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <div style={{ fontWeight: 900, marginBottom: "8px" }}>
-                Category
-              </div>
-              <select
-                value={categoryFilter}
-                onChange={(event) =>
-                  setCategoryFilter(event.target.value as CategoryFilter)
-                }
-                style={selectStyle}
-              >
-                {categoryOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </SectionCard>
-
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))",
-            gap: "20px",
-            marginTop: "20px",
-            marginBottom: "20px",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+            gap: "18px",
+            marginBottom: "24px",
+            minWidth: 0,
           }}
         >
+          <StatCard
+            title="Items to Review"
+            value={String(reviewStats.totalItems)}
+          />
+
+          <StatCard
+            title="Total Review Bank"
+            value={String(reviewStats.allUnique)}
+          />
+
+          <StatCard
+            title="Most Common Category"
+            value={
+              reviewStats.mostCommonCategory
+                ? reviewStats.mostCommonCategory.category
+                : "—"
+            }
+            subtitle={
+              reviewStats.mostCommonCategory
+                ? `${reviewStats.mostCommonCategory.count} items`
+                : undefined
+            }
+          />
+
+          <StatCard
+            title="Most Recent Item"
+            value={
+              reviewStats.mostRecentItem
+                ? getCategoryLabel(reviewStats.mostRecentItem.category)
+                : "—"
+            }
+            subtitle={
+              reviewStats.mostRecentItem
+                ? formatDateTime(getRelevantDate(reviewStats.mostRecentItem))
+                : undefined
+            }
+          />
+
+          <StatCard
+            title="Current Filter"
+            value={
+              categoryFilter === "all"
+                ? "All Categories"
+                : getCategoryLabel(categoryFilter)
+            }
+            subtitle={
+              timeOptions.find((option) => option.value === timeFilter)?.label
+            }
+          />
+        </div>
+
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
-            title="Review Summary"
-            subtitle="Current active review items for the selected filters."
+            title="Review Items by Category"
+            subtitle="See which English areas currently need the most revision."
           >
-            {loadingData ? (
-              <div style={emptyStateStyle}>Loading English review items...</div>
+            {reviewByCategoryData.length ? (
+              <div style={chartWrapperStyle}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={reviewByCategoryData}
+                    layout="vertical"
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="category"
+                      width={170}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                    />
+                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                      {reviewByCategoryData.map((entry, index) => (
+                        <Cell
+                          key={`category-cell-${index}`}
+                          fill={entry.fill}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                  gap: "14px",
-                }}
-              >
-                <div
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "#f0fdf4",
-                    border: "1px solid #bbf7d0",
-                  }}
-                >
-                  <div
-                    style={{
-                      color: "#166534",
-                      fontWeight: 800,
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Items to Review
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: "30px",
-                      fontWeight: 900,
-                      color: "#14532d",
-                    }}
-                  >
-                    {reviewStats.totalItems}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div
-                    style={{
-                      color: "#475569",
-                      fontWeight: 800,
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Total Review Bank
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: "30px",
-                      fontWeight: 900,
-                      color: "#0f172a",
-                    }}
-                  >
-                    {reviewStats.allUnique}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                  }}
-                >
-                  <div
-                    style={{
-                      color: "#1d4ed8",
-                      fontWeight: 800,
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Main Focus
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: 900,
-                      color: "#1e3a8a",
-                    }}
-                  >
-                    {reviewStats.mostCommonCategory
-                      ? reviewStats.mostCommonCategory.category
-                      : "—"}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "16px",
-                    borderRadius: "18px",
-                    background: "#fffbeb",
-                    border: "1px solid #fde68a",
-                  }}
-                >
-                  <div
-                    style={{
-                      color: "#92400e",
-                      fontWeight: 800,
-                      marginBottom: "6px",
-                    }}
-                  >
-                    Most Recent
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 800,
-                      color: "#78350f",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {reviewStats.mostRecentItem
-                      ? formatDateTime(getRelevantDate(reviewStats.mostRecentItem))
-                      : "—"}
-                  </div>
-                </div>
+              <div style={emptyStateStyle}>
+                No data available for this filter.
               </div>
             )}
           </SectionCard>
 
           <SectionCard
-            title="By Category"
-            subtitle="Where the current review queue is concentrated."
+            title="Review Items by Difficulty"
+            subtitle="See which difficulty level currently needs the most revision."
           >
-            {reviewByCategoryData.length ? (
-              <div style={{ width: "100%", height: 260 }}>
+            {reviewByDifficultyData.length ? (
+              <div style={chartWrapperStyle}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={reviewByCategoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <BarChart
+                    data={reviewByDifficultyData}
+                    margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis
-                      dataKey="category"
-                      tick={{ fontSize: 11 }}
-                      interval={0}
-                      angle={-18}
-                      textAnchor="end"
-                      height={80}
+                      dataKey="name"
+                      tick={{ fontSize: 12, fill: "#64748b" }}
                     />
-                    <YAxis allowDecimals={false} />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                    />
                     <Tooltip formatter={questionsTooltipFormatter} />
-                    <Bar dataKey="count" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {reviewByDifficultyData.map((entry, index) => (
+                        <Cell
+                          key={`difficulty-cell-${index}`}
+                          fill={entry.fill}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div style={emptyStateStyle}>No category data yet.</div>
+              <div style={emptyStateStyle}>
+                No data available for this filter.
+              </div>
             )}
           </SectionCard>
         </div>
 
         <SectionCard
           title="Recent Review Items"
-          subtitle="The table shows the newest active items first. The detailed cards underneath show answer text and explanations where available."
+          subtitle="Your most recent English review items for the selected filters."
         >
           {recentItems.length ? (
-            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  minWidth: "980px",
-                }}
-              >
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={thStyle}>Last Attempt</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Test</th>
-                    <th style={thStyle}>Level</th>
-                    <th style={thStyle}>Item</th>
-                    <th style={thStyle}>Correct Answer</th>
-                    <th style={thStyle}>Action</th>
-                  </tr>
-                </thead>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                gap: "18px",
+                minWidth: 0,
+              }}
+            >
+              {recentItems.map((row) => {
+                const sourceLabel =
+                  row.test_title && row.test_id
+                    ? `${row.test_title} · Test #${row.test_id}${
+                        row.question_order ? ` · Q${row.question_order}` : ""
+                      }`
+                    : row.test_title
+                      ? `${row.test_title}${
+                          row.question_order ? ` · Q${row.question_order}` : ""
+                        }`
+                      : row.category === "vocabulary"
+                        ? `Vocabulary Practice${
+                            row.item_id ? ` · Word #${row.item_id}` : ""
+                          }`
+                        : row.category === "spelling"
+                          ? `Spelling Practice${
+                              row.item_id ? ` · Word #${row.item_id}` : ""
+                            }`
+                          : row.test_id
+                            ? `Test #${row.test_id}${
+                                row.question_order ? ` · Q${row.question_order}` : ""
+                              }`
+                            : null
 
-                <tbody>
-                  {recentItems.map((row) => (
-                    <tr
-                      key={row.id}
+                return (
+                  <article
+                    key={row.id}
+                    style={{
+                      background:
+                        "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                      border: "1px solid #dcfce7",
+                      borderRadius: "24px",
+                      padding: "20px",
+                      boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <div
                       style={{
-                        borderBottom: "1px solid #f1f5f9",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        marginBottom: "14px",
                       }}
                     >
-                      <td style={tdStyle}>{formatDateTime(getRelevantDate(row))}</td>
-                      <td style={tdStyle}>{getCategoryLabel(row.category)}</td>
-                      <td style={tdStyle}>
-                        {row.test_title
-                          ? row.question_order
-                            ? `${row.test_title} · Q${row.question_order}`
-                            : row.test_title
-                          : "—"}
-                      </td>
-                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-                      <td style={{ ...tdStyle, maxWidth: "300px" }}>
-                        {truncateText(row.item_text, 110)}
-                      </td>
-                      <td style={{ ...tdStyle, maxWidth: "240px" }}>
-                        {truncateText(row.correct_answer_text || "—", 90)}
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button
-                            type="button"
-                            onClick={() => retryItem(row)}
-                            style={secondaryButtonStyle}
-                          >
-                            Retry
-                          </button>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#dcfce7",
+                          color: "#166534",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          maxWidth: "100%",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {getCategoryLabel(row.category)}
+                      </span>
 
-                          <button
-                            type="button"
-                            onClick={() => removeItem(row)}
-                            style={removeButtonStyle}
-                          >
-                            Remove
-                          </button>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#ecfdf5",
+                          color: "#15803d",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {getLevelLabel(row.difficulty)}
+                      </span>
+
+                      {sourceLabel ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "6px 10px",
+                            borderRadius: "999px",
+                            background: "#fef3c7",
+                            color: "#92400e",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            maxWidth: "100%",
+                            overflowWrap: "break-word",
+                          }}
+                        >
+                          {sourceLabel}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: "13px",
+                        fontWeight: 800,
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Last attempted: {formatDateTime(getRelevantDate(row))}
+                    </div>
+
+                    <h3
+                      style={{
+                        margin: "0 0 14px",
+                        color: "#0f172a",
+                        fontSize: "18px",
+                        lineHeight: 1.35,
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      {row.item_text}
+                    </h3>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: "10px",
+                        marginBottom: "14px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "12px",
+                          borderRadius: "16px",
+                          background: "#fff1f2",
+                          border: "1px solid #fecaca",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#be123c",
+                            fontWeight: 900,
+                            fontSize: "13px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          Child's answer
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div style={{ color: "#7f1d1d", lineHeight: 1.5 }}>
+                          {row.user_answer
+                            ? `${row.user_answer}: ${
+                                row.user_answer_text || "—"
+                              }`
+                            : row.user_answer_text || "Not answered"}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: "12px",
+                          borderRadius: "16px",
+                          background: "#f0fdf4",
+                          border: "1px solid #bbf7d0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: "#166534",
+                            fontWeight: 900,
+                            fontSize: "13px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          Correct answer
+                        </div>
+                        <div style={{ color: "#14532d", lineHeight: 1.5 }}>
+                          {row.correct_answer
+                            ? `${row.correct_answer}: ${
+                                row.correct_answer_text || "—"
+                              }`
+                            : row.correct_answer_text || "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "12px",
+                        borderRadius: "16px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        color: "#334155",
+                        lineHeight: 1.6,
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <strong>
+                        {row.category === "vocabulary" ||
+                        row.category === "spelling"
+                          ? "Definition: "
+                          : "Explanation: "}
+                      </strong>
+                      {row.explanation && row.explanation.trim()
+                        ? row.explanation
+                        : row.category === "vocabulary" ||
+                            row.category === "spelling"
+                          ? "No definition available yet."
+                          : "No explanation available yet."}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "10px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => retryItem(row)}
+                        style={secondaryButtonStyle}
+                      >
+                        Retry item
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeItem(row)}
+                        style={removeButtonStyle}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           ) : (
             <div style={emptyStateStyle}>
@@ -1484,204 +1763,6 @@ export default function EnglishReviewPage() {
             </div>
           )}
         </SectionCard>
-
-        {filteredItems.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 330px), 1fr))",
-              gap: "18px",
-              marginTop: "20px",
-            }}
-          >
-            {filteredItems.slice(0, 12).map((row) => (
-              <article
-                key={row.id}
-                style={{
-                  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-                  border: "1px solid #dcfce7",
-                  borderRadius: "24px",
-                  padding: "20px",
-                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-                  minWidth: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#dcfce7",
-                      color: "#166534",
-                      fontSize: "12px",
-                      fontWeight: 900,
-                    }}
-                  >
-                    {getCategoryLabel(row.category)}
-                  </span>
-
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "6px 10px",
-                      borderRadius: "999px",
-                      background: "#e0f2fe",
-                      color: "#075985",
-                      fontSize: "12px",
-                      fontWeight: 900,
-                    }}
-                  >
-                    {getLevelLabel(row.difficulty)}
-                  </span>
-
-                  {row.test_title ? (
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "6px 10px",
-                        borderRadius: "999px",
-                        background: "#fef3c7",
-                        color: "#92400e",
-                        fontSize: "12px",
-                        fontWeight: 900,
-                      }}
-                    >
-                      {row.question_order
-                        ? `${row.test_title} · Q${row.question_order}`
-                        : row.test_title}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    fontWeight: 800,
-                    marginBottom: "8px",
-                  }}
-                >
-                  Last attempted: {formatDateTime(getRelevantDate(row))}
-                </div>
-
-                <h3
-                  style={{
-                    margin: "0 0 14px",
-                    color: "#0f172a",
-                    fontSize: "18px",
-                    lineHeight: 1.35,
-                    overflowWrap: "break-word",
-                  }}
-                >
-                  {row.item_text}
-                </h3>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "10px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "12px",
-                      borderRadius: "16px",
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: "#991b1b",
-                        fontWeight: 900,
-                        fontSize: "13px",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      Child's answer
-                    </div>
-                    <div style={{ color: "#7f1d1d", lineHeight: 1.5 }}>
-                      {row.user_answer
-                        ? `${row.user_answer}: ${row.user_answer_text || "—"}`
-                        : row.user_answer_text || "Not answered"}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "12px",
-                      borderRadius: "16px",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: "#166534",
-                        fontWeight: 900,
-                        fontSize: "13px",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      Correct answer
-                    </div>
-                    <div style={{ color: "#14532d", lineHeight: 1.5 }}>
-                      {row.correct_answer
-                        ? `${row.correct_answer}: ${row.correct_answer_text || "—"}`
-                        : row.correct_answer_text || "—"}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "12px",
-                    borderRadius: "16px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    color: "#334155",
-                    lineHeight: 1.6,
-                    marginBottom: "16px",
-                  }}
-                >
-                  <strong>Explanation: </strong>
-                  {row.explanation && row.explanation.trim()
-                    ? row.explanation
-                    : "No explanation available yet."}
-                </div>
-
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => retryItem(row)}
-                    style={secondaryButtonStyle}
-                  >
-                    Retry item
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(row)}
-                    style={removeButtonStyle}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
       </div>
     </main>
   )
