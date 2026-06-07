@@ -45,18 +45,20 @@ export default function ProgressPage() {
   return (
     <div style={styles.page}>
       <section style={styles.hero}>
-        <div style={styles.heroIcon}>
-          <ProgressIcon size={42} />
+        <div style={styles.heroTitleRow}>
+          <div style={styles.heroIcon}>
+            <ProgressIcon size={34} />
+          </div>
+
+          <div>
+            <h1 style={styles.title}>Your Progress</h1>
+
+            <p style={styles.subtitle}>
+              Choose a subject to view recent scores, completed practice and
+              areas that need more attention.
+            </p>
+          </div>
         </div>
-
-        <div style={styles.heroBadge}>Learning progress</div>
-
-        <h1 style={styles.title}>Your Progress</h1>
-
-        <p style={styles.subtitle}>
-          Choose a subject to view recent scores, completed practice and areas
-          that may need more attention.
-        </p>
       </section>
 
       <section style={styles.section}>
@@ -103,59 +105,56 @@ export default function ProgressPage() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
-    padding: "32px 20px 60px",
+    padding: "28px 20px 60px",
     maxWidth: "1180px",
     margin: "0 auto",
   },
 
   hero: {
-    textAlign: "center",
-    marginBottom: "44px",
+    marginBottom: "34px",
     background:
       "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 45%, #ffffff 100%)",
-    borderRadius: "28px",
-    padding: "46px 24px",
-    boxShadow: "0 14px 36px rgba(0,0,0,0.07)",
+    borderRadius: "22px",
+    padding: "24px 28px",
+    boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
     border: "1px solid #d1fae5",
   },
 
+  heroTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "16px",
+    textAlign: "left",
+    flexWrap: "wrap",
+  },
+
   heroIcon: {
-    width: "76px",
-    height: "76px",
-    borderRadius: "24px",
+    width: "58px",
+    height: "58px",
+    borderRadius: "18px",
     background: "white",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 16px",
-    boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.07)",
     border: "1px solid #d1fae5",
-  },
-
-  heroBadge: {
-    display: "inline-block",
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "8px 14px",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: 800,
-    marginBottom: "16px",
+    flexShrink: 0,
   },
 
   title: {
-    fontSize: "44px",
-    margin: "0 0 14px",
+    fontSize: "34px",
+    margin: "0 0 6px",
     color: "#064e3b",
     fontWeight: 800,
   },
 
   subtitle: {
-    fontSize: "18px",
+    fontSize: "17px",
     color: "#4b5563",
-    maxWidth: "760px",
-    margin: "0 auto",
-    lineHeight: 1.7,
+    margin: 0,
+    lineHeight: 1.5,
+    maxWidth: "900px",
   },
 
   section: {

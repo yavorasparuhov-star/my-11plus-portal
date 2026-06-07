@@ -1,65 +1,243 @@
 "use client"
 
 import Link from "next/link"
+import React from "react"
+import {
+  EnglishIcon,
+  MathsIcon,
+  NVRIcon,
+  ReviewIcon,
+  VRIcon,
+} from "../../../components/icons/PortalIcons"
 
 export default function ReviewPage() {
+  const subjects = [
+    {
+      title: "English Review",
+      shortTitle: "English",
+      icon: <EnglishIcon size={46} />,
+      text: "Review English mistakes across vocabulary, spelling, grammar, punctuation and comprehension.",
+      href: "/review/english",
+    },
+    {
+      title: "Maths Review",
+      shortTitle: "Maths",
+      icon: <MathsIcon size={46} />,
+      text: "Practise previous Maths mistakes across number, operations, fractions, shape, measurement and reasoning.",
+      href: "/review/math",
+    },
+    {
+      title: "VR Review",
+      shortTitle: "VR",
+      icon: <VRIcon size={46} />,
+      text: "Revisit verbal reasoning mistakes across word relationships, code logic and sequence patterns.",
+      href: "/review/vr",
+    },
+    {
+      title: "NVR Review",
+      shortTitle: "NVR",
+      icon: <NVRIcon size={46} />,
+      text: "Strengthen non-verbal reasoning by reviewing visual patterns, rotations, reflections and spatial logic.",
+      href: "/review/nvr",
+    },
+  ]
+
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1>📚 Your Review</h1>
-        <p>Choose a subject to review your mistakes:</p>
+    <div style={styles.page}>
+      <section style={styles.hero}>
+        <div style={styles.heroTitleRow}>
+          <div style={styles.heroIcon}>
+            <ReviewIcon size={34} />
+          </div>
 
-        <div style={styles.buttons}>
-          <Link href="/review/english" style={styles.button}>
-            📘 English Review →
-          </Link>
+          <div>
+            <h1 style={styles.title}>Your Review</h1>
 
-          <Link href="/review/math" style={styles.button}>
-            ➕ Maths Review →
-          </Link>
-
-          <Link href="/review/vr" style={styles.button}>
-            🧠 Verbal Reasoning Review →
-          </Link>
-
-          <Link href="/review/nvr" style={styles.button}>
-            🔷 Non-Verbal Reasoning Review →
-          </Link>
+            <p style={styles.subtitle}>
+              Choose a subject to revisit mistakes, strengthen weaker areas and
+              build exam confidence.
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <h2 style={styles.sectionTitle}>Choose a subject</h2>
+
+          <p style={styles.sectionText}>
+            Open a subject review page to practise questions that need another
+            attempt.
+          </p>
+        </div>
+
+        <div style={styles.grid}>
+          {subjects.map((subject) => (
+            <Link
+              key={subject.title}
+              href={subject.href}
+              style={styles.card}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-6px)"
+                e.currentTarget.style.boxShadow =
+                  "0 20px 40px rgba(0,0,0,0.12)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)"
+                e.currentTarget.style.boxShadow =
+                  "0 10px 25px rgba(0,0,0,0.08)"
+              }}
+            >
+              <div style={styles.iconWrap}>{subject.icon}</div>
+
+              <h3 style={styles.cardTitle}>{subject.shortTitle}</h3>
+
+              <p style={styles.cardText}>{subject.text}</p>
+
+              <span style={styles.cardButton}>Open review →</span>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
 
-const styles: any = {
-  container: {
-    minHeight: "80vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "24px",
+const styles: { [key: string]: React.CSSProperties } = {
+  page: {
+    padding: "28px 20px 60px",
+    maxWidth: "1180px",
+    margin: "0 auto",
   },
+
+  hero: {
+    marginBottom: "34px",
+    background:
+      "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 45%, #ffffff 100%)",
+    borderRadius: "22px",
+    padding: "24px 28px",
+    boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
+    border: "1px solid #fbcfe8",
+  },
+
+  heroTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "16px",
+    textAlign: "left",
+    flexWrap: "wrap",
+  },
+
+  heroIcon: {
+    width: "58px",
+    height: "58px",
+    borderRadius: "18px",
+    background: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 8px 18px rgba(0,0,0,0.07)",
+    border: "1px solid #fbcfe8",
+    flexShrink: 0,
+  },
+
+  title: {
+    fontSize: "34px",
+    margin: "0 0 6px",
+    color: "#831843",
+    fontWeight: 800,
+  },
+
+  subtitle: {
+    fontSize: "17px",
+    color: "#4b5563",
+    margin: 0,
+    lineHeight: 1.5,
+    maxWidth: "900px",
+  },
+
+  section: {
+    marginBottom: "56px",
+  },
+
+  sectionHeader: {
+    textAlign: "center",
+    marginBottom: "26px",
+  },
+
+  sectionTitle: {
+    fontSize: "32px",
+    margin: "0 0 10px",
+    color: "#111827",
+    fontWeight: 800,
+  },
+
+  sectionText: {
+    fontSize: "17px",
+    color: "#4b5563",
+    maxWidth: "760px",
+    margin: "0 auto",
+    lineHeight: 1.7,
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: "20px",
+  },
+
   card: {
     background: "white",
-    padding: "30px",
-    borderRadius: "16px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+    borderRadius: "20px",
+    padding: "26px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     textAlign: "center",
-    width: "100%",
-    maxWidth: "560px",
-  },
-  buttons: {
     display: "flex",
     flexDirection: "column",
-    gap: "15px",
-    marginTop: "20px",
-  },
-  button: {
-    padding: "12px",
-    borderRadius: "10px",
-    background: "#d4f5d0",
-    color: "#065f46",
+    alignItems: "center",
+    border: "1px solid #e5e7eb",
     textDecoration: "none",
-    fontWeight: "bold",
+    color: "inherit",
+    transition: "all 0.25s ease",
+  },
+
+  iconWrap: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "22px",
+    background: "#f8fafc",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "16px",
+    boxShadow: "inset 0 0 0 1px #e5e7eb",
+  },
+
+  cardTitle: {
+    fontSize: "24px",
+    margin: "0 0 10px",
+    color: "#111827",
+    fontWeight: 800,
+  },
+
+  cardText: {
+    fontSize: "16px",
+    color: "#4b5563",
+    lineHeight: 1.6,
+    margin: "0 0 20px",
+    minHeight: "104px",
+  },
+
+  cardButton: {
+    marginTop: "auto",
+    padding: "12px 18px",
+    borderRadius: "12px",
+    background: "#fce7f3",
+    color: "#9d174d",
+    fontWeight: 800,
+    fontSize: "16px",
+    minWidth: "150px",
+    display: "inline-block",
   },
 }
