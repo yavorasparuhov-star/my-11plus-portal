@@ -2,6 +2,15 @@
 
 import React from "react"
 import { useRouter } from "next/navigation"
+import {
+  CustomTestsIcon,
+  EnglishIcon,
+  MathsIcon,
+  NVRIcon,
+  ProgressIcon,
+  ReviewIcon,
+  VRIcon,
+} from "../../../components/icons/PortalIcons"
 
 const cardHover = {
   transition: "all 0.25s ease",
@@ -14,64 +23,52 @@ export default function HomePage() {
   const cards = [
     {
       title: "English",
-      icon: "📘",
+      icon: <EnglishIcon size={46} />,
       text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
       path: "/english",
     },
     {
       title: "Maths",
-      icon: "➗",
+      icon: <MathsIcon size={46} />,
       text: "Build arithmetic, reasoning, fractions, problem-solving and exam confidence.",
       path: "/math",
     },
     {
       title: "VR",
-      icon: "🧠",
+      icon: <VRIcon size={46} />,
       text: "Practise verbal reasoning question types including words, codes and logic.",
       path: "/vr",
     },
     {
       title: "NVR",
-      icon: "🔷",
+      icon: <NVRIcon size={46} />,
       text: "Develop non-verbal reasoning skills, pattern recognition and spatial awareness.",
       path: "/nvr",
-    },
-    {
-      title: "Progress",
-      icon: "📊",
-      text: "Check recent scores, success rates, strengths and areas for improvement.",
-      path: "/progress",
-    },
-    {
-      title: "Review",
-      icon: "📚",
-      text: "Retry questions and topics that need more practice until they are mastered.",
-      path: "/review",
     },
   ]
 
   const learningTools = [
     {
       title: "Custom Tests",
-      badge: "Practice",
-      icon: "📝",
-      text: "Build your own test by subject, topic, difficulty and time limit.",
+      badge: "Premium Practice",
+      icon: <CustomTestsIcon size={42} />,
+      text: "Create focused tests by subject, topic, difficulty and time limit to match your child’s current goals.",
       button: "Build test",
       path: "/custom-tests",
     },
     {
       title: "Track Progress",
-      badge: "Progress",
-      icon: "📈",
-      text: "See recent scores, success rates and areas that need more practice.",
+      badge: "Premium Insights",
+      icon: <ProgressIcon size={42} />,
+      text: "Monitor recent scores, success rates and improvement trends so practice stays targeted.",
       button: "View progress",
       path: "/progress",
     },
     {
       title: "Review Mistakes",
-      badge: "Review",
-      icon: "🔁",
-      text: "Practise previous mistakes and strengthen weaker topics step by step.",
+      badge: "Premium Review",
+      icon: <ReviewIcon size={42} />,
+      text: "Revisit previous mistakes and strengthen weaker topics until they are fully mastered.",
       button: "Open review",
       path: "/review",
     },
@@ -93,8 +90,8 @@ export default function HomePage() {
         <h1 style={styles.title}>Welcome back</h1>
 
         <p style={styles.subtitle}>
-          Choose a subject to continue practising, build a custom test, review
-          mistakes, or check your latest progress.
+          Continue practising by subject, build a custom test, review mistakes,
+          or check your latest progress with your YanBo Learning tools.
         </p>
 
         <div style={styles.heroActions}>
@@ -119,8 +116,8 @@ export default function HomePage() {
         <div style={styles.sectionHeader}>
           <h2 style={styles.sectionTitle}>Continue learning</h2>
           <p style={styles.sectionText}>
-            Pick a subject area or use the progress and review pages to focus on
-            what needs more practice.
+            Choose one of the four main 11+ subject areas and continue building
+            confidence step by step.
           </p>
         </div>
 
@@ -134,7 +131,9 @@ export default function HomePage() {
               onMouseLeave={(e) => handleCardHover(e, false)}
             >
               <div style={styles.icon}>{card.icon}</div>
+
               <h2 style={styles.cardTitle}>{card.title}</h2>
+
               <p style={styles.cardText}>{card.text}</p>
 
               <button
@@ -151,13 +150,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* MEMBER QUICK ACTIONS */}
+      {/* PREMIUM LEARNING TOOLS */}
       <section style={styles.section}>
         <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Your learning tools</h2>
+          <h2 style={styles.sectionTitle}>Your Premium Learning Tools</h2>
           <p style={styles.sectionText}>
-            Use these tools to create focused practice, review mistakes and
-            track improvement.
+            Use these tools to personalise practice, track improvement and turn
+            mistakes into stronger exam performance.
           </p>
         </div>
 
@@ -313,7 +312,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
     gap: "20px",
   },
 
@@ -330,8 +329,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   icon: {
-    fontSize: "42px",
-    marginBottom: "12px",
+    width: "70px",
+    height: "70px",
+    borderRadius: "22px",
+    background: "#f8fafc",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "16px",
+    boxShadow: "inset 0 0 0 1px #e5e7eb",
   },
 
   cardTitle: {
@@ -394,7 +400,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   toolIcon: {
-    fontSize: "34px",
+    width: "60px",
+    height: "60px",
+    borderRadius: "20px",
+    background: "#f8fafc",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "inset 0 0 0 1px #e5e7eb",
   },
 
   toolTitle: {

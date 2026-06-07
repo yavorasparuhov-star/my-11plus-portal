@@ -91,14 +91,54 @@ export function CustomTestsIcon({ size = 18 }: IconProps) {
 
 export function ProgressIcon({ size = 18 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={baseSvgStyle}>
-      <path d="M5 19V9.5" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M12 19V5.5" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M19 19v-7" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" />
-      <rect x="3.4" y="11.2" width="3.2" height="7.8" rx="1" fill="#bfdbfe" />
-      <rect x="10.4" y="7.2" width="3.2" height="11.8" rx="1" fill="#bbf7d0" />
-      <rect x="17.4" y="13.2" width="3.2" height="5.8" rx="1" fill="#fed7aa" />
-      <path d="M3.5 20h17" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={baseSvgStyle}
+    >
+      <rect
+        x="3"
+        y="3.5"
+        width="18"
+        height="17"
+        rx="3"
+        fill="#ecfdf5"
+        stroke="#86efac"
+        strokeWidth="1.4"
+      />
+
+      <path
+        d="M5.8 17.2h12.7"
+        stroke="#9ca3af"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+
+      <path
+        d="M6.2 15.8 9 13.1l2.4 1.7 2.7-3.5 2.1 1.4 3.1-5"
+        fill="none"
+        stroke="#ef4444"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M16.9 7.8h2.7v2.7"
+        fill="none"
+        stroke="#ef4444"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <circle cx="6.2" cy="15.8" r="1" fill="#ef4444" />
+      <circle cx="9" cy="13.1" r="1" fill="#ef4444" />
+      <circle cx="11.4" cy="14.8" r="1" fill="#ef4444" />
+      <circle cx="14.1" cy="11.3" r="1" fill="#ef4444" />
+      <circle cx="16.2" cy="12.7" r="1" fill="#ef4444" />
     </svg>
   )
 }
