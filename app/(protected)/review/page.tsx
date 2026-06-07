@@ -113,11 +113,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   hero: {
     marginBottom: "34px",
     background:
-      "linear-gradient(135deg, #fdf2f8 0%, #fce7f3 45%, #ffffff 100%)",
+      "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 45%, #ffffff 100%)",
     borderRadius: "22px",
     padding: "24px 28px",
     boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
-    border: "1px solid #fbcfe8",
+    border: "1px solid #d1fae5",
   },
 
   heroTitleRow: {
@@ -138,14 +138,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     justifyContent: "center",
     boxShadow: "0 8px 18px rgba(0,0,0,0.07)",
-    border: "1px solid #fbcfe8",
+    border: "1px solid #d1fae5",
     flexShrink: 0,
   },
 
   title: {
     fontSize: "34px",
     margin: "0 0 6px",
-    color: "#831843",
+    color: "#064e3b",
     fontWeight: 800,
   },
 
@@ -233,8 +233,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "auto",
     padding: "12px 18px",
     borderRadius: "12px",
-    background: "#fce7f3",
-    color: "#9d174d",
+    background: "#d4f5d0",
+    color: "#065f46",
     fontWeight: 800,
     fontSize: "16px",
     minWidth: "150px",

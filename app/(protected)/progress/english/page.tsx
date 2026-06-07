@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { EnglishIcon } from "../../../../components/icons/PortalIcons"
 import {
   LineChart,
   Line,
@@ -777,13 +778,17 @@ export default function EnglishProgressPage() {
             <h1
               style={{
                 margin: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
                 fontSize: "42px",
                 fontWeight: 900,
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
               }}
             >
-              📘 English Progress
+              <EnglishIcon size={42} />
+              English Progress
             </h1>
 
             <p
@@ -795,9 +800,8 @@ export default function EnglishProgressPage() {
                 lineHeight: 1.6,
               }}
             >
-              Explore English performance across vocabulary, spelling,
-              comprehension, grammar, and punctuation with live filters, trend
-              tracking, and category insights.
+              Explore English performance with live filters, trend tracking,
+              and category insights.
             </p>
           </div>
 

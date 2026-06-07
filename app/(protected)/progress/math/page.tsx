@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { MathsIcon } from "../../../../components/icons/PortalIcons"
 import {
   LineChart,
   Line,
@@ -706,6 +707,9 @@ export default function MathProgressPage() {
             <h1
               style={{
                 margin: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
                 fontSize: "clamp(30px, 8vw, 42px)",
                 fontWeight: 900,
                 color: "#0f172a",
@@ -713,7 +717,8 @@ export default function MathProgressPage() {
                 overflowWrap: "break-word",
               }}
             >
-              ➗ Maths Progress
+              <MathsIcon size={42} />
+              Maths Progress
             </h1>
 
             <p

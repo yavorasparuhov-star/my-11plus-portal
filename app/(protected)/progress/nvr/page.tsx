@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { NVRIcon } from "../../../../components/icons/PortalIcons"
 import {
   LineChart,
   Line,
@@ -717,7 +718,8 @@ export default function NVRProgressPage() {
                 overflowWrap: "break-word",
               }}
             >
-              🔷 NVR Progress
+              <NVRIcon size={42} />
+              NVR Progress
             </h1>
 
             <p

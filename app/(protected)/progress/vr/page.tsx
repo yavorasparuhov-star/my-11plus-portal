@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
+import { VRIcon } from "../../../../components/icons/PortalIcons"
 import {
   LineChart,
   Line,
@@ -714,9 +715,14 @@ export default function VRProgressPage() {
                 color: "#0f172a",
                 letterSpacing: "-0.02em",
                 overflowWrap: "break-word",
+                display: "flex",
+alignItems: "center",
+gap: "12px",
+flexWrap: "wrap",
               }}
             >
-              🧠 VR Progress
+<VRIcon size={42} />
+VR Progress
             </h1>
 
             <p
