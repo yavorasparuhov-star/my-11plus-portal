@@ -48,8 +48,7 @@ export default function EnglishPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>English</h1>
           <p style={styles.subtitle}>
-            Practise core English skills including vocabulary, spelling,
-            comprehension, grammar, and punctuation to build confidence for 11+
+            Practise core English skills to build confidence for 11+
             entrance exams.
           </p>
         </div>

@@ -52,27 +52,141 @@ export function MathsIcon({ size = 18 }: IconProps) {
 
 export function VRIcon({ size = 18 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={baseSvgStyle}>
-      <rect x="3.5" y="4.5" width="12" height="11" rx="3" fill="#dbeafe" stroke="#2563eb" strokeWidth="1.8" />
-      <rect x="8.5" y="8.5" width="12" height="11" rx="3" fill="#dcfce7" stroke="#16a34a" strokeWidth="1.8" />
-      <path d="M7.1 12.6 9 7.4h1.3l1.9 5.2" fill="none" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7.8 11h3.7" stroke="#2563eb" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M15.2 13.1c1.4 0 2.5 1.1 2.5 2.5s-1.1 2.5-2.5 2.5-2.5-1.1-2.5-2.5 1.1-2.5 2.5-2.5Z" fill="none" stroke="#16a34a" strokeWidth="1.5" />
-      <path d="m16.7 17.1 1.2 1.1" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={baseSvgStyle}
+    >
+      {/* back B tile */}
+      <rect
+        x="9"
+        y="8"
+        width="11"
+        height="11"
+        rx="2.6"
+        fill="#fffdf7"
+        stroke="#fbbf24"
+        strokeWidth="1.5"
+      />
+      <text
+        x="14.5"
+        y="13.7"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="6.6"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#facc15"
+      >
+        B
+      </text>
+
+      {/* front Y tile */}
+      <rect
+        x="3"
+        y="3"
+        width="11"
+        height="11"
+        rx="2.6"
+        fill="#fff1f7"
+        stroke="#ec4899"
+        strokeWidth="1.5"
+      />
+      <text
+        x="8.5"
+        y="8.7"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="6.8"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#ec4899"
+      >
+        Y
+      </text>
     </svg>
   )
 }
 
 export function NVRIcon({ size = 18 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={baseSvgStyle}>
-      <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="4.2" fill="#0ea5e9" />
-      <path d="M4.8 4.8h7.1v5.1c1.6-.1 2.9 1.1 2.9 2.6s-1.3 2.7-2.9 2.6v4.1H4.8v-6.1c1.7.2 3.1-.9 3.1-2.5S6.5 7.9 4.8 8.1V4.8Z" fill="#bae6fd" />
-      <path d="M12.1 4.8h7.1v7.1h-4.1c.1-1.6-1.1-2.9-2.6-2.9-.1 0-.3 0-.4.1V4.8Z" fill="#38bdf8" />
-      <path d="M19.2 12.1v7.1h-7.1v-4.1c.1 0 .3.1.4.1 1.5 0 2.7-1.3 2.6-3.1h4.1Z" fill="#bae6fd" />
-      <path d="M4.8 12.1h3.3c-.2 1.7.9 3.1 2.5 3.1.5 0 1-.1 1.5-.4v4.4H4.8v-7.1Z" fill="#0ea5e9" />
-      <path d="M12 4.8v14.4M4.8 12h14.4" stroke="#0284c7" strokeWidth="1.4" strokeLinecap="round" />
-      <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="4.2" fill="none" stroke="#0284c7" strokeWidth="1.8" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={baseSvgStyle}
+    >
+      {/* subtle soft background */}
+      <rect
+        x="2.2"
+        y="2.2"
+        width="19.6"
+        height="19.6"
+        rx="4"
+        fill="#ffffff"
+        stroke="#e5e7eb"
+        strokeWidth="1"
+      />
+
+      {/* grid */}
+      <path d="M8.6 4.2v15.6M15.4 4.2v15.6" stroke="#1f2940" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M4.2 8.6h15.6M4.2 15.4h15.6" stroke="#1f2940" strokeWidth="1.3" strokeLinecap="round" />
+
+      {/* values */}
+      <text
+        x="12"
+        y="5.8"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="5.4"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#ec4899"
+      >
+        6
+      </text>
+
+      <text
+        x="12"
+        y="12"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="5.4"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#eab308"
+      >
+        9
+      </text>
+
+      <text
+        x="18.1"
+        y="12"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="5.6"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#0ea5e9"
+      >
+        X
+      </text>
+
+      <text
+        x="5.6"
+        y="18.1"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="5.4"
+        fontWeight="800"
+        fontFamily="Arial, sans-serif"
+        fill="#0ea5e9"
+      >
+        3
+      </text>
     </svg>
   )
 }

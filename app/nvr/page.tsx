@@ -24,8 +24,7 @@ export default function NVRPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>Non-Verbal Reasoning</h1>
           <p style={styles.subtitle}>
-            Practise core NVR skills including shape patterns, rotations and
-            reflections, and codes with spatial logic to build confidence for
+            Practise core NVR skills to build confidence for
             11+ entrance exams.
           </p>
         </div>

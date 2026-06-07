@@ -23,8 +23,7 @@ export default function VRPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>Verbal Reasoning</h1>
           <p style={styles.subtitle}>
-            Practise core verbal reasoning skills including word relationships,
-            logic, codes, and sequences to prepare for 11+ entrance exams.
+            Practise core verbal reasoning skills to prepare for 11+ entrance exams.
           </p>
         </div>
 
