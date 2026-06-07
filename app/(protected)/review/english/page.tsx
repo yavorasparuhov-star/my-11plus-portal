@@ -13,11 +13,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import type {
-  NameType,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent"
-
 type VocabularyReviewRow = {
   id: string
   user_id: string
@@ -232,22 +227,6 @@ function formatDateTime(value: string) {
 function truncateText(value: string, maxLength = 160) {
   if (!value) return "—"
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value
-}
-
-function questionsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [number, string] {
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value)
-        : Array.isArray(value)
-          ? Number(value[0])
-          : 0
-
-  return [numericValue, "Items"]
 }
 
 function getOptionText(
@@ -566,71 +545,71 @@ const chartWrapperStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "12px",
-  fontSize: "13px",
-  color: "#475569",
-  fontWeight: 800,
-  whiteSpace: "nowrap",
-}
-
-const tdStyle: React.CSSProperties = {
-  padding: "12px",
-  fontSize: "14px",
-  color: "#334155",
-  verticalAlign: "top",
-  lineHeight: 1.45,
-}
-
 const selectStyle: React.CSSProperties = {
-  width: "100%",
   padding: "12px 14px",
   borderRadius: "14px",
-  border: "1px solid #cbd5e1",
-  background: "#ffffff",
+  border: "1px solid #bbf7d0",
+  backgroundColor: "white",
+  fontSize: "14px",
+  fontWeight: 600,
   color: "#0f172a",
-  fontWeight: 700,
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
+}
+
+const actionButtonStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  borderRadius: "14px",
+  border: "none",
+  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+  color: "white",
+  fontSize: "14px",
+  fontWeight: 800,
+  boxShadow: "0 8px 20px rgba(22, 163, 74, 0.22)",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxSizing: "border-box",
 }
 
 const removeButtonStyle: React.CSSProperties = {
-  border: "none",
-  borderRadius: "999px",
-  background: "#fee2e2",
-  color: "#991b1b",
-  padding: "9px 13px",
+  padding: "9px 12px",
+  borderRadius: "12px",
+  border: "1px solid #fecaca",
+  background: "#fff1f2",
+  color: "#be123c",
+  fontSize: "13px",
   fontWeight: 800,
   cursor: "pointer",
-}
-
-const retryButtonStyle: React.CSSProperties = {
-  border: "none",
-  borderRadius: "999px",
-  background: "linear-gradient(135deg, #22c55e, #16a34a)",
-  color: "#ffffff",
-  padding: "12px 18px",
-  fontWeight: 900,
-  cursor: "pointer",
-  boxShadow: "0 10px 22px rgba(34, 197, 94, 0.25)",
+  whiteSpace: "nowrap",
 }
 
 const secondaryButtonStyle: React.CSSProperties = {
-  border: "1px solid #cbd5e1",
-  borderRadius: "999px",
-  background: "#ffffff",
-  color: "#0f172a",
-  padding: "12px 18px",
-  fontWeight: 900,
+  padding: "9px 12px",
+  borderRadius: "12px",
+  border: "1px solid #bbf7d0",
+  background: "#f0fdf4",
+  color: "#166534",
+  fontSize: "13px",
+  fontWeight: 800,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 }
 
 const emptyStateStyle: React.CSSProperties = {
-  border: "1px dashed #cbd5e1",
-  borderRadius: "20px",
-  padding: "24px",
-  color: "#64748b",
-  background: "#f8fafc",
+  height: "100%",
+  minHeight: "180px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#94a3b8",
+  fontSize: "15px",
   textAlign: "center",
+  padding: "20px",
+  boxSizing: "border-box",
 }
 
 export default function EnglishReviewPage() {
@@ -640,7 +619,7 @@ export default function EnglishReviewPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
   const [noticeMessage, setNoticeMessage] = useState("")
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("30d")
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
@@ -823,7 +802,7 @@ export default function EnglishReviewPage() {
               test_title: null,
               question_order: null,
               item_text: lookup?.word || row.word,
-              user_answer: "Needs review",
+              user_answer: null,
               user_answer_text: "Answered incorrectly",
               correct_answer: lookup?.word || row.word,
               correct_answer_text: lookup?.word || row.word,
@@ -847,7 +826,7 @@ export default function EnglishReviewPage() {
               test_title: null,
               question_order: null,
               item_text: lookup?.word || row.word,
-              user_answer: "Needs review",
+              user_answer: null,
               user_answer_text: "Spelt incorrectly",
               correct_answer: lookup?.word || row.word,
               correct_answer_text: lookup?.word || row.word,
@@ -1091,7 +1070,7 @@ export default function EnglishReviewPage() {
           new Date(getRelevantDate(b)).getTime() -
           new Date(getRelevantDate(a)).getTime()
       )
-      .slice(0, 20)
+      .slice(0, 12)
   }, [filteredItems])
 
   const reviewStats = useMemo(() => {
@@ -1179,48 +1158,40 @@ export default function EnglishReviewPage() {
       }))
   }, [filteredItems])
 
+  if (loadingData) {
+    return (
+      <div style={{ padding: "32px", color: "#334155", fontSize: "18px" }}>
+        Loading English review...
+      </div>
+    )
+  }
+
   return (
-    <main
+    <div
       style={{
         minHeight: "100vh",
         background:
-          "linear-gradient(135deg, #ecfdf5 0%, #f8fafc 48%, #eff6ff 100%)",
-        padding: "32px 16px 56px",
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
       <div
         style={{
-          maxWidth: "1180px",
-          margin: "0 auto",
+          maxWidth: "1320px",
           width: "100%",
+          margin: "0 auto",
           minWidth: 0,
         }}
       >
-        <button
-          type="button"
-          onClick={() => router.push("/english")}
-          style={{
-            border: "none",
-            background: "transparent",
-            color: "#166534",
-            fontWeight: 900,
-            cursor: "pointer",
-            marginBottom: "18px",
-          }}
-        >
-          ← Back to English
-        </button>
-
         <div
           style={{
-            background: "rgba(255,255,255,0.9)",
-            border: "1px solid #dcfce7",
-            borderRadius: "32px",
-            padding: "28px",
-            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
             display: "flex",
-            flexDirection: "column",
-            gap: "22px",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "16px",
             marginBottom: "28px",
             minWidth: 0,
           }}
@@ -1319,10 +1290,7 @@ export default function EnglishReviewPage() {
               onClick={retryFilteredItems}
               disabled={filteredItems.length === 0}
               style={{
-                ...retryButtonStyle,
-                width: "100%",
-                maxWidth: "260px",
-                flex: "1 1 220px",
+                ...actionButtonStyle,
                 opacity: filteredItems.length === 0 ? 0.5 : 1,
                 cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
               }}
@@ -1447,10 +1415,10 @@ export default function EnglishReviewPage() {
                     <YAxis
                       type="category"
                       dataKey="category"
-                      width={170}
+                      width={150}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                     />
-                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Tooltip />
                     <Bar dataKey="count" radius={[0, 10, 10, 0]}>
                       {reviewByCategoryData.map((entry, index) => (
                         <Cell
@@ -1489,7 +1457,7 @@ export default function EnglishReviewPage() {
                       allowDecimals={false}
                       tick={{ fontSize: 12, fill: "#64748b" }}
                     />
-                    <Tooltip formatter={questionsTooltipFormatter} />
+                    <Tooltip />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                       {reviewByDifficultyData.map((entry, index) => (
                         <Cell
@@ -1764,6 +1732,6 @@ export default function EnglishReviewPage() {
           )}
         </SectionCard>
       </div>
-    </main>
+    </div>
   )
 }
