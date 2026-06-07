@@ -61,9 +61,15 @@ type MathQuestionLookupRow = {
   difficulty: number | null
 }
 
+type MathTestLookupRow = {
+  id: number
+  title: string | null
+}
+
 type ReviewItem = {
   id: string
   test_id: number | null
+  test_title: string | null
   question_id: number | null
   question_order: number | null
   category: MathCategory | "unknown"
@@ -189,6 +195,26 @@ function getLevelLabel(level: number | null | undefined) {
   if (level === 2) return "Medium"
   if (level === 3) return "Hard"
   return "Not set"
+}
+
+function getTestDetailsLabel(item: ReviewItem) {
+  const parts: string[] = []
+
+  if (item.test_title && item.test_title.trim()) {
+    parts.push(item.test_title.trim())
+  } else if (item.test_id !== null) {
+    parts.push("Maths Test")
+  }
+
+  if (item.test_id !== null) {
+    parts.push(`Test #${item.test_id}`)
+  }
+
+  if (item.question_order !== null) {
+    parts.push(`Q${item.question_order}`)
+  }
+
+  return parts.join(" · ")
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -582,13 +608,49 @@ export default function MathReviewPage() {
           }
         }
 
+        const testIds = Array.from(
+          new Set(
+            rows
+              .map((row) => {
+                if (row.test_id !== null) return row.test_id
+                if (row.question_id === null) return null
+
+                return questionMap.get(row.question_id)?.test_id ?? null
+              })
+              .filter((id): id is number => id !== null)
+          )
+        )
+
+        let testMap = new Map<number, MathTestLookupRow>()
+
+        if (testIds.length > 0) {
+          const { data: testData, error: testError } = await supabase
+            .from("math_tests")
+            .select("id, title")
+            .in("id", testIds)
+
+          if (testError) {
+            console.error("Error loading maths test details:", testError)
+          } else {
+            testMap = new Map(
+              ((testData ?? []) as MathTestLookupRow[]).map((test) => [
+                test.id,
+                test,
+              ])
+            )
+          }
+        }
+
         const items: ReviewItem[] = rows.map((row) => {
           const question =
             row.question_id !== null ? questionMap.get(row.question_id) : null
+          const testId = row.test_id ?? question?.test_id ?? null
+          const test = testId !== null ? testMap.get(testId) : null
 
           return {
             id: String(row.id),
-            test_id: row.test_id ?? question?.test_id ?? null,
+            test_id: testId,
+            test_title: test?.title ?? null,
             question_id: row.question_id ?? null,
             question_order: question?.question_order ?? null,
             category: normaliseMathCategory(row.category),
@@ -1234,6 +1296,25 @@ export default function MathReviewPage() {
                   >
                     {getLevelLabel(row.difficulty)}
                   </span>
+
+                  {getTestDetailsLabel(row) ? (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 10px",
+                        borderRadius: "999px",
+                        background: "#f0fdf4",
+                        color: "#14532d",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        border: "1px solid #bbf7d0",
+                        maxWidth: "100%",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      {getTestDetailsLabel(row)}
+                    </span>
+                  ) : null}
                 </div>
 
                 <h3
