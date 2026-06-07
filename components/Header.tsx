@@ -3,7 +3,19 @@
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
+import {
+  CustomTestsIcon,
+  EnglishIcon,
+  HomeIcon,
+  LogoutIcon,
+  MathsIcon,
+  NVRIcon,
+  ProfileIcon,
+  ProgressIcon,
+  ReviewIcon,
+  VRIcon,
+} from "./icons/PortalIcons"
 import { supabase } from "../lib/supabaseClient"
 
 type HeaderProps = {
@@ -18,6 +30,28 @@ type HeaderProfile = {
   nickname: string
   first_name: string
   email: string
+}
+
+function NavText({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </span>
+  )
 }
 
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
@@ -226,7 +260,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     backgroundColor: "transparent",
     padding: "8px 6px",
     borderRadius: "0",
-    display: "inline-block",
+    display: "inline-flex",
+    alignItems: "center",
     transition: "all 0.2s ease",
   })
 
@@ -340,7 +375,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             />
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              lineHeight: 1.1,
+            }}
+          >
             <span
               style={{
                 fontSize: "18px",
@@ -381,37 +422,37 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           }}
         >
           <Link href={homeHref} style={linkStyle(homeHref)}>
-            🏠 Home
+            <NavText icon={<HomeIcon />} label="Home" />
           </Link>
 
           <Link href={englishHref} style={linkStyle(englishHref)}>
-            📘 English
+            <NavText icon={<EnglishIcon />} label="English" />
           </Link>
 
           <Link href={mathHref} style={linkStyle(mathHref)}>
-            ➗ Maths
+            <NavText icon={<MathsIcon />} label="Maths" />
           </Link>
 
           <Link href={vrHref} style={linkStyle(vrHref)}>
-            🧠 VR
+            <NavText icon={<VRIcon />} label="VR" />
           </Link>
 
           <Link href={nvrHref} style={linkStyle(nvrHref)}>
-            🔷 NVR
+            <NavText icon={<NVRIcon />} label="NVR" />
           </Link>
 
           <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
-            🛠️ Custom Tests
+            <NavText icon={<CustomTestsIcon />} label="Custom Tests" />
           </Link>
 
           {!isGuest && (
             <>
               <Link href="/progress" style={linkStyle("/progress")}>
-                📊 Progress
+                <NavText icon={<ProgressIcon />} label="Progress" />
               </Link>
 
               <Link href="/review" style={linkStyle("/review")}>
-                📚 Review
+                <NavText icon={<ReviewIcon />} label="Review" />
               </Link>
             </>
           )}
@@ -523,7 +564,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       href="/profile"
                       onClick={() => setProfileMenuOpen(false)}
                       style={{
-                        display: "block",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                         textDecoration: "none",
                         color: "#1f2937",
                         fontWeight: 700,
@@ -531,14 +574,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                         borderRadius: "12px",
                       }}
                     >
-                      👤 Profile
+                      <ProfileIcon />
+                      <span>Profile</span>
                     </Link>
 
                     <Link
                       href="/home"
                       onClick={() => setProfileMenuOpen(false)}
                       style={{
-                        display: "block",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                         textDecoration: "none",
                         color: "#1f2937",
                         fontWeight: 700,
@@ -546,7 +592,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                         borderRadius: "12px",
                       }}
                     >
-                      🏠 Member home
+                      <HomeIcon />
+                      <span>Member home</span>
                     </Link>
 
                     <button
@@ -562,9 +609,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                         cursor: "pointer",
                         fontWeight: 800,
                         fontSize: "15px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                       }}
                     >
-                      🚪 Logout
+                      <LogoutIcon />
+                      <span>Logout</span>
                     </button>
                   </div>
                 )}
@@ -659,7 +710,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(homeHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                🏠 Home
+                <NavText icon={<HomeIcon />} label="Home" />
               </Link>
 
               <Link
@@ -667,7 +718,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(englishHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                📘 English
+                <NavText icon={<EnglishIcon />} label="English" />
               </Link>
 
               <Link
@@ -675,7 +726,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(mathHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                ➗ Math
+                <NavText icon={<MathsIcon />} label="Maths" />
               </Link>
 
               <Link
@@ -683,7 +734,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(vrHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                🧠 VR
+                <NavText icon={<VRIcon />} label="VR" />
               </Link>
 
               <Link
@@ -691,7 +742,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(nvrHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                🔷 NVR
+                <NavText icon={<NVRIcon />} label="NVR" />
               </Link>
 
               <Link
@@ -699,7 +750,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(customTestsHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                🛠️ Custom Tests
+                <NavText icon={<CustomTestsIcon />} label="Custom Tests" />
               </Link>
 
               {!isGuest && (
@@ -709,7 +760,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     style={linkStyle("/progress")}
                     onClick={() => setMenuOpen(false)}
                   >
-                    📊 Progress
+                    <NavText icon={<ProgressIcon />} label="Progress" />
                   </Link>
 
                   <Link
@@ -717,7 +768,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     style={linkStyle("/review")}
                     onClick={() => setMenuOpen(false)}
                   >
-                    📚 Review
+                    <NavText icon={<ReviewIcon />} label="Review" />
                   </Link>
 
                   <Link
@@ -725,7 +776,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     style={linkStyle("/profile")}
                     onClick={() => setMenuOpen(false)}
                   >
-                    👤 Profile
+                    <NavText icon={<ProfileIcon />} label="Profile" />
                   </Link>
                 </>
               )}
@@ -826,9 +877,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     cursor: "pointer",
                     fontWeight: 800,
                     width: "fit-content",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-                  🚪 Logout
+                  <LogoutIcon />
+                  <span>Logout</span>
                 </button>
               </div>
             )}
