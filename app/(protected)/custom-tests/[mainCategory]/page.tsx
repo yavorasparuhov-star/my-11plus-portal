@@ -74,6 +74,13 @@ type DownloadCustomTestData = {
   createdAt: string
   dailyLimit: number
   downloadsUsedToday: number
+  downloadNumber?: number
+  metadata?: {
+    subject?: string
+    testNumber?: number
+    fileBaseName?: string
+    title?: string
+  }
 }
 
 type DownloadCustomTestResponse =
@@ -103,6 +110,14 @@ function formatDateForFileName(value: string) {
   }
 
   return date.toISOString().slice(0, 10)
+}
+
+function sanitizeFileBaseName(value: string) {
+  return value
+    .trim()
+    .replace(/[^a-z0-9-_]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
 }
 
 function formatDateForPrint(value: string) {
@@ -135,6 +150,14 @@ function buildPrintableHtml(
   const printedDate = escapeHtml(formatDateForPrint(downloadData.createdAt))
   const difficultyLabel = escapeHtml(
     renderDifficultyLabel(downloadData.config.selectedDifficulty)
+  )
+  const testNumber =
+    downloadData.metadata?.testNumber ?? downloadData.downloadNumber ?? null
+  const printableTitle = escapeHtml(
+    downloadData.metadata?.title ??
+      (testNumber
+        ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
+        : "YanBo Learning Printable Custom Test")
   )
 
   const passageBlocks = Array.from(
@@ -236,7 +259,7 @@ function buildPrintableHtml(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>YanBo Learning Printable Custom Test</title>
+  <title>${printableTitle}</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -352,9 +375,14 @@ function buildPrintableHtml(
 </head>
 <body>
   <header>
-    <h1>YanBo Learning Printable Custom Test</h1>
+    <h1>${printableTitle}</h1>
     <div class="meta">
       Category: ${safeCategoryLabel}<br />
+      ${
+        testNumber
+          ? `Test number: ${escapeHtml(String(testNumber))}<br />`
+          : ""
+      }
       Difficulty: ${difficultyLabel}<br />
       Questions: ${downloadData.questions.length}<br />
       Downloaded: ${printedDate}
@@ -404,9 +432,17 @@ function downloadPrintableHtml(
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement("a")
   const datePart = formatDateForFileName(downloadData.createdAt)
+  const fileBaseName =
+    downloadData.metadata?.fileBaseName ??
+    (downloadData.metadata?.testNumber
+      ? `YanBo-${categoryLabel}-Test-${downloadData.metadata.testNumber}`
+      : `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}`)
+  const safeFileBaseName =
+    sanitizeFileBaseName(fileBaseName) ||
+    `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}`
 
   anchor.href = url
-  anchor.download = `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}.html`
+  anchor.download = `${safeFileBaseName}.html`
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
@@ -696,8 +732,13 @@ export default function CustomTestBuilderPage() {
 
       downloadPrintableHtml(result.data, catalog.label, session.user.email)
 
+      const testNumber =
+        result.data.metadata?.testNumber ?? result.data.downloadNumber ?? null
+
       setSuccessMessage(
-        `Printable test downloaded. You have used ${result.data.downloadsUsedToday} of ${result.data.dailyLimit} ${catalog.label} downloads today.`
+        testNumber
+          ? `${catalog.label} Test ${testNumber} downloaded. You have used ${result.data.downloadsUsedToday} of ${result.data.dailyLimit} ${catalog.label} downloads today.`
+          : `Printable test downloaded. You have used ${result.data.downloadsUsedToday} of ${result.data.dailyLimit} ${catalog.label} downloads today.`
       )
     } catch (error) {
       setErrorMessage(

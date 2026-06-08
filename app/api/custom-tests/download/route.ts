@@ -188,6 +188,12 @@ type DownloadCustomTestData = {
   createdAt: string
   dailyLimit: number
   downloadsUsedToday: number
+  downloadNumber: number
+  metadata: {
+    subject: string
+    testNumber: number
+    fileBaseName: string
+  }
 }
 
 type DownloadCustomTestResponse =
@@ -1246,6 +1252,32 @@ async function countDownloadsToday(
   return count ?? 0
 }
 
+async function countSubjectDownloads(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  userId: string,
+  mainCategory: MainCategory
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("custom_test_downloads")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("main_category", mainCategory)
+
+  if (error) {
+    throw new Error(`Could not check previous ${mainCategory} downloads: ${error.message}`)
+  }
+
+  return count ?? 0
+}
+
+function toFileSafeLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
 async function createDownloadedCustomTestAttempt(
   supabase: ReturnType<typeof getSupabaseClient>,
   userId: string,
@@ -1330,7 +1362,9 @@ async function buildDownloadResponse(
   userId: string,
   config: GenerateCustomTestRequest,
   finalQuestions: NormalizedQuestion[],
-  downloadsUsedBeforeThisOne: number
+  downloadsUsedBeforeThisOne: number,
+  downloadNumber: number,
+  subjectLabel: string
 ) {
   const attemptId = await createDownloadedCustomTestAttempt(
     supabase,
@@ -1349,6 +1383,12 @@ async function buildDownloadResponse(
       createdAt: new Date().toISOString(),
       dailyLimit: DAILY_DOWNLOAD_LIMIT_PER_MAIN_CATEGORY,
       downloadsUsedToday: downloadsUsedBeforeThisOne + 1,
+      downloadNumber,
+      metadata: {
+        subject: subjectLabel,
+        testNumber: downloadNumber,
+        fileBaseName: `YanBo-${toFileSafeLabel(subjectLabel)}-Test-${downloadNumber}`,
+      },
     },
   }
 
@@ -1418,6 +1458,13 @@ export async function POST(request: NextRequest) {
       user.id,
       config.mainCategory
     )
+
+    const previousSubjectDownloadCount = await countSubjectDownloads(
+      supabase,
+      user.id,
+      config.mainCategory
+    )
+    const downloadNumber = previousSubjectDownloadCount + 1
 
     if (downloadsUsedToday >= DAILY_DOWNLOAD_LIMIT_PER_MAIN_CATEGORY) {
       return jsonError(
@@ -1559,7 +1606,9 @@ export async function POST(request: NextRequest) {
         user.id,
         config,
         finalQuestions,
-        downloadsUsedToday
+        downloadsUsedToday,
+        downloadNumber,
+        mainCategoryLabel
       )
     }
 
@@ -1607,7 +1656,9 @@ export async function POST(request: NextRequest) {
       user.id,
       config,
       finalQuestions,
-      downloadsUsedToday
+      downloadsUsedToday,
+      downloadNumber,
+      mainCategoryLabel
     )
   } catch (error) {
     console.error("CUSTOM TEST DOWNLOAD ROUTE ERROR:", error)
