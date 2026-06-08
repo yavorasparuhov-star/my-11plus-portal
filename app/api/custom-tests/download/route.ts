@@ -11,6 +11,9 @@ import type {
   QuestionSourceType,
 } from "../../../../lib/custom-tests/types"
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
 const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
 const MAX_QUESTION_COUNT = 60
 const MIN_QUESTION_COUNT = 5
@@ -1262,8 +1265,6 @@ async function createDownloadedCustomTestAttempt(
       time_limit_seconds: config.totalTimeMinutes * 60,
       started_at: nowIso,
       completed_at: nowIso,
-      // Downloaded tests are not answered online, but these columns are NOT NULL in Supabase.
-      // Use zero values so the attempt can be recorded and the downloaded questions count as used.
       time_taken_seconds: 0,
       correct_answers: 0,
       score_percent: 0,
@@ -1551,7 +1552,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      return buildDownloadResponse(
+      return await buildDownloadResponse(
         supabase,
         user.id,
         config,
@@ -1599,7 +1600,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return buildDownloadResponse(
+    return await buildDownloadResponse(
       supabase,
       user.id,
       config,
@@ -1607,12 +1608,17 @@ export async function POST(request: NextRequest) {
       downloadsUsedToday
     )
   } catch (error) {
+    console.error("CUSTOM TEST DOWNLOAD ROUTE ERROR:", error)
+
     const message =
       error instanceof Error
         ? error.message
         : "Unexpected error while generating custom test."
 
-    return jsonError(message, 500)
+    return NextResponse.json<DownloadCustomTestResponse>(
+      { ok: false, error: message },
+      { status: 500 }
+    )
   }
 }
 
