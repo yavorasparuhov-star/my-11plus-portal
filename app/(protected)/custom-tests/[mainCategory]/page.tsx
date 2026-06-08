@@ -410,9 +410,14 @@ function buildPrintableHtml(
     .passage-block,
     .question-block {
       border: 1px solid var(--soft-line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 9px;
+      border-radius: 9px;
+      padding: 8px 10px;
+      margin-bottom: 7px;
+    }
+
+    .question-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
 
     .passage-block {
@@ -441,24 +446,24 @@ function buildPrintableHtml(
     }
 
     .question-text {
-      margin: 4px 0 6px;
-      font-size: 13px;
-      line-height: 1.35;
+      margin: 3px 0 5px;
+      font-size: 12.5px;
+      line-height: 1.28;
     }
 
     .options {
       list-style: none;
-      margin: 6px 0 0;
+      margin: 4px 0 0;
       padding: 0;
-      font-size: 12px;
-      line-height: 1.25;
+      font-size: 11.8px;
+      line-height: 1.18;
     }
 
     .options li {
       display: grid;
-      grid-template-columns: 24px 1fr;
-      gap: 4px;
-      margin-bottom: 4px;
+      grid-template-columns: 20px 1fr;
+      gap: 3px;
+      margin-bottom: 2px;
       align-items: start;
     }
 
@@ -479,7 +484,7 @@ function buildPrintableHtml(
 
     .question-image {
       display: block;
-      max-height: 210px;
+      max-height: 170px;
     }
 
     table {
@@ -542,30 +547,33 @@ function buildPrintableHtml(
     .answer-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px 14px;
+      gap: 16px 20px;
       align-items: start;
+      justify-items: center;
     }
 
     .answer-card {
-      border: 1.3px solid #2f80ed;
-      background: #f8fbff;
-      min-height: 72px;
+      width: 54px;
+      border: 1.2px solid #2f80ed;
+      background: #ffffff;
+      min-height: 62px;
       break-inside: avoid;
       page-break-inside: avoid;
     }
 
     .answer-card-number {
-      background: #2f80ed;
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 13px;
+      background: #eef6ff;
+      color: #111827;
+      border-bottom: 1.2px solid #2f80ed;
+      font-weight: 900;
+      font-size: 12px;
       line-height: 1;
-      padding: 4px 5px;
+      padding: 3px 4px;
       text-align: center;
     }
 
     .answer-card-options {
-      padding: 4px 5px 5px;
+      padding: 3px 4px 4px;
       display: grid;
       gap: 1px;
       justify-items: center;
@@ -575,11 +583,12 @@ function buildPrintableHtml(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      min-height: 13px;
-      font-size: 11px;
-      font-weight: 700;
+      gap: 3px;
+      min-height: 12px;
+      font-size: 10.5px;
+      font-weight: 800;
       line-height: 1;
+      white-space: nowrap;
     }
 
     .answer-option-letter {
@@ -588,9 +597,9 @@ function buildPrintableHtml(
 
     .answer-line-box {
       display: inline-block;
-      width: 18px;
-      height: 6px;
-      border: 1.3px solid #2f80ed;
+      width: 15px;
+      height: 5px;
+      border: 1.2px solid #2f80ed;
       background: #ffffff;
       flex: 0 0 auto;
     }
@@ -684,12 +693,12 @@ function buildPrintableHtml(
   </section>
 
   <section class="page-break">
-    <h2>Answers and explanations</h2>
+    <h2>Q and A</h2>
     <table>
       <thead>
         <tr>
-          <th>Question</th>
-          <th>Answer</th>
+          <th>Q</th>
+          <th>A</th>
           <th>Explanation</th>
         </tr>
       </thead>
