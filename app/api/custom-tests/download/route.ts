@@ -19,7 +19,7 @@ const MAX_QUESTION_COUNT = 60
 const MIN_QUESTION_COUNT = 5
 const MAX_TIME_MINUTES = 120
 const MIN_TIME_MINUTES = 1
-const DAILY_DOWNLOAD_LIMIT_PER_MAIN_CATEGORY = 2
+const DAILY_DOWNLOAD_LIMIT_PER_MAIN_CATEGORY = 200
 
 type NonEnglishMainCategory = Exclude<MainCategory, "english">
 

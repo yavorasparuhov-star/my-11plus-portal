@@ -170,6 +170,7 @@ function buildPrintableHtml(
     .map(
       (passage, index) => `
         <section class="passage-block">
+          <div class="section-label">Reading passage</div>
           <h2>Passage ${index + 1}</h2>
           <p>${escapeHtml(passage).replaceAll("\n", "<br />")}</p>
         </section>
@@ -222,14 +223,19 @@ function buildPrintableHtml(
 
       return `
         <section class="question-block">
-          <div class="question-meta">${escapeHtml(topicLine)}</div>
-          <h3>Question ${index + 1}</h3>
+          <div class="question-header">
+            <h3>Question ${index + 1}</h3>
+            <div class="question-meta">${escapeHtml(topicLine)}</div>
+          </div>
           ${
-            question.prompt
+            question.prompt && question.prompt.trim() !== questionText.trim()
               ? `<p class="prompt">${escapeHtml(question.prompt)}</p>`
               : ""
           }
-          <p>${escapeHtml(questionText).replaceAll("\n", "<br />")}</p>
+          <p class="question-text">${escapeHtml(questionText).replaceAll(
+            "\n",
+            "<br />"
+          )}</p>
           ${questionImage}
           <ol class="options" type="A">
             ${optionBlocks}
@@ -239,10 +245,22 @@ function buildPrintableHtml(
     })
     .join("")
 
+  const answerSheetRows = downloadData.questions
+    .map(
+      (_question, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td class="answer-box"></td>
+          <td class="mark-box"></td>
+        </tr>
+      `
+    )
+    .join("")
+
   const answerRows = downloadData.questions
     .map((question, index) => {
       const explanation = question.explanation?.trim()
-        ? escapeHtml(question.explanation)
+        ? escapeHtml(question.explanation).replaceAll("\n", "<br />")
         : "—"
 
       return `
@@ -261,77 +279,179 @@ function buildPrintableHtml(
   <meta charset="utf-8" />
   <title>${printableTitle}</title>
   <style>
+    :root {
+      --ink: #111827;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --soft-line: #e5e7eb;
+      --soft-bg: #f9fafb;
+      --brand: #14532d;
+      --brand-soft: #dcfce7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      color: #111827;
-      margin: 32px;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      margin: 30px;
       line-height: 1.5;
+      background: #ffffff;
     }
 
     header {
-      border-bottom: 2px solid #d9f99d;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
+      border: 2px solid var(--brand-soft);
+      border-left: 8px solid var(--brand);
+      border-radius: 16px;
+      margin-bottom: 22px;
+      padding: 18px 20px;
+      background: linear-gradient(90deg, #f0fdf4, #ffffff);
     }
 
     h1 {
-      margin: 0 0 8px 0;
-      font-size: 28px;
+      margin: 0 0 10px 0;
+      font-size: 30px;
+      color: var(--brand);
+      letter-spacing: -0.02em;
     }
 
     h2 {
-      margin-top: 28px;
+      margin: 30px 0 12px;
       font-size: 22px;
+      color: var(--brand);
     }
 
     h3 {
-      margin-bottom: 8px;
+      margin: 0;
       font-size: 18px;
     }
 
-    .meta {
-      color: #4b5563;
+    .top-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 18px;
+      margin-top: 12px;
+      color: var(--muted);
       font-size: 14px;
+    }
+
+    .student-strip {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 0.8fr;
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .student-field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      min-height: 42px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .instructions {
+      border: 1px solid var(--soft-line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: var(--soft-bg);
+      margin-bottom: 18px;
+    }
+
+    .instructions ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
     }
 
     .watermark {
       color: #6b7280;
+      font-size: 11px;
+      margin-top: 12px;
+      border-top: 1px solid var(--soft-line);
+      padding-top: 8px;
+    }
+
+    .no-print {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      cursor: pointer;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+
+    .section-label {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
       font-size: 12px;
-      margin-top: 10px;
+      font-weight: 700;
+      margin-bottom: 6px;
     }
 
     .passage-block,
     .question-block {
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
+      border: 1px solid var(--soft-line);
+      border-radius: 14px;
       padding: 16px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .passage-block {
+      background: #fbfffb;
+    }
+
+    .question-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
 
     .question-meta {
       color: #6b7280;
       font-size: 12px;
-      margin-bottom: 6px;
+      text-align: right;
     }
 
     .prompt {
       color: #374151;
       font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .question-text {
+      margin-top: 6px;
+      font-size: 15px;
     }
 
     .options {
       margin-top: 12px;
+      padding-left: 28px;
     }
 
     .options li {
       margin-bottom: 10px;
+      padding-left: 4px;
     }
 
     img {
       max-width: 100%;
       height: auto;
       margin-top: 8px;
+      border-radius: 8px;
     }
 
     .question-image {
@@ -343,11 +463,12 @@ function buildPrintableHtml(
       width: 100%;
       border-collapse: collapse;
       margin-top: 12px;
+      font-size: 14px;
     }
 
     th,
     td {
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--line);
       padding: 8px;
       vertical-align: top;
       text-align: left;
@@ -355,6 +476,16 @@ function buildPrintableHtml(
 
     th {
       background: #f3f4f6;
+      color: #374151;
+    }
+
+    .answer-box {
+      height: 28px;
+      width: 45%;
+    }
+
+    .mark-box {
+      width: 20%;
     }
 
     .page-break {
@@ -362,9 +493,20 @@ function buildPrintableHtml(
       page-break-before: always;
     }
 
+    footer {
+      margin-top: 28px;
+      color: #6b7280;
+      font-size: 11px;
+      text-align: center;
+    }
+
     @media print {
       body {
-        margin: 18mm;
+        margin: 14mm;
+      }
+
+      header {
+        background: #ffffff;
       }
 
       .no-print {
@@ -376,32 +518,61 @@ function buildPrintableHtml(
 <body>
   <header>
     <h1>${printableTitle}</h1>
-    <div class="meta">
-      Category: ${safeCategoryLabel}<br />
+    <div class="top-grid">
+      <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
+      <div><strong>Difficulty:</strong> ${difficultyLabel}</div>
+      <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
+      <div><strong>Downloaded:</strong> ${printedDate}</div>
       ${
         testNumber
-          ? `Test number: ${escapeHtml(String(testNumber))}<br />`
+          ? `<div><strong>Test number:</strong> ${escapeHtml(String(testNumber))}</div>`
           : ""
       }
-      Difficulty: ${difficultyLabel}<br />
-      Questions: ${downloadData.questions.length}<br />
-      Downloaded: ${printedDate}
+      <div><strong>YanBo attempt ID:</strong> ${escapeHtml(downloadData.attemptId)}</div>
     </div>
     <div class="watermark">
-      YanBo Learning | Licensed to ${safeUserEmail} | Attempt ${escapeHtml(
-        downloadData.attemptId
-      )} | For personal use only
+      YanBo Learning | Licensed to ${safeUserEmail} | For personal family use only. Please do not copy, resell, upload, or share this test.
     </div>
   </header>
 
-  <button class="no-print" onclick="window.print()" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #ffffff; cursor: pointer; margin-bottom: 18px;">
-    Print / Save as PDF
-  </button>
+  <button class="no-print" onclick="window.print()">Print / Save as PDF</button>
+
+  <section class="student-strip">
+    <div class="student-field">Student name:</div>
+    <div class="student-field">Date completed:</div>
+    <div class="student-field">Score:</div>
+  </section>
+
+  <section class="instructions">
+    <strong>Instructions</strong>
+    <ul>
+      <li>Answer all questions carefully.</li>
+      <li>Write your answers on the answer sheet or mark them beside each question.</li>
+      <li>Use the answers and explanations section only after completing the test.</li>
+    </ul>
+  </section>
 
   ${passageBlocks}
 
   <h2>Questions</h2>
   ${questionBlocks}
+
+  <section class="page-break">
+    <h2>Student answer sheet</h2>
+    <p>Use this page if you want to keep the question pages clean.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Question</th>
+          <th>Student answer</th>
+          <th>Mark</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${answerSheetRows}
+      </tbody>
+    </table>
+  </section>
 
   <section class="page-break">
     <h2>Answers and explanations</h2>
@@ -418,6 +589,10 @@ function buildPrintableHtml(
       </tbody>
     </table>
   </section>
+
+  <footer>
+    YanBo Learning printable custom test. Licensed to ${safeUserEmail}. Generated ${printedDate}.
+  </footer>
 </body>
 </html>`
 }
