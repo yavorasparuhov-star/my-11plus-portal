@@ -78,6 +78,11 @@ type TopicPool = {
   questions: NormalizedQuestion[]
 }
 
+type PreviousCustomTestItemRow = {
+  source_type: string | null
+  source_id: number | null
+}
+
 type StandardTableConfig = {
   testsTable: string
   questionsTable: string
@@ -305,6 +310,53 @@ function getQuestionGuardKey(question: NormalizedQuestion): string {
   }
 
   return `${question.sourceType}:${String(question.sourceId)}`
+}
+
+function getPreviousItemGuardKey(
+  sourceType: string | null,
+  sourceId: number | null
+): string | null {
+  if (!sourceType || typeof sourceId !== "number") {
+    return null
+  }
+
+  if (sourceType === "words_vocabulary" || sourceType === "words_spelling") {
+    return `word:${String(sourceId)}`
+  }
+
+  return `${sourceType}:${String(sourceId)}`
+}
+
+function isQuestionPreviouslyUsed(
+  question: NormalizedQuestion,
+  previouslyUsedGuardKeys: Set<string>
+): boolean {
+  return previouslyUsedGuardKeys.has(getQuestionGuardKey(question))
+}
+
+function splitQuestionsFreshFirst(
+  questions: NormalizedQuestion[],
+  previouslyUsedGuardKeys: Set<string>
+): NormalizedQuestion[] {
+  const uniqueByGuardKey = new Map<string, NormalizedQuestion>()
+
+  for (const question of questions) {
+    const guardKey = getQuestionGuardKey(question)
+
+    if (!uniqueByGuardKey.has(guardKey)) {
+      uniqueByGuardKey.set(guardKey, question)
+    }
+  }
+
+  const uniqueQuestions = Array.from(uniqueByGuardKey.values())
+  const freshQuestions = uniqueQuestions.filter(
+    (question) => !isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys)
+  )
+  const reusedQuestions = uniqueQuestions.filter((question) =>
+    isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys)
+  )
+
+  return [...shuffleArray(freshQuestions), ...shuffleArray(reusedQuestions)]
 }
 
 function buildShuffledTextOptions(
@@ -803,6 +855,31 @@ async function fetchStandardQuestions(
   return (data ?? []) as unknown as StandardQuestionRow[]
 }
 
+async function fetchPreviouslyUsedQuestionGuardKeys(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  userId: string,
+  mainCategory: MainCategory
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("custom_test_attempt_items")
+    .select("source_type, source_id")
+    .eq("user_id", userId)
+    .eq("main_category", mainCategory)
+    .range(0, 9999)
+
+  if (error) {
+    console.error("Failed to fetch previous custom test questions:", error)
+    return new Set<string>()
+  }
+
+  const rows = (data ?? []) as PreviousCustomTestItemRow[]
+  const guardKeys = rows
+    .map((row) => getPreviousItemGuardKey(row.source_type, row.source_id))
+    .filter((key): key is string => typeof key === "string" && key.length > 0)
+
+  return new Set(guardKeys)
+}
+
 function normalizeStandardQuestions(
   mainCategory: NonEnglishMainCategory,
   topicKey: string,
@@ -1047,14 +1124,12 @@ function validateTopicSelection(
 
 function selectFinalQuestions(
   topicPools: TopicPool[],
-  questionCount: number
+  questionCount: number,
+  previouslyUsedGuardKeys: Set<string>
 ): NormalizedQuestion[] {
   const preparedPools = topicPools.map((pool) => ({
     topicKey: pool.topicKey,
-    questions:
-      pool.topicKey === "comprehension"
-        ? [...pool.questions]
-        : shuffleArray(pool.questions),
+    questions: splitQuestionsFreshFirst(pool.questions, previouslyUsedGuardKeys),
   }))
 
   const perTopicTargets = distributeCounts(questionCount, preparedPools.length)
@@ -1086,16 +1161,27 @@ function selectFinalQuestions(
     }
   })
 
-  const leftovers = shuffleArray(
-    preparedPools.flatMap((pool, poolIndex) =>
-      pool.questions
-        .filter((question) => !selectedRunnerIds.has(question.runnerId))
-        .map((question) => ({
-          question,
-          poolIndex,
-        }))
+  const leftoverItems = preparedPools.flatMap((pool, poolIndex) =>
+    pool.questions
+      .filter((question) => !selectedRunnerIds.has(question.runnerId))
+      .map((question) => ({
+        question,
+        poolIndex,
+      }))
+  )
+
+  const leftoverFreshItems = shuffleArray(
+    leftoverItems.filter(
+      (item) => !isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys)
     )
   )
+  const leftoverReusedItems = shuffleArray(
+    leftoverItems.filter((item) =>
+      isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys)
+    )
+  )
+
+  const leftovers = [...leftoverFreshItems, ...leftoverReusedItems]
 
   for (const item of leftovers) {
     if (selectedRunnerIds.size >= questionCount) break
@@ -1167,6 +1253,11 @@ export async function POST(request: NextRequest) {
     const uniqueTopicKeys = Array.from(new Set(config.topicKeys))
     const catalog = getMainCategoryCatalog(config.mainCategory)
     const mainCategoryLabel = catalog?.label ?? config.mainCategory.toUpperCase()
+    const previouslyUsedGuardKeys = await fetchPreviouslyUsedQuestionGuardKeys(
+      supabase,
+      user.id,
+      config.mainCategory
+    )
 
     if (config.mainCategory === "english") {
       const topicTargets = distributeCounts(
@@ -1285,7 +1376,8 @@ export async function POST(request: NextRequest) {
 
       const finalQuestions = selectFinalQuestions(
         topicPools,
-        config.questionCount
+        config.questionCount,
+        previouslyUsedGuardKeys
       )
 
       if (finalQuestions.length < config.questionCount) {
@@ -1334,7 +1426,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const finalQuestions = selectFinalQuestions(topicPools, config.questionCount)
+    const finalQuestions = selectFinalQuestions(
+      topicPools,
+      config.questionCount,
+      previouslyUsedGuardKeys
+    )
 
     if (finalQuestions.length < config.questionCount) {
       return jsonError(
