@@ -1292,7 +1292,9 @@ async function createDownloadedCustomTestAttempt(
     question_snapshot: question,
     selected_answer: null,
     correct_answer: question.correctAnswer,
-    is_correct: null,
+    // Downloaded tests are unanswered online, but this column is NOT NULL.
+    // Store false so the row can be saved; downloaded attempts are identified by status = "downloaded".
+    is_correct: false,
   }))
 
   const { error: itemsError } = await supabase
