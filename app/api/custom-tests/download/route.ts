@@ -1351,6 +1351,8 @@ async function buildDownloadResponse(
 }
 
 export async function POST(request: NextRequest) {
+  console.log("CUSTOM TEST DOWNLOAD ROUTE HIT")
+
   try {
     const authenticatedClient = getAuthenticatedSupabaseClient(request)
 
