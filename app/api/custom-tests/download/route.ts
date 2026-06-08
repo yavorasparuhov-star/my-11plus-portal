@@ -1262,9 +1262,11 @@ async function createDownloadedCustomTestAttempt(
       time_limit_seconds: config.totalTimeMinutes * 60,
       started_at: nowIso,
       completed_at: nowIso,
-      time_taken_seconds: null,
-      correct_answers: null,
-      score_percent: null,
+      // Downloaded tests are not answered online, but these columns are NOT NULL in Supabase.
+      // Use zero values so the attempt can be recorded and the downloaded questions count as used.
+      time_taken_seconds: 0,
+      correct_answers: 0,
+      score_percent: 0,
     })
     .select("id")
     .single()
@@ -1350,10 +1352,9 @@ async function buildDownloadResponse(
   return NextResponse.json(response)
 }
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
-
 export async function POST(request: NextRequest) {
+  console.log("CUSTOM TEST DOWNLOAD ROUTE HIT")
+
   try {
     const authenticatedClient = getAuthenticatedSupabaseClient(request)
 
@@ -1550,7 +1551,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      return await buildDownloadResponse(
+      return buildDownloadResponse(
         supabase,
         user.id,
         config,
@@ -1598,7 +1599,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return await buildDownloadResponse(
+    return buildDownloadResponse(
       supabase,
       user.id,
       config,
@@ -1606,20 +1607,12 @@ export async function POST(request: NextRequest) {
       downloadsUsedToday
     )
   } catch (error) {
-    console.error("CUSTOM TEST DOWNLOAD ROUTE ERROR:", error)
-
     const message =
       error instanceof Error
         ? error.message
-        : "Unexpected error while generating downloadable custom test."
+        : "Unexpected error while generating custom test."
 
-    return NextResponse.json<DownloadCustomTestResponse>(
-      {
-        ok: false,
-        error: message,
-      },
-      { status: 500 }
-    )
+    return jsonError(message, 500)
   }
 }
 
