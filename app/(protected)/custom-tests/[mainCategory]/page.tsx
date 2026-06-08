@@ -46,6 +46,373 @@ function renderDifficultyLabel(value: DifficultyFilter) {
   return "Hard"
 }
 
+type PrintableOption = {
+  key: string
+  text: string | null
+  imageUrl: string | null
+}
+
+type PrintableQuestion = {
+  runnerId: string
+  sourceId: number
+  topicKey: string
+  subtopicKey: string | null
+  prompt: string | null
+  questionText: string | null
+  passageText: string | null
+  imageUrl: string | null
+  options: PrintableOption[]
+  correctAnswer: string
+  explanation: string | null
+  difficulty: number | null
+}
+
+type DownloadCustomTestData = {
+  attemptId: string
+  config: CustomTestBuilderConfig
+  questions: PrintableQuestion[]
+  createdAt: string
+  dailyLimit: number
+  downloadsUsedToday: number
+}
+
+type DownloadCustomTestResponse =
+  | {
+      ok: true
+      data: DownloadCustomTestData
+    }
+  | {
+      ok: false
+      error: string
+    }
+
+function escapeHtml(value: string | null | undefined) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;")
+}
+
+function formatDateForFileName(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  return date.toISOString().slice(0, 10)
+}
+
+function formatDateForPrint(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleDateString("en-GB")
+  }
+
+  return date.toLocaleDateString("en-GB")
+}
+
+function formatTopicName(topicKey: string) {
+  return topicKey
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+function buildPrintableHtml(
+  downloadData: DownloadCustomTestData,
+  categoryLabel: string,
+  userEmail: string | null | undefined
+) {
+  const safeCategoryLabel = escapeHtml(categoryLabel)
+  const safeUserEmail = escapeHtml(userEmail ?? "member")
+  const printedDate = escapeHtml(formatDateForPrint(downloadData.createdAt))
+  const difficultyLabel = escapeHtml(
+    renderDifficultyLabel(downloadData.config.selectedDifficulty)
+  )
+
+  const passageBlocks = Array.from(
+    new Map(
+      downloadData.questions
+        .filter((question) => question.passageText)
+        .map((question) => [question.passageText, question.passageText])
+    ).values()
+  )
+    .map(
+      (passage, index) => `
+        <section class="passage-block">
+          <h2>Passage ${index + 1}</h2>
+          <p>${escapeHtml(passage).replaceAll("\n", "<br />")}</p>
+        </section>
+      `
+    )
+    .join("")
+
+  const questionBlocks = downloadData.questions
+    .map((question, index) => {
+      const questionText =
+        question.questionText?.trim() ||
+        question.prompt?.trim() ||
+        "Choose the correct answer."
+
+      const optionBlocks = question.options
+        .map((option) => {
+          const optionText = option.text?.trim()
+            ? `<span>${escapeHtml(option.text)}</span>`
+            : ""
+
+          const optionImage = option.imageUrl
+            ? `<img src="${escapeHtml(option.imageUrl)}" alt="Option ${escapeHtml(
+                option.key
+              )}" />`
+            : ""
+
+          return `
+            <li>
+              <strong>${escapeHtml(option.key)}.</strong>
+              ${optionText}
+              ${optionImage}
+            </li>
+          `
+        })
+        .join("")
+
+      const questionImage = question.imageUrl
+        ? `<img class="question-image" src="${escapeHtml(
+            question.imageUrl
+          )}" alt="Question ${index + 1}" />`
+        : ""
+
+      const topicLine = [
+        formatTopicName(question.topicKey),
+        question.subtopicKey ? formatTopicName(question.subtopicKey) : "",
+        question.difficulty ? `Difficulty ${question.difficulty}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+
+      return `
+        <section class="question-block">
+          <div class="question-meta">${escapeHtml(topicLine)}</div>
+          <h3>Question ${index + 1}</h3>
+          ${
+            question.prompt
+              ? `<p class="prompt">${escapeHtml(question.prompt)}</p>`
+              : ""
+          }
+          <p>${escapeHtml(questionText).replaceAll("\n", "<br />")}</p>
+          ${questionImage}
+          <ol class="options" type="A">
+            ${optionBlocks}
+          </ol>
+        </section>
+      `
+    })
+    .join("")
+
+  const answerRows = downloadData.questions
+    .map((question, index) => {
+      const explanation = question.explanation?.trim()
+        ? escapeHtml(question.explanation)
+        : "—"
+
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(question.correctAnswer)}</td>
+          <td>${explanation}</td>
+        </tr>
+      `
+    })
+    .join("")
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>YanBo Learning Printable Custom Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #111827;
+      margin: 32px;
+      line-height: 1.5;
+    }
+
+    header {
+      border-bottom: 2px solid #d9f99d;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 28px;
+    }
+
+    h2 {
+      margin-top: 28px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .meta {
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    .watermark {
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .passage-block,
+    .question-block {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 18px;
+      break-inside: avoid;
+    }
+
+    .question-meta {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .prompt {
+      color: #374151;
+      font-weight: 700;
+    }
+
+    .options {
+      margin-top: 12px;
+    }
+
+    .options li {
+      margin-bottom: 10px;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      margin-top: 8px;
+    }
+
+    .question-image {
+      display: block;
+      max-height: 300px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th,
+    td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f4f6;
+    }
+
+    .page-break {
+      break-before: page;
+      page-break-before: always;
+    }
+
+    @media print {
+      body {
+        margin: 18mm;
+      }
+
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>YanBo Learning Printable Custom Test</h1>
+    <div class="meta">
+      Category: ${safeCategoryLabel}<br />
+      Difficulty: ${difficultyLabel}<br />
+      Questions: ${downloadData.questions.length}<br />
+      Downloaded: ${printedDate}
+    </div>
+    <div class="watermark">
+      YanBo Learning | Licensed to ${safeUserEmail} | Attempt ${escapeHtml(
+        downloadData.attemptId
+      )} | For personal use only
+    </div>
+  </header>
+
+  <button class="no-print" onclick="window.print()" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #ffffff; cursor: pointer; margin-bottom: 18px;">
+    Print / Save as PDF
+  </button>
+
+  ${passageBlocks}
+
+  <h2>Questions</h2>
+  ${questionBlocks}
+
+  <section class="page-break">
+    <h2>Answers and explanations</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Question</th>
+          <th>Answer</th>
+          <th>Explanation</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${answerRows}
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>`
+}
+
+function downloadPrintableHtml(
+  downloadData: DownloadCustomTestData,
+  categoryLabel: string,
+  userEmail: string | null | undefined
+) {
+  const html = buildPrintableHtml(downloadData, categoryLabel, userEmail)
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  const datePart = formatDateForFileName(downloadData.createdAt)
+
+  anchor.href = url
+  anchor.download = `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}.html`
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
 export default function CustomTestBuilderPage() {
   const params = useParams<{ mainCategory: string }>()
   const router = useRouter()
@@ -68,6 +435,7 @@ export default function CustomTestBuilderPage() {
   const [errorMessage, setErrorMessage] = useState<string>("")
   const [successMessage, setSuccessMessage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
+  const [isDownloading, setIsDownloading] = useState<boolean>(false)
 
   useEffect(() => {
     if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) return
@@ -266,6 +634,82 @@ export default function CustomTestBuilderPage() {
     }
   }
 
+  async function handleDownloadPrintableTest() {
+    setErrorMessage("")
+    setSuccessMessage("")
+
+    const config = buildConfig()
+    if (!config || !catalog) return
+
+    try {
+      setIsDownloading(true)
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session) {
+        setErrorMessage("Please sign in to download printable custom tests.")
+        return
+      }
+
+      sessionStorage.setItem(
+        buildBuilderStorageKey(config.mainCategory),
+        JSON.stringify(config)
+      )
+      sessionStorage.setItem("custom-test-builder:last-config", JSON.stringify(config))
+
+      const response = await fetch("/api/custom-tests/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(config),
+      })
+
+      const rawText = await response.text()
+
+      if (!rawText) {
+        setErrorMessage(
+          `Download route returned an empty response (${response.status} ${response.statusText}). Check terminal output.`
+        )
+        return
+      }
+
+      let result: DownloadCustomTestResponse
+
+      try {
+        result = JSON.parse(rawText) as DownloadCustomTestResponse
+      } catch {
+        setErrorMessage(
+          `Download route did not return JSON. Status: ${response.status}. Check terminal output.`
+        )
+        return
+      }
+
+      if (!response.ok || !result.ok) {
+        setErrorMessage(result.ok ? "Could not download printable test." : result.error)
+        return
+      }
+
+      downloadPrintableHtml(result.data, catalog.label, session.user.email)
+
+      setSuccessMessage(
+        `Printable test downloaded. You have used ${result.data.downloadsUsedToday} of ${result.data.dailyLimit} ${catalog.label} downloads today.`
+      )
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unexpected error while downloading the printable test."
+      )
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   function renderSelectedTopicSummary(topic: TopicCatalogItem) {
     const selectedSubtopics = subtopicMap[topic.key] ?? []
 
@@ -381,6 +825,23 @@ export default function CustomTestBuilderPage() {
         >
           <div>
             <p style={{ margin: "0 0 6px 0", color: "#6b7280", fontSize: "0.95rem" }}>
+              <button
+                onClick={handleDownloadPrintableTest}
+                type="button"
+                disabled={isGenerating || isDownloading}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #bfdbfe",
+                  background: isDownloading ? "#e5e7eb" : "#dbeafe",
+                  color: isDownloading ? "#6b7280" : "#1e3a8a",
+                  fontWeight: 700,
+                  cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                }}
+              >
+                {isDownloading ? "Preparing Download..." : "Download Printable Test"}
+              </button>
+
               <Link
                 href="/custom-tests"
                 style={{ color: "#6b7280", textDecoration: "none" }}
@@ -740,7 +1201,7 @@ export default function CustomTestBuilderPage() {
               <button
                 onClick={handleGenerateCustomTest}
                 type="button"
-                disabled={isGenerating}
+                disabled={isGenerating || isDownloading}
                 style={{
                   padding: "12px 18px",
                   borderRadius: 10,
