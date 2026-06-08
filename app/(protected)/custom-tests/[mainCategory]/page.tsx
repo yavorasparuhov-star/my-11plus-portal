@@ -327,14 +327,14 @@ function buildPrintableHtml(
     }
 
     h2 {
-      margin: 30px 0 12px;
-      font-size: 22px;
+      margin: 18px 0 10px;
+      font-size: 20px;
       color: var(--brand);
     }
 
     h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: 15px;
     }
 
     .top-grid {
@@ -410,11 +410,9 @@ function buildPrintableHtml(
     .passage-block,
     .question-block {
       border: 1px solid var(--soft-line);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 16px;
-      break-inside: avoid;
-      page-break-inside: avoid;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 9px;
     }
 
     .passage-block {
@@ -425,8 +423,8 @@ function buildPrintableHtml(
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 10px;
+      margin-bottom: 4px;
     }
 
     .question-meta {
@@ -438,25 +436,29 @@ function buildPrintableHtml(
     .prompt {
       color: #374151;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin: 4px 0;
+      font-size: 13px;
     }
 
     .question-text {
-      margin-top: 6px;
-      font-size: 15px;
+      margin: 4px 0 6px;
+      font-size: 13px;
+      line-height: 1.35;
     }
 
     .options {
       list-style: none;
-      margin: 12px 0 0;
+      margin: 6px 0 0;
       padding: 0;
+      font-size: 12px;
+      line-height: 1.25;
     }
 
     .options li {
       display: grid;
-      grid-template-columns: 28px 1fr;
-      gap: 6px;
-      margin-bottom: 9px;
+      grid-template-columns: 24px 1fr;
+      gap: 4px;
+      margin-bottom: 4px;
       align-items: start;
     }
 
@@ -477,7 +479,7 @@ function buildPrintableHtml(
 
     .question-image {
       display: block;
-      max-height: 300px;
+      max-height: 210px;
     }
 
     table {
@@ -540,14 +542,14 @@ function buildPrintableHtml(
     .answer-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 7px;
+      gap: 12px 14px;
       align-items: start;
     }
 
     .answer-card {
-      border: 1.5px solid #2f80ed;
+      border: 1.3px solid #2f80ed;
       background: #f8fbff;
-      min-height: 86px;
+      min-height: 72px;
       break-inside: avoid;
       page-break-inside: avoid;
     }
@@ -556,25 +558,28 @@ function buildPrintableHtml(
       background: #2f80ed;
       color: #ffffff;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1;
-      padding: 5px 6px;
-      text-align: left;
+      padding: 4px 5px;
+      text-align: center;
     }
 
     .answer-card-options {
-      padding: 5px 6px 6px;
+      padding: 4px 5px 5px;
+      display: grid;
+      gap: 1px;
+      justify-items: center;
     }
 
     .answer-option-row {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 4px;
-      min-height: 16px;
-      font-size: 12px;
+      justify-content: center;
+      gap: 5px;
+      min-height: 13px;
+      font-size: 11px;
       font-weight: 700;
-      line-height: 1.1;
+      line-height: 1;
     }
 
     .answer-option-letter {
@@ -583,9 +588,9 @@ function buildPrintableHtml(
 
     .answer-line-box {
       display: inline-block;
-      width: 20px;
-      height: 7px;
-      border: 1.4px solid #2f80ed;
+      width: 18px;
+      height: 6px;
+      border: 1.3px solid #2f80ed;
       background: #ffffff;
       flex: 0 0 auto;
     }
