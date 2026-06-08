@@ -245,16 +245,32 @@ function buildPrintableHtml(
     })
     .join("")
 
-  const answerSheetRows = downloadData.questions
-    .map(
-      (_question, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td class="answer-box"></td>
-          <td class="mark-box"></td>
-        </tr>
+  const answerSheetCards = downloadData.questions
+    .map((question, index) => {
+      const availableOptions = question.options.length
+        ? question.options.map((option) => option.key)
+        : (["A", "B", "C", "D"] as string[])
+
+      const optionRows = availableOptions
+        .map(
+          (optionKey) => `
+            <div class="answer-option-row">
+              <span class="answer-option-letter">${escapeHtml(optionKey)}</span>
+              <span class="answer-line-box" aria-hidden="true"></span>
+            </div>
+          `
+        )
+        .join("")
+
+      return `
+        <div class="answer-card">
+          <div class="answer-card-number">${index + 1}</div>
+          <div class="answer-card-options">
+            ${optionRows}
+          </div>
+        </div>
       `
-    )
+    })
     .join("")
 
   const answerRows = downloadData.questions
@@ -279,6 +295,11 @@ function buildPrintableHtml(
   <meta charset="utf-8" />
   <title>${printableTitle}</title>
   <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
     :root {
       --ink: #111827;
       --muted: #4b5563;
@@ -479,13 +500,94 @@ function buildPrintableHtml(
       color: #374151;
     }
 
-    .answer-box {
-      height: 28px;
-      width: 45%;
+    .answer-sheet-intro {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      margin: 10px 0 12px;
+      font-size: 12px;
+      color: var(--muted);
     }
 
-    .mark-box {
-      width: 20%;
+    .answer-sheet-instruction {
+      border-top: 2px solid #2f80ed;
+      border-bottom: 2px solid #2f80ed;
+      padding: 7px 0;
+      margin: 10px 0 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .answer-example {
+      display: inline-block;
+      width: 20px;
+      height: 7px;
+      border: 1.4px solid #2f80ed;
+      margin: 0 4px;
+      vertical-align: middle;
+      position: relative;
+    }
+
+    .answer-example::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      top: 2px;
+      border-top: 1.8px solid #111827;
+    }
+
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+      align-items: start;
+    }
+
+    .answer-card {
+      border: 1.5px solid #2f80ed;
+      background: #f8fbff;
+      min-height: 86px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .answer-card-number {
+      background: #2f80ed;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1;
+      padding: 5px 6px;
+      text-align: left;
+    }
+
+    .answer-card-options {
+      padding: 5px 6px 6px;
+    }
+
+    .answer-option-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      min-height: 16px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .answer-option-letter {
+      color: #111827;
+    }
+
+    .answer-line-box {
+      display: inline-block;
+      width: 20px;
+      height: 7px;
+      border: 1.4px solid #2f80ed;
+      background: #ffffff;
+      flex: 0 0 auto;
     }
 
     .page-break {
@@ -502,7 +604,7 @@ function buildPrintableHtml(
 
     @media print {
       body {
-        margin: 14mm;
+        margin: 0;
       }
 
       header {
@@ -519,6 +621,7 @@ function buildPrintableHtml(
   <header>
     <h1>${printableTitle}</h1>
     <div class="top-grid">
+      <div><strong>Website:</strong> yanbo.co.uk</div>
       <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
       <div><strong>Difficulty:</strong> ${difficultyLabel}</div>
       <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
@@ -547,7 +650,7 @@ function buildPrintableHtml(
     <strong>Instructions</strong>
     <ul>
       <li>Answer all questions carefully.</li>
-      <li>Write your answers on the answer sheet or mark them beside each question.</li>
+      <li>Mark your answers on the answer sheet by drawing one clear horizontal line through the rectangle next to your chosen answer.</li>
       <li>Use the answers and explanations section only after completing the test.</li>
     </ul>
   </section>
@@ -557,21 +660,20 @@ function buildPrintableHtml(
   <h2>Questions</h2>
   ${questionBlocks}
 
-  <section class="page-break">
+  <section class="page-break answer-sheet-page">
     <h2>Student answer sheet</h2>
-    <p>Use this page if you want to keep the question pages clean.</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Question</th>
-          <th>Student answer</th>
-          <th>Mark</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${answerSheetRows}
-      </tbody>
-    </table>
+    <div class="answer-sheet-intro">
+      <div><strong>Name:</strong> ______________________________</div>
+      <div><strong>Date:</strong> ______________________________</div>
+      <div><strong>Test:</strong> ${printableTitle}</div>
+      <div><strong>Score:</strong> ______ / ${downloadData.questions.length}</div>
+    </div>
+    <div class="answer-sheet-instruction">
+      Draw one clear horizontal line through the rectangle next to your answer, like <span class="answer-example"></span>.
+    </div>
+    <div class="answer-grid">
+      ${answerSheetCards}
+    </div>
   </section>
 
   <section class="page-break">
@@ -591,7 +693,7 @@ function buildPrintableHtml(
   </section>
 
   <footer>
-    YanBo Learning printable custom test. Licensed to ${safeUserEmail}. Generated ${printedDate}.
+    YanBo Learning | yanbo.co.uk | Printable custom test. Licensed to ${safeUserEmail}. Generated ${printedDate}.
   </footer>
 </body>
 </html>`
