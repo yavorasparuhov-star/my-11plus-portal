@@ -130,15 +130,6 @@ function formatDateForPrint(value: string) {
   return date.toLocaleDateString("en-GB")
 }
 
-function formatTopicName(topicKey: string) {
-  return topicKey
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
 
 function buildPrintableHtml(
   downloadData: DownloadCustomTestData,
@@ -148,8 +139,8 @@ function buildPrintableHtml(
   const safeCategoryLabel = escapeHtml(categoryLabel)
   const safeUserEmail = escapeHtml(userEmail ?? "member")
   const printedDate = escapeHtml(formatDateForPrint(downloadData.createdAt))
-  const difficultyLabel = escapeHtml(
-    renderDifficultyLabel(downloadData.config.selectedDifficulty)
+  const timeAllowedLabel = escapeHtml(
+    `${downloadData.config.totalTimeMinutes ?? 0} minutes`
   )
   const testNumber =
     downloadData.metadata?.testNumber ?? downloadData.downloadNumber ?? null
@@ -199,9 +190,8 @@ function buildPrintableHtml(
 
           return `
             <li>
-              <strong>${escapeHtml(option.key)}.</strong>
-              ${optionText}
-              ${optionImage}
+              <span class="option-letter">${escapeHtml(option.key)}.</span>
+              <span class="option-content">${optionText}${optionImage}</span>
             </li>
           `
         })
@@ -213,19 +203,10 @@ function buildPrintableHtml(
           )}" alt="Question ${index + 1}" />`
         : ""
 
-      const topicLine = [
-        formatTopicName(question.topicKey),
-        question.subtopicKey ? formatTopicName(question.subtopicKey) : "",
-        question.difficulty ? `Difficulty ${question.difficulty}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ")
-
       return `
         <section class="question-block">
           <div class="question-header">
             <h3>Question ${index + 1}</h3>
-            <div class="question-meta">${escapeHtml(topicLine)}</div>
           </div>
           ${
             question.prompt && question.prompt.trim() !== questionText.trim()
@@ -237,9 +218,9 @@ function buildPrintableHtml(
             "<br />"
           )}</p>
           ${questionImage}
-          <ol class="options" type="A">
+          <ul class="options">
             ${optionBlocks}
-          </ol>
+          </ul>
         </section>
       `
     })
@@ -298,6 +279,13 @@ function buildPrintableHtml(
     @page {
       size: A4 portrait;
       margin: 10mm;
+
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10px;
+        color: #6b7280;
+      }
     }
 
     :root {
@@ -459,13 +447,25 @@ function buildPrintableHtml(
     }
 
     .options {
-      margin-top: 12px;
-      padding-left: 28px;
+      list-style: none;
+      margin: 12px 0 0;
+      padding: 0;
     }
 
     .options li {
-      margin-bottom: 10px;
-      padding-left: 4px;
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 6px;
+      margin-bottom: 9px;
+      align-items: start;
+    }
+
+    .option-letter {
+      font-weight: 800;
+    }
+
+    .option-content span {
+      display: inline;
     }
 
     img {
@@ -623,7 +623,7 @@ function buildPrintableHtml(
     <div class="top-grid">
       <div><strong>Website:</strong> yanbo.co.uk</div>
       <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
-      <div><strong>Difficulty:</strong> ${difficultyLabel}</div>
+      <div><strong>Time allowed:</strong> ${timeAllowedLabel}</div>
       <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
       <div><strong>Downloaded:</strong> ${printedDate}</div>
       ${
@@ -649,16 +649,18 @@ function buildPrintableHtml(
   <section class="instructions">
     <strong>Instructions</strong>
     <ul>
+      <li>You have ${timeAllowedLabel} to complete this test.</li>
       <li>Answer all questions carefully.</li>
       <li>Mark your answers on the answer sheet by drawing one clear horizontal line through the rectangle next to your chosen answer.</li>
       <li>Use the answers and explanations section only after completing the test.</li>
     </ul>
   </section>
 
-  ${passageBlocks}
-
-  <h2>Questions</h2>
-  ${questionBlocks}
+  <section class="page-break question-paper-page">
+    <h2>Questions</h2>
+    ${passageBlocks}
+    ${questionBlocks}
+  </section>
 
   <section class="page-break answer-sheet-page">
     <h2>Student answer sheet</h2>
