@@ -283,7 +283,7 @@ function buildPrintableHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 12mm 10mm 12mm 10mm;
+      margin: 18mm 10mm 16mm 10mm;
 
       @bottom-left {
         content: "yanbo.co.uk";
@@ -330,8 +330,8 @@ function buildPrintableHtml(
     body {
       font-family: Arial, Helvetica, sans-serif;
       color: var(--ink);
-      margin: 26px;
-      line-height: 1.42;
+      margin: 22px;
+      line-height: 1.38;
       background: #ffffff;
     }
 
@@ -360,14 +360,14 @@ function buildPrintableHtml(
       border: 2px solid var(--brand-soft);
       border-left: 8px solid var(--brand);
       border-radius: 16px;
-      margin-bottom: 18px;
-      padding: 16px 18px;
+      margin-bottom: 12px;
+      padding: 14px 16px;
       background: linear-gradient(90deg, #f0fdf4, #ffffff);
     }
 
     h1 {
-      margin: 0 0 10px 0;
-      font-size: 30px;
+      margin: 0 0 8px 0;
+      font-size: 26px;
       color: var(--brand);
       letter-spacing: -0.02em;
     }
@@ -597,19 +597,19 @@ function buildPrintableHtml(
     .answer-grid {
       display: grid;
       grid-template-columns: repeat(8, 1fr);
-      gap: 10px 12px;
+      gap: 9px 11px;
       align-items: start;
       justify-content: center;
     }
 
     .answer-card {
       position: relative;
-      min-height: 78px;
+      min-height: 74px;
       border: 1.4px solid var(--answer-green);
-      background: linear-gradient(90deg, #ffffff 0 44%, var(--answer-green-soft) 44% 100%);
+      background: linear-gradient(90deg, #ffffff 0 43%, var(--answer-green-soft) 43% 100%);
       break-inside: avoid;
       page-break-inside: avoid;
-      padding: 13px 5px 5px;
+      padding: 12px 4px 4px;
     }
 
     .answer-card-number {
@@ -619,10 +619,10 @@ function buildPrintableHtml(
       min-width: 19px;
       min-height: 17px;
       padding: 2px 4px;
-      background: var(--answer-green-dark);
-      color: #ffffff;
-      border-right: 1.4px solid var(--answer-green-dark);
-      border-bottom: 1.4px solid var(--answer-green-dark);
+      background: var(--answer-green-soft);
+      color: #111827;
+      border-right: 1.4px solid var(--answer-green);
+      border-bottom: 1.4px solid var(--answer-green);
       font-weight: 900;
       font-size: 10px;
       line-height: 1.05;
@@ -633,14 +633,14 @@ function buildPrintableHtml(
       display: grid;
       gap: 3px;
       justify-items: center;
-      margin-top: 2px;
+      margin-top: 1px;
     }
 
     .answer-option-row {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 5px;
       min-height: 10px;
       font-size: 10px;
       font-weight: 800;
@@ -656,7 +656,7 @@ function buildPrintableHtml(
 
     .answer-line-box {
       display: inline-block;
-      width: 18px;
+      width: 17px;
       height: 6px;
       border: 1.2px solid var(--answer-green);
       background: #ffffff;
@@ -673,12 +673,11 @@ function buildPrintableHtml(
       margin-top: 0;
     }
 
-    @media print {
-      .question-paper-page,
-      .answer-sheet-page,
-      .qa-page {
-        padding-top: 2mm;
-      }
+    .question-paper-page,
+    .answer-sheet-page,
+    .qa-page {
+      break-before: page;
+      page-break-before: always;
     }
 
     footer {
@@ -691,15 +690,13 @@ function buildPrintableHtml(
     @media print {
       body {
         margin: 0;
-        padding-top: 24mm;
-        padding-bottom: 14mm;
-        line-height: 1.34;
+        padding-top: 0;
+        padding-bottom: 0;
+        line-height: 1.3;
       }
 
       header.cover-page {
         background: #ffffff;
-        break-after: page;
-        page-break-after: always;
       }
 
       .print-header {
@@ -707,12 +704,13 @@ function buildPrintableHtml(
         top: 0;
         left: 0;
         right: 0;
-        height: 15mm;
+        height: 8mm;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border-bottom: 1.5px solid var(--answer-green);
-        font-size: 10.5px;
+        padding: 0 1mm;
+        font-size: 9.2px;
         font-weight: 800;
         background: #ffffff;
         z-index: 10;
@@ -723,11 +721,12 @@ function buildPrintableHtml(
         left: 0;
         right: 0;
         bottom: 0;
-        height: 9mm;
+        height: 8mm;
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
         align-items: center;
         border-top: 1.5px solid var(--answer-green);
+        padding: 0 1mm;
         font-size: 9px;
         color: #374151;
         background: #ffffff;
@@ -827,7 +826,7 @@ function buildPrintableHtml(
     </div>
   </section>
 
-  <section class="page-break">
+  <section class="page-break qa-page">
     <h2>Q and A</h2>
     <table>
       <thead>
