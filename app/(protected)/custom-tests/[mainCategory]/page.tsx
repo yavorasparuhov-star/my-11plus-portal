@@ -315,9 +315,12 @@ function buildPrintableHtml(
       --soft-bg: #f9fafb;
       --brand: #14532d;
       --brand-soft: #dcfce7;
+      --brand-pale: #ecfdf5;
       --pink: #ec4899;
       --yellow: #facc15;
-      --blue: var(--blue);
+      --answer-green: #15803d;
+      --answer-green-dark: #166534;
+      --answer-green-soft: #dcfce7;
     }
 
     * {
@@ -339,8 +342,9 @@ function buildPrintableHtml(
 
     .print-logo {
       font-weight: 900;
-      color: var(--brand);
+      color: #111827;
       white-space: nowrap;
+      letter-spacing: -0.01em;
     }
 
     .logo-y {
@@ -563,8 +567,8 @@ function buildPrintableHtml(
     }
 
     .answer-sheet-instruction {
-      border-top: 2px solid var(--blue);
-      border-bottom: 2px solid var(--blue);
+      border-top: 2px solid var(--answer-green);
+      border-bottom: 2px solid var(--answer-green);
       padding: 7px 0;
       margin: 10px 0 12px;
       font-size: 12px;
@@ -575,7 +579,7 @@ function buildPrintableHtml(
       display: inline-block;
       width: 20px;
       height: 7px;
-      border: 1.4px solid var(--blue);
+      border: 1.4px solid var(--answer-green);
       margin: 0 4px;
       vertical-align: middle;
       position: relative;
@@ -592,45 +596,53 @@ function buildPrintableHtml(
 
     .answer-grid {
       display: grid;
-      grid-template-columns: repeat(8, max-content);
-      gap: 12px 16px;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 10px 12px;
       align-items: start;
       justify-content: center;
     }
 
     .answer-card {
-      width: 39px;
-      border: 1.1px solid var(--blue);
-      background: #ffffff;
+      position: relative;
+      min-height: 78px;
+      border: 1.4px solid var(--answer-green);
+      background: linear-gradient(90deg, #ffffff 0 44%, var(--answer-green-soft) 44% 100%);
       break-inside: avoid;
       page-break-inside: avoid;
+      padding: 13px 5px 5px;
     }
 
     .answer-card-number {
-      background: #ffffff;
-      color: #111827;
-      border-bottom: 1.1px solid var(--blue);
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      min-width: 19px;
+      min-height: 17px;
+      padding: 2px 4px;
+      background: var(--answer-green-dark);
+      color: #ffffff;
+      border-right: 1.4px solid var(--answer-green-dark);
+      border-bottom: 1.4px solid var(--answer-green-dark);
       font-weight: 900;
-      font-size: 11px;
-      line-height: 1;
-      padding: 2px 3px;
+      font-size: 10px;
+      line-height: 1.05;
       text-align: center;
     }
 
     .answer-card-options {
-      padding: 2px 2px 3px;
       display: grid;
-      gap: 1px;
+      gap: 3px;
       justify-items: center;
+      margin-top: 2px;
     }
 
     .answer-option-row {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 2px;
+      gap: 8px;
       min-height: 10px;
-      font-size: 9.2px;
+      font-size: 10px;
       font-weight: 800;
       line-height: 1;
       white-space: nowrap;
@@ -638,15 +650,15 @@ function buildPrintableHtml(
 
     .answer-option-letter {
       color: #111827;
-      min-width: 7px;
+      min-width: 8px;
       text-align: right;
     }
 
     .answer-line-box {
       display: inline-block;
-      width: 13px;
-      height: 5px;
-      border: 1.1px solid var(--blue);
+      width: 18px;
+      height: 6px;
+      border: 1.2px solid var(--answer-green);
       background: #ffffff;
       flex: 0 0 auto;
     }
@@ -661,6 +673,14 @@ function buildPrintableHtml(
       margin-top: 0;
     }
 
+    @media print {
+      .question-paper-page,
+      .answer-sheet-page,
+      .qa-page {
+        padding-top: 2mm;
+      }
+    }
+
     footer {
       margin-top: 28px;
       color: #6b7280;
@@ -671,8 +691,8 @@ function buildPrintableHtml(
     @media print {
       body {
         margin: 0;
-        padding-top: 18mm;
-        padding-bottom: 13mm;
+        padding-top: 24mm;
+        padding-bottom: 14mm;
         line-height: 1.34;
       }
 
@@ -687,12 +707,12 @@ function buildPrintableHtml(
         top: 0;
         left: 0;
         right: 0;
-        height: 12mm;
+        height: 15mm;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        border-bottom: 1.5px solid var(--blue);
-        font-size: 11px;
+        border-bottom: 1.5px solid var(--answer-green);
+        font-size: 10.5px;
         font-weight: 800;
         background: #ffffff;
         z-index: 10;
@@ -707,7 +727,7 @@ function buildPrintableHtml(
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
         align-items: center;
-        border-top: 1.5px solid var(--blue);
+        border-top: 1.5px solid var(--answer-green);
         font-size: 9px;
         color: #374151;
         background: #ffffff;
@@ -737,7 +757,7 @@ function buildPrintableHtml(
 <body>
   <div class="print-header">
     <div>${shortTestTitle}</div>
-    <div class="print-logo"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning</div>
+    <div class="print-logo"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
   </div>
 
   <div class="print-footer">
