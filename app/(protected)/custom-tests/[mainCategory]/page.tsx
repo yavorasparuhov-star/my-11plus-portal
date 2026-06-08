@@ -283,7 +283,7 @@ function buildPrintableHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 18mm 10mm 16mm 10mm;
+      margin: 14mm 10mm 13mm 10mm;
 
       @bottom-left {
         content: "yanbo.co.uk";
@@ -701,16 +701,17 @@ function buildPrintableHtml(
 
       .print-header {
         position: fixed;
-        top: 0;
+        top: -11mm;
         left: 0;
         right: 0;
-        height: 8mm;
+        height: 7mm;
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: space-between;
         border-bottom: 1.5px solid var(--answer-green);
-        padding: 0 1mm;
-        font-size: 9.2px;
+        padding: 0 0 1.2mm;
+        font-size: 8.6px;
+        line-height: 1;
         font-weight: 800;
         background: #ffffff;
         z-index: 10;
@@ -720,17 +721,28 @@ function buildPrintableHtml(
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 0;
-        height: 8mm;
+        bottom: -10mm;
+        height: 7mm;
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        align-items: center;
+        align-items: flex-start;
         border-top: 1.5px solid var(--answer-green);
-        padding: 0 1mm;
-        font-size: 9px;
+        padding: 1.2mm 0 0;
+        font-size: 8.6px;
+        line-height: 1;
         color: #374151;
         background: #ffffff;
         z-index: 10;
+      }
+
+      .print-header + .print-footer + header.cover-page {
+        margin-top: 0;
+      }
+
+      .question-paper-page,
+      .answer-sheet-page,
+      .qa-page {
+        padding-top: 0;
       }
 
       .footer-center {
@@ -827,7 +839,7 @@ function buildPrintableHtml(
   </section>
 
   <section class="page-break qa-page">
-    <h2>Q and A</h2>
+    <h2>Questions and Answers</h2>
     <table>
       <thead>
         <tr>
