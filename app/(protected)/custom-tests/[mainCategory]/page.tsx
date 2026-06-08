@@ -150,6 +150,11 @@ function buildPrintableHtml(
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
         : "YanBo Learning Printable Custom Test")
   )
+  const shortTestTitle = escapeHtml(
+    testNumber
+      ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
+      : `YanBo Learning ${categoryLabel} Test`
+  )
 
   const passageBlocks = Array.from(
     new Map(
@@ -278,13 +283,27 @@ function buildPrintableHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 10mm;
+      margin: 12mm 10mm 12mm 10mm;
 
-      @bottom-right {
+      @bottom-left {
+        content: "yanbo.co.uk";
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9px;
+        color: #374151;
+      }
+
+      @bottom-center {
         content: "Page " counter(page) " of " counter(pages);
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 10px;
-        color: #6b7280;
+        font-size: 9px;
+        color: #374151;
+      }
+
+      @bottom-right {
+        content: "Please go on to the next page >>>";
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9px;
+        color: #374151;
       }
     }
 
@@ -296,6 +315,9 @@ function buildPrintableHtml(
       --soft-bg: #f9fafb;
       --brand: #14532d;
       --brand-soft: #dcfce7;
+      --pink: #ec4899;
+      --yellow: #facc15;
+      --blue: var(--blue);
     }
 
     * {
@@ -305,17 +327,37 @@ function buildPrintableHtml(
     body {
       font-family: Arial, Helvetica, sans-serif;
       color: var(--ink);
-      margin: 30px;
-      line-height: 1.5;
+      margin: 26px;
+      line-height: 1.42;
       background: #ffffff;
+    }
+
+    .print-header,
+    .print-footer {
+      display: none;
+    }
+
+    .print-logo {
+      font-weight: 900;
+      color: var(--brand);
+      white-space: nowrap;
+    }
+
+    .logo-y {
+      color: var(--pink);
+    }
+
+    .logo-b {
+      color: var(--yellow);
+      text-shadow: 0 0 0 #92400e;
     }
 
     header {
       border: 2px solid var(--brand-soft);
       border-left: 8px solid var(--brand);
       border-radius: 16px;
-      margin-bottom: 22px;
-      padding: 18px 20px;
+      margin-bottom: 18px;
+      padding: 16px 18px;
       background: linear-gradient(90deg, #f0fdf4, #ffffff);
     }
 
@@ -370,9 +412,13 @@ function buildPrintableHtml(
       margin-bottom: 18px;
     }
 
-    .instructions ul {
+    .instructions ol {
       margin: 8px 0 0 20px;
       padding: 0;
+    }
+
+    .instructions li {
+      margin-bottom: 5px;
     }
 
     .watermark {
@@ -517,8 +563,8 @@ function buildPrintableHtml(
     }
 
     .answer-sheet-instruction {
-      border-top: 2px solid #2f80ed;
-      border-bottom: 2px solid #2f80ed;
+      border-top: 2px solid var(--blue);
+      border-bottom: 2px solid var(--blue);
       padding: 7px 0;
       margin: 10px 0 12px;
       font-size: 12px;
@@ -529,7 +575,7 @@ function buildPrintableHtml(
       display: inline-block;
       width: 20px;
       height: 7px;
-      border: 1.4px solid #2f80ed;
+      border: 1.4px solid var(--blue);
       margin: 0 4px;
       vertical-align: middle;
       position: relative;
@@ -546,34 +592,33 @@ function buildPrintableHtml(
 
     .answer-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 16px 20px;
+      grid-template-columns: repeat(8, max-content);
+      gap: 12px 16px;
       align-items: start;
-      justify-items: center;
+      justify-content: center;
     }
 
     .answer-card {
-      width: 54px;
-      border: 1.2px solid #2f80ed;
+      width: 39px;
+      border: 1.1px solid var(--blue);
       background: #ffffff;
-      min-height: 62px;
       break-inside: avoid;
       page-break-inside: avoid;
     }
 
     .answer-card-number {
-      background: #eef6ff;
+      background: #ffffff;
       color: #111827;
-      border-bottom: 1.2px solid #2f80ed;
+      border-bottom: 1.1px solid var(--blue);
       font-weight: 900;
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1;
-      padding: 3px 4px;
+      padding: 2px 3px;
       text-align: center;
     }
 
     .answer-card-options {
-      padding: 3px 4px 4px;
+      padding: 2px 2px 3px;
       display: grid;
       gap: 1px;
       justify-items: center;
@@ -583,9 +628,9 @@ function buildPrintableHtml(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 3px;
-      min-height: 12px;
-      font-size: 10.5px;
+      gap: 2px;
+      min-height: 10px;
+      font-size: 9.2px;
       font-weight: 800;
       line-height: 1;
       white-space: nowrap;
@@ -593,13 +638,15 @@ function buildPrintableHtml(
 
     .answer-option-letter {
       color: #111827;
+      min-width: 7px;
+      text-align: right;
     }
 
     .answer-line-box {
       display: inline-block;
-      width: 15px;
+      width: 13px;
       height: 5px;
-      border: 1.2px solid #2f80ed;
+      border: 1.1px solid var(--blue);
       background: #ffffff;
       flex: 0 0 auto;
     }
@@ -607,6 +654,11 @@ function buildPrintableHtml(
     .page-break {
       break-before: page;
       page-break-before: always;
+    }
+
+    .question-paper-page h2,
+    .answer-sheet-page h2 {
+      margin-top: 0;
     }
 
     footer {
@@ -619,20 +671,82 @@ function buildPrintableHtml(
     @media print {
       body {
         margin: 0;
+        padding-top: 18mm;
+        padding-bottom: 13mm;
+        line-height: 1.34;
       }
 
-      header {
+      header.cover-page {
         background: #ffffff;
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .print-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 12mm;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1.5px solid var(--blue);
+        font-size: 11px;
+        font-weight: 800;
+        background: #ffffff;
+        z-index: 10;
+      }
+
+      .print-footer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 9mm;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        align-items: center;
+        border-top: 1.5px solid var(--blue);
+        font-size: 9px;
+        color: #374151;
+        background: #ffffff;
+        z-index: 10;
+      }
+
+      .footer-center {
+        text-align: center;
+      }
+
+      .footer-right {
+        text-align: right;
+        font-weight: 700;
       }
 
       .no-print {
         display: none;
       }
+
+      .question-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
+  <div class="print-header">
+    <div>${shortTestTitle}</div>
+    <div class="print-logo"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning</div>
+  </div>
+
+  <div class="print-footer">
+    <div>yanbo.co.uk</div>
+    <div class="footer-center">Page</div>
+    <div class="footer-right">Please go on to the next page &gt;&gt;&gt;</div>
+  </div>
+
+  <header class="cover-page">
     <h1>${printableTitle}</h1>
     <div class="top-grid">
       <div><strong>Website:</strong> yanbo.co.uk</div>
@@ -661,13 +775,14 @@ function buildPrintableHtml(
   </section>
 
   <section class="instructions">
-    <strong>Instructions</strong>
-    <ul>
-      <li>You have ${timeAllowedLabel} to complete this test.</li>
-      <li>Answer all questions carefully.</li>
-      <li>Mark your answers on the answer sheet by drawing one clear horizontal line through the rectangle next to your chosen answer.</li>
-      <li>Use the answers and explanations section only after completing the test.</li>
-    </ul>
+    <strong>Read the following with your child:</strong>
+    <ol>
+      <li>This is a multiple-choice paper. Mark only one answer for each question on the separate answer sheet.</li>
+      <li>Draw a firm line clearly through the rectangle next to your answer, like <span class="answer-example"></span>. If you make a mistake, rub it out completely and put in your new answer.</li>
+      <li>Keep your place in the correct section of the answer sheet. Mark your answer in the box with the same number as the question.</li>
+      <li>You may find some questions difficult. If you cannot do a question, do not waste time on it. Go on to the next one and choose the answer you think is best.</li>
+      <li><strong>Work as quickly and as carefully as you can.</strong></li>
+    </ol>
   </section>
 
   <section class="page-break question-paper-page">
