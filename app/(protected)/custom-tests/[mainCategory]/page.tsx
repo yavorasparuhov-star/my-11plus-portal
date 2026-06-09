@@ -278,7 +278,7 @@ function buildPrintableHtml(
   <style>
    @page {
       size: A4 portrait;
-      margin: 24mm 14mm 24mm 14mm;
+      margin: 32mm 14mm 24mm 14mm;
     }
     :root {
       --ink: #111827;
@@ -323,6 +323,10 @@ function buildPrintableHtml(
     .logo-b {
       color: var(--yellow);
       text-shadow: 0 0 0 #92400e;
+    }
+
+    .print-page-header {
+      display: none;
     }
 
     header {
@@ -664,6 +668,38 @@ function buildPrintableHtml(
         line-height: 1.3;
       }
 
+      .print-page-header {
+        position: fixed;
+        top: -25mm;
+        left: 0;
+        right: 0;
+        height: 16mm;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 10mm;
+        border-bottom: 1.5px solid var(--answer-green);
+        padding-bottom: 2.5mm;
+        background: #ffffff;
+        color: #111827;
+        font-size: 9px;
+        line-height: 1.1;
+        font-weight: 900;
+        z-index: 20;
+      }
+
+      .print-header-left,
+      .print-header-right {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .print-header-right {
+        text-align: right;
+      }
+
       header.cover-page {
         background: #ffffff;
       }
@@ -687,6 +723,10 @@ function buildPrintableHtml(
   </style>
 </head>
 <body>
+  <div class="print-page-header" aria-hidden="true">
+    <div class="print-header-left">${printableTitle}</div>
+    <div class="print-header-right"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
+  </div>
   <header class="cover-page">
     <h1>${printableTitle}</h1>
     <div class="top-grid">
