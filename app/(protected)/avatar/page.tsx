@@ -5,7 +5,7 @@ import Link from "next/link"
 import { supabase } from "../../../lib/supabaseClient"
 
 type AvatarConfig = {
-  base: "boy" | "girl"
+  base: "yan" | "bo"
   skinTone: "light" | "medium" | "dark"
   hairStyle: "short" | "medium" | "long"
   hairColor: "brown" | "black" | "blonde" | "ginger"
@@ -25,7 +25,7 @@ type ShopItem = {
 }
 
 const defaultAvatar: AvatarConfig = {
-  base: "boy",
+  base: "bo",
   skinTone: "light",
   hairStyle: "short",
   hairColor: "brown",
@@ -33,6 +33,28 @@ const defaultAvatar: AvatarConfig = {
   glasses: "none",
   top: "yanbo_navy",
   background: "plain",
+}
+
+function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
+  if (!savedConfig) return defaultAvatar
+
+  const savedBase = savedConfig.base
+
+  let base: AvatarConfig["base"] = "bo"
+
+  if (savedBase === "yan" || savedBase === "girl") {
+    base = "yan"
+  }
+
+  if (savedBase === "bo" || savedBase === "boy") {
+    base = "bo"
+  }
+
+  return {
+    ...defaultAvatar,
+    ...savedConfig,
+    base,
+  } as AvatarConfig
 }
 
 export default function AvatarPage() {
@@ -84,10 +106,11 @@ export default function AvatarPage() {
     }
 
     if (avatarData?.avatar_config) {
-      setAvatarConfig({
-        ...defaultAvatar,
-        ...avatarData.avatar_config,
-      })
+      setAvatarConfig(
+        normaliseAvatarConfig(
+          avatarData.avatar_config as Record<string, unknown>
+        )
+      )
     }
 
     const { data: walletData } = await supabase
@@ -302,8 +325,8 @@ export default function AvatarPage() {
                 My Avatar
               </h1>
               <p className="mt-2 max-w-2xl text-slate-600">
-                Build your learning character, save your style, and unlock new
-                items with YanBo Coins.
+                Choose Yan or Bo, build your learning character, save your
+                style, and unlock new items with YanBo Coins.
               </p>
             </div>
 
@@ -370,7 +393,7 @@ export default function AvatarPage() {
                         : "bg-orange-300"
                     }`}
                   >
-                    {avatarConfig.base === "girl" ? "😊" : "🙂"}
+                    {avatarConfig.base === "yan" ? "😊" : "🙂"}
                   </div>
 
                   <div
@@ -411,7 +434,8 @@ export default function AvatarPage() {
                   </div>
 
                   <div className="mt-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-                    Eyes: {avatarConfig.eyeColor}
+                    {avatarConfig.base === "yan" ? "Yan" : "Bo"} avatar • Eyes:{" "}
+                    {avatarConfig.eyeColor}
                   </div>
                 </div>
               </div>
@@ -431,6 +455,11 @@ export default function AvatarPage() {
               Avatar Builder
             </h2>
 
+            <p className="mt-2 text-sm text-slate-600">
+              Yan — girl avatar. Bo — boy avatar. Choose one to start building
+              your YanBo Learning character.
+            </p>
+
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <SelectBox
                 label="Base avatar"
@@ -439,8 +468,8 @@ export default function AvatarPage() {
                   updateAvatar("base", value as AvatarConfig["base"])
                 }
                 options={[
-                  ["boy", "Boy"],
-                  ["girl", "Girl"],
+                  ["yan", "Yan — girl avatar"],
+                  ["bo", "Bo — boy avatar"],
                 ]}
               />
 
