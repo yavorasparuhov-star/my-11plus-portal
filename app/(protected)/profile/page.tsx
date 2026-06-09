@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabaseClient"
 
@@ -24,6 +25,22 @@ type ProfileRow = {
   plan: string | null
 }
 
+type AvatarBase = "yan" | "bo"
+
+type AvatarConfig = {
+  base?: "yan" | "bo" | "girl" | "boy" | null
+}
+
+function normaliseAvatarBase(config: AvatarConfig | null): AvatarBase {
+  if (!config?.base) return "bo"
+
+  if (config.base === "yan" || config.base === "girl") {
+    return "yan"
+  }
+
+  return "bo"
+}
+
 export default function ProfilePage() {
   const router = useRouter()
 
@@ -32,6 +49,8 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
   const [plan, setPlan] = useState<UserPlan>("free")
+  const [avatarBase, setAvatarBase] = useState<AvatarBase>("bo")
+  const [coins, setCoins] = useState(0)
 
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: "",
@@ -152,6 +171,36 @@ export default function ProfilePage() {
       })
 
       setPlan(normalisePlan(safeProfile?.plan))
+
+      const { data: avatarData, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("avatar_config")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading YanBo avatar:", avatarError)
+      } else if (avatarData?.avatar_config) {
+        setAvatarBase(
+          normaliseAvatarBase(avatarData.avatar_config as AvatarConfig)
+        )
+      }
+
+      const { data: walletData, error: walletError } = await supabase
+        .from("yanbo_wallets")
+        .select("balance")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (walletError) {
+        console.error("Error loading YanBo Coins:", walletError)
+      } else if (
+        walletData?.balance !== undefined &&
+        walletData?.balance !== null
+      ) {
+        setCoins(walletData.balance)
+      }
+
       setLoading(false)
     }
 
@@ -286,6 +335,55 @@ export default function ProfilePage() {
                 <div>
                   <p style={styles.miniBrandName}>YanBo Learning</p>
                   <p style={styles.miniBrandText}>11+ Practice Portal</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.avatarCard}>
+              <div style={styles.avatarHeader}>
+                <div>
+                  <p style={styles.avatarEyebrow}>YanBo Avatar</p>
+                  <h2 style={styles.cardTitle}>My YanBo Avatar</h2>
+                </div>
+
+                <div style={styles.coinBadge}>
+                  <span style={styles.coinIcon}>🪙</span>
+                  <span>{coins} coins</span>
+                </div>
+              </div>
+
+              <div style={styles.avatarBody}>
+                <div
+                  style={{
+                    ...styles.avatarPreviewCircle,
+                    background:
+                      avatarBase === "yan"
+                        ? "linear-gradient(135deg, #fdf2f8, #ecfdf5)"
+                        : "linear-gradient(135deg, #eff6ff, #ecfdf5)",
+                  }}
+                >
+                  <div style={styles.avatarFace}>
+                    {avatarBase === "yan" ? "😊" : "🙂"}
+                  </div>
+
+                  <div style={styles.avatarJumper}>
+                    <span style={styles.yanboY}>Y</span>an
+                    <span style={styles.yanboB}>B</span>o
+                  </div>
+                </div>
+
+                <div style={styles.avatarTextWrap}>
+                  <p style={styles.avatarName}>
+                    {avatarBase === "yan" ? "Yan" : "Bo"} avatar
+                  </p>
+                  <p style={styles.cardText}>
+                    Build your Yan or Bo learning character, collect YanBo
+                    Coins, and unlock clothes, glasses and backgrounds.
+                  </p>
+
+                  <Link href="/avatar" style={styles.avatarButton}>
+                    Edit my avatar
+                  </Link>
                 </div>
               </div>
             </div>
@@ -518,6 +616,129 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
     border: "1px solid rgba(226, 232, 240, 0.9)",
     alignSelf: "stretch",
+  },
+
+  avatarCard: {
+    background: "#ffffff",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
+    border: "1px solid rgba(16, 185, 129, 0.18)",
+  },
+
+  avatarHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 14,
+    marginBottom: 18,
+  },
+
+  avatarEyebrow: {
+    margin: "0 0 6px",
+    fontSize: "0.78rem",
+    fontWeight: 800,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "#059669",
+  },
+
+  coinBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    background: "#fef3c7",
+    color: "#92400e",
+    padding: "8px 12px",
+    fontSize: "0.85rem",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  coinIcon: {
+    fontSize: "1rem",
+  },
+
+  avatarBody: {
+    display: "flex",
+    gap: 18,
+    alignItems: "center",
+  },
+
+  avatarPreviewCircle: {
+    width: 116,
+    height: 116,
+    minWidth: 116,
+    borderRadius: "50%",
+    border: "6px solid #ffffff",
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.12)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    outline: "4px solid #d1fae5",
+  },
+
+  avatarFace: {
+    width: 58,
+    height: 58,
+    borderRadius: "50%",
+    background: "#fed7aa",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "2rem",
+    boxShadow: "0 6px 12px rgba(15, 23, 42, 0.12)",
+  },
+
+  avatarJumper: {
+    marginTop: 4,
+    minWidth: 72,
+    borderRadius: "16px 16px 6px 6px",
+    background: "#1f2937",
+    color: "#ffffff",
+    padding: "8px 10px",
+    textAlign: "center",
+    fontSize: "0.88rem",
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+
+  yanboY: {
+    color: "#f472b6",
+  },
+
+  yanboB: {
+    color: "#facc15",
+  },
+
+  avatarTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  avatarName: {
+    margin: "0 0 6px",
+    color: "#111827",
+    fontWeight: 900,
+    fontSize: "1.05rem",
+  },
+
+  avatarButton: {
+    marginTop: 14,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+    padding: "11px 16px",
+    background: "#16a34a",
+    color: "#ffffff",
+    fontWeight: 900,
+    fontSize: "0.92rem",
+    textDecoration: "none",
+    boxShadow: "0 10px 22px rgba(22, 163, 74, 0.22)",
   },
 
   securityCard: {
