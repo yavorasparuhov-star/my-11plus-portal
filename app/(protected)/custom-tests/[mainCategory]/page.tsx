@@ -395,7 +395,7 @@ function buildPrintableHtml(
 
     h3 {
       margin: 0;
-      font-size: 15px;
+      font-size: 13pt;
     }
 
     .top-grid {
@@ -503,7 +503,7 @@ function buildPrintableHtml(
 
     .question-meta {
       color: #6b7280;
-      font-size: 12px;
+      font-size: 10pt;
       text-align: right;
     }
 
@@ -511,22 +511,22 @@ function buildPrintableHtml(
       color: #374151;
       font-weight: 700;
       margin: 5px 0;
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 12pt;
+      line-height: 1.35;
     }
 
     .question-text {
       margin: 4px 0 7px;
-      font-size: 12px;
-      line-height: 1.45;
+      font-size: 12pt;
+      line-height: 1.35;
     }
 
     .options {
       list-style: none;
       margin: 6px 0 0;
       padding: 0;
-      font-size: 12px;
-      line-height: 1.4;
+      font-size: 12pt;
+      line-height: 1.35;
     }
 
     .options li {
@@ -541,8 +541,11 @@ function buildPrintableHtml(
       font-weight: 800;
     }
 
+    .option-content,
     .option-content span {
       display: inline;
+      font-size: 12pt;
+      line-height: 1.35;
     }
 
     img {
@@ -769,9 +772,26 @@ function buildPrintableHtml(
         display: none;
       }
 
-      .question-block {
+      .question-paper-page .question-block {
+        font-size: 12pt;
         break-inside: avoid;
         page-break-inside: avoid;
+      }
+
+      .question-paper-page .question-header h3,
+      .question-paper-page .prompt,
+      .question-paper-page .question-text,
+      .question-paper-page .options,
+      .question-paper-page .options li,
+      .question-paper-page .option-letter,
+      .question-paper-page .option-content,
+      .question-paper-page .option-content span {
+        font-size: 12pt !important;
+        line-height: 1.35;
+      }
+
+      .question-paper-page .question-meta {
+        font-size: 10pt;
       }
     }
   </style>
