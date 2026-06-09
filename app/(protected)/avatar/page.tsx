@@ -152,39 +152,53 @@ export default function AvatarPage() {
   }
 
   async function claimDailyCoins() {
-    setClaimingDailyCoins(true)
-    setMessage(null)
-    setError(null)
+  setClaimingDailyCoins(true)
+  setMessage(null)
+  setError(null)
 
-    try {
-      const response = await fetch("/api/tokens/daily-login", {
-        method: "POST",
-      })
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        setError(result.error || "Could not claim today’s YanBo Coins.")
-        setClaimingDailyCoins(false)
-        return
-      }
-
-      if (result.awarded) {
-        setCoins((current) => current + result.amount)
-        setMessage(`Well done! You claimed ${result.amount} YanBo Coins today.`)
-      } else {
-        setMessage("You have already claimed today’s YanBo Coins.")
-      }
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Could not claim today’s YanBo Coins."
-      )
+    if (sessionError || !session?.access_token) {
+      setError("You need to be logged in to claim YanBo Coins.")
+      setClaimingDailyCoins(false)
+      return
     }
 
-    setClaimingDailyCoins(false)
+    const response = await fetch("/api/tokens/daily-login", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error || "Could not claim today’s YanBo Coins.")
+      setClaimingDailyCoins(false)
+      return
+    }
+
+    if (result.awarded) {
+      setCoins((current) => current + result.amount)
+      setMessage(`Well done! You claimed ${result.amount} YanBo Coins today.`)
+    } else {
+      setMessage("You have already claimed today’s YanBo Coins.")
+    }
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Could not claim today’s YanBo Coins."
+    )
   }
+
+  setClaimingDailyCoins(false)
+}
 
   function updateAvatar<K extends keyof AvatarConfig>(
     key: K,
