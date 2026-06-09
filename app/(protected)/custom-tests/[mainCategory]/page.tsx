@@ -510,29 +510,30 @@ function buildPrintableHtml(
     .prompt {
       color: #374151;
       font-weight: 700;
-      margin: 4px 0;
-      font-size: 13px;
+      margin: 5px 0;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .question-text {
-      margin: 3px 0 5px;
-      font-size: 12.5px;
-      line-height: 1.28;
+      margin: 4px 0 7px;
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .options {
       list-style: none;
-      margin: 4px 0 0;
+      margin: 6px 0 0;
       padding: 0;
-      font-size: 11.8px;
-      line-height: 1.18;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .options li {
       display: grid;
-      grid-template-columns: 20px 1fr;
-      gap: 3px;
-      margin-bottom: 2px;
+      grid-template-columns: 22px 1fr;
+      gap: 5px;
+      margin-bottom: 5px;
       align-items: start;
     }
 
@@ -553,7 +554,17 @@ function buildPrintableHtml(
 
     .question-image {
       display: block;
-      max-height: 170px;
+      max-width: 100%;
+      max-height: 95mm;
+      margin: 8px auto 6px;
+      object-fit: contain;
+    }
+
+    .option-content img {
+      display: block;
+      max-width: 100%;
+      max-height: 55mm;
+      object-fit: contain;
     }
 
     table {
