@@ -300,45 +300,6 @@ export default function ProfilePage() {
 
         <section style={styles.contentGrid}>
           <div style={styles.leftColumn}>
-            <div style={styles.infoCard}>
-              <h2 style={styles.cardTitle}>Your account</h2>
-              <p style={styles.cardText}>
-                These details help personalise the YanBo Learning experience
-                across tests, progress tracking and review pages.
-              </p>
-
-              <div style={styles.accountSummary}>
-                <div>
-                  <p style={styles.summaryLabel}>Current plan</p>
-                  <p style={styles.summaryValue}>{planLabel}</p>
-                </div>
-
-                <div>
-                  <p style={styles.summaryLabel}>Account email</p>
-                  <p style={styles.summaryValue}>
-                    {formData.email || user?.email || "Not set"}
-                  </p>
-                </div>
-              </div>
-
-              <div style={styles.brandMiniCard}>
-                <div style={styles.miniLogoWrap}>
-                  <Image
-                    src="/logo.png"
-                    alt="YanBo Learning logo"
-                    width={42}
-                    height={42}
-                    style={styles.miniLogo}
-                  />
-                </div>
-
-                <div>
-                  <p style={styles.miniBrandName}>YanBo Learning</p>
-                  <p style={styles.miniBrandText}>11+ Practice Portal</p>
-                </div>
-              </div>
-            </div>
-
             <div style={styles.avatarCard}>
               <div style={styles.avatarHeader}>
                 <div>
@@ -609,14 +570,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
   },
 
-  infoCard: {
-    background: "#ffffff",
-    borderRadius: 24,
-    padding: 24,
-    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
-    border: "1px solid rgba(226, 232, 240, 0.9)",
-    alignSelf: "stretch",
-  },
 
   avatarCard: {
     background: "#ffffff",
@@ -782,28 +735,8 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 8px 18px rgba(79, 70, 229, 0.16)",
   },
 
-  accountSummary: {
-    marginTop: 20,
-    display: "grid",
-    gap: 12,
-  },
 
-  summaryLabel: {
-    margin: "0 0 4px",
-    fontSize: "0.8rem",
-    color: "#6b7280",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  },
 
-  summaryValue: {
-    margin: 0,
-    color: "#111827",
-    fontWeight: 800,
-    fontSize: "0.95rem",
-    wordBreak: "break-word",
-  },
 
   formCard: {
     background: "#ffffff",
@@ -834,45 +767,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.95rem",
   },
 
-  brandMiniCard: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 20,
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-  },
 
-  miniLogoWrap: {
-    width: 54,
-    height: 54,
-    minWidth: 54,
-    borderRadius: 18,
-    background: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
-  },
 
-  miniLogo: {
-    objectFit: "contain",
-    borderRadius: 12,
-  },
 
-  miniBrandName: {
-    margin: 0,
-    fontWeight: 800,
-    color: "#111827",
-  },
 
-  miniBrandText: {
-    margin: "4px 0 0",
-    color: "#6b7280",
-    fontSize: "0.9rem",
-  },
 
   formGrid: {
     display: "grid",
