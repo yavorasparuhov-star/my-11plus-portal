@@ -324,7 +324,7 @@ function buildPrintableHtml(
 
       @bottom-left {
         content: "yanbo.co.uk";
-        font-size: 8pt;
+        font-size: 10pt;
         color: #374151;
         border-top: 1px solid #15803d;
         padding-top: 3mm;
@@ -332,7 +332,7 @@ function buildPrintableHtml(
 
       @bottom-center {
         content: "Page " counter(page) " of " counter(pages);
-        font-size: 8pt;
+        font-size: 10pt;
         color: #374151;
         border-top: 1px solid #15803d;
         padding-top: 3mm;
@@ -340,7 +340,7 @@ function buildPrintableHtml(
 
       @bottom-right {
         content: "Please go on to the next page >>>";
-        font-size: 8pt;
+        font-size: 10pt;
         color: #374151;
         font-weight: 700;
         border-top: 1px solid #15803d;
