@@ -46,6 +46,7 @@ export default function AvatarPage() {
   const [claimingDailyCoins, setClaimingDailyCoins] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [purchasingItemKey, setPurchasingItemKey] = useState<string | null>(null)
 
   useEffect(() => {
     loadAvatarPage()
@@ -199,7 +200,55 @@ export default function AvatarPage() {
 
   setClaimingDailyCoins(false)
 }
+async function purchaseAvatarItem(itemKey: string) {
+  setPurchasingItemKey(itemKey)
+  setMessage(null)
+  setError(null)
 
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError || !session?.access_token) {
+      setError("You need to be logged in to buy avatar items.")
+      setPurchasingItemKey(null)
+      return
+    }
+
+    const response = await fetch("/api/avatar/purchase", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        itemKey,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error || "Could not buy this avatar item.")
+      setPurchasingItemKey(null)
+      return
+    }
+
+    setCoins(result.newBalance)
+    setUnlockedItems((current) => [...current, result.itemKey])
+    setMessage("Item unlocked successfully.")
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Could not buy this avatar item."
+    )
+  }
+
+  setPurchasingItemKey(null)
+}
   function updateAvatar<K extends keyof AvatarConfig>(
     key: K,
     value: AvatarConfig[K]
@@ -536,15 +585,19 @@ export default function AvatarPage() {
                           {item.price} YanBo Coins
                         </p>
 
-                        <div
-                          className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                            unlocked
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-200 text-slate-600"
-                          }`}
-                        >
-                          {unlocked ? "Unlocked" : "Locked"}
-                        </div>
+                       {unlocked ? (
+  <div className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+    Unlocked
+  </div>
+) : (
+  <button
+    onClick={() => purchaseAvatarItem(item.item_key)}
+    disabled={purchasingItemKey === item.item_key}
+    className="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+  >
+    {purchasingItemKey === item.item_key ? "Buying..." : "Buy"}
+  </button>
+)}
                       </div>
                     )
                   })}
