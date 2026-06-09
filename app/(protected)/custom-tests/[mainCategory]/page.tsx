@@ -281,32 +281,10 @@ function buildPrintableHtml(
   <meta charset="utf-8" />
   <title>${printableTitle}</title>
   <style>
-    @page {
-      size: A4 portrait;
-      margin: 14mm 10mm 13mm 10mm;
-
-      @bottom-left {
-        content: "yanbo.co.uk";
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 9px;
-        color: #374151;
-      }
-
-      @bottom-center {
-        content: "Page " counter(page) " of " counter(pages);
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 9px;
-        color: #374151;
-      }
-
-      @bottom-right {
-        content: "Please go on to the next page >>>";
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 9px;
-        color: #374151;
-      }
-    }
-
+   @page {
+  size: A4 portrait;
+  margin: 24mm 11mm 22mm 11mm;
+}
     :root {
       --ink: #111827;
       --muted: #4b5563;
@@ -700,44 +678,40 @@ function buildPrintableHtml(
       }
 
       .print-header {
-        position: fixed;
-        top: -11mm;
-        left: 0;
-        right: 0;
-        height: 7mm;
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        border-bottom: 1.5px solid var(--answer-green);
-        padding: 0 0 1.2mm;
-        font-size: 8.6px;
-        line-height: 1;
-        font-weight: 800;
-        background: #ffffff;
-        z-index: 10;
-      }
+  position: fixed;
+  top: -18mm;
+  left: 0;
+  right: 0;
+  height: 12mm;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 1.5px solid var(--answer-green);
+  padding: 0 0 2mm;
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 800;
+  background: #ffffff;
+  z-index: 10;
+}
 
-      .print-footer {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: -10mm;
-        height: 7mm;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        align-items: flex-start;
-        border-top: 1.5px solid var(--answer-green);
-        padding: 1.2mm 0 0;
-        font-size: 8.6px;
-        line-height: 1;
-        color: #374151;
-        background: #ffffff;
-        z-index: 10;
-      }
-
-      .print-header + .print-footer + header.cover-page {
-        margin-top: 0;
-      }
+.print-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -17mm;
+  height: 12mm;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: flex-start;
+  border-top: 1.5px solid var(--answer-green);
+  padding: 2mm 0 0;
+  font-size: 9px;
+  line-height: 1.1;
+  color: #374151;
+  background: #ffffff;
+  z-index: 10;
+}
 
       .question-paper-page,
       .answer-sheet-page,
@@ -773,7 +747,7 @@ function buildPrintableHtml(
 
   <div class="print-footer">
     <div>yanbo.co.uk</div>
-    <div class="footer-center">Page</div>
+    <div class="footer-center">YanBo Learning</div>
     <div class="footer-right">Please go on to the next page &gt;&gt;&gt;</div>
   </div>
 
