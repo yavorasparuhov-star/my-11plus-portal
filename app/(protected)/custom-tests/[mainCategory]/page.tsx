@@ -130,11 +130,42 @@ function formatDateForPrint(value: string) {
   return date.toLocaleDateString("en-GB")
 }
 
+function buildPrintableCategorySummaries(
+  topics: TopicCatalogItem[],
+  config: CustomTestBuilderConfig
+) {
+  return config.topicKeys.map((topicKey) => {
+    const topic = topics.find((item) => item.key === topicKey)
+
+    if (!topic) return topicKey
+
+    if (!topic.childSubtopics || topic.childSubtopics.length === 0) {
+      return topic.label
+    }
+
+    const selectedSubtopics = config.subtopicMap?.[topic.key] ?? []
+
+    if (selectedSubtopics.length === 0) {
+      return `${topic.label} (all subtopics)`
+    }
+
+    const selectedSubtopicLabels = topic.childSubtopics
+      .filter((subtopic) => selectedSubtopics.includes(subtopic.key))
+      .map((subtopic) => subtopic.label)
+
+    if (selectedSubtopicLabels.length === 0) {
+      return `${topic.label} (all subtopics)`
+    }
+
+    return `${topic.label}: ${selectedSubtopicLabels.join(", ")}`
+  })
+}
 
 function buildPrintableHtml(
   downloadData: DownloadCustomTestData,
   categoryLabel: string,
-  userEmail: string | null | undefined
+  userEmail: string | null | undefined,
+  selectedCategorySummaries: string[] = []
 ) {
   const safeCategoryLabel = escapeHtml(categoryLabel)
   const safeUserEmail = escapeHtml(userEmail ?? "member")
@@ -150,6 +181,17 @@ function buildPrintableHtml(
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
         : "YanBo Learning Printable Custom Test")
   )
+  const categorySummaryHtml = selectedCategorySummaries.length
+    ? selectedCategorySummaries
+        .map((summary) => escapeHtml(summary))
+        .join("; ")
+    : "All selected categories"
+  const printSectionHeader = `
+    <div class="section-print-header" aria-hidden="true">
+      <div class="section-print-header-left">${printableTitle}</div>
+      <div class="section-print-header-right"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
+    </div>
+  `
 
   const passageBlocks = Array.from(
     new Map(
@@ -278,7 +320,7 @@ function buildPrintableHtml(
   <style>
    @page {
       size: A4 portrait;
-      margin: 32mm 14mm 24mm 14mm;
+      margin: 24mm 14mm 24mm 14mm;
     }
     :root {
       --ink: #111827;
@@ -325,7 +367,7 @@ function buildPrintableHtml(
       text-shadow: 0 0 0 #92400e;
     }
 
-    .print-page-header {
+    .section-print-header {
       display: none;
     }
 
@@ -363,6 +405,10 @@ function buildPrintableHtml(
       margin-top: 12px;
       color: var(--muted);
       font-size: 14px;
+    }
+
+    .category-summary {
+      grid-column: 1 / -1;
     }
 
     .student-strip {
@@ -668,35 +714,32 @@ function buildPrintableHtml(
         line-height: 1.3;
       }
 
-      .print-page-header {
-        position: fixed;
-        top: -25mm;
-        left: 0;
-        right: 0;
-        height: 16mm;
+      .section-print-header {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         gap: 10mm;
         border-bottom: 1.5px solid var(--answer-green);
         padding-bottom: 2.5mm;
+        margin-bottom: 9mm;
         background: #ffffff;
         color: #111827;
         font-size: 9px;
         line-height: 1.1;
         font-weight: 900;
-        z-index: 20;
+        break-after: avoid;
+        page-break-after: avoid;
       }
 
-      .print-header-left,
-      .print-header-right {
+      .section-print-header-left,
+      .section-print-header-right {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .print-header-right {
+      .section-print-header-right {
         text-align: right;
       }
 
@@ -723,15 +766,12 @@ function buildPrintableHtml(
   </style>
 </head>
 <body>
-  <div class="print-page-header" aria-hidden="true">
-    <div class="print-header-left">${printableTitle}</div>
-    <div class="print-header-right"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
-  </div>
   <header class="cover-page">
     <h1>${printableTitle}</h1>
     <div class="top-grid">
       <div><strong>Website:</strong> yanbo.co.uk</div>
       <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
+      <div class="category-summary"><strong>Categories selected:</strong> ${categorySummaryHtml}</div>
       <div><strong>Time allowed:</strong> ${timeAllowedLabel}</div>
       <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
       <div><strong>Downloaded:</strong> ${printedDate}</div>
@@ -767,12 +807,14 @@ function buildPrintableHtml(
   </section>
 
   <section class="page-break question-paper-page">
+    ${printSectionHeader}
     <h2>Questions</h2>
     ${passageBlocks}
     ${questionBlocks}
   </section>
 
   <section class="page-break answer-sheet-page">
+    ${printSectionHeader}
     <h2>Student answer sheet</h2>
     <div class="answer-sheet-intro">
       <div><strong>Name:</strong> ______________________________</div>
@@ -789,6 +831,7 @@ function buildPrintableHtml(
   </section>
 
   <section class="page-break qa-page">
+    ${printSectionHeader}
     <h2>Questions and Answers</h2>
     <table>
       <thead>
@@ -814,9 +857,15 @@ function buildPrintableHtml(
 function downloadPrintableHtml(
   downloadData: DownloadCustomTestData,
   categoryLabel: string,
-  userEmail: string | null | undefined
+  userEmail: string | null | undefined,
+  selectedCategorySummaries: string[] = []
 ) {
-  const html = buildPrintableHtml(downloadData, categoryLabel, userEmail)
+  const html = buildPrintableHtml(
+    downloadData,
+    categoryLabel,
+    userEmail,
+    selectedCategorySummaries
+  )
   const blob = new Blob([html], { type: "text/html;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement("a")
@@ -1119,7 +1168,17 @@ export default function CustomTestBuilderPage() {
         return
       }
 
-      downloadPrintableHtml(result.data, catalog.label, session.user.email)
+      const printableCategorySummaries = buildPrintableCategorySummaries(
+        catalog.topics,
+        result.data.config
+      )
+
+      downloadPrintableHtml(
+        result.data,
+        catalog.label,
+        session.user.email,
+        printableCategorySummaries
+      )
 
       const testNumber =
         result.data.metadata?.testNumber ?? result.data.downloadNumber ?? null
