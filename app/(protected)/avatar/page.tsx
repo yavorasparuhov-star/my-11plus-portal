@@ -24,6 +24,12 @@ type ShopItem = {
   is_active: boolean
 }
 
+type SelectOption = {
+  value: string
+  label: string
+  disabled?: boolean
+}
+
 const defaultAvatar: AvatarConfig = {
   base: "bo",
   skinTone: "light",
@@ -34,6 +40,8 @@ const defaultAvatar: AvatarConfig = {
   top: "yanbo_navy",
   background: "plain",
 }
+
+const freeStarterItemKeys = new Set(["yanbo_jumper_navy"])
 
 function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   if (!savedConfig) return defaultAvatar
@@ -55,6 +63,42 @@ function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
     ...savedConfig,
     base,
   } as AvatarConfig
+}
+
+function makeAvatarConfigSafe(
+  config: AvatarConfig,
+  unlockedItemKeys: string[]
+): AvatarConfig {
+  const unlocked = new Set(unlockedItemKeys)
+  const safeConfig = { ...config }
+
+  if (safeConfig.glasses === "round" && !unlocked.has("smart_glasses_round")) {
+    safeConfig.glasses = "none"
+  }
+
+  if (safeConfig.glasses === "square" && !unlocked.has("smart_glasses_square")) {
+    safeConfig.glasses = "none"
+  }
+
+  if (safeConfig.top === "yanbo_green" && !unlocked.has("yanbo_hoodie_green")) {
+    safeConfig.top = "yanbo_navy"
+  }
+
+  if (
+    safeConfig.background === "classroom" &&
+    !unlocked.has("background_classroom")
+  ) {
+    safeConfig.background = "plain"
+  }
+
+  if (
+    safeConfig.background === "library" &&
+    !unlocked.has("background_library")
+  ) {
+    safeConfig.background = "plain"
+  }
+
+  return safeConfig
 }
 
 export default function AvatarPage() {
@@ -105,14 +149,6 @@ export default function AvatarPage() {
       return
     }
 
-    if (avatarData?.avatar_config) {
-      setAvatarConfig(
-        normaliseAvatarConfig(
-          avatarData.avatar_config as Record<string, unknown>
-        )
-      )
-    }
-
     const { data: walletData } = await supabase
       .from("yanbo_wallets")
       .select("balance")
@@ -143,7 +179,14 @@ export default function AvatarPage() {
       .select("item_key")
       .eq("user_id", user.id)
 
-    setUnlockedItems((unlockedData || []).map((item) => item.item_key))
+    const unlockedKeys = (unlockedData || []).map((item) => item.item_key)
+    setUnlockedItems(unlockedKeys)
+
+    const loadedAvatar = avatarData?.avatar_config
+      ? normaliseAvatarConfig(avatarData.avatar_config as Record<string, unknown>)
+      : defaultAvatar
+
+    setAvatarConfig(makeAvatarConfigSafe(loadedAvatar, unlockedKeys))
 
     setLoading(false)
   }
@@ -157,11 +200,13 @@ export default function AvatarPage() {
     setShopMessage(null)
     setShopError(null)
 
+    const safeAvatarConfig = makeAvatarConfigSafe(avatarConfig, unlockedItems)
+
     const { error: saveError } = await supabase.from("student_avatars").upsert(
       {
         user_id: userId,
-        avatar_config: avatarConfig,
-        selected_base: avatarConfig.base,
+        avatar_config: safeAvatarConfig,
+        selected_base: safeAvatarConfig.base,
         updated_at: new Date().toISOString(),
       },
       {
@@ -175,6 +220,7 @@ export default function AvatarPage() {
       return
     }
 
+    setAvatarConfig(safeAvatarConfig)
     setMessage("Avatar saved successfully.")
     setSaving(false)
   }
@@ -294,6 +340,16 @@ export default function AvatarPage() {
     }))
   }
 
+  function isShopItemUnlocked(itemKey: string) {
+    return freeStarterItemKeys.has(itemKey) || unlockedItems.includes(itemKey)
+  }
+
+  const canUseRoundGlasses = unlockedItems.includes("smart_glasses_round")
+  const canUseSquareGlasses = unlockedItems.includes("smart_glasses_square")
+  const canUseGreenHoodie = unlockedItems.includes("yanbo_hoodie_green")
+  const canUseClassroomBackground = unlockedItems.includes("background_classroom")
+  const canUseLibraryBackground = unlockedItems.includes("background_library")
+
   const groupedShopItems = useMemo(() => {
     return shopItems.reduce<Record<string, ShopItem[]>>((groups, item) => {
       if (!groups[item.category]) groups[item.category] = []
@@ -371,16 +427,16 @@ export default function AvatarPage() {
                   avatarConfig.background === "classroom"
                     ? "bg-amber-100 ring-amber-200"
                     : avatarConfig.background === "library"
-                    ? "bg-sky-100 ring-sky-200"
-                    : "bg-emerald-100 ring-emerald-200"
+                      ? "bg-sky-100 ring-sky-200"
+                      : "bg-emerald-100 ring-emerald-200"
                 }`}
               >
                 <div className="absolute inset-0 flex items-end justify-center text-7xl opacity-20">
                   {avatarConfig.background === "classroom"
                     ? "📚"
                     : avatarConfig.background === "library"
-                    ? "🏛️"
-                    : "✨"}
+                      ? "🏛️"
+                      : "✨"}
                 </div>
 
                 <div className="relative flex flex-col items-center">
@@ -389,8 +445,8 @@ export default function AvatarPage() {
                       avatarConfig.skinTone === "light"
                         ? "bg-orange-100"
                         : avatarConfig.skinTone === "medium"
-                        ? "bg-orange-200"
-                        : "bg-orange-300"
+                          ? "bg-orange-200"
+                          : "bg-orange-300"
                     }`}
                   >
                     {avatarConfig.base === "yan" ? "😊" : "🙂"}
@@ -401,16 +457,16 @@ export default function AvatarPage() {
                       avatarConfig.hairStyle === "long"
                         ? "w-28"
                         : avatarConfig.hairStyle === "medium"
-                        ? "w-24"
-                        : "w-20"
+                          ? "w-24"
+                          : "w-20"
                     } ${
                       avatarConfig.hairColor === "brown"
                         ? "bg-amber-900"
                         : avatarConfig.hairColor === "black"
-                        ? "bg-slate-900"
-                        : avatarConfig.hairColor === "blonde"
-                        ? "bg-yellow-300"
-                        : "bg-orange-500"
+                          ? "bg-slate-900"
+                          : avatarConfig.hairColor === "blonde"
+                            ? "bg-yellow-300"
+                            : "bg-orange-500"
                     }`}
                   />
 
@@ -460,6 +516,10 @@ export default function AvatarPage() {
               your YanBo Learning character.
             </p>
 
+            <p className="mt-2 text-sm font-semibold text-emerald-700">
+              Locked options can be unlocked in the Avatar Shop below.
+            </p>
+
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <SelectBox
                 label="Base avatar"
@@ -468,8 +528,8 @@ export default function AvatarPage() {
                   updateAvatar("base", value as AvatarConfig["base"])
                 }
                 options={[
-                  ["yan", "Yan — girl avatar"],
-                  ["bo", "Bo — boy avatar"],
+                  { value: "yan", label: "Yan — girl avatar" },
+                  { value: "bo", label: "Bo — boy avatar" },
                 ]}
               />
 
@@ -480,9 +540,9 @@ export default function AvatarPage() {
                   updateAvatar("skinTone", value as AvatarConfig["skinTone"])
                 }
                 options={[
-                  ["light", "Light"],
-                  ["medium", "Medium"],
-                  ["dark", "Dark"],
+                  { value: "light", label: "Light" },
+                  { value: "medium", label: "Medium" },
+                  { value: "dark", label: "Dark" },
                 ]}
               />
 
@@ -493,9 +553,9 @@ export default function AvatarPage() {
                   updateAvatar("hairStyle", value as AvatarConfig["hairStyle"])
                 }
                 options={[
-                  ["short", "Short"],
-                  ["medium", "Medium"],
-                  ["long", "Long"],
+                  { value: "short", label: "Short" },
+                  { value: "medium", label: "Medium" },
+                  { value: "long", label: "Long" },
                 ]}
               />
 
@@ -506,10 +566,10 @@ export default function AvatarPage() {
                   updateAvatar("hairColor", value as AvatarConfig["hairColor"])
                 }
                 options={[
-                  ["brown", "Brown"],
-                  ["black", "Black"],
-                  ["blonde", "Blonde"],
-                  ["ginger", "Ginger"],
+                  { value: "brown", label: "Brown" },
+                  { value: "black", label: "Black" },
+                  { value: "blonde", label: "Blonde" },
+                  { value: "ginger", label: "Ginger" },
                 ]}
               />
 
@@ -520,9 +580,9 @@ export default function AvatarPage() {
                   updateAvatar("eyeColor", value as AvatarConfig["eyeColor"])
                 }
                 options={[
-                  ["brown", "Brown"],
-                  ["blue", "Blue"],
-                  ["green", "Green"],
+                  { value: "brown", label: "Brown" },
+                  { value: "blue", label: "Blue" },
+                  { value: "green", label: "Green" },
                 ]}
               />
 
@@ -533,9 +593,21 @@ export default function AvatarPage() {
                   updateAvatar("glasses", value as AvatarConfig["glasses"])
                 }
                 options={[
-                  ["none", "No glasses"],
-                  ["round", "Round glasses"],
-                  ["square", "Square glasses"],
+                  { value: "none", label: "No glasses — free" },
+                  {
+                    value: "round",
+                    label: canUseRoundGlasses
+                      ? "Round glasses — unlocked"
+                      : "Round glasses — locked",
+                    disabled: !canUseRoundGlasses,
+                  },
+                  {
+                    value: "square",
+                    label: canUseSquareGlasses
+                      ? "Square glasses — unlocked"
+                      : "Square glasses — locked",
+                    disabled: !canUseSquareGlasses,
+                  },
                 ]}
               />
 
@@ -546,8 +618,14 @@ export default function AvatarPage() {
                   updateAvatar("top", value as AvatarConfig["top"])
                 }
                 options={[
-                  ["yanbo_navy", "YanBo Navy Jumper"],
-                  ["yanbo_green", "YanBo Green Hoodie"],
+                  { value: "yanbo_navy", label: "YanBo Navy Jumper — free" },
+                  {
+                    value: "yanbo_green",
+                    label: canUseGreenHoodie
+                      ? "YanBo Green Hoodie — unlocked"
+                      : "YanBo Green Hoodie — locked",
+                    disabled: !canUseGreenHoodie,
+                  },
                 ]}
               />
 
@@ -561,9 +639,21 @@ export default function AvatarPage() {
                   )
                 }
                 options={[
-                  ["plain", "Plain"],
-                  ["classroom", "Classroom"],
-                  ["library", "Library"],
+                  { value: "plain", label: "Plain — free" },
+                  {
+                    value: "classroom",
+                    label: canUseClassroomBackground
+                      ? "Classroom — unlocked"
+                      : "Classroom — locked",
+                    disabled: !canUseClassroomBackground,
+                  },
+                  {
+                    value: "library",
+                    label: canUseLibraryBackground
+                      ? "Library — unlocked"
+                      : "Library — locked",
+                    disabled: !canUseLibraryBackground,
+                  },
                 ]}
               />
             </div>
@@ -611,7 +701,7 @@ export default function AvatarPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {items.map((item) => {
-                    const unlocked = unlockedItems.includes(item.item_key)
+                    const unlocked = isShopItemUnlocked(item.item_key)
 
                     return (
                       <div
@@ -622,12 +712,12 @@ export default function AvatarPage() {
                           {item.category === "top"
                             ? "👕"
                             : item.category === "glasses"
-                            ? "👓"
-                            : item.category === "background"
-                            ? "🖼️"
-                            : item.category === "badge"
-                            ? "🏅"
-                            : "⭐"}
+                              ? "👓"
+                              : item.category === "background"
+                                ? "🖼️"
+                                : item.category === "badge"
+                                  ? "🏅"
+                                  : "⭐"}
                         </div>
 
                         <h4 className="mt-3 font-bold text-slate-900">
@@ -675,7 +765,7 @@ function SelectBox({
   label: string
   value: string
   onChange: (value: string) => void
-  options: [string, string][]
+  options: SelectOption[]
 }) {
   return (
     <label className="block">
@@ -687,9 +777,13 @@ function SelectBox({
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
       >
-        {options.map(([optionValue, optionLabel]) => (
-          <option key={optionValue} value={optionValue}>
-            {optionLabel}
+        {options.map((option) => (
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
+            {option.label}
           </option>
         ))}
       </select>
