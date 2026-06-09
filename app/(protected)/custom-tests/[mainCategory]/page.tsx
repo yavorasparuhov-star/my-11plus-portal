@@ -321,6 +321,31 @@ function buildPrintableHtml(
    @page {
       size: A4 portrait;
       margin: 24mm 14mm 24mm 14mm;
+
+      @bottom-left {
+        content: "yanbo.co.uk";
+        font-size: 8pt;
+        color: #374151;
+        border-top: 1px solid #15803d;
+        padding-top: 3mm;
+      }
+
+      @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #374151;
+        border-top: 1px solid #15803d;
+        padding-top: 3mm;
+      }
+
+      @bottom-right {
+        content: "Please go on to the next page >>>";
+        font-size: 8pt;
+        color: #374151;
+        font-weight: 700;
+        border-top: 1px solid #15803d;
+        padding-top: 3mm;
+      }
     }
     :root {
       --ink: #111827;
@@ -713,13 +738,6 @@ function buildPrintableHtml(
       page-break-before: always;
     }
 
-    footer {
-      margin-top: 28px;
-      color: #6b7280;
-      font-size: 11px;
-      text-align: center;
-    }
-
     @media print {
       body {
         margin: 0;
@@ -877,10 +895,6 @@ function buildPrintableHtml(
       </tbody>
     </table>
   </section>
-
-  <footer>
-    YanBo Learning | yanbo.co.uk | Printable custom test. Licensed to ${safeUserEmail}. Generated ${printedDate}.
-  </footer>
 </body>
 </html>`
 }
