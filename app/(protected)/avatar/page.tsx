@@ -44,9 +44,11 @@ export default function AvatarPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [claimingDailyCoins, setClaimingDailyCoins] = useState(false)
+  const [purchasingItemKey, setPurchasingItemKey] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [purchasingItemKey, setPurchasingItemKey] = useState<string | null>(null)
+  const [shopMessage, setShopMessage] = useState<string | null>(null)
+  const [shopError, setShopError] = useState<string | null>(null)
 
   useEffect(() => {
     loadAvatarPage()
@@ -129,6 +131,8 @@ export default function AvatarPage() {
     setSaving(true)
     setMessage(null)
     setError(null)
+    setShopMessage(null)
+    setShopError(null)
 
     const { error: saveError } = await supabase.from("student_avatars").upsert(
       {
@@ -153,102 +157,110 @@ export default function AvatarPage() {
   }
 
   async function claimDailyCoins() {
-  setClaimingDailyCoins(true)
-  setMessage(null)
-  setError(null)
+    setClaimingDailyCoins(true)
+    setMessage(null)
+    setError(null)
+    setShopMessage(null)
+    setShopError(null)
 
-  try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    if (sessionError || !session?.access_token) {
-      setError("You need to be logged in to claim YanBo Coins.")
-      setClaimingDailyCoins(false)
-      return
+      if (sessionError || !session?.access_token) {
+        setError("You need to be logged in to claim YanBo Coins.")
+        setClaimingDailyCoins(false)
+        return
+      }
+
+      const response = await fetch("/api/tokens/daily-login", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || "Could not claim today’s YanBo Coins.")
+        setClaimingDailyCoins(false)
+        return
+      }
+
+      if (result.awarded) {
+        setCoins((current) => current + result.amount)
+        setMessage(`Well done! You claimed ${result.amount} YanBo Coins today.`)
+      } else {
+        setMessage("You have already claimed today’s YanBo Coins.")
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not claim today’s YanBo Coins."
+      )
     }
 
-    const response = await fetch("/api/tokens/daily-login", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    })
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      setError(result.error || "Could not claim today’s YanBo Coins.")
-      setClaimingDailyCoins(false)
-      return
-    }
-
-    if (result.awarded) {
-      setCoins((current) => current + result.amount)
-      setMessage(`Well done! You claimed ${result.amount} YanBo Coins today.`)
-    } else {
-      setMessage("You have already claimed today’s YanBo Coins.")
-    }
-  } catch (error) {
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Could not claim today’s YanBo Coins."
-    )
+    setClaimingDailyCoins(false)
   }
 
-  setClaimingDailyCoins(false)
-}
-async function purchaseAvatarItem(itemKey: string) {
-  setPurchasingItemKey(itemKey)
-  setMessage(null)
-  setError(null)
+  async function purchaseAvatarItem(itemKey: string) {
+    setPurchasingItemKey(itemKey)
+    setMessage(null)
+    setError(null)
+    setShopMessage(null)
+    setShopError(null)
 
-  try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    if (sessionError || !session?.access_token) {
-      setError("You need to be logged in to buy avatar items.")
-      setPurchasingItemKey(null)
-      return
+      if (sessionError || !session?.access_token) {
+        setShopError("You need to be logged in to buy avatar items.")
+        setPurchasingItemKey(null)
+        return
+      }
+
+      const response = await fetch("/api/avatar/purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          itemKey,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setShopError(result.error || "Could not buy this avatar item.")
+        setPurchasingItemKey(null)
+        return
+      }
+
+      setCoins(result.newBalance)
+      setUnlockedItems((current) =>
+        current.includes(result.itemKey) ? current : [...current, result.itemKey]
+      )
+      setShopMessage("Item unlocked successfully.")
+    } catch (error) {
+      setShopError(
+        error instanceof Error
+          ? error.message
+          : "Could not buy this avatar item."
+      )
     }
 
-    const response = await fetch("/api/avatar/purchase", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        itemKey,
-      }),
-    })
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      setError(result.error || "Could not buy this avatar item.")
-      setPurchasingItemKey(null)
-      return
-    }
-
-    setCoins(result.newBalance)
-    setUnlockedItems((current) => [...current, result.itemKey])
-    setMessage("Item unlocked successfully.")
-  } catch (error) {
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Could not buy this avatar item."
-    )
+    setPurchasingItemKey(null)
   }
 
-  setPurchasingItemKey(null)
-}
   function updateAvatar<K extends keyof AvatarConfig>(
     key: K,
     value: AvatarConfig[K]
@@ -536,8 +548,8 @@ async function purchaseAvatarItem(itemKey: string) {
                 Avatar Shop Preview
               </h2>
               <p className="mt-1 text-slate-600">
-                These are the first shop items from Supabase. Buying items will
-                be added in the next step.
+                These are the first shop items from Supabase. Students can buy
+                them with YanBo Coins.
               </p>
             </div>
 
@@ -548,6 +560,18 @@ async function purchaseAvatarItem(itemKey: string) {
               Practise to earn coins
             </Link>
           </div>
+
+          {shopError && (
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+              {shopError}
+            </div>
+          )}
+
+          {shopMessage && (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+              {shopMessage}
+            </div>
+          )}
 
           <div className="mt-6 space-y-6">
             {Object.entries(groupedShopItems).map(([category, items]) => (
@@ -585,19 +609,21 @@ async function purchaseAvatarItem(itemKey: string) {
                           {item.price} YanBo Coins
                         </p>
 
-                       {unlocked ? (
-  <div className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-    Unlocked
-  </div>
-) : (
-  <button
-    onClick={() => purchaseAvatarItem(item.item_key)}
-    disabled={purchasingItemKey === item.item_key}
-    className="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-  >
-    {purchasingItemKey === item.item_key ? "Buying..." : "Buy"}
-  </button>
-)}
+                        {unlocked ? (
+                          <div className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                            Unlocked
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => purchaseAvatarItem(item.item_key)}
+                            disabled={purchasingItemKey === item.item_key}
+                            className="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {purchasingItemKey === item.item_key
+                              ? "Buying..."
+                              : "Buy"}
+                          </button>
+                        )}
                       </div>
                     )
                   })}
