@@ -38,11 +38,12 @@ const defaultAvatar: AvatarConfig = {
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
-  const [tokens, setTokens] = useState(0)
+  const [coins, setCoins] = useState(0)
   const [shopItems, setShopItems] = useState<ShopItem[]>([])
   const [unlockedItems, setUnlockedItems] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [claimingDailyCoins, setClaimingDailyCoins] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -93,7 +94,7 @@ export default function AvatarPage() {
       .maybeSingle()
 
     if (walletData?.balance !== undefined && walletData?.balance !== null) {
-      setTokens(walletData.balance)
+      setCoins(walletData.balance)
     }
 
     const { data: itemsData, error: itemsError } = await supabase
@@ -150,6 +151,41 @@ export default function AvatarPage() {
     setSaving(false)
   }
 
+  async function claimDailyCoins() {
+    setClaimingDailyCoins(true)
+    setMessage(null)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/tokens/daily-login", {
+        method: "POST",
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || "Could not claim today’s YanBo Coins.")
+        setClaimingDailyCoins(false)
+        return
+      }
+
+      if (result.awarded) {
+        setCoins((current) => current + result.amount)
+        setMessage(`Well done! You claimed ${result.amount} YanBo Coins today.`)
+      } else {
+        setMessage("You have already claimed today’s YanBo Coins.")
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not claim today’s YanBo Coins."
+      )
+    }
+
+    setClaimingDailyCoins(false)
+  }
+
   function updateAvatar<K extends keyof AvatarConfig>(
     key: K,
     value: AvatarConfig[K]
@@ -191,16 +227,26 @@ export default function AvatarPage() {
                 My Avatar
               </h1>
               <p className="mt-2 max-w-2xl text-slate-600">
-                Build your learning character, save your style, and later unlock
-                new items with YanBo Tokens.
+                Build your learning character, save your style, and unlock new
+                items with YanBo Coins.
               </p>
             </div>
 
             <div className="rounded-2xl bg-emerald-50 px-5 py-4 text-center ring-1 ring-emerald-100">
               <p className="text-sm font-medium text-emerald-700">
-                YanBo Tokens
+                YanBo Coins
               </p>
-              <p className="text-3xl font-bold text-emerald-900">{tokens}</p>
+              <p className="text-3xl font-bold text-emerald-900">{coins}</p>
+
+              <button
+                onClick={claimDailyCoins}
+                disabled={claimingDailyCoins}
+                className="mt-3 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {claimingDailyCoins
+                  ? "Claiming..."
+                  : "Claim today’s 3 coins"}
+              </button>
             </div>
           </div>
         </section>
@@ -436,7 +482,7 @@ export default function AvatarPage() {
               href="/custom-tests"
               className="rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
             >
-              Practise to earn tokens
+              Practise to earn coins
             </Link>
           </div>
 
@@ -473,7 +519,7 @@ export default function AvatarPage() {
                         </h4>
 
                         <p className="mt-1 text-sm text-slate-600">
-                          {item.price} YanBo Tokens
+                          {item.price} YanBo Coins
                         </p>
 
                         <div
