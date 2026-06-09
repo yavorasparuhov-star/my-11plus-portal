@@ -150,11 +150,6 @@ function buildPrintableHtml(
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
         : "YanBo Learning Printable Custom Test")
   )
-  const shortTestTitle = escapeHtml(
-    testNumber
-      ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
-      : `YanBo Learning ${categoryLabel} Test`
-  )
 
   const passageBlocks = Array.from(
     new Map(
@@ -282,9 +277,9 @@ function buildPrintableHtml(
   <title>${printableTitle}</title>
   <style>
    @page {
-  size: A4 portrait;
-  margin: 24mm 11mm 22mm 11mm;
-}
+      size: A4 portrait;
+      margin: 24mm 14mm 24mm 14mm;
+    }
     :root {
       --ink: #111827;
       --muted: #4b5563;
@@ -313,10 +308,6 @@ function buildPrintableHtml(
       background: #ffffff;
     }
 
-    .print-header,
-    .print-footer {
-      display: none;
-    }
 
     .print-logo {
       font-weight: 900;
@@ -677,56 +668,12 @@ function buildPrintableHtml(
         background: #ffffff;
       }
 
-      .print-header {
-  position: fixed;
-  top: -18mm;
-  left: 0;
-  right: 0;
-  height: 12mm;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  border-bottom: 1.5px solid var(--answer-green);
-  padding: 0 0 2mm;
-  font-size: 9px;
-  line-height: 1.1;
-  font-weight: 800;
-  background: #ffffff;
-  z-index: 10;
-}
-
-.print-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: -17mm;
-  height: 12mm;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items: flex-start;
-  border-top: 1.5px solid var(--answer-green);
-  padding: 2mm 0 0;
-  font-size: 9px;
-  line-height: 1.1;
-  color: #374151;
-  background: #ffffff;
-  z-index: 10;
-}
-
       .question-paper-page,
       .answer-sheet-page,
       .qa-page {
         padding-top: 0;
       }
 
-      .footer-center {
-        text-align: center;
-      }
-
-      .footer-right {
-        text-align: right;
-        font-weight: 700;
-      }
 
       .no-print {
         display: none;
@@ -740,17 +687,6 @@ function buildPrintableHtml(
   </style>
 </head>
 <body>
-  <div class="print-header">
-    <div>${shortTestTitle}</div>
-    <div class="print-logo"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
-  </div>
-
-  <div class="print-footer">
-    <div>yanbo.co.uk</div>
-    <div class="footer-center">YanBo Learning</div>
-    <div class="footer-right">Please go on to the next page &gt;&gt;&gt;</div>
-  </div>
-
   <header class="cover-page">
     <h1>${printableTitle}</h1>
     <div class="top-grid">
