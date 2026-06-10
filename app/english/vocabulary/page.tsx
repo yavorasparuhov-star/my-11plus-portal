@@ -98,6 +98,8 @@ function VocabularyContent() {
 
   const [progressSaved, setProgressSaved] = useState(false)
   const [resultSaved, setResultSaved] = useState(false)
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
+  const [coinRewardMessage, setCoinRewardMessage] = useState("")
 
   const [isAnswerLocked, setIsAnswerLocked] = useState(false)
   const [options, setOptions] = useState<WordRow[]>([])
@@ -269,6 +271,8 @@ function VocabularyContent() {
       setTestCompleted(false)
       setProgressSaved(false)
       setResultSaved(false)
+      setCoinsAwarded(null)
+      setCoinRewardMessage("")
       setTimer(15)
       setTotalTimer(90)
       setIsTimerActive(timerEnabled && shuffled.length > 0)
@@ -610,6 +614,68 @@ function VocabularyContent() {
   setResultSaved(true)
 }
 
+  async function awardVocabularyCoins(successRate: number) {
+    if (!userId || reviewMode) return
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        console.error("Could not get session for YanBo Coins reward:", sessionError)
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "english",
+          category: "vocabulary",
+          testId: RESULT_TEST_ID,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("Could not award YanBo Coins:", result.error)
+        return
+      }
+
+      const earnedCoins =
+        typeof result.coinsAwarded === "number" ? result.coinsAwarded : 0
+
+      setCoinsAwarded(earnedCoins)
+
+      if (earnedCoins <= 0 || successRate < 50) {
+        setCoinRewardMessage("Score 50% or more to earn YanBo Coins.")
+        return
+      }
+
+      if (result.awarded) {
+        setCoinRewardMessage(
+          `Brilliant work — you earned ${earnedCoins} YanBo ${
+            earnedCoins === 1 ? "Coin" : "Coins"
+          }!`
+        )
+        return
+      }
+
+      setCoinRewardMessage(
+        "YanBo Coins for this vocabulary test have already been awarded today."
+      )
+    } catch (error) {
+      console.error("Unexpected YanBo Coins reward error:", error)
+    }
+  }
+
+
   async function finishTest(
     results: PracticeResult[],
     clearedIds: number[] = clearedReviewWordIds
@@ -620,6 +686,15 @@ function VocabularyContent() {
 
     await saveVocabularyProgress(results)
     await saveLatestVocabularyResult(results)
+
+    const totalQuestions = results.length
+    const correctAnswers = results.filter((result) => result.knewIt).length
+    const successRate =
+      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+    if (!reviewMode) {
+      await awardVocabularyCoins(successRate)
+    }
 
     if (reviewMode) {
       const storedIds = getStoredReviewIds()
@@ -690,6 +765,8 @@ function VocabularyContent() {
     setPracticeResults([])
     setProgressSaved(false)
     setResultSaved(false)
+    setCoinsAwarded(null)
+    setCoinRewardMessage("")
     setTimer(15)
     setTotalTimer(90)
     setIsTimerActive(false)
@@ -1112,6 +1189,13 @@ function VocabularyContent() {
                 <strong>Success Rate:</strong> {successRate}%
               </p>
 
+              {coinRewardMessage && (
+                <div style={styles.coinRewardBox}>
+                  <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                  <p style={styles.resultText}>{coinRewardMessage}</p>
+                </div>
+              )}
+
               {progressSaved && <p style={styles.savedText}>Progress saved.</p>}
               {resultSaved && <p style={styles.savedText}>Latest result saved.</p>}
               {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
@@ -1435,6 +1519,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "16px",
     color: "#166534",
     fontWeight: 700,
+  },
+
+  coinRewardBox: {
+    margin: "16px 0",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+  },
+
+  coinRewardTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "16px",
+    fontWeight: 800,
+    color: "#92400e",
   },
 
   resultButtons: {

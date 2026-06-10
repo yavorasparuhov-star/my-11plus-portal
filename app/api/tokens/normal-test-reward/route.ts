@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as RewardRequestBody
 
     if (
-      body.subject !== "math" ||
+      (body.subject !== "math" && body.subject !== "english") ||
       !body.category ||
       typeof body.category !== "string" ||
       typeof body.testId !== "number"
