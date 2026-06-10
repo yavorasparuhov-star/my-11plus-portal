@@ -131,12 +131,57 @@ function formatDateForPrint(value: string) {
 }
 
 
+function formatKeyAsLabel(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function buildSelectedCategoryLabel(
+  config: CustomTestBuilderConfig,
+  catalog: { topics: TopicCatalogItem[] } | null | undefined
+) {
+  const topicKeys = Array.isArray(config.topicKeys) ? config.topicKeys : []
+
+  if (topicKeys.length === 0) {
+    return "All available categories"
+  }
+
+  return topicKeys
+    .map((topicKey) => {
+      const topic = catalog?.topics.find((item) => item.key === topicKey)
+      const topicLabel = topic?.label ?? formatKeyAsLabel(topicKey)
+      const selectedSubtopics = config.subtopicMap?.[topicKey] ?? []
+
+      if (!selectedSubtopics.length) {
+        return topicLabel
+      }
+
+      const subtopicLabels = selectedSubtopics.map((subtopicKey) => {
+        const subtopic = topic?.childSubtopics?.find(
+          (item) => item.key === subtopicKey
+        )
+
+        return subtopic?.label ?? formatKeyAsLabel(subtopicKey)
+      })
+
+      return `${topicLabel}: ${subtopicLabels.join(", ")}`
+    })
+    .join("; ")
+}
+
+
 function buildPrintableHtml(
   downloadData: DownloadCustomTestData,
   categoryLabel: string,
-  userEmail: string | null | undefined
+  userEmail: string | null | undefined,
+  catalog: { topics: TopicCatalogItem[] } | null | undefined
 ) {
   const safeCategoryLabel = escapeHtml(categoryLabel)
+  const selectedCategoryLabel = escapeHtml(
+    buildSelectedCategoryLabel(downloadData.config, catalog)
+  )
   const safeUserEmail = escapeHtml(userEmail ?? "member")
   const printedDate = escapeHtml(formatDateForPrint(downloadData.createdAt))
   const timeAllowedLabel = escapeHtml(
@@ -149,11 +194,6 @@ function buildPrintableHtml(
       (testNumber
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
         : "YanBo Learning Printable Custom Test")
-  )
-  const shortTestTitle = escapeHtml(
-    testNumber
-      ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
-      : `YanBo Learning ${categoryLabel} Test`
   )
 
   const passageBlocks = Array.from(
@@ -281,10 +321,39 @@ function buildPrintableHtml(
   <meta charset="utf-8" />
   <title>${printableTitle}</title>
   <style>
-   @page {
-  size: A4 portrait;
-  margin: 24mm 11mm 22mm 11mm;
-}
+    @page {
+      size: A4 portrait;
+      margin: 24mm 14mm 28mm 14mm;
+
+      @bottom-left {
+        content: "yanbo.co.uk";
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10pt;
+        color: #374151;
+        border-top: 1px solid #16a34a;
+        padding-top: 3mm;
+      }
+
+      @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10pt;
+        color: #374151;
+        border-top: 1px solid #16a34a;
+        padding-top: 3mm;
+      }
+
+      @bottom-right {
+        content: "Please go on to the next page >>>";
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10pt;
+        color: #374151;
+        font-weight: 700;
+        border-top: 1px solid #16a34a;
+        padding-top: 3mm;
+      }
+    }
+
     :root {
       --ink: #111827;
       --muted: #4b5563;
@@ -311,11 +380,6 @@ function buildPrintableHtml(
       margin: 22px;
       line-height: 1.38;
       background: #ffffff;
-    }
-
-    .print-header,
-    .print-footer {
-      display: none;
     }
 
     .print-logo {
@@ -470,28 +534,29 @@ function buildPrintableHtml(
       color: #374151;
       font-weight: 700;
       margin: 4px 0;
-      font-size: 13px;
+      font-size: 12pt;
+      line-height: 1.42;
     }
 
     .question-text {
       margin: 3px 0 5px;
-      font-size: 12.5px;
-      line-height: 1.28;
+      font-size: 12pt;
+      line-height: 1.42;
     }
 
     .options {
       list-style: none;
       margin: 4px 0 0;
       padding: 0;
-      font-size: 11.8px;
-      line-height: 1.18;
+      font-size: 12pt;
+      line-height: 1.35;
     }
 
     .options li {
       display: grid;
-      grid-template-columns: 20px 1fr;
-      gap: 3px;
-      margin-bottom: 2px;
+      grid-template-columns: 24px 1fr;
+      gap: 5px;
+      margin-bottom: 4px;
       align-items: start;
     }
 
@@ -512,7 +577,13 @@ function buildPrintableHtml(
 
     .question-image {
       display: block;
-      max-height: 170px;
+      max-height: 95mm;
+      object-fit: contain;
+    }
+
+    .option-content img {
+      max-height: 55mm;
+      object-fit: contain;
     }
 
     table {
@@ -677,55 +748,10 @@ function buildPrintableHtml(
         background: #ffffff;
       }
 
-      .print-header {
-  position: fixed;
-  top: -18mm;
-  left: 0;
-  right: 0;
-  height: 12mm;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  border-bottom: 1.5px solid var(--answer-green);
-  padding: 0 0 2mm;
-  font-size: 9px;
-  line-height: 1.1;
-  font-weight: 800;
-  background: #ffffff;
-  z-index: 10;
-}
-
-.print-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: -17mm;
-  height: 12mm;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items: flex-start;
-  border-top: 1.5px solid var(--answer-green);
-  padding: 2mm 0 0;
-  font-size: 9px;
-  line-height: 1.1;
-  color: #374151;
-  background: #ffffff;
-  z-index: 10;
-}
-
       .question-paper-page,
       .answer-sheet-page,
       .qa-page {
         padding-top: 0;
-      }
-
-      .footer-center {
-        text-align: center;
-      }
-
-      .footer-right {
-        text-align: right;
-        font-weight: 700;
       }
 
       .no-print {
@@ -736,26 +762,36 @@ function buildPrintableHtml(
         break-inside: avoid;
         page-break-inside: avoid;
       }
+
+      .question-paper-page .question-header h3,
+      .question-paper-page .prompt,
+      .question-paper-page .question-text,
+      .question-paper-page .options,
+      .question-paper-page .options li,
+      .question-paper-page .option-letter,
+      .question-paper-page .option-content,
+      .question-paper-page .option-content span {
+        font-size: 12pt !important;
+        line-height: 1.35 !important;
+      }
+
+      .question-paper-page .question-image {
+        max-height: 95mm !important;
+      }
+
+      .question-paper-page .option-content img {
+        max-height: 55mm !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="print-header">
-    <div>${shortTestTitle}</div>
-    <div class="print-logo"><span class="logo-y">Y</span>an<span class="logo-b">B</span>o Learning 11+ Practice Portal</div>
-  </div>
-
-  <div class="print-footer">
-    <div>yanbo.co.uk</div>
-    <div class="footer-center">YanBo Learning</div>
-    <div class="footer-right">Please go on to the next page &gt;&gt;&gt;</div>
-  </div>
-
   <header class="cover-page">
     <h1>${printableTitle}</h1>
     <div class="top-grid">
       <div><strong>Website:</strong> yanbo.co.uk</div>
       <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
+      <div><strong>Categories selected:</strong> ${selectedCategoryLabel}</div>
       <div><strong>Time allowed:</strong> ${timeAllowedLabel}</div>
       <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
       <div><strong>Downloaded:</strong> ${printedDate}</div>
@@ -827,10 +863,6 @@ function buildPrintableHtml(
       </tbody>
     </table>
   </section>
-
-  <footer>
-    YanBo Learning | yanbo.co.uk | Printable custom test. Licensed to ${safeUserEmail}. Generated ${printedDate}.
-  </footer>
 </body>
 </html>`
 }
@@ -838,9 +870,10 @@ function buildPrintableHtml(
 function downloadPrintableHtml(
   downloadData: DownloadCustomTestData,
   categoryLabel: string,
-  userEmail: string | null | undefined
+  userEmail: string | null | undefined,
+  catalog: { topics: TopicCatalogItem[] } | null | undefined
 ) {
-  const html = buildPrintableHtml(downloadData, categoryLabel, userEmail)
+  const html = buildPrintableHtml(downloadData, categoryLabel, userEmail, catalog)
   const blob = new Blob([html], { type: "text/html;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement("a")
@@ -918,6 +951,10 @@ export default function CustomTestBuilderPage() {
     }
   }, [mainCategoryParam])
 
+  const selectedTopics = useMemo(() => {
+    if (!catalog) return []
+    return catalog.topics.filter((topic) => selectedTopicKeys.includes(topic.key))
+  }, [catalog, selectedTopicKeys])
 
   function toggleTopic(topic: TopicCatalogItem) {
     setErrorMessage("")
@@ -980,6 +1017,26 @@ export default function CustomTestBuilderPage() {
       questionCount,
       totalTimeMinutes,
       selectedDifficulty,
+    }
+  }
+
+  function handleSaveBuilderConfig() {
+    setErrorMessage("")
+    setSuccessMessage("")
+
+    const config = buildConfig()
+    if (!config) return
+
+    try {
+      sessionStorage.setItem(
+        buildBuilderStorageKey(config.mainCategory),
+        JSON.stringify(config)
+      )
+      sessionStorage.setItem("custom-test-builder:last-config", JSON.stringify(config))
+
+      setSuccessMessage("Builder settings saved.")
+    } catch {
+      setErrorMessage("Could not save builder settings in the browser.")
     }
   }
 
@@ -1119,7 +1176,7 @@ export default function CustomTestBuilderPage() {
         return
       }
 
-      downloadPrintableHtml(result.data, catalog.label, session.user.email)
+      downloadPrintableHtml(result.data, catalog.label, session.user.email, catalog)
 
       const testNumber =
         result.data.metadata?.testNumber ?? result.data.downloadNumber ?? null
@@ -1138,6 +1195,24 @@ export default function CustomTestBuilderPage() {
     } finally {
       setIsDownloading(false)
     }
+  }
+
+  function renderSelectedTopicSummary(topic: TopicCatalogItem) {
+    const selectedSubtopics = subtopicMap[topic.key] ?? []
+
+    if (!topic.childSubtopics || topic.childSubtopics.length === 0) {
+      return topic.label
+    }
+
+    if (selectedSubtopics.length === 0) {
+      return `${topic.label} (all subtopics)`
+    }
+
+    const labels = topic.childSubtopics
+      .filter((sub) => selectedSubtopics.includes(sub.key))
+      .map((sub) => sub.label)
+
+    return `${topic.label}: ${labels.join(", ")}`
   }
 
   if (!mainCategoryParam || !catalog) {
@@ -1224,28 +1299,81 @@ export default function CustomTestBuilderPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <section
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div
           style={{
-            background: "#ffffff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 18,
-            padding: 24,
-            boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 24,
           }}
         >
-          <div style={{ marginBottom: 24 }}>
-            <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-              {catalog.label} Custom Test
-            </h1>
+          <div>
+            <p style={{ margin: "0 0 6px 0", color: "#6b7280", fontSize: "0.95rem" }}>
+              <button
+                onClick={handleDownloadPrintableTest}
+                type="button"
+                disabled={isGenerating || isDownloading}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #bfdbfe",
+                  background: isDownloading ? "#e5e7eb" : "#dbeafe",
+                  color: isDownloading ? "#6b7280" : "#1e3a8a",
+                  fontWeight: 700,
+                  cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                }}
+              >
+                {isDownloading ? "Preparing Download..." : "Download Printable Test"}
+              </button>
 
-            <p style={{ margin: "8px 0 0 0", color: "#4b5563", lineHeight: 1.6 }}>
-              Choose your topics and test settings, then start an online test or download a
-              printable paper.
+              <Link
+                href="/custom-tests"
+                style={{ color: "#6b7280", textDecoration: "none" }}
+              >
+                Custom Tests
+              </Link>{" "}
+              / {catalog.label}
             </p>
+
+            <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
+              {catalog.label} Custom Test Builder
+            </h1>
           </div>
 
-          <div>
+          <div
+            style={{
+              background: "#ecfccb",
+              color: "#365314",
+              border: "1px solid #d9f99d",
+              borderRadius: 999,
+              padding: "8px 14px",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+            }}
+          >
+            One main category only
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)",
+            gap: 20,
+          }}
+        >
+          <section
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+            }}
+          >
             <h2 style={{ margin: "0 0 8px 0", color: "#111827", fontSize: "1.25rem" }}>
               1. Choose topics
             </h2>
@@ -1295,6 +1423,7 @@ export default function CustomTestBuilderPage() {
                         >
                           {topic.label}
                         </div>
+
                       </div>
                     </label>
 
@@ -1374,225 +1503,343 @@ export default function CustomTestBuilderPage() {
                 )
               })}
             </div>
-          </div>
 
-          <div style={{ marginTop: 28 }}>
-            <h2 style={{ margin: "0 0 8px 0", color: "#111827", fontSize: "1.25rem" }}>
-              2. Choose test settings
-            </h2>
+            <div style={{ marginTop: 28 }}>
+              <h2 style={{ margin: "0 0 8px 0", color: "#111827", fontSize: "1.25rem" }}>
+                2. Choose test settings
+              </h2>
 
-            <p style={{ margin: "0 0 18px 0", color: "#4b5563", lineHeight: 1.6 }}>
-              Choose the number of questions, total time, and difficulty level.
-            </p>
+              <p style={{ margin: "0 0 18px 0", color: "#4b5563", lineHeight: 1.6 }}>
+                Choose the number of questions, total time, and difficulty level.
+              </p>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 16,
-              }}
-            >
-              <div>
-                <label
-                  htmlFor="questionCount"
-                  style={{
-                    display: "block",
-                    marginBottom: 8,
-                    fontWeight: 600,
-                    color: "#111827",
-                  }}
-                >
-                  Number of questions
-                </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                <div>
+                  <label
+                    htmlFor="questionCount"
+                    style={{
+                      display: "block",
+                      marginBottom: 8,
+                      fontWeight: 600,
+                      color: "#111827",
+                    }}
+                  >
+                    Number of questions
+                  </label>
 
-                <select
-                  id="questionCount"
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    fontSize: "1rem",
-                  }}
-                >
-                  {QUESTION_COUNT_OPTIONS.map((value) => (
-                    <option key={value} value={value}>
-                      {value} questions
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <select
+                    id="questionCount"
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    {QUESTION_COUNT_OPTIONS.map((value) => (
+                      <option key={value} value={value}>
+                        {value} questions
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label
-                  htmlFor="totalTimeMinutes"
-                  style={{
-                    display: "block",
-                    marginBottom: 8,
-                    fontWeight: 600,
-                    color: "#111827",
-                  }}
-                >
-                  Total time
-                </label>
+                <div>
+                  <label
+                    htmlFor="totalTimeMinutes"
+                    style={{
+                      display: "block",
+                      marginBottom: 8,
+                      fontWeight: 600,
+                      color: "#111827",
+                    }}
+                  >
+                    Total time
+                  </label>
 
-                <select
-                  id="totalTimeMinutes"
-                  value={totalTimeMinutes}
-                  onChange={(e) => setTotalTimeMinutes(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    fontSize: "1rem",
-                  }}
-                >
-                  {TIME_OPTIONS.map((value) => (
-                    <option key={value} value={value}>
-                      {value} minutes
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <select
+                    id="totalTimeMinutes"
+                    value={totalTimeMinutes}
+                    onChange={(e) => setTotalTimeMinutes(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    {TIME_OPTIONS.map((value) => (
+                      <option key={value} value={value}>
+                        {value} minutes
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label
-                  htmlFor="selectedDifficulty"
-                  style={{
-                    display: "block",
-                    marginBottom: 8,
-                    fontWeight: 600,
-                    color: "#111827",
-                  }}
-                >
-                  Difficulty
-                </label>
+                <div>
+                  <label
+                    htmlFor="selectedDifficulty"
+                    style={{
+                      display: "block",
+                      marginBottom: 8,
+                      fontWeight: 600,
+                      color: "#111827",
+                    }}
+                  >
+                    Difficulty
+                  </label>
 
-                <select
-                  id="selectedDifficulty"
-                  value={String(selectedDifficulty)}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (value === "all") {
-                      setSelectedDifficulty("all")
-                    } else {
-                      setSelectedDifficulty(Number(value) as 1 | 2 | 3)
-                    }
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    fontSize: "1rem",
-                  }}
-                >
-                  {DIFFICULTY_OPTIONS.map((option) => (
-                    <option key={String(option.value)} value={String(option.value)}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    id="selectedDifficulty"
+                    value={String(selectedDifficulty)}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value === "all") {
+                        setSelectedDifficulty("all")
+                      } else {
+                        setSelectedDifficulty(Number(value) as 1 | 2 | 3)
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    {DIFFICULTY_OPTIONS.map((option) => (
+                      <option key={String(option.value)} value={String(option.value)}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {errorMessage ? (
-            <div
-              style={{
-                marginTop: 20,
-                padding: "12px 14px",
-                borderRadius: 12,
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                color: "#991b1b",
-              }}
-            >
-              {errorMessage}
-            </div>
-          ) : null}
+            {errorMessage ? (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#991b1b",
+                }}
+              >
+                {errorMessage}
+              </div>
+            ) : null}
 
-          {successMessage ? (
-            <div
-              style={{
-                marginTop: 20,
-                padding: "12px 14px",
-                borderRadius: 12,
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
-                color: "#166534",
-              }}
-            >
-              {successMessage}
-            </div>
-          ) : null}
-
-          <div
-            style={{
-              marginTop: 28,
-              paddingTop: 22,
-              borderTop: "1px solid #e5e7eb",
-            }}
-          >
-            <h2 style={{ margin: "0 0 8px 0", color: "#111827", fontSize: "1.25rem" }}>
-              3. Choose test format
-            </h2>
-
-            <p style={{ margin: "0 0 16px 0", color: "#4b5563", lineHeight: 1.6 }}>
-              Start the test online or download a printable version for paper practice.
-            </p>
+            {successMessage ? (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  color: "#166534",
+                }}
+              >
+                {successMessage}
+              </div>
+            ) : null}
 
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                marginTop: 24,
+                display: "flex",
                 gap: 12,
+                flexWrap: "wrap",
               }}
             >
+              <button
+                onClick={handleSaveBuilderConfig}
+                type="button"
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Save Builder Settings
+              </button>
+
               <button
                 onClick={handleGenerateCustomTest}
                 type="button"
                 disabled={isGenerating || isDownloading}
                 style={{
-                  width: "100%",
-                  padding: "14px 18px",
-                  borderRadius: 12,
+                  padding: "12px 18px",
+                  borderRadius: 10,
                   border: "1px solid #bef264",
                   background: isGenerating ? "#e5e7eb" : "#d9f99d",
                   color: isGenerating ? "#6b7280" : "#14532d",
-                  fontWeight: 800,
-                  cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                  cursor: isGenerating ? "not-allowed" : "pointer",
                 }}
               >
-                {isGenerating ? "Preparing Online Test..." : "Start Online Test"}
+                {isGenerating ? "Generating..." : "Generate Custom Test"}
               </button>
 
-              <button
-                onClick={handleDownloadPrintableTest}
-                type="button"
-                disabled={isGenerating || isDownloading}
+              <Link
+                href="/custom-tests"
                 style={{
-                  width: "100%",
-                  padding: "14px 18px",
-                  borderRadius: 12,
-                  border: "1px solid #bfdbfe",
-                  background: isDownloading ? "#e5e7eb" : "#dbeafe",
-                  color: isDownloading ? "#6b7280" : "#1e3a8a",
-                  fontWeight: 800,
-                  cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                  display: "inline-block",
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  textDecoration: "none",
+                  fontWeight: 600,
                 }}
               >
-                {isDownloading ? "Preparing Printable Test..." : "Download Printable Test"}
-              </button>
+                Back
+              </Link>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <aside
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+              alignSelf: "start",
+              position: "sticky",
+              top: 20,
+            }}
+          >
+            <h2 style={{ margin: "0 0 14px 0", color: "#111827", fontSize: "1.2rem" }}>
+              Test Summary
+            </h2>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  Main category
+                </div>
+                <div style={{ color: "#111827", fontWeight: 700 }}>{catalog.label}</div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  Selected topics
+                </div>
+
+                {selectedTopics.length === 0 ? (
+                  <div style={{ color: "#9ca3af" }}>No topics selected yet</div>
+                ) : (
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      color: "#111827",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {selectedTopics.map((topic) => (
+                      <li key={topic.key}>{renderSelectedTopicSummary(topic)}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  Question count
+                </div>
+                <div style={{ color: "#111827", fontWeight: 700 }}>{questionCount}</div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  Total time
+                </div>
+                <div style={{ color: "#111827", fontWeight: 700 }}>
+                  {totalTimeMinutes} minutes
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.85rem",
+                    color: "#6b7280",
+                    marginBottom: 4,
+                  }}
+                >
+                  Difficulty
+                </div>
+                <div style={{ color: "#111827", fontWeight: 700 }}>
+                  {renderDifficultyLabel(selectedDifficulty)}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 20,
+                padding: 14,
+                borderRadius: 12,
+                background: "#f9fafb",
+                border: "1px solid #e5e7eb",
+                color: "#4b5563",
+                lineHeight: 1.6,
+                fontSize: "0.95rem",
+              }}
+            >
+              This builder stays inside one main category only. Custom tests are available
+              for monthly, annual and admin members.
+            </div>
+          </aside>
+        </div>
       </div>
     </main>
   )
