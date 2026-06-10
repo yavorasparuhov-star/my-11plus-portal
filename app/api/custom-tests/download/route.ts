@@ -49,6 +49,7 @@ type EnglishQuestionRow = {
 type EnglishTestRow = {
   id: number
   passage: string | null
+  difficulty: number | null
 }
 
 type StandardTestRow = {
@@ -804,7 +805,7 @@ async function fetchEnglishPassages(
 
   const { data, error } = await supabase
     .from("english_tests")
-    .select("id, passage")
+    .select("id, passage, difficulty")
     .in("id", testIds)
 
   if (error) {
@@ -821,6 +822,35 @@ async function fetchEnglishPassages(
       row.passage.trim()
     ) {
       map.set(row.id, row.passage)
+    }
+  }
+
+  return map
+}
+
+async function fetchEnglishTestDetails(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  testIds: number[]
+) {
+  if (testIds.length === 0) {
+    return new Map<number, EnglishTestRow>()
+  }
+
+  const { data, error } = await supabase
+    .from("english_tests")
+    .select("id, passage, difficulty")
+    .in("id", testIds)
+
+  if (error) {
+    throw new Error(`Could not load english test details: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as EnglishTestRow[]
+  const map = new Map<number, EnglishTestRow>()
+
+  for (const row of rows) {
+    if (typeof row.id === "number") {
+      map.set(row.id, row)
     }
   }
 
@@ -1522,13 +1552,39 @@ export async function POST(request: NextRequest) {
               )
             : []
 
-          const rows = (
-            await fetchEnglishQuestions(supabase, topicKey, selectedSubtopics)
-          ).filter((row) =>
-            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+          const fetchedRows = await fetchEnglishQuestions(
+            supabase,
+            topicKey,
+            selectedSubtopics
           )
 
           if (topicKey === "comprehension") {
+            const comprehensionTestIds = Array.from(
+              new Set(
+                fetchedRows
+                  .map((row) => row.test_id)
+                  .filter((id): id is number => typeof id === "number")
+              )
+            )
+
+            const testsById = await fetchEnglishTestDetails(
+              supabase,
+              comprehensionTestIds
+            )
+
+            const rows = fetchedRows.filter((row) => {
+              if (typeof row.test_id !== "number") {
+                return matchesDifficulty(row.difficulty, config.selectedDifficulty)
+              }
+
+              const testDifficulty = testsById.get(row.test_id)?.difficulty
+
+              return matchesDifficulty(
+                typeof testDifficulty === "number" ? testDifficulty : row.difficulty,
+                config.selectedDifficulty
+              )
+            })
+
             const requestedForComprehension =
               targetByTopic.get(topicKey) ?? config.questionCount
 
@@ -1542,16 +1598,19 @@ export async function POST(request: NextRequest) {
               comprehensionPoolSize
             )
 
-            const passagesByTestId = await fetchEnglishPassages(
-              supabase,
-              Array.from(
-                new Set(
-                  selectedRows
-                    .map((row) => row.test_id)
-                    .filter((id): id is number => typeof id === "number")
-                )
-              )
-            )
+            const passagesByTestId = new Map<number, string>()
+
+            for (const row of selectedRows) {
+              if (typeof row.test_id !== "number") {
+                continue
+              }
+
+              const passage = testsById.get(row.test_id)?.passage
+
+              if (typeof passage === "string" && passage.trim()) {
+                passagesByTestId.set(row.test_id, passage)
+              }
+            }
 
             const questions = normalizeEnglishQuestions(
               selectedRows,
@@ -1562,6 +1621,10 @@ export async function POST(request: NextRequest) {
             topicPools.push({ topicKey, questions })
             continue
           }
+
+          const rows = fetchedRows.filter((row) =>
+            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+          )
 
           const questions = normalizeEnglishQuestions(
             rows,

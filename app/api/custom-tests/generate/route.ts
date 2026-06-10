@@ -46,6 +46,7 @@ type EnglishQuestionRow = {
 type EnglishTestRow = {
   id: number
   passage: string | null
+  difficulty?: number | null
 }
 
 type StandardTestRow = {
@@ -804,6 +805,76 @@ async function fetchEnglishPassages(
   return map
 }
 
+
+async function fetchEnglishTestDifficultyMap(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  testIds: number[]
+) {
+  if (testIds.length === 0) {
+    return new Map<number, number | null>()
+  }
+
+  const { data, error } = await supabase
+    .from("english_tests")
+    .select("id, difficulty")
+    .in("id", testIds)
+
+  if (error) {
+    throw new Error(`Could not load english test difficulties: ${error.message}`)
+  }
+
+  const rows = (data ?? []) as EnglishTestRow[]
+  const map = new Map<number, number | null>()
+
+  for (const row of rows) {
+    if (typeof row.id === "number") {
+      map.set(
+        row.id,
+        typeof row.difficulty === "number" ? row.difficulty : null
+      )
+    }
+  }
+
+  return map
+}
+
+async function filterComprehensionRowsByTestDifficulty(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  rows: EnglishQuestionRow[],
+  selectedDifficulty: DifficultyFilter
+) {
+  if (selectedDifficulty === "all") {
+    return rows
+  }
+
+  const testIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.test_id)
+        .filter((id): id is number => typeof id === "number")
+    )
+  )
+
+  const difficultyByTestId = await fetchEnglishTestDifficultyMap(
+    supabase,
+    testIds
+  )
+
+  return rows.filter((row) => {
+    if (
+      typeof row.test_id === "number" &&
+      difficultyByTestId.has(row.test_id)
+    ) {
+      return matchesDifficulty(
+        difficultyByTestId.get(row.test_id) ?? null,
+        selectedDifficulty
+      )
+    }
+
+    return matchesDifficulty(row.difficulty, selectedDifficulty)
+  })
+}
+
 async function fetchStandardTestsForTopic(
   supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
@@ -1308,11 +1379,22 @@ export async function POST(request: NextRequest) {
               )
             : []
 
-          const rows = (
-            await fetchEnglishQuestions(supabase, topicKey, selectedSubtopics)
-          ).filter((row) =>
-            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+          const fetchedRows = await fetchEnglishQuestions(
+            supabase,
+            topicKey,
+            selectedSubtopics
           )
+
+          const rows =
+            topicKey === "comprehension"
+              ? await filterComprehensionRowsByTestDifficulty(
+                  supabase,
+                  fetchedRows,
+                  config.selectedDifficulty
+                )
+              : fetchedRows.filter((row) =>
+                  matchesDifficulty(row.difficulty, config.selectedDifficulty)
+                )
 
           if (topicKey === "comprehension") {
             const requestedForComprehension =
