@@ -14,7 +14,7 @@ import type {
 
 const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
 const MAX_QUESTION_COUNT = 60
-const MIN_QUESTION_COUNT = 5
+const MIN_QUESTION_COUNT = 10
 const MAX_TIME_MINUTES = 120
 const MIN_TIME_MINUTES = 1
 
@@ -77,6 +77,7 @@ type StandardQuestionRow = {
 type TopicPool = {
   topicKey: string
   questions: NormalizedQuestion[]
+  preserveOrder?: boolean
 }
 
 type PreviousCustomTestItemRow = {
@@ -294,7 +295,8 @@ function matchesDifficulty(
 
 function selectComprehensionRowsByPassage(
   rows: EnglishQuestionRow[],
-  requestedCount: number
+  requestedCount: number,
+  previouslyUsedGuardKeys: Set<string>
 ): EnglishQuestionRow[] {
   const grouped = new Map<number, EnglishQuestionRow[]>()
 
@@ -306,17 +308,38 @@ function selectComprehensionRowsByPassage(
     grouped.set(groupKey, existing)
   }
 
-  const groupedEntries = shuffleArray([...grouped.entries()])
+  const groupedEntries = [...grouped.entries()].map(([groupKey, groupRows]) => {
+    const orderedRows = [...groupRows].sort((a, b) => a.id - b.id)
+    const rowsForPassage = orderedRows.slice(0, 10)
+    const previouslyUsedCount = rowsForPassage.filter((row) =>
+      previouslyUsedGuardKeys.has(`english_question:${row.id}`)
+    ).length
+
+    return {
+      groupKey,
+      rows: rowsForPassage,
+      previouslyUsedCount,
+    }
+  })
+
+  const freshPassages = shuffleArray(
+    groupedEntries.filter((group) => group.previouslyUsedCount === 0)
+  )
+
+  const reusedPassages = shuffleArray(
+    groupedEntries.filter((group) => group.previouslyUsedCount > 0)
+  ).sort((a, b) => a.previouslyUsedCount - b.previouslyUsedCount)
+
   const selected: EnglishQuestionRow[] = []
 
-  for (const [, groupRows] of groupedEntries) {
+  for (const group of [...freshPassages, ...reusedPassages]) {
     if (selected.length >= requestedCount) break
 
-    const remaining = requestedCount - selected.length
-    const shuffledGroupRows = shuffleArray(groupRows)
-    const takeCount = Math.min(10, remaining, shuffledGroupRows.length)
+    selected.push(...group.rows)
 
-    selected.push(...shuffledGroupRows.slice(0, takeCount))
+    if (selected.length > requestedCount) {
+      return selected.slice(0, requestedCount)
+    }
   }
 
   return selected
@@ -1121,12 +1144,20 @@ function validateRequestBody(
 
   if (
     typeof request.questionCount !== "number" ||
+    !Number.isInteger(request.questionCount) ||
     request.questionCount < MIN_QUESTION_COUNT ||
     request.questionCount > MAX_QUESTION_COUNT
   ) {
     return {
       ok: false,
       error: `Question count must be between ${MIN_QUESTION_COUNT} and ${MAX_QUESTION_COUNT}.`,
+    }
+  }
+
+  if (request.questionCount % 10 !== 0) {
+    return {
+      ok: false,
+      error: "Question count must be a multiple of 10.",
     }
   }
 
@@ -1220,9 +1251,19 @@ function selectFinalQuestions(
   questionCount: number,
   previouslyUsedGuardKeys: Set<string>
 ): NormalizedQuestion[] {
+  if (
+    topicPools.length === 1 &&
+    topicPools[0]?.topicKey === "comprehension" &&
+    topicPools[0]?.preserveOrder
+  ) {
+    return topicPools[0].questions.slice(0, questionCount)
+  }
+
   const preparedPools = topicPools.map((pool) => ({
     topicKey: pool.topicKey,
-    questions: splitQuestionsFreshFirst(pool.questions, previouslyUsedGuardKeys),
+    questions: pool.preserveOrder
+      ? pool.questions
+      : splitQuestionsFreshFirst(pool.questions, previouslyUsedGuardKeys),
   }))
 
   const perTopicTargets = distributeCounts(questionCount, preparedPools.length)
@@ -1422,14 +1463,10 @@ export async function POST(request: NextRequest) {
             const requestedForComprehension =
               targetByTopic.get(topicKey) ?? config.questionCount
 
-            const comprehensionPoolSize = Math.min(
-              rows.length,
-              requestedForComprehension + 10
-            )
-
             const selectedRows = selectComprehensionRowsByPassage(
               rows,
-              comprehensionPoolSize
+              Math.min(rows.length, requestedForComprehension),
+              previouslyUsedGuardKeys
             )
 
             const passagesByTestId = await fetchEnglishPassages(
@@ -1449,7 +1486,7 @@ export async function POST(request: NextRequest) {
               passagesByTestId
             )
 
-            topicPools.push({ topicKey, questions })
+            topicPools.push({ topicKey, questions, preserveOrder: true })
             continue
           }
 
