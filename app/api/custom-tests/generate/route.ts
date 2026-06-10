@@ -877,11 +877,16 @@ async function fetchEnglishQuestions(
     query = query.eq("main_category", topicKey);
   }
 
+  const expandedSelectedSubtopics = getEnglishSubtopicCandidates(
+    topicKey,
+    selectedSubtopics,
+  );
+
   if (
     (topicKey === "grammar" || topicKey === "punctuation") &&
-    selectedSubtopics.length > 0
+    expandedSelectedSubtopics.length > 0
   ) {
-    query = query.in("subcategory", selectedSubtopics);
+    query = query.in("subcategory", expandedSelectedSubtopics);
   }
 
   const { data, error } = await query;
@@ -1007,6 +1012,110 @@ function normalizedValueSet(values: string[]) {
   );
 }
 
+function getEnglishSubtopicCandidates(
+  topicKey: string,
+  selectedSubtopics: string[],
+): string[] {
+  if (
+    selectedSubtopics.length === 0 ||
+    (topicKey !== "grammar" && topicKey !== "punctuation")
+  ) {
+    return selectedSubtopics;
+  }
+
+  const candidates: string[] = [];
+
+  for (const subtopic of selectedSubtopics) {
+    const normalized = normalizeCategoryValue(subtopic);
+
+    candidates.push(
+      subtopic,
+      normalized,
+      normalized.replace(/-/g, "_"),
+      normalized.replace(/-/g, " "),
+    );
+
+    switch (normalized) {
+      case "direct-speech-punctuation":
+      case "direct-speech":
+        candidates.push(
+          "direct-speech-punctuation",
+          "direct_speech_punctuation",
+          "direct speech punctuation",
+          "direct-speech",
+          "direct_speech",
+          "direct speech",
+          "speech-punctuation",
+          "speech_punctuation",
+          "speech punctuation",
+        );
+        break;
+      case "sentence-punctuation":
+      case "sentence":
+        candidates.push(
+          "sentence-punctuation",
+          "sentence_punctuation",
+          "sentence punctuation",
+          "sentence",
+          "sentences",
+        );
+        break;
+      case "advanced-punctuation":
+      case "advanced":
+        candidates.push(
+          "advanced-punctuation",
+          "advanced_punctuation",
+          "advanced punctuation",
+          "advanced",
+        );
+        break;
+      case "comma":
+      case "commas":
+        candidates.push(
+          "comma",
+          "commas",
+          "comma-punctuation",
+          "comma_punctuation",
+          "comma punctuation",
+        );
+        break;
+      case "apostrophes":
+      case "apostrophe":
+        candidates.push(
+          "apostrophes",
+          "apostrophe",
+          "apostrophe-punctuation",
+          "apostrophe_punctuation",
+          "apostrophe punctuation",
+        );
+        break;
+      case "primary-word-classes":
+        candidates.push(
+          "primary-word-classes",
+          "primary_word_classes",
+          "primary word classes",
+          "word-classes",
+          "word_classes",
+          "word classes",
+        );
+        break;
+      case "sentence-structure-syntax":
+        candidates.push(
+          "sentence-structure-syntax",
+          "sentence_structure_syntax",
+          "sentence structure syntax",
+          "sentence-structure",
+          "sentence_structure",
+          "sentence structure",
+          "syntax",
+        );
+        break;
+    }
+  }
+
+  return uniqueStrings(candidates);
+}
+
 async function fetchEnglishTopicQuestionRowsForDifficulty(
   supabase: ReturnType<typeof getSupabaseClient>,
   topicKey: string,
@@ -1024,7 +1133,9 @@ async function fetchEnglishTopicQuestionRowsForDifficulty(
 
   const tests = (testData ?? []) as EnglishTopicTestLookupRow[];
   const normalizedTopicKey = normalizeCategoryValue(topicKey);
-  const selectedSubtopicSet = normalizedValueSet(selectedSubtopics);
+  const selectedSubtopicSet = normalizedValueSet(
+    getEnglishSubtopicCandidates(topicKey, selectedSubtopics),
+  );
 
   const matchingTestIds = tests
     .filter((test) => {
