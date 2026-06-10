@@ -613,17 +613,28 @@ export default function SentenceStructureSyntaxTestPage() {
     if (!test || mode === "review") return
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
       const response = await fetch("/api/tokens/normal-test-reward", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           subject: "english",
+          category: RESULT_CATEGORY,
           testId: test.id,
-          scorePercent: successRate,
-          mainCategory: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
         }),
       })
 
@@ -631,7 +642,15 @@ export default function SentenceStructureSyntaxTestPage() {
 
       if (!response.ok) {
         console.error("Error awarding Sentence Structure & Syntax YanBo Coins:", data)
-        setRewardMessage("")
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
         return
       }
 
@@ -648,7 +667,9 @@ export default function SentenceStructureSyntaxTestPage() {
       }
     } catch (rewardError) {
       console.error("Unexpected Sentence Structure & Syntax reward error:", rewardError)
-      setRewardMessage("")
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
     }
   }
 
