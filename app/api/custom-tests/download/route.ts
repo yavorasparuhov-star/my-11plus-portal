@@ -284,15 +284,35 @@ function distributeCounts(total: number, bucketCount: number): number[] {
   )
 }
 
+function normalizeDifficultyValue(
+  difficulty: number | string | null | undefined
+): 1 | 2 | 3 | null {
+  if (typeof difficulty === "number" && Number.isFinite(difficulty)) {
+    const rounded = Math.round(difficulty)
+
+    return rounded === 1 || rounded === 2 || rounded === 3 ? rounded : null
+  }
+
+  if (typeof difficulty === "string") {
+    const normalized = difficulty.trim().toLowerCase()
+
+    if (normalized === "1" || normalized === "easy") return 1
+    if (normalized === "2" || normalized === "medium") return 2
+    if (normalized === "3" || normalized === "hard") return 3
+  }
+
+  return null
+}
+
 function matchesDifficulty(
-  difficulty: number | null,
+  difficulty: number | string | null | undefined,
   selectedDifficulty: DifficultyFilter
 ) {
   if (selectedDifficulty === "all") {
     return true
   }
 
-  return difficulty === selectedDifficulty
+  return normalizeDifficultyValue(difficulty) === selectedDifficulty
 }
 
 function selectComprehensionRowsByPassage(
@@ -460,7 +480,7 @@ function normalizeVocabularyQuestions(words: WordRow[]): NormalizedQuestion[] {
       options: builtOptions.options,
       correctAnswer: builtOptions.correctAnswer,
       explanation: null,
-      difficulty: row.difficulty,
+      difficulty: normalizeDifficultyValue(row.difficulty),
       meta: {
         word,
       },
@@ -511,7 +531,7 @@ function normalizeSpellingQuestions(words: WordRow[]): NormalizedQuestion[] {
       options: builtOptions.options,
       correctAnswer: builtOptions.correctAnswer,
       explanation: null,
-      difficulty: row.difficulty,
+      difficulty: normalizeDifficultyValue(row.difficulty),
       meta: {
         word,
         wrongWords: uniqueWrongWords,
@@ -571,7 +591,7 @@ function normalizeEnglishQuestions(
       options,
       correctAnswer,
       explanation: row.explanation,
-      difficulty: row.difficulty,
+      difficulty: normalizeDifficultyValue(row.difficulty),
       meta: {
         main_category: row.main_category,
         subcategory: row.subcategory,
@@ -774,8 +794,13 @@ async function fetchEnglishQuestions(
       difficulty
       `
     )
-    .eq("main_category", topicKey)
     .range(0, 9999)
+
+  if (topicKey === "comprehension") {
+    query = query.or("main_category.eq.comprehension,subcategory.eq.comprehension")
+  } else {
+    query = query.eq("main_category", topicKey)
+  }
 
   if (
     (topicKey === "grammar" || topicKey === "punctuation") &&
@@ -1011,7 +1036,7 @@ function normalizeStandardQuestions(
       options,
       correctAnswer,
       explanation: row.explanation,
-      difficulty: parentTest?.difficulty ?? null,
+      difficulty: normalizeDifficultyValue(parentTest?.difficulty ?? null),
       meta: {
         test_id: row.test_id,
         test_title: parentTest?.title ?? null,
@@ -1580,7 +1605,7 @@ export async function POST(request: NextRequest) {
               const testDifficulty = testsById.get(row.test_id)?.difficulty
 
               return matchesDifficulty(
-                typeof testDifficulty === "number" ? testDifficulty : row.difficulty,
+                testDifficulty ?? row.difficulty,
                 config.selectedDifficulty
               )
             })
