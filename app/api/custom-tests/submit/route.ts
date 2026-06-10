@@ -16,6 +16,7 @@ type SubmitCustomTestResponse =
   | {
       ok: true
       attemptId: string
+      coinsAwarded: number
     }
   | {
       ok: false
@@ -33,6 +34,13 @@ function isMainCategory(value: unknown): value is MainCategory {
 
 function isOptionKey(value: unknown): value is OptionKey {
   return value === "A" || value === "B" || value === "C" || value === "D"
+}
+
+function calculateCustomTestCoins(scorePercent: number) {
+  if (scorePercent >= 90) return 3
+  if (scorePercent >= 75) return 2
+  if (scorePercent >= 50) return 1
+  return 0
 }
 
 function jsonError(error: string, status = 400) {
@@ -175,6 +183,8 @@ export async function POST(request: NextRequest) {
         ? Number(((correctAnswers / questionCount) * 100).toFixed(2))
         : 0
 
+    const coinsAwarded = calculateCustomTestCoins(scorePercent)
+
     const timeLimitSeconds = generatedTest.config.totalTimeMinutes * 60
     const completedAt = new Date().toISOString()
 
@@ -235,9 +245,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (coinsAwarded > 0) {
+      const { error: coinsError } = await supabase.rpc("award_yanbo_tokens", {
+        p_user_id: user.id,
+        p_amount: coinsAwarded,
+        p_reason: "custom_test_score_reward",
+        p_source_type: "custom_test_attempt",
+        p_source_id: attempt.id,
+      })
+
+      if (coinsError) {
+        console.error("Could not award YanBo Coins:", coinsError.message)
+      }
+    }
+
     return NextResponse.json<SubmitCustomTestResponse>({
       ok: true,
       attemptId: attempt.id,
+      coinsAwarded,
     })
   } catch (error) {
     return jsonError(

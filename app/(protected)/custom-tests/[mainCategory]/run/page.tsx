@@ -17,6 +17,7 @@ type SubmitCustomTestResponse =
   | {
       ok: true
       attemptId: string
+      coinsAwarded: number
     }
   | {
       ok: false
@@ -78,6 +79,7 @@ export default function CustomTestRunPage() {
   const [isSavingResult, setIsSavingResult] = useState<boolean>(false)
   const [saveError, setSaveError] = useState<string>("")
   const [savedAttemptId, setSavedAttemptId] = useState<string>("")
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
   const [saveStarted, setSaveStarted] = useState<boolean>(false)
 
   useEffect(() => {
@@ -175,6 +177,7 @@ export default function CustomTestRunPage() {
         }
 
         setSavedAttemptId(result.attemptId)
+        setCoinsAwarded(result.coinsAwarded)
       } catch (error) {
         setSaveError(
           error instanceof Error
@@ -644,14 +647,28 @@ export default function CustomTestRunPage() {
                   <div
                     style={{
                       marginBottom: 16,
-                      padding: "12px 14px",
-                      borderRadius: 12,
+                      padding: "14px 16px",
+                      borderRadius: 14,
                       background: "#f0fdf4",
                       border: "1px solid #bbf7d0",
                       color: "#166534",
+                      lineHeight: 1.5,
                     }}
                   >
-                    Results saved successfully.
+                    <div style={{ fontWeight: 800 }}>Results saved successfully.</div>
+                    {coinsAwarded !== null && coinsAwarded > 0 ? (
+                      <div style={{ marginTop: 6 }}>
+                        Brilliant work — you earned{" "}
+                        <strong>
+                          {coinsAwarded} YanBo {coinsAwarded === 1 ? "Coin" : "Coins"}
+                        </strong>
+                        !
+                      </div>
+                    ) : coinsAwarded !== null ? (
+                      <div style={{ marginTop: 6 }}>
+                        Score 50% or more next time to earn YanBo Coins.
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -871,7 +888,8 @@ export default function CustomTestRunPage() {
                 fontSize: "0.95rem",
               }}
             >
-              This runner now saves the finished custom test into your custom attempt tables.
+              Custom Test YanBo Coins: 50%+ earns 1 coin, 75%+ earns 2 coins,
+              and 90%+ earns 3 coins.
             </div>
           </aside>
         </div>
