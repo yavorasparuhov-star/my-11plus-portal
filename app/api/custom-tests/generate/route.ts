@@ -1057,6 +1057,46 @@ async function filterComprehensionRowsByTestDifficulty(
   });
 }
 
+async function filterEnglishRowsByQuestionOrTestDifficulty(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  rows: EnglishQuestionRow[],
+  selectedDifficulty: DifficultyFilter,
+) {
+  if (selectedDifficulty === "all") {
+    return rows;
+  }
+
+  const testIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.test_id)
+        .filter((id): id is number => typeof id === "number"),
+    ),
+  );
+
+  const difficultyByTestId = await fetchEnglishTestDifficultyMap(
+    supabase,
+    testIds,
+  );
+
+  return rows.filter((row) => {
+    const questionDifficultyMatches = matchesDifficulty(
+      row.difficulty,
+      selectedDifficulty,
+    );
+
+    const testDifficultyMatches =
+      typeof row.test_id === "number" && difficultyByTestId.has(row.test_id)
+        ? matchesDifficulty(
+            difficultyByTestId.get(row.test_id) ?? null,
+            selectedDifficulty,
+          )
+        : false;
+
+    return questionDifficultyMatches || testDifficultyMatches;
+  });
+}
+
 async function fetchStandardTestsForTopic(
   supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
@@ -1469,6 +1509,51 @@ function selectFinalQuestions(
   return selectedBuckets.flat();
 }
 
+function selectFinalEnglishQuestions(
+  topicPools: TopicPool[],
+  questionCount: number,
+  previouslyUsedGuardKeys: Set<string>,
+): NormalizedQuestion[] {
+  const comprehensionPool = topicPools.find(
+    (pool) => pool.topicKey === "comprehension",
+  );
+
+  if (!comprehensionPool || comprehensionPool.questions.length === 0) {
+    return selectFinalQuestions(
+      topicPools,
+      questionCount,
+      previouslyUsedGuardKeys,
+    );
+  }
+
+  const nonComprehensionPools = topicPools.filter(
+    (pool) => pool.topicKey !== "comprehension",
+  );
+
+  const selectedComprehensionQuestions = comprehensionPool.questions.slice(
+    0,
+    Math.min(10, comprehensionPool.questions.length),
+  );
+
+  const remainingQuestionCount = Math.max(
+    0,
+    questionCount - selectedComprehensionQuestions.length,
+  );
+
+  const selectedOtherQuestions = selectFinalQuestions(
+    nonComprehensionPools,
+    remainingQuestionCount,
+    previouslyUsedGuardKeys,
+  );
+
+  const combinedQuestions = [
+    ...selectedComprehensionQuestions,
+    ...selectedOtherQuestions,
+  ];
+
+  return combinedQuestions.slice(0, questionCount);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authenticatedClient = getAuthenticatedSupabaseClient(request);
@@ -1634,35 +1719,22 @@ export async function POST(request: NextRequest) {
               )
             : [];
 
-          const fetchedRows = await fetchEnglishQuestions(
-            supabase,
-            topicKey,
-            selectedSubtopics,
-          );
-
-          const rows =
-            topicKey === "comprehension"
-              ? await filterComprehensionRowsByTestDifficulty(
-                  supabase,
-                  fetchedRows,
-                  config.selectedDifficulty,
-                )
-              : fetchedRows.filter((row) =>
-                  matchesDifficulty(row.difficulty, config.selectedDifficulty),
-                );
-
           if (topicKey === "comprehension") {
+            const rows = await fetchComprehensionQuestionRowsForDifficulty(
+              supabase,
+              config.selectedDifficulty,
+            );
+
             const requestedForComprehension =
               targetByTopic.get(topicKey) ?? config.questionCount;
 
-            const comprehensionPoolSize = Math.min(
-              rows.length,
-              requestedForComprehension + 10,
-            );
+            const requestedComprehensionBlockCount =
+              requestedForComprehension > 0 ? 10 : 0;
 
-            const selectedRows = selectComprehensionRowsByPassage(
+            const selectedRows = selectComprehensionRowsByFullPassage(
               rows,
-              comprehensionPoolSize,
+              requestedComprehensionBlockCount,
+              previouslyUsedGuardKeys,
             );
 
             const passagesByTestId = await fetchEnglishPassages(
@@ -1685,6 +1757,18 @@ export async function POST(request: NextRequest) {
             topicPools.push({ topicKey, questions });
             continue;
           }
+
+          const fetchedRows = await fetchEnglishQuestions(
+            supabase,
+            topicKey,
+            selectedSubtopics,
+          );
+
+          const rows = await filterEnglishRowsByQuestionOrTestDifficulty(
+            supabase,
+            fetchedRows,
+            config.selectedDifficulty,
+          );
 
           const questions = normalizeEnglishQuestions(
             rows,
@@ -1711,7 +1795,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const finalQuestions = selectFinalQuestions(
+      const finalQuestions = selectFinalEnglishQuestions(
         topicPools,
         config.questionCount,
         previouslyUsedGuardKeys,
