@@ -100,6 +100,8 @@ export default function DataHandlingTestPage() {
   const [submitting, setSubmitting] = useState(false)
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
+  const [coinRewardMessage, setCoinRewardMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
 
   const currentQuestion = questions[currentIndex]
@@ -405,6 +407,8 @@ export default function DataHandlingTestPage() {
 
   setSubmitting(true)
   setErrorMessage("")
+  setCoinsAwarded(null)
+  setCoinRewardMessage("")
 
   let correctAnswers = 0
 
@@ -603,6 +607,8 @@ export default function DataHandlingTestPage() {
         })
       }
     }
+
+    await awardNormalTestCoins(successRate)
   } catch (error) {
     console.error("Unexpected math submit error:", error)
     setErrorMessage(
@@ -610,8 +616,70 @@ export default function DataHandlingTestPage() {
     )
   } finally {
     setSubmitting(false)
+    setTimeExpiredProcessing(false)
   }
 }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test) return
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        console.error("Could not get session for YanBo Coins reward:", sessionError)
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "math",
+          category: test.category,
+          testId: test.id,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("Could not award YanBo Coins:", result.error)
+        return
+      }
+
+      const earnedCoins =
+        typeof result.coinsAwarded === "number" ? result.coinsAwarded : 0
+
+      setCoinsAwarded(earnedCoins)
+
+      if (earnedCoins <= 0 || successRate < 50) {
+        setCoinRewardMessage("Score 50% or more to earn YanBo Coins.")
+        return
+      }
+
+      if (result.awarded) {
+        setCoinRewardMessage(
+          `Brilliant work — you earned ${earnedCoins} YanBo ${
+            earnedCoins === 1 ? "Coin" : "Coins"
+          }!`
+        )
+        return
+      }
+
+      setCoinRewardMessage(
+        "YanBo Coins for this test have already been awarded today."
+      )
+    } catch (error) {
+      console.error("Unexpected YanBo Coins reward error:", error)
+    }
+  }
 
   function getOptionText(question: MathQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
@@ -639,6 +707,8 @@ export default function DataHandlingTestPage() {
     setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
+    setCoinsAwarded(null)
+    setCoinRewardMessage("")
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -834,6 +904,13 @@ export default function DataHandlingTestPage() {
                 <p style={styles.resultText}>
                   <strong>Success Rate:</strong> {percentage}%
                 </p>
+
+                {coinRewardMessage && (
+                  <div style={styles.coinRewardBox}>
+                    <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                    <p style={styles.resultText}>{coinRewardMessage}</p>
+                  </div>
+                )}
 
                 <p style={styles.resultText}>
                   <strong>Category:</strong> Data Handling
@@ -1366,6 +1443,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  coinRewardBox: {
+    margin: "16px 0",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+  },
+
+  coinRewardTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "16px",
+    fontWeight: 800,
+    color: "#92400e",
   },
 
   resultButtons: {

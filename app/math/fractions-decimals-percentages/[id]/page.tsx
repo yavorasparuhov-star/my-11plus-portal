@@ -100,6 +100,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
   const [submitting, setSubmitting] = useState(false)
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
+  const [coinRewardMessage, setCoinRewardMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
 
   const currentQuestion = questions[currentIndex]
@@ -133,6 +134,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
       setTimeExpiredProcessing(false)
       setFinished(false)
       setScore(0)
+      setCoinRewardMessage("")
       setSubmitting(false)
 
       if (!rawId || Number.isNaN(testId)) {
@@ -398,6 +400,64 @@ export default function FractionsDecimalsPercentagesTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+
+  async function awardNormalTestCoins(testCategory: string, testId: number) {
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        console.error("Could not get session for YanBo Coins reward:", sessionError)
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "math",
+          category: testCategory,
+          testId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error(
+          "Could not check YanBo Coins reward:",
+          result?.error || "Unknown reward error"
+        )
+        return
+      }
+
+      if (result.coinsAwarded <= 0) {
+        setCoinRewardMessage("Score 50% or more to earn YanBo Coins.")
+        return
+      }
+
+      if (result.awarded) {
+        setCoinRewardMessage(
+          `Brilliant work — you earned ${result.coinsAwarded} YanBo ${
+            result.coinsAwarded === 1 ? "Coin" : "Coins"
+          }!`
+        )
+        return
+      }
+
+      setCoinRewardMessage(
+        "You have already earned today’s YanBo Coins for this test."
+      )
+    } catch (error) {
+      console.error("Unexpected YanBo Coins reward error:", error)
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
   if (submitting) return
   if (!userId || !test) return
@@ -405,6 +465,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
 
   setSubmitting(true)
   setErrorMessage("")
+  setCoinRewardMessage("")
 
   let correctAnswers = 0
 
@@ -604,6 +665,8 @@ export default function FractionsDecimalsPercentagesTestPage() {
         })
       }
     }
+
+    await awardNormalTestCoins(test.category, test.id)
   } catch (error) {
     console.error("Unexpected math submit error:", error)
     setErrorMessage(
@@ -611,6 +674,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
     )
   } finally {
     setSubmitting(false)
+    setTimeExpiredProcessing(false)
   }
 }
 
@@ -640,6 +704,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
     setTimeExpiredProcessing(false)
     setFinished(false)
     setScore(0)
+    setCoinRewardMessage("")
     setErrorMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -835,6 +900,10 @@ export default function FractionsDecimalsPercentagesTestPage() {
                 </p>
 
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
+
+                {coinRewardMessage && (
+                  <div style={styles.coinRewardBox}>{coinRewardMessage}</div>
+                )}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </div>
@@ -1303,6 +1372,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "15px",
     fontWeight: 600,
     color: "#374151",
+  },
+
+  coinRewardBox: {
+    marginTop: "14px",
+    borderRadius: "14px",
+    padding: "14px 16px",
+    background: "#fef3c7",
+    border: "1px solid #facc15",
+    color: "#78350f",
+    fontWeight: 800,
+    lineHeight: 1.5,
   },
 
   inlineError: {
