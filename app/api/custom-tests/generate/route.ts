@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import { getMainCategoryCatalog } from "../../../../lib/custom-tests/catalog"
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { getMainCategoryCatalog } from "../../../../lib/custom-tests/catalog";
 import type {
   DifficultyFilter,
   GenerateCustomTestRequest,
@@ -10,93 +10,96 @@ import type {
   NormalizedQuestion,
   OptionKey,
   QuestionSourceType,
-} from "../../../../lib/custom-tests/types"
+} from "../../../../lib/custom-tests/types";
 
-const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
-const MAX_QUESTION_COUNT = 60
-const MIN_QUESTION_COUNT = 5
-const MAX_TIME_MINUTES = 120
-const MIN_TIME_MINUTES = 1
+const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"];
+const MAX_QUESTION_COUNT = 60;
+const MIN_QUESTION_COUNT = 5;
+const MAX_TIME_MINUTES = 120;
+const MIN_TIME_MINUTES = 1;
 
-type NonEnglishMainCategory = Exclude<MainCategory, "english">
+type NonEnglishMainCategory = Exclude<MainCategory, "english">;
 
 type WordRow = {
-  id: number
-  word: string | null
-  definition: string | null
-  difficulty: number | string | null
-  wrong_words: unknown
-}
+  id: number;
+  word: string | null;
+  definition: string | null;
+  difficulty: number | string | null;
+  wrong_words: unknown;
+};
 
 type EnglishQuestionRow = {
-  id: number
-  test_id: number | null
-  main_category: string | null
-  subcategory: string | null
-  question_text: string | null
-  option_a: string | null
-  option_b: string | null
-  option_c: string | null
-  option_d: string | null
-  correct_answer: string | null
-  explanation: string | null
-  difficulty: number | string | null
-}
+  id: number;
+  test_id: number | null;
+  main_category: string | null;
+  subcategory: string | null;
+  question_text: string | null;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  correct_answer: string | null;
+  explanation: string | null;
+  difficulty: number | string | null;
+  question_order: number | null;
+};
 
 type EnglishTestRow = {
-  id: number
-  passage: string | null
-  difficulty?: number | string | null
-}
+  id: number;
+  passage: string | null;
+  difficulty?: number | string | null;
+};
 
 type StandardTestRow = {
-  id: number
-  title: string | null
-  category: string | null
-  difficulty: number | string | null
-}
+  id: number;
+  title: string | null;
+  category: string | null;
+  difficulty: number | string | null;
+};
 
 type StandardQuestionRow = {
-  id: number
-  test_id: number | null
-  question_text: string | null
-  image_url?: string | null
-  option_a: string | null
-  option_b: string | null
-  option_c: string | null
-  option_d: string | null
-  option_a_image_url?: string | null
-  option_b_image_url?: string | null
-  option_c_image_url?: string | null
-  option_d_image_url?: string | null
-  correct_answer: string | null
-  explanation: string | null
-  question_order: number | null
-}
+  id: number;
+  test_id: number | null;
+  question_text: string | null;
+  image_url?: string | null;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  option_a_image_url?: string | null;
+  option_b_image_url?: string | null;
+  option_c_image_url?: string | null;
+  option_d_image_url?: string | null;
+  correct_answer: string | null;
+  explanation: string | null;
+  question_order: number | null;
+};
 
 type TopicPool = {
-  topicKey: string
-  questions: NormalizedQuestion[]
-}
+  topicKey: string;
+  questions: NormalizedQuestion[];
+};
 
 type PreviousCustomTestItemRow = {
-  source_type: string | null
-  source_id: number | null
-}
+  source_type: string | null;
+  source_id: number | null;
+};
 
 type StandardTableConfig = {
-  testsTable: string
-  questionsTable: string
-  questionSelect: string
-  sourceType: QuestionSourceType
-}
+  testsTable: string;
+  questionsTable: string;
+  questionSelect: string;
+  sourceType: QuestionSourceType;
+};
 
-const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig> =
-  {
-    math: {
-  testsTable: "math_tests",
-  questionsTable: "math_questions",
-  questionSelect: `
+const STANDARD_TABLE_CONFIG: Record<
+  NonEnglishMainCategory,
+  StandardTableConfig
+> = {
+  math: {
+    testsTable: "math_tests",
+    questionsTable: "math_questions",
+    questionSelect: `
     id,
     test_id,
     question_text,
@@ -113,12 +116,12 @@ const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig>
     explanation,
     question_order
   `,
-  sourceType: "math_question",
-},
-    vr: {
-      testsTable: "vr_tests",
-      questionsTable: "vr_questions",
-      questionSelect: `
+    sourceType: "math_question",
+  },
+  vr: {
+    testsTable: "vr_tests",
+    questionsTable: "vr_questions",
+    questionSelect: `
       id,
       test_id,
       question_text,
@@ -130,12 +133,12 @@ const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig>
       explanation,
       question_order
     `,
-      sourceType: "vr_question",
-    },
-    nvr: {
-      testsTable: "nvr_tests",
-      questionsTable: "nvr_questions",
-      questionSelect: `
+    sourceType: "vr_question",
+  },
+  nvr: {
+    testsTable: "nvr_tests",
+    questionsTable: "nvr_questions",
+    questionSelect: `
       id,
       test_id,
       question_text,
@@ -152,174 +155,249 @@ const STANDARD_TABLE_CONFIG: Record<NonEnglishMainCategory, StandardTableConfig>
       explanation,
       question_order
     `,
-      sourceType: "nvr_question",
-    },
-  }
+    sourceType: "nvr_question",
+  },
+};
 
 function isMainCategory(value: unknown): value is MainCategory {
   return (
-    value === "english" ||
-    value === "math" ||
-    value === "vr" ||
-    value === "nvr"
-  )
+    value === "english" || value === "math" || value === "vr" || value === "nvr"
+  );
 }
 
 function isOptionKey(value: unknown): value is OptionKey {
-  return value === "A" || value === "B" || value === "C" || value === "D"
+  return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
 function toOptionKey(value: unknown): OptionKey | null {
   if (typeof value !== "string") {
-    return null
+    return null;
   }
 
-  const normalized = value.trim().toUpperCase()
-  return isOptionKey(normalized) ? normalized : null
+  const normalized = value.trim().toUpperCase();
+  return isOptionKey(normalized) ? normalized : null;
 }
 
 function jsonError(error: string, status = 400) {
   return NextResponse.json<GenerateCustomTestResponse>(
     { ok: false, error },
-    { status }
-  )
+    { status },
+  );
 }
 
 function shuffleArray<T>(items: T[]): T[] {
-  const copy = [...items]
+  const copy = [...items];
 
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
 
-  return copy
+  return copy;
 }
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>()
-  const result: string[] = []
+  const seen = new Set<string>();
+  const result: string[] = [];
 
   for (const value of values) {
-    if (typeof value !== "string") continue
+    if (typeof value !== "string") continue;
 
-    const trimmed = value.trim()
-    if (!trimmed) continue
+    const trimmed = value.trim();
+    if (!trimmed) continue;
 
-    const key = trimmed.toLowerCase()
-    if (seen.has(key)) continue
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
 
-    seen.add(key)
-    result.push(trimmed)
+    seen.add(key);
+    result.push(trimmed);
   }
 
-  return result
+  return result;
 }
 
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return uniqueStrings(
-      value.map((item) => (typeof item === "string" ? item : null))
-    )
+      value.map((item) => (typeof item === "string" ? item : null)),
+    );
   }
 
   if (typeof value === "string") {
-    const trimmed = value.trim()
+    const trimmed = value.trim();
 
     if (!trimmed) {
-      return []
+      return [];
     }
 
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
       try {
-        const parsed = JSON.parse(trimmed)
+        const parsed = JSON.parse(trimmed);
 
         if (Array.isArray(parsed)) {
           return uniqueStrings(
-            parsed.map((item) => (typeof item === "string" ? item : null))
-          )
+            parsed.map((item) => (typeof item === "string" ? item : null)),
+          );
         }
       } catch {
         // fall through
       }
     }
 
-    return uniqueStrings([trimmed])
+    return uniqueStrings([trimmed]);
   }
 
-  return []
+  return [];
 }
 
 function distributeCounts(total: number, bucketCount: number): number[] {
-  if (bucketCount <= 0) return []
+  if (bucketCount <= 0) return [];
 
-  const base = Math.floor(total / bucketCount)
-  const remainder = total % bucketCount
+  const base = Math.floor(total / bucketCount);
+  const remainder = total % bucketCount;
 
-  return Array.from({ length: bucketCount }, (_, index) =>
-    base + (index < remainder ? 1 : 0)
-  )
+  return Array.from(
+    { length: bucketCount },
+    (_, index) => base + (index < remainder ? 1 : 0),
+  );
 }
 
 function normalizeDifficultyValue(
-  difficulty: number | string | null | undefined
+  difficulty: number | string | null | undefined,
 ): 1 | 2 | 3 | null {
   if (typeof difficulty === "number" && Number.isFinite(difficulty)) {
-    const rounded = Math.round(difficulty)
+    const rounded = Math.round(difficulty);
 
-    return rounded === 1 || rounded === 2 || rounded === 3 ? rounded : null
+    return rounded === 1 || rounded === 2 || rounded === 3 ? rounded : null;
   }
 
   if (typeof difficulty === "string") {
-    const normalized = difficulty.trim().toLowerCase()
+    const normalized = difficulty.trim().toLowerCase();
 
-    if (normalized === "1" || normalized === "easy") return 1
-    if (normalized === "2" || normalized === "medium") return 2
-    if (normalized === "3" || normalized === "hard") return 3
+    if (normalized === "1" || normalized === "easy") return 1;
+    if (normalized === "2" || normalized === "medium") return 2;
+    if (normalized === "3" || normalized === "hard") return 3;
   }
 
-  return null
+  return null;
 }
 
 function matchesDifficulty(
   difficulty: number | string | null | undefined,
-  selectedDifficulty: DifficultyFilter
+  selectedDifficulty: DifficultyFilter,
 ) {
   if (selectedDifficulty === "all") {
-    return true
+    return true;
   }
 
-  return normalizeDifficultyValue(difficulty) === selectedDifficulty
+  return normalizeDifficultyValue(difficulty) === selectedDifficulty;
 }
 
 function selectComprehensionRowsByPassage(
   rows: EnglishQuestionRow[],
-  requestedCount: number
+  requestedCount: number,
 ): EnglishQuestionRow[] {
-  const grouped = new Map<number, EnglishQuestionRow[]>()
+  const grouped = new Map<number, EnglishQuestionRow[]>();
 
   for (const row of rows) {
-    const groupKey = typeof row.test_id === "number" ? row.test_id : -row.id
+    const groupKey = typeof row.test_id === "number" ? row.test_id : -row.id;
 
-    const existing = grouped.get(groupKey) ?? []
-    existing.push(row)
-    grouped.set(groupKey, existing)
+    const existing = grouped.get(groupKey) ?? [];
+    existing.push(row);
+    grouped.set(groupKey, existing);
   }
 
-  const groupedEntries = shuffleArray([...grouped.entries()])
-  const selected: EnglishQuestionRow[] = []
+  const groupedEntries = shuffleArray([...grouped.entries()]);
+  const selected: EnglishQuestionRow[] = [];
 
   for (const [, groupRows] of groupedEntries) {
-    if (selected.length >= requestedCount) break
+    if (selected.length >= requestedCount) break;
 
-    const remaining = requestedCount - selected.length
-    const shuffledGroupRows = shuffleArray(groupRows)
-    const takeCount = Math.min(10, remaining, shuffledGroupRows.length)
+    const remaining = requestedCount - selected.length;
+    const shuffledGroupRows = shuffleArray(groupRows);
+    const takeCount = Math.min(10, remaining, shuffledGroupRows.length);
 
-    selected.push(...shuffledGroupRows.slice(0, takeCount))
+    selected.push(...shuffledGroupRows.slice(0, takeCount));
   }
 
-  return selected
+  return selected;
+}
+
+function getEnglishQuestionRowGuardKey(row: EnglishQuestionRow): string {
+  return `english_question:${row.id}`;
+}
+
+function sortEnglishRowsByQuestionOrder(rows: EnglishQuestionRow[]) {
+  return [...rows].sort((a, b) => {
+    const aOrder =
+      typeof a.question_order === "number"
+        ? a.question_order
+        : Number.MAX_SAFE_INTEGER;
+
+    const bOrder =
+      typeof b.question_order === "number"
+        ? b.question_order
+        : Number.MAX_SAFE_INTEGER;
+
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+
+    return a.id - b.id;
+  });
+}
+
+function selectComprehensionRowsByFullPassage(
+  rows: EnglishQuestionRow[],
+  requestedCount: number,
+  previouslyUsedGuardKeys: Set<string>,
+): EnglishQuestionRow[] {
+  const grouped = new Map<number, EnglishQuestionRow[]>();
+
+  for (const row of rows) {
+    if (typeof row.test_id !== "number") {
+      continue;
+    }
+
+    const existing = grouped.get(row.test_id) ?? [];
+    existing.push(row);
+    grouped.set(row.test_id, existing);
+  }
+
+  const validBlocks = Array.from(grouped.entries())
+    .map(([testId, groupRows]) => {
+      const sortedRows = sortEnglishRowsByQuestionOrder(groupRows);
+      const firstTenRows = sortedRows.slice(0, 10);
+
+      return {
+        testId,
+        rows: firstTenRows,
+        freshCount: firstTenRows.filter(
+          (row) =>
+            !previouslyUsedGuardKeys.has(getEnglishQuestionRowGuardKey(row)),
+        ).length,
+      };
+    })
+    .filter((block) => block.rows.length >= 10);
+
+  const freshBlocks = shuffleArray(
+    validBlocks.filter((block) => block.freshCount === 10),
+  );
+
+  const partlyFreshBlocks = shuffleArray(
+    validBlocks.filter(
+      (block) => block.freshCount > 0 && block.freshCount < 10,
+    ),
+  ).sort((a, b) => b.freshCount - a.freshCount);
+
+  const reusedBlocks = shuffleArray(
+    validBlocks.filter((block) => block.freshCount === 0),
+  );
+
+  const orderedBlocks = [...freshBlocks, ...partlyFreshBlocks, ...reusedBlocks];
+  const blocksNeeded = Math.floor(requestedCount / 10);
+
+  return orderedBlocks.slice(0, blocksNeeded).flatMap((block) => block.rows);
 }
 
 function getQuestionGuardKey(question: NormalizedQuestion): string {
@@ -327,96 +405,96 @@ function getQuestionGuardKey(question: NormalizedQuestion): string {
     question.sourceType === "words_vocabulary" ||
     question.sourceType === "words_spelling"
   ) {
-    return `word:${String(question.sourceId)}`
+    return `word:${String(question.sourceId)}`;
   }
 
-  return `${question.sourceType}:${String(question.sourceId)}`
+  return `${question.sourceType}:${String(question.sourceId)}`;
 }
 
 function getPreviousItemGuardKey(
   sourceType: string | null,
-  sourceId: number | null
+  sourceId: number | null,
 ): string | null {
   if (!sourceType || typeof sourceId !== "number") {
-    return null
+    return null;
   }
 
   if (sourceType === "words_vocabulary" || sourceType === "words_spelling") {
-    return `word:${String(sourceId)}`
+    return `word:${String(sourceId)}`;
   }
 
-  return `${sourceType}:${String(sourceId)}`
+  return `${sourceType}:${String(sourceId)}`;
 }
 
 function isQuestionPreviouslyUsed(
   question: NormalizedQuestion,
-  previouslyUsedGuardKeys: Set<string>
+  previouslyUsedGuardKeys: Set<string>,
 ): boolean {
-  return previouslyUsedGuardKeys.has(getQuestionGuardKey(question))
+  return previouslyUsedGuardKeys.has(getQuestionGuardKey(question));
 }
 
 function splitQuestionsFreshFirst(
   questions: NormalizedQuestion[],
-  previouslyUsedGuardKeys: Set<string>
+  previouslyUsedGuardKeys: Set<string>,
 ): NormalizedQuestion[] {
-  const uniqueByGuardKey = new Map<string, NormalizedQuestion>()
+  const uniqueByGuardKey = new Map<string, NormalizedQuestion>();
 
   for (const question of questions) {
-    const guardKey = getQuestionGuardKey(question)
+    const guardKey = getQuestionGuardKey(question);
 
     if (!uniqueByGuardKey.has(guardKey)) {
-      uniqueByGuardKey.set(guardKey, question)
+      uniqueByGuardKey.set(guardKey, question);
     }
   }
 
-  const uniqueQuestions = Array.from(uniqueByGuardKey.values())
+  const uniqueQuestions = Array.from(uniqueByGuardKey.values());
   const freshQuestions = uniqueQuestions.filter(
-    (question) => !isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys)
-  )
+    (question) => !isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys),
+  );
   const reusedQuestions = uniqueQuestions.filter((question) =>
-    isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys)
-  )
+    isQuestionPreviouslyUsed(question, previouslyUsedGuardKeys),
+  );
 
-  return [...shuffleArray(freshQuestions), ...shuffleArray(reusedQuestions)]
+  return [...shuffleArray(freshQuestions), ...shuffleArray(reusedQuestions)];
 }
 
 function buildShuffledTextOptions(
   correctText: string,
-  distractors: string[]
+  distractors: string[],
 ): { options: NormalizedOption[]; correctAnswer: OptionKey } | null {
-  const cleanedCorrect = correctText.trim()
-  if (!cleanedCorrect) return null
+  const cleanedCorrect = correctText.trim();
+  if (!cleanedCorrect) return null;
 
   const cleanedDistractors = uniqueStrings(distractors).filter(
-    (item) => item.toLowerCase() !== cleanedCorrect.toLowerCase()
-  )
+    (item) => item.toLowerCase() !== cleanedCorrect.toLowerCase(),
+  );
 
   if (cleanedDistractors.length < 3) {
-    return null
+    return null;
   }
 
-  const chosenDistractors = shuffleArray(cleanedDistractors).slice(0, 3)
-  const optionTexts = shuffleArray([cleanedCorrect, ...chosenDistractors]).slice(
-    0,
-    4
-  )
+  const chosenDistractors = shuffleArray(cleanedDistractors).slice(0, 3);
+  const optionTexts = shuffleArray([
+    cleanedCorrect,
+    ...chosenDistractors,
+  ]).slice(0, 4);
 
   const options: NormalizedOption[] = optionTexts.map((text, index) => ({
     key: OPTION_KEYS[index],
     text,
     imageUrl: null,
-  }))
+  }));
 
   const correctOption = options.find(
-    (option) => option.text?.toLowerCase() === cleanedCorrect.toLowerCase()
-  )
+    (option) => option.text?.toLowerCase() === cleanedCorrect.toLowerCase(),
+  );
 
-  if (!correctOption) return null
+  if (!correctOption) return null;
 
   return {
     options,
     correctAnswer: correctOption.key,
-  }
+  };
 }
 
 function normalizeVocabularyQuestions(words: WordRow[]): NormalizedQuestion[] {
@@ -425,23 +503,23 @@ function normalizeVocabularyQuestions(words: WordRow[]): NormalizedQuestion[] {
       typeof row.word === "string" &&
       row.word.trim() &&
       typeof row.definition === "string" &&
-      row.definition.trim()
-  )
+      row.definition.trim(),
+  );
 
   return usableWords.flatMap((row) => {
-    const word = row.word!.trim()
-    const definition = row.definition!.trim()
+    const word = row.word!.trim();
+    const definition = row.definition!.trim();
 
     const distractorDefinitions = usableWords
       .filter((candidate) => candidate.id !== row.id)
-      .map((candidate) => candidate.definition)
+      .map((candidate) => candidate.definition);
 
     const builtOptions = buildShuffledTextOptions(
       definition,
-      uniqueStrings(distractorDefinitions)
-    )
+      uniqueStrings(distractorDefinitions),
+    );
 
-    if (!builtOptions) return []
+    if (!builtOptions) return [];
 
     const question: NormalizedQuestion = {
       runnerId: `words_vocabulary:${row.id}`,
@@ -461,10 +539,10 @@ function normalizeVocabularyQuestions(words: WordRow[]): NormalizedQuestion[] {
       meta: {
         word,
       },
-    }
+    };
 
-    return [question]
-  })
+    return [question];
+  });
 }
 
 function normalizeSpellingQuestions(words: WordRow[]): NormalizedQuestion[] {
@@ -472,27 +550,27 @@ function normalizeSpellingQuestions(words: WordRow[]): NormalizedQuestion[] {
     (row) =>
       typeof row.word === "string" &&
       row.word.trim() &&
-      toStringArray(row.wrong_words).length >= 3
-  )
+      toStringArray(row.wrong_words).length >= 3,
+  );
 
   return usableWords.flatMap((row) => {
-    const word = row.word!.trim()
+    const word = row.word!.trim();
 
     const rowWrongWords = toStringArray(row.wrong_words).filter(
-      (item) => item.toLowerCase() !== word.toLowerCase()
-    )
+      (item) => item.toLowerCase() !== word.toLowerCase(),
+    );
 
     const uniqueWrongWords = uniqueStrings(rowWrongWords).filter(
-      (item) => item.toLowerCase() !== word.toLowerCase()
-    )
+      (item) => item.toLowerCase() !== word.toLowerCase(),
+    );
 
     if (uniqueWrongWords.length < 3) {
-      return []
+      return [];
     }
 
-    const builtOptions = buildShuffledTextOptions(word, uniqueWrongWords)
+    const builtOptions = buildShuffledTextOptions(word, uniqueWrongWords);
 
-    if (!builtOptions) return []
+    if (!builtOptions) return [];
 
     const question: NormalizedQuestion = {
       runnerId: `words_spelling:${row.id}`,
@@ -513,22 +591,22 @@ function normalizeSpellingQuestions(words: WordRow[]): NormalizedQuestion[] {
         word,
         wrongWords: uniqueWrongWords,
       },
-    }
+    };
 
-    return [question]
-  })
+    return [question];
+  });
 }
 
 function normalizeEnglishQuestions(
   rows: EnglishQuestionRow[],
   topicKey: string,
-  passagesByTestId: Map<number, string>
+  passagesByTestId: Map<number, string>,
 ): NormalizedQuestion[] {
   return rows.flatMap((row) => {
-    const correctAnswer = toOptionKey(row.correct_answer)
+    const correctAnswer = toOptionKey(row.correct_answer);
 
     if (!correctAnswer) {
-      return []
+      return [];
     }
 
     const options: NormalizedOption[] = [
@@ -536,20 +614,20 @@ function normalizeEnglishQuestions(
       { key: "B", text: row.option_b, imageUrl: null },
       { key: "C", text: row.option_c, imageUrl: null },
       { key: "D", text: row.option_d, imageUrl: null },
-    ]
+    ];
 
     const hasAnyOptionContent = options.some(
-      (option) => typeof option.text === "string" && option.text.trim()
-    )
+      (option) => typeof option.text === "string" && option.text.trim(),
+    );
 
     if (!hasAnyOptionContent) {
-      return []
+      return [];
     }
 
     const passageText =
       topicKey === "comprehension" && typeof row.test_id === "number"
-        ? passagesByTestId.get(row.test_id) ?? null
-        : null
+        ? (passagesByTestId.get(row.test_id) ?? null)
+        : null;
 
     const question: NormalizedQuestion = {
       runnerId: `english_question:${row.id}`,
@@ -574,50 +652,50 @@ function normalizeEnglishQuestions(
         subcategory: row.subcategory,
         test_id: row.test_id,
       },
-    }
+    };
 
-    return [question]
-  })
+    return [question];
+  });
 }
 
 function normalizeCategoryValue(value: string | null | undefined) {
   return (value ?? "")
     .trim()
     .toLowerCase()
-    .replace(/[\s_]+/g, "-")
+    .replace(/[\s_]+/g, "-");
 }
 
 function getStandardTopicCategoryCandidates(
   mainCategory: NonEnglishMainCategory,
-  topicKey: string
+  topicKey: string,
 ): string[] {
   const baseCandidates = [
     topicKey,
     topicKey.replace(/-/g, "_"),
     topicKey.replace(/-/g, " "),
-  ]
+  ];
 
-  let extraCandidates: string[] = []
+  let extraCandidates: string[] = [];
 
   if (mainCategory === "math") {
     switch (topicKey) {
       case "arithmetic":
-        extraCandidates = []
-        break
+        extraCandidates = [];
+        break;
       case "fractions-decimals-percentages":
         extraCandidates = [
           "fractions",
           "decimals",
           "percentages",
           "fractions_decimals_percentages",
-        ]
-        break
+        ];
+        break;
       case "algebra-reasoning":
-        extraCandidates = ["algebra", "algebra_reasoning"]
-        break
+        extraCandidates = ["algebra", "algebra_reasoning"];
+        break;
       case "geometry-measurement":
-        extraCandidates = ["geometry", "measurement", "geometry_measurement"]
-        break
+        extraCandidates = ["geometry", "measurement", "geometry_measurement"];
+        break;
       case "ratio-proportion":
         extraCandidates = [
           "ratio",
@@ -625,16 +703,16 @@ function getStandardTopicCategoryCandidates(
           "ratios-proportions",
           "ratios_proportions",
           "ratio_proportion",
-        ]
-        break
+        ];
+        break;
       case "word-problems":
         extraCandidates = [
           "problem-solving",
           "problem_solving",
           "word problems",
           "problem solving",
-        ]
-        break
+        ];
+        break;
     }
   }
 
@@ -645,29 +723,29 @@ function getStandardTopicCategoryCandidates(
           "word_relationships",
           "word relationship",
           "word_relationship",
-        ]
-        break
+        ];
+        break;
       case "codes-logic":
-        extraCandidates = ["codes_logic", "codes logic"]
-        break
+        extraCandidates = ["codes_logic", "codes logic"];
+        break;
       case "sequence-pattern":
-        extraCandidates = ["sequence_pattern", "sequence pattern"]
-        break
+        extraCandidates = ["sequence_pattern", "sequence pattern"];
+        break;
     }
   }
 
   if (mainCategory === "nvr") {
     switch (topicKey) {
       case "shape-patterns":
-        extraCandidates = ["shape-pattern", "shape_patterns", "shape_pattern"]
-        break
+        extraCandidates = ["shape-pattern", "shape_patterns", "shape_pattern"];
+        break;
       case "rotations-reflections":
         extraCandidates = [
           "rotation-reflection",
           "rotation_reflection",
           "rotations_reflections",
-        ]
-        break
+        ];
+        break;
       case "codes-spatial-logic":
         extraCandidates = [
           "code-spatial-logic",
@@ -675,52 +753,52 @@ function getStandardTopicCategoryCandidates(
           "spatial-logic",
           "spatial_logic",
           "codes_spatial_logic",
-        ]
-        break
+        ];
+        break;
     }
   }
 
   return uniqueStrings([...baseCandidates, ...extraCandidates]).map(
-    normalizeCategoryValue
-  )
+    normalizeCategoryValue,
+  );
 }
 
 function getStandardTableConfig(
-  mainCategory: NonEnglishMainCategory
+  mainCategory: NonEnglishMainCategory,
 ): StandardTableConfig {
-  return STANDARD_TABLE_CONFIG[mainCategory]
+  return STANDARD_TABLE_CONFIG[mainCategory];
 }
 
 function getSupabaseClient() {
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are missing.")
+    throw new Error("Supabase environment variables are missing.");
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey)
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
 
 function getAuthenticatedSupabaseClient(request: NextRequest) {
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are missing.")
+    throw new Error("Supabase environment variables are missing.");
   }
 
-  const authorization = request.headers.get("authorization")
+  const authorization = request.headers.get("authorization");
 
   if (!authorization) {
     return {
       supabase: null,
       error: "Please sign in to use custom tests.",
-    }
+    };
   }
 
   return {
@@ -732,26 +810,26 @@ function getAuthenticatedSupabaseClient(request: NextRequest) {
       },
     }),
     error: null,
-  }
+  };
 }
 
 async function fetchWords(supabase: ReturnType<typeof getSupabaseClient>) {
   const { data, error } = await supabase
     .from("words")
     .select("id, word, definition, difficulty, wrong_words")
-    .range(0, 9999)
+    .range(0, 9999);
 
   if (error) {
-    throw new Error(`Could not load words: ${error.message}`)
+    throw new Error(`Could not load words: ${error.message}`);
   }
 
-  return (data ?? []) as WordRow[]
+  return (data ?? []) as WordRow[];
 }
 
 async function fetchEnglishQuestions(
   supabase: ReturnType<typeof getSupabaseClient>,
   topicKey: string,
-  selectedSubtopics: string[]
+  selectedSubtopics: string[],
 ) {
   let query = supabase
     .from("english_questions")
@@ -768,54 +846,60 @@ async function fetchEnglishQuestions(
       option_d,
       correct_answer,
       explanation,
-      difficulty
-      `
+      difficulty,
+      question_order
+      `,
     )
     .range(0, 9999)
+    .order("test_id", { ascending: true })
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
 
   if (topicKey === "comprehension") {
-    query = query.or("main_category.eq.comprehension,subcategory.eq.comprehension")
+    query = query.or(
+      "main_category.eq.comprehension,subcategory.eq.comprehension",
+    );
   } else {
-    query = query.eq("main_category", topicKey)
+    query = query.eq("main_category", topicKey);
   }
 
   if (
     (topicKey === "grammar" || topicKey === "punctuation") &&
     selectedSubtopics.length > 0
   ) {
-    query = query.in("subcategory", selectedSubtopics)
+    query = query.in("subcategory", selectedSubtopics);
   }
 
-  const { data, error } = await query
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(
-      `Could not load english_questions for ${topicKey}: ${error.message}`
-    )
+      `Could not load english_questions for ${topicKey}: ${error.message}`,
+    );
   }
 
-  return (data ?? []) as EnglishQuestionRow[]
+  return (data ?? []) as EnglishQuestionRow[];
 }
 
 async function fetchEnglishPassages(
   supabase: ReturnType<typeof getSupabaseClient>,
-  testIds: number[]
+  testIds: number[],
 ) {
   if (testIds.length === 0) {
-    return new Map<number, string>()
+    return new Map<number, string>();
   }
 
   const { data, error } = await supabase
     .from("english_tests")
     .select("id, passage")
-    .in("id", testIds)
+    .in("id", testIds);
 
   if (error) {
-    throw new Error(`Could not load english passages: ${error.message}`)
+    throw new Error(`Could not load english passages: ${error.message}`);
   }
 
-  const rows = (data ?? []) as EnglishTestRow[]
-  const map = new Map<number, string>()
+  const rows = (data ?? []) as EnglishTestRow[];
+  const map = new Map<number, string>();
 
   for (const row of rows) {
     if (
@@ -823,180 +907,183 @@ async function fetchEnglishPassages(
       typeof row.passage === "string" &&
       row.passage.trim()
     ) {
-      map.set(row.id, row.passage)
+      map.set(row.id, row.passage);
     }
   }
 
-  return map
+  return map;
 }
-
 
 async function fetchEnglishTestDifficultyMap(
   supabase: ReturnType<typeof getSupabaseClient>,
-  testIds: number[]
+  testIds: number[],
 ) {
   if (testIds.length === 0) {
-    return new Map<number, 1 | 2 | 3 | null>()
+    return new Map<number, 1 | 2 | 3 | null>();
   }
 
   const { data, error } = await supabase
     .from("english_tests")
     .select("id, difficulty")
-    .in("id", testIds)
+    .in("id", testIds);
 
   if (error) {
-    throw new Error(`Could not load english test difficulties: ${error.message}`)
+    throw new Error(
+      `Could not load english test difficulties: ${error.message}`,
+    );
   }
 
-  const rows = (data ?? []) as EnglishTestRow[]
-  const map = new Map<number, 1 | 2 | 3 | null>()
+  const rows = (data ?? []) as EnglishTestRow[];
+  const map = new Map<number, 1 | 2 | 3 | null>();
 
   for (const row of rows) {
     if (typeof row.id === "number") {
-      map.set(row.id, normalizeDifficultyValue(row.difficulty))
+      map.set(row.id, normalizeDifficultyValue(row.difficulty));
     }
   }
 
-  return map
+  return map;
 }
 
 async function filterComprehensionRowsByTestDifficulty(
   supabase: ReturnType<typeof getSupabaseClient>,
   rows: EnglishQuestionRow[],
-  selectedDifficulty: DifficultyFilter
+  selectedDifficulty: DifficultyFilter,
 ) {
   if (selectedDifficulty === "all") {
-    return rows
+    return rows;
   }
 
   const testIds = Array.from(
     new Set(
       rows
         .map((row) => row.test_id)
-        .filter((id): id is number => typeof id === "number")
-    )
-  )
+        .filter((id): id is number => typeof id === "number"),
+    ),
+  );
 
   const difficultyByTestId = await fetchEnglishTestDifficultyMap(
     supabase,
-    testIds
-  )
+    testIds,
+  );
 
   return rows.filter((row) => {
     const questionDifficultyMatches = matchesDifficulty(
       row.difficulty,
-      selectedDifficulty
-    )
+      selectedDifficulty,
+    );
 
     const testDifficultyMatches =
       typeof row.test_id === "number" && difficultyByTestId.has(row.test_id)
         ? matchesDifficulty(
             difficultyByTestId.get(row.test_id) ?? null,
-            selectedDifficulty
+            selectedDifficulty,
           )
-        : false
+        : false;
 
     // Comprehension data can carry difficulty on either the parent passage/test
     // row or the individual question row. Keep a question if either source
     // matches so a mismatch in one table does not hide valid passages.
-    return questionDifficultyMatches || testDifficultyMatches
-  })
+    return questionDifficultyMatches || testDifficultyMatches;
+  });
 }
 
 async function fetchStandardTestsForTopic(
   supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
-  topicKey: string
+  topicKey: string,
 ) {
-  const config = getStandardTableConfig(mainCategory)
+  const config = getStandardTableConfig(mainCategory);
   const allowedCategories = new Set(
-    getStandardTopicCategoryCandidates(mainCategory, topicKey)
-  )
+    getStandardTopicCategoryCandidates(mainCategory, topicKey),
+  );
 
   const { data, error } = await supabase
     .from(config.testsTable)
     .select("id, title, category, difficulty")
-    .range(0, 9999)
+    .range(0, 9999);
 
   if (error) {
-    throw new Error(`Could not load ${mainCategory} tests: ${error.message}`)
+    throw new Error(`Could not load ${mainCategory} tests: ${error.message}`);
   }
 
-  const rows = (data ?? []) as StandardTestRow[]
+  const rows = (data ?? []) as StandardTestRow[];
 
   return rows.filter((row) =>
-    allowedCategories.has(normalizeCategoryValue(row.category))
-  )
+    allowedCategories.has(normalizeCategoryValue(row.category)),
+  );
 }
 
 async function fetchStandardQuestions(
   supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
-  testIds: number[]
+  testIds: number[],
 ) {
   if (testIds.length === 0) {
-    return [] as StandardQuestionRow[]
+    return [] as StandardQuestionRow[];
   }
 
-  const config = getStandardTableConfig(mainCategory)
+  const config = getStandardTableConfig(mainCategory);
 
   const { data, error } = await supabase
     .from(config.questionsTable)
     .select(config.questionSelect)
     .in("test_id", testIds)
     .order("test_id", { ascending: true })
-    .order("question_order", { ascending: true })
+    .order("question_order", { ascending: true });
 
   if (error) {
-    throw new Error(`Could not load ${mainCategory} questions: ${error.message}`)
+    throw new Error(
+      `Could not load ${mainCategory} questions: ${error.message}`,
+    );
   }
 
-  return (data ?? []) as unknown as StandardQuestionRow[]
+  return (data ?? []) as unknown as StandardQuestionRow[];
 }
 
 async function fetchPreviouslyUsedQuestionGuardKeys(
   supabase: ReturnType<typeof getSupabaseClient>,
   userId: string,
-  mainCategory: MainCategory
+  mainCategory: MainCategory,
 ): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("custom_test_attempt_items")
     .select("source_type, source_id")
     .eq("user_id", userId)
     .eq("main_category", mainCategory)
-    .range(0, 9999)
+    .range(0, 9999);
 
   if (error) {
-    console.error("Failed to fetch previous custom test questions:", error)
-    return new Set<string>()
+    console.error("Failed to fetch previous custom test questions:", error);
+    return new Set<string>();
   }
 
-  const rows = (data ?? []) as PreviousCustomTestItemRow[]
+  const rows = (data ?? []) as PreviousCustomTestItemRow[];
   const guardKeys = rows
     .map((row) => getPreviousItemGuardKey(row.source_type, row.source_id))
-    .filter((key): key is string => typeof key === "string" && key.length > 0)
+    .filter((key): key is string => typeof key === "string" && key.length > 0);
 
-  return new Set(guardKeys)
+  return new Set(guardKeys);
 }
 
 function normalizeStandardQuestions(
   mainCategory: NonEnglishMainCategory,
   topicKey: string,
   rows: StandardQuestionRow[],
-  testsById: Map<number, StandardTestRow>
+  testsById: Map<number, StandardTestRow>,
 ): NormalizedQuestion[] {
-  const config = getStandardTableConfig(mainCategory)
+  const config = getStandardTableConfig(mainCategory);
 
   return rows.flatMap((row) => {
     if (typeof row.test_id !== "number") {
-      return []
+      return [];
     }
 
-    const parentTest = testsById.get(row.test_id)
-    const correctAnswer = toOptionKey(row.correct_answer)
+    const parentTest = testsById.get(row.test_id);
+    const correctAnswer = toOptionKey(row.correct_answer);
 
     if (!correctAnswer) {
-      return []
+      return [];
     }
 
     const options: NormalizedOption[] = [
@@ -1020,25 +1107,24 @@ function normalizeStandardQuestions(
         text: row.option_d,
         imageUrl: row.option_d_image_url ?? null,
       },
-    ]
+    ];
 
     const hasAnyOptionContent = options.some(
       (option) =>
         (typeof option.text === "string" && option.text.trim()) ||
-        (typeof option.imageUrl === "string" && option.imageUrl.trim())
-    )
+        (typeof option.imageUrl === "string" && option.imageUrl.trim()),
+    );
 
     if (!hasAnyOptionContent) {
-      return []
+      return [];
     }
 
     const hasQuestionImage =
-      typeof row.image_url === "string" && row.image_url.trim()
+      typeof row.image_url === "string" && row.image_url.trim();
 
     const hasOptionImages = options.some(
-      (option) =>
-        typeof option.imageUrl === "string" && option.imageUrl.trim()
-    )
+      (option) => typeof option.imageUrl === "string" && option.imageUrl.trim(),
+    );
 
     const question: NormalizedQuestion = {
       runnerId: `${config.sourceType}:${row.id}`,
@@ -1064,65 +1150,67 @@ function normalizeStandardQuestions(
         category: parentTest?.category ?? null,
         question_order: row.question_order,
       },
-    }
+    };
 
-    return [question]
-  })
+    return [question];
+  });
 }
 
 async function buildStandardTopicQuestions(
   supabase: ReturnType<typeof getSupabaseClient>,
   mainCategory: NonEnglishMainCategory,
   topicKey: string,
-  selectedDifficulty: DifficultyFilter
+  selectedDifficulty: DifficultyFilter,
 ) {
   const tests = await fetchStandardTestsForTopic(
     supabase,
     mainCategory,
-    topicKey
-  )
+    topicKey,
+  );
 
   const filteredTests = tests.filter((test) =>
-    matchesDifficulty(test.difficulty, selectedDifficulty)
-  )
+    matchesDifficulty(test.difficulty, selectedDifficulty),
+  );
 
   if (filteredTests.length === 0) {
-    return [] as NormalizedQuestion[]
+    return [] as NormalizedQuestion[];
   }
 
   const testsById = new Map<number, StandardTestRow>(
-    filteredTests.map((test) => [test.id, test])
-  )
+    filteredTests.map((test) => [test.id, test]),
+  );
 
   const questions = await fetchStandardQuestions(
     supabase,
     mainCategory,
-    filteredTests.map((test) => test.id)
-  )
+    filteredTests.map((test) => test.id),
+  );
 
   return normalizeStandardQuestions(
     mainCategory,
     topicKey,
     questions,
-    testsById
-  )
+    testsById,
+  );
 }
 
 function validateRequestBody(
-  body: unknown
-): { ok: true; data: GenerateCustomTestRequest } | { ok: false; error: string } {
+  body: unknown,
+):
+  | { ok: true; data: GenerateCustomTestRequest }
+  | { ok: false; error: string } {
   if (!body || typeof body !== "object") {
-    return { ok: false, error: "Invalid request body." }
+    return { ok: false, error: "Invalid request body." };
   }
 
-  const request = body as Partial<GenerateCustomTestRequest>
+  const request = body as Partial<GenerateCustomTestRequest>;
 
   if (!isMainCategory(request.mainCategory)) {
-    return { ok: false, error: "Invalid main category." }
+    return { ok: false, error: "Invalid main category." };
   }
 
   if (!Array.isArray(request.topicKeys) || request.topicKeys.length === 0) {
-    return { ok: false, error: "Please select at least one topic." }
+    return { ok: false, error: "Please select at least one topic." };
   }
 
   if (
@@ -1133,7 +1221,7 @@ function validateRequestBody(
     return {
       ok: false,
       error: `Question count must be between ${MIN_QUESTION_COUNT} and ${MAX_QUESTION_COUNT}.`,
-    }
+    };
   }
 
   if (
@@ -1144,15 +1232,19 @@ function validateRequestBody(
     return {
       ok: false,
       error: `Total time must be between ${MIN_TIME_MINUTES} and ${MAX_TIME_MINUTES} minutes.`,
-    }
+    };
   }
 
+  const normalizedDifficulty = normalizeDifficultyValue(
+    request.selectedDifficulty as number | string | null | undefined,
+  );
+
   const selectedDifficulty: DifficultyFilter =
-    request.selectedDifficulty === 1 ||
-    request.selectedDifficulty === 2 ||
-    request.selectedDifficulty === 3
-      ? request.selectedDifficulty
-      : "all"
+    normalizedDifficulty === 1 ||
+    normalizedDifficulty === 2 ||
+    normalizedDifficulty === 3
+      ? normalizedDifficulty
+      : "all";
 
   return {
     ok: true,
@@ -1167,98 +1259,103 @@ function validateRequestBody(
       totalTimeMinutes: request.totalTimeMinutes,
       selectedDifficulty,
     },
-  }
+  };
 }
 
 function validateTopicSelection(
-  request: GenerateCustomTestRequest
+  request: GenerateCustomTestRequest,
 ): { ok: true } | { ok: false; error: string } {
-  const catalog = getMainCategoryCatalog(request.mainCategory)
+  const catalog = getMainCategoryCatalog(request.mainCategory);
 
   if (!catalog || !catalog.enabled) {
-    return { ok: false, error: "This main category is not enabled." }
+    return { ok: false, error: "This main category is not enabled." };
   }
 
-  const uniqueTopicKeys = Array.from(new Set(request.topicKeys))
+  const uniqueTopicKeys = Array.from(new Set(request.topicKeys));
 
   for (const topicKey of uniqueTopicKeys) {
-    const topic = catalog.topics.find((item) => item.key === topicKey)
+    const topic = catalog.topics.find((item) => item.key === topicKey);
 
     if (!topic || topic.enabled === false) {
-      return { ok: false, error: `Invalid topic selected: ${topicKey}` }
+      return { ok: false, error: `Invalid topic selected: ${topicKey}` };
     }
 
-    const rawSubtopics = request.subtopicMap[topicKey]
+    const rawSubtopics = request.subtopicMap[topicKey];
     const selectedSubtopics = Array.isArray(rawSubtopics)
-      ? rawSubtopics.filter((value): value is string => typeof value === "string")
-      : []
+      ? rawSubtopics.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
 
     if (!topic.childSubtopics || topic.childSubtopics.length === 0) {
       if (selectedSubtopics.length > 0) {
         return {
           ok: false,
           error: `Topic "${topic.label}" does not support subtopic filtering.`,
-        }
+        };
       }
 
-      continue
+      continue;
     }
 
     const allowedSubtopicKeys = new Set(
-      topic.childSubtopics.map((subtopic) => subtopic.key)
-    )
+      topic.childSubtopics.map((subtopic) => subtopic.key),
+    );
 
     for (const subtopicKey of selectedSubtopics) {
       if (!allowedSubtopicKeys.has(subtopicKey)) {
         return {
           ok: false,
           error: `Invalid subtopic "${subtopicKey}" for topic "${topic.label}".`,
-        }
+        };
       }
     }
   }
 
-  return { ok: true }
+  return { ok: true };
 }
 
 function selectFinalQuestions(
   topicPools: TopicPool[],
   questionCount: number,
-  previouslyUsedGuardKeys: Set<string>
+  previouslyUsedGuardKeys: Set<string>,
 ): NormalizedQuestion[] {
   const preparedPools = topicPools.map((pool) => ({
     topicKey: pool.topicKey,
-    questions: splitQuestionsFreshFirst(pool.questions, previouslyUsedGuardKeys),
-  }))
+    questions: splitQuestionsFreshFirst(
+      pool.questions,
+      previouslyUsedGuardKeys,
+    ),
+  }));
 
-  const perTopicTargets = distributeCounts(questionCount, preparedPools.length)
-  const selectedBuckets: NormalizedQuestion[][] = preparedPools.map(() => [])
+  const perTopicTargets = distributeCounts(questionCount, preparedPools.length);
+  const selectedBuckets: NormalizedQuestion[][] = preparedPools.map(() => []);
 
-  const selectedRunnerIds = new Set<string>()
-  const selectedGuardKeys = new Set<string>()
+  const selectedRunnerIds = new Set<string>();
+  const selectedGuardKeys = new Set<string>();
 
   preparedPools.forEach((pool, poolIndex) => {
-    const target = perTopicTargets[poolIndex] ?? 0
-    let pickedForThisTopic = 0
+    const target = perTopicTargets[poolIndex] ?? 0;
+    let pickedForThisTopic = 0;
 
     for (const question of pool.questions) {
-      if (pickedForThisTopic >= target) break
+      if (pickedForThisTopic >= target) break;
 
-      const guardKey = getQuestionGuardKey(question)
+      const guardKey = getQuestionGuardKey(question);
 
       if (
         selectedRunnerIds.has(question.runnerId) ||
         selectedGuardKeys.has(guardKey)
       ) {
-        continue
+        continue;
       }
 
-      selectedBuckets[poolIndex].push(question)
-      selectedRunnerIds.add(question.runnerId)
-      selectedGuardKeys.add(guardKey)
-      pickedForThisTopic += 1
+      selectedBuckets[poolIndex].push(question);
+      selectedRunnerIds.add(question.runnerId);
+      selectedGuardKeys.add(guardKey);
+      pickedForThisTopic += 1;
     }
-  })
+  });
 
   const leftoverItems = preparedPools.flatMap((pool, poolIndex) =>
     pool.questions
@@ -1266,134 +1363,202 @@ function selectFinalQuestions(
       .map((question) => ({
         question,
         poolIndex,
-      }))
-  )
+      })),
+  );
 
   const leftoverFreshItems = shuffleArray(
     leftoverItems.filter(
-      (item) => !isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys)
-    )
-  )
+      (item) =>
+        !isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys),
+    ),
+  );
   const leftoverReusedItems = shuffleArray(
     leftoverItems.filter((item) =>
-      isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys)
-    )
-  )
+      isQuestionPreviouslyUsed(item.question, previouslyUsedGuardKeys),
+    ),
+  );
 
-  const leftovers = [...leftoverFreshItems, ...leftoverReusedItems]
+  const leftovers = [...leftoverFreshItems, ...leftoverReusedItems];
 
   for (const item of leftovers) {
-    if (selectedRunnerIds.size >= questionCount) break
+    if (selectedRunnerIds.size >= questionCount) break;
 
-    const guardKey = getQuestionGuardKey(item.question)
+    const guardKey = getQuestionGuardKey(item.question);
 
     if (
       selectedRunnerIds.has(item.question.runnerId) ||
       selectedGuardKeys.has(guardKey)
     ) {
-      continue
+      continue;
     }
 
-    selectedBuckets[item.poolIndex].push(item.question)
-    selectedRunnerIds.add(item.question.runnerId)
-    selectedGuardKeys.add(guardKey)
+    selectedBuckets[item.poolIndex].push(item.question);
+    selectedRunnerIds.add(item.question.runnerId);
+    selectedGuardKeys.add(guardKey);
   }
 
-  return selectedBuckets.flat()
+  return selectedBuckets.flat();
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authenticatedClient = getAuthenticatedSupabaseClient(request)
+    const authenticatedClient = getAuthenticatedSupabaseClient(request);
 
     if (!authenticatedClient.supabase) {
-      return jsonError(authenticatedClient.error, 401)
+      return jsonError(authenticatedClient.error, 401);
     }
 
-    const supabase = authenticatedClient.supabase
+    const supabase = authenticatedClient.supabase;
 
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return jsonError("Please sign in to use custom tests.", 401)
+      return jsonError("Please sign in to use custom tests.", 401);
     }
 
     const { data: hasPaidAccess, error: accessError } =
-      await supabase.rpc("has_paid_access")
+      await supabase.rpc("has_paid_access");
 
     if (accessError) {
-      return jsonError("Could not check your membership access.", 500)
+      return jsonError("Could not check your membership access.", 500);
     }
 
     if (!hasPaidAccess) {
       return jsonError(
         "Custom tests are available for monthly and annual members only.",
-        403
-      )
+        403,
+      );
     }
 
-    const body = await request.json()
-    const validatedBody = validateRequestBody(body)
+    const body = await request.json();
+    const validatedBody = validateRequestBody(body);
 
     if (!validatedBody.ok) {
-      return jsonError(validatedBody.error, 400)
+      return jsonError(validatedBody.error, 400);
     }
 
-    const config = validatedBody.data
-    const selectionValidation = validateTopicSelection(config)
+    const config = validatedBody.data;
+    const selectionValidation = validateTopicSelection(config);
 
     if (!selectionValidation.ok) {
-      return jsonError(selectionValidation.error, 400)
+      return jsonError(selectionValidation.error, 400);
     }
 
-    const uniqueTopicKeys = Array.from(new Set(config.topicKeys))
-    const catalog = getMainCategoryCatalog(config.mainCategory)
-    const mainCategoryLabel = catalog?.label ?? config.mainCategory.toUpperCase()
+    const uniqueTopicKeys = Array.from(new Set(config.topicKeys));
+    const catalog = getMainCategoryCatalog(config.mainCategory);
+    const mainCategoryLabel =
+      catalog?.label ?? config.mainCategory.toUpperCase();
     const previouslyUsedGuardKeys = await fetchPreviouslyUsedQuestionGuardKeys(
       supabase,
       user.id,
-      config.mainCategory
-    )
+      config.mainCategory,
+    );
 
     if (config.mainCategory === "english") {
+      const isComprehensionOnly =
+        uniqueTopicKeys.length === 1 && uniqueTopicKeys[0] === "comprehension";
+
+      if (isComprehensionOnly) {
+        if (config.questionCount % 10 !== 0) {
+          return jsonError(
+            "Comprehension custom tests must use question counts in multiples of 10.",
+            400,
+          );
+        }
+
+        const fetchedRows = await fetchEnglishQuestions(
+          supabase,
+          "comprehension",
+          [],
+        );
+
+        const rows = await filterComprehensionRowsByTestDifficulty(
+          supabase,
+          fetchedRows,
+          config.selectedDifficulty,
+        );
+
+        const selectedRows = selectComprehensionRowsByFullPassage(
+          rows,
+          config.questionCount,
+          previouslyUsedGuardKeys,
+        );
+
+        if (selectedRows.length < config.questionCount) {
+          return jsonError(
+            `Only ${selectedRows.length} comprehension questions are currently available as complete passages for this setup. Please reduce the question count or change difficulty.`,
+            400,
+          );
+        }
+
+        const passagesByTestId = await fetchEnglishPassages(
+          supabase,
+          Array.from(
+            new Set(
+              selectedRows
+                .map((row) => row.test_id)
+                .filter((id): id is number => typeof id === "number"),
+            ),
+          ),
+        );
+
+        const finalQuestions = normalizeEnglishQuestions(
+          selectedRows,
+          "comprehension",
+          passagesByTestId,
+        );
+
+        const response: GenerateCustomTestResponse = {
+          ok: true,
+          data: {
+            testSessionId: crypto.randomUUID(),
+            config,
+            questions: finalQuestions,
+            createdAt: new Date().toISOString(),
+          },
+        };
+
+        return NextResponse.json(response);
+      }
+
       const topicTargets = distributeCounts(
         config.questionCount,
-        uniqueTopicKeys.length
-      )
+        uniqueTopicKeys.length,
+      );
 
       const targetByTopic = new Map<string, number>(
         uniqueTopicKeys.map((topicKey, index) => [
           topicKey,
           topicTargets[index] ?? 0,
-        ])
-      )
+        ]),
+      );
 
       const needsWords =
         uniqueTopicKeys.includes("vocabulary") ||
-        uniqueTopicKeys.includes("spelling")
+        uniqueTopicKeys.includes("spelling");
 
       const words = needsWords
         ? (await fetchWords(supabase)).filter((row) =>
-            matchesDifficulty(row.difficulty, config.selectedDifficulty)
+            matchesDifficulty(row.difficulty, config.selectedDifficulty),
           )
-        : []
+        : [];
 
-      const topicPools: TopicPool[] = []
+      const topicPools: TopicPool[] = [];
 
       for (const topicKey of uniqueTopicKeys) {
         if (topicKey === "vocabulary") {
-          const questions = normalizeVocabularyQuestions(words)
-          topicPools.push({ topicKey, questions })
-          continue
+          const questions = normalizeVocabularyQuestions(words);
+          topicPools.push({ topicKey, questions });
+          continue;
         }
 
         if (topicKey === "spelling") {
-          const questions = normalizeSpellingQuestions(words)
-          topicPools.push({ topicKey, questions })
-          continue
+          const questions = normalizeSpellingQuestions(words);
+          topicPools.push({ topicKey, questions });
+          continue;
         }
 
         if (
@@ -1403,40 +1568,40 @@ export async function POST(request: NextRequest) {
         ) {
           const selectedSubtopics = Array.isArray(config.subtopicMap[topicKey])
             ? config.subtopicMap[topicKey].filter(
-                (value): value is string => typeof value === "string"
+                (value): value is string => typeof value === "string",
               )
-            : []
+            : [];
 
           const fetchedRows = await fetchEnglishQuestions(
             supabase,
             topicKey,
-            selectedSubtopics
-          )
+            selectedSubtopics,
+          );
 
           const rows =
             topicKey === "comprehension"
               ? await filterComprehensionRowsByTestDifficulty(
                   supabase,
                   fetchedRows,
-                  config.selectedDifficulty
+                  config.selectedDifficulty,
                 )
               : fetchedRows.filter((row) =>
-                  matchesDifficulty(row.difficulty, config.selectedDifficulty)
-                )
+                  matchesDifficulty(row.difficulty, config.selectedDifficulty),
+                );
 
           if (topicKey === "comprehension") {
             const requestedForComprehension =
-              targetByTopic.get(topicKey) ?? config.questionCount
+              targetByTopic.get(topicKey) ?? config.questionCount;
 
             const comprehensionPoolSize = Math.min(
               rows.length,
-              requestedForComprehension + 10
-            )
+              requestedForComprehension + 10,
+            );
 
             const selectedRows = selectComprehensionRowsByPassage(
               rows,
-              comprehensionPoolSize
-            )
+              comprehensionPoolSize,
+            );
 
             const passagesByTestId = await fetchEnglishPassages(
               supabase,
@@ -1444,57 +1609,57 @@ export async function POST(request: NextRequest) {
                 new Set(
                   selectedRows
                     .map((row) => row.test_id)
-                    .filter((id): id is number => typeof id === "number")
-                )
-              )
-            )
+                    .filter((id): id is number => typeof id === "number"),
+                ),
+              ),
+            );
 
             const questions = normalizeEnglishQuestions(
               selectedRows,
               topicKey,
-              passagesByTestId
-            )
+              passagesByTestId,
+            );
 
-            topicPools.push({ topicKey, questions })
-            continue
+            topicPools.push({ topicKey, questions });
+            continue;
           }
 
           const questions = normalizeEnglishQuestions(
             rows,
             topicKey,
-            new Map<number, string>()
-          )
+            new Map<number, string>(),
+          );
 
-          topicPools.push({ topicKey, questions })
-          continue
+          topicPools.push({ topicKey, questions });
+          continue;
         }
 
-        return jsonError(`Topic "${topicKey}" is not supported yet.`, 400)
+        return jsonError(`Topic "${topicKey}" is not supported yet.`, 400);
       }
 
       const totalAvailable = topicPools.reduce(
         (sum, pool) => sum + pool.questions.length,
-        0
-      )
+        0,
+      );
 
       if (totalAvailable === 0) {
         return jsonError(
           "No questions were found for the selected English topics.",
-          400
-        )
+          400,
+        );
       }
 
       const finalQuestions = selectFinalQuestions(
         topicPools,
         config.questionCount,
-        previouslyUsedGuardKeys
-      )
+        previouslyUsedGuardKeys,
+      );
 
       if (finalQuestions.length < config.questionCount) {
         return jsonError(
           `Only ${finalQuestions.length} questions are currently available for this custom test setup. Please reduce the question count, change difficulty, or choose more topics.`,
-          400
-        )
+          400,
+        );
       }
 
       const response: GenerateCustomTestResponse = {
@@ -1505,48 +1670,49 @@ export async function POST(request: NextRequest) {
           questions: finalQuestions,
           createdAt: new Date().toISOString(),
         },
-      }
+      };
 
-      return NextResponse.json(response)
+      return NextResponse.json(response);
     }
 
-    const nonEnglishMainCategory = config.mainCategory as NonEnglishMainCategory
-    const topicPools: TopicPool[] = []
+    const nonEnglishMainCategory =
+      config.mainCategory as NonEnglishMainCategory;
+    const topicPools: TopicPool[] = [];
 
     for (const topicKey of uniqueTopicKeys) {
       const questions = await buildStandardTopicQuestions(
         supabase,
         nonEnglishMainCategory,
         topicKey,
-        config.selectedDifficulty
-      )
+        config.selectedDifficulty,
+      );
 
-      topicPools.push({ topicKey, questions })
+      topicPools.push({ topicKey, questions });
     }
 
     const totalAvailable = topicPools.reduce(
       (sum, pool) => sum + pool.questions.length,
-      0
-    )
+      0,
+    );
 
     if (totalAvailable === 0) {
       return jsonError(
         `No questions were found for the selected ${mainCategoryLabel} topics.`,
-        400
-      )
+        400,
+      );
     }
 
     const finalQuestions = selectFinalQuestions(
       topicPools,
       config.questionCount,
-      previouslyUsedGuardKeys
-    )
+      previouslyUsedGuardKeys,
+    );
 
     if (finalQuestions.length < config.questionCount) {
       return jsonError(
         `Only ${finalQuestions.length} questions are currently available for this custom test setup. Please reduce the question count, change difficulty, or choose more topics.`,
-        400
-      )
+        400,
+      );
     }
 
     const response: GenerateCustomTestResponse = {
@@ -1557,16 +1723,16 @@ export async function POST(request: NextRequest) {
         questions: finalQuestions,
         createdAt: new Date().toISOString(),
       },
-    }
+    };
 
-    return NextResponse.json(response)
+    return NextResponse.json(response);
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
-        : "Unexpected error while generating custom test."
+        : "Unexpected error while generating custom test.";
 
-    return jsonError(message, 500)
+    return jsonError(message, 500);
   }
 }
 
@@ -1576,6 +1742,6 @@ export async function GET() {
       ok: false,
       error: "Method not allowed. Use POST.",
     },
-    { status: 405 }
-  )
+    { status: 405 },
+  );
 }
