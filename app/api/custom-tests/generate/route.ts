@@ -57,6 +57,13 @@ type EnglishComprehensionTestLookupRow = {
   difficulty: number | string | null;
 };
 
+type EnglishTopicTestLookupRow = {
+  id: number;
+  main_category: string | null;
+  subcategory: string | null;
+  difficulty: number | string | null;
+};
+
 type StandardTestRow = {
   id: number;
   title: string | null;
@@ -950,6 +957,125 @@ async function fetchComprehensionQuestionRowsForDifficulty(
   return (questionData ?? []) as EnglishQuestionRow[];
 }
 
+async function fetchEnglishQuestionRowsByTestIds(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  testIds: number[],
+): Promise<EnglishQuestionRow[]> {
+  if (testIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("english_questions")
+    .select(
+      `
+      id,
+      test_id,
+      main_category,
+      subcategory,
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation,
+      difficulty,
+      question_order
+      `,
+    )
+    .in("test_id", testIds)
+    .range(0, 9999)
+    .order("test_id", { ascending: true })
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(
+      `Could not load english questions by test_id: ${error.message}`,
+    );
+  }
+
+  return (data ?? []) as EnglishQuestionRow[];
+}
+
+function normalizedValueSet(values: string[]) {
+  return new Set(
+    values
+      .map((value) => normalizeCategoryValue(value))
+      .filter((value) => value.length > 0),
+  );
+}
+
+async function fetchEnglishTopicQuestionRowsForDifficulty(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  topicKey: string,
+  selectedSubtopics: string[],
+  selectedDifficulty: DifficultyFilter,
+): Promise<EnglishQuestionRow[]> {
+  const { data: testData, error: testError } = await supabase
+    .from("english_tests")
+    .select("id, main_category, subcategory, difficulty")
+    .range(0, 9999);
+
+  if (testError) {
+    throw new Error(`Could not load english_tests: ${testError.message}`);
+  }
+
+  const tests = (testData ?? []) as EnglishTopicTestLookupRow[];
+  const normalizedTopicKey = normalizeCategoryValue(topicKey);
+  const selectedSubtopicSet = normalizedValueSet(selectedSubtopics);
+
+  const matchingTestIds = tests
+    .filter((test) => {
+      if (!matchesDifficulty(test.difficulty, selectedDifficulty)) {
+        return false;
+      }
+
+      const normalizedMainCategory = normalizeCategoryValue(test.main_category);
+      const normalizedSubcategory = normalizeCategoryValue(test.subcategory);
+
+      const matchesTopic =
+        normalizedMainCategory === normalizedTopicKey ||
+        normalizedSubcategory === normalizedTopicKey;
+
+      if (selectedSubtopicSet.size === 0) {
+        return matchesTopic;
+      }
+
+      return (
+        selectedSubtopicSet.has(normalizedSubcategory) ||
+        selectedSubtopicSet.has(normalizedMainCategory)
+      );
+    })
+    .map((test) => test.id)
+    .filter((id): id is number => typeof id === "number");
+
+  const rowsFromTests = await fetchEnglishQuestionRowsByTestIds(
+    supabase,
+    matchingTestIds,
+  );
+
+  if (rowsFromTests.length > 0) {
+    return rowsFromTests;
+  }
+
+  // Fallback for any older rows/tests that are not consistently linked through
+  // english_tests. This preserves the previous Easy/Medium behaviour while the
+  // test-first path fixes Hard rows where difficulty lives on english_tests.
+  const fetchedRows = await fetchEnglishQuestions(
+    supabase,
+    topicKey,
+    selectedSubtopics,
+  );
+
+  return filterEnglishRowsByQuestionOrTestDifficulty(
+    supabase,
+    fetchedRows,
+    selectedDifficulty,
+  );
+}
+
 async function fetchEnglishPassages(
   supabase: ReturnType<typeof getSupabaseClient>,
   testIds: number[],
@@ -1758,15 +1884,10 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          const fetchedRows = await fetchEnglishQuestions(
+          const rows = await fetchEnglishTopicQuestionRowsForDifficulty(
             supabase,
             topicKey,
             selectedSubtopics,
-          );
-
-          const rows = await filterEnglishRowsByQuestionOrTestDifficulty(
-            supabase,
-            fetchedRows,
             config.selectedDifficulty,
           );
 
