@@ -47,7 +47,10 @@ export async function POST(request: Request) {
     const accessToken = authHeader.replace("Bearer ", "").trim()
 
     if (!accessToken) {
-      return NextResponse.json({ error: "Missing access token." }, { status: 401 })
+      return NextResponse.json(
+        { error: "Missing access token." },
+        { status: 401 }
+      )
     }
 
     const body = (await request.json()) as RewardRequestBody
@@ -78,9 +81,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: latestResult, error: latestResultError } = await supabase
+    let { data: latestResult, error: latestResultError } = await supabase
       .from("latest_test_results")
-      .select("success_rate")
+      .select("success_rate, category")
       .eq("user_id", user.id)
       .eq("subject", body.subject)
       .eq("category", body.category)
@@ -94,9 +97,34 @@ export async function POST(request: Request) {
       )
     }
 
+    // Fallback for English grammar/punctuation pages where category naming may differ.
+    if (!latestResult && body.subject === "english") {
+      const fallbackResult = await supabase
+        .from("latest_test_results")
+        .select("success_rate, category")
+        .eq("user_id", user.id)
+        .eq("subject", body.subject)
+        .eq("test_id", body.testId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (fallbackResult.error) {
+        return NextResponse.json(
+          { error: fallbackResult.error.message },
+          { status: 500 }
+        )
+      }
+
+      latestResult = fallbackResult.data
+    }
+
     if (!latestResult) {
       return NextResponse.json(
-        { error: "Could not find a saved result for this test." },
+        {
+          error:
+            "Could not find a saved result for this test. The result may have been saved under a different category.",
+        },
         { status: 404 }
       )
     }
@@ -117,6 +145,8 @@ export async function POST(request: Request) {
     }
 
     const today = new Date().toISOString().slice(0, 10)
+
+    // Use the requested category in the source id so duplicate protection remains predictable per page.
     const sourceId = `${body.subject}:${body.category}:${body.testId}:${today}`
 
     const { data: awarded, error: coinsError } = await supabase.rpc(
@@ -136,8 +166,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       awarded: awarded === true,
-      coinsAwarded,
+      coinsAwarded: awarded === true ? coinsAwarded : 0,
       scorePercent,
+      savedCategory: latestResult.category,
     })
   } catch (error) {
     return NextResponse.json(

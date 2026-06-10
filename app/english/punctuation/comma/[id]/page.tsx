@@ -92,6 +92,7 @@ export default function CommaPunctuationTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
@@ -597,6 +598,44 @@ export default function CommaPunctuationTestPage() {
     }
   }
 
+  function getLocalRewardMessage(successRate: number) {
+    if (successRate < 50) return "Score 50% or more next time to earn YanBo Coins."
+
+    if (successRate < 75) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (successRate < 90) return "Brilliant work — you earned 2 YanBo Coins!"
+
+    return "Brilliant work — you earned 3 YanBo Coins!"
+  }
+
+  async function awardYanBoCoins(successRate: number) {
+    if (!test || mode === "review") return
+
+    setRewardMessage(getLocalRewardMessage(successRate))
+
+    try {
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "english",
+          testId: test.id,
+          scorePercent: successRate,
+          mainCategory: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        console.error("Error awarding YanBo Coins for comma:", data)
+      }
+    } catch (rewardError) {
+      console.error("Error awarding YanBo Coins for comma:", rewardError)
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -690,6 +729,8 @@ export default function CommaPunctuationTestPage() {
       successRate
     )
 
+    await awardYanBoCoins(successRate)
+
     if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
@@ -762,6 +803,7 @@ export default function CommaPunctuationTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
@@ -981,6 +1023,10 @@ export default function CommaPunctuationTestPage() {
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
+                {!errorMessage && rewardMessage && (
+                  <p style={styles.rewardMessage}>{rewardMessage}</p>
+                )}
               </div>
 
               <div style={styles.resultButtons}>
@@ -1349,6 +1395,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  rewardMessage: {
+    margin: "14px 0 0 0",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    background: "#ecfdf5",
+    color: "#065f46",
+    fontSize: "16px",
+    fontWeight: 700,
   },
 
   resultButtons: {

@@ -591,7 +591,7 @@ export default function PrimaryWordClassesTestPage() {
         }
 
         setRewardMessage(
-          "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again.",
         );
         return;
       }
