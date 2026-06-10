@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabaseClient"
@@ -276,35 +275,12 @@ export default function ProfilePage() {
   return (
     <main style={styles.page}>
       <div style={styles.container}>
-        <section style={styles.brandHero}>
-          <div style={styles.logoWrap}>
-            <Image
-              src="/logo.png"
-              alt="YanBo Learning logo"
-              width={86}
-              height={86}
-              priority
-              style={styles.logo}
-            />
-          </div>
-
-          <div style={styles.heroTextWrap}>
-            <p style={styles.eyebrow}>Your Profile</p>
-            <h1 style={styles.brandTitle}>YanBo Learning</h1>
-            <p style={styles.brandSubtitle}>
-              Manage your learning details and keep your 11+ progress connected
-              to your account.
-            </p>
-          </div>
-        </section>
-
         <section style={styles.contentGrid}>
           <div style={styles.leftColumn}>
             <div style={styles.avatarCard}>
               <div style={styles.avatarHeader}>
                 <div>
-                  <p style={styles.avatarEyebrow}>YanBo Avatar</p>
-                  <h2 style={styles.cardTitle}>My YanBo Avatar</h2>
+                  <h2 style={styles.cardTitle}>My Avatar</h2>
                 </div>
 
                 <div style={styles.coinBadge}>
@@ -338,8 +314,8 @@ export default function ProfilePage() {
                     {avatarBase === "yan" ? "Yan" : "Bo"} avatar
                   </p>
                   <p style={styles.cardText}>
-                    Build your Yan or Bo learning character, collect YanBo
-                    Coins, and unlock clothes, glasses and backgrounds.
+                    Build your learning character, collect coins, and unlock
+                    clothes, glasses and backgrounds.
                   </p>
 
                   <Link href="/avatar" style={styles.avatarButton}>
