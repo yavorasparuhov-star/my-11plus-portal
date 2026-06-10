@@ -97,6 +97,8 @@ function SpellingContent() {
   const [pendingScore, setPendingScore] = useState(0)
   const [pendingResults, setPendingResults] = useState<SpellingResult[]>([])
   const [errorMessage, setErrorMessage] = useState("")
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
+  const [coinsMessage, setCoinsMessage] = useState("")
 
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
@@ -600,6 +602,76 @@ function SpellingContent() {
     setResultSaved(true)
   }
 
+  async function awardYanBoCoinsForSpellingTest() {
+    if (!userId || reviewMode) {
+      setCoinsAwarded(null)
+      setCoinsMessage("")
+      return
+    }
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setCoinsAwarded(null)
+        setCoinsMessage("")
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "english",
+          category: "spelling",
+          testId: RESULT_TEST_ID,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error("Could not award YanBo Coins:", result.error)
+        setCoinsAwarded(null)
+        setCoinsMessage("")
+        return
+      }
+
+      const earned =
+        typeof result.coinsAwarded === "number" ? result.coinsAwarded : 0
+
+      setCoinsAwarded(earned)
+
+      if (earned > 0 && result.awarded) {
+        setCoinsMessage(
+          `Brilliant work — you earned ${earned} YanBo ${
+            earned === 1 ? "Coin" : "Coins"
+          }!`
+        )
+        return
+      }
+
+      if (earned > 0 && !result.awarded) {
+        setCoinsMessage(
+          "You have already earned YanBo Coins for this spelling test today."
+        )
+        return
+      }
+
+      setCoinsMessage("Score 50% or more to earn YanBo Coins.")
+    } catch (error) {
+      console.error("Could not award YanBo Coins:", error)
+      setCoinsAwarded(null)
+      setCoinsMessage("")
+    }
+  }
+
   async function saveWrongSpellingReview(wordItem: WordRow) {
     if (!userId) return false
 
@@ -800,6 +872,13 @@ function SpellingContent() {
     await saveSpellingProgress(finalScore)
     await saveLatestSpellingResult(finalResults)
 
+    if (!reviewMode) {
+      await awardYanBoCoinsForSpellingTest()
+    } else {
+      setCoinsAwarded(null)
+      setCoinsMessage("")
+    }
+
     setCurrentIndex(words.length)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -821,6 +900,8 @@ function SpellingContent() {
     setPendingScore(0)
     setPendingResults([])
     setErrorMessage("")
+    setCoinsAwarded(null)
+    setCoinsMessage("")
     void fetchWords()
   }
 
@@ -985,6 +1066,22 @@ function SpellingContent() {
 
               {progressSaved && <p style={styles.savedText}>Progress saved.</p>}
               {resultSaved && <p style={styles.savedText}>Full result saved.</p>}
+
+              {!reviewMode && coinsMessage && (
+                <div
+                  style={{
+                    ...styles.coinsRewardBox,
+                    borderColor:
+                      coinsAwarded && coinsAwarded > 0 ? "#facc15" : "#e5e7eb",
+                    background:
+                      coinsAwarded && coinsAwarded > 0 ? "#fefce8" : "#f9fafb",
+                  }}
+                >
+                  {coinsAwarded && coinsAwarded > 0 ? "🪙 " : ""}
+                  {coinsMessage}
+                </div>
+              )}
+
               {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
             </div>
 
@@ -1595,6 +1692,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "12px",
     padding: "14px",
     lineHeight: 1.6,
+  },
+  coinsRewardBox: {
+    marginTop: "16px",
+    padding: "14px 16px",
+    borderRadius: "14px",
+    border: "2px solid #facc15",
+    background: "#fefce8",
+    color: "#854d0e",
+    fontSize: "18px",
+    fontWeight: 800,
+    textAlign: "center",
   },
   inlineError: {
     marginTop: "12px",

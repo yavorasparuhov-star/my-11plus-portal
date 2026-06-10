@@ -108,6 +108,7 @@ export default function PrimaryWordClassesTestPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [reviewIds, setReviewIds] = useState<number[]>([]);
   const [resultSaved, setResultSaved] = useState(false);
+  const [rewardMessage, setRewardMessage] = useState("");
   const [accessBlocked, setAccessBlocked] = useState<
     "guest" | "upgrade" | null
   >(null);
@@ -167,6 +168,7 @@ export default function PrimaryWordClassesTestPage() {
       setScore(0);
       setQuestions([]);
       setResultSaved(false);
+      setRewardMessage("");
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid Primary Word Classes test ID.");
@@ -545,6 +547,83 @@ export default function PrimaryWordClassesTestPage() {
     setResultSaved(true);
   }
 
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3;
+    if (successRate >= 75) return 2;
+    if (successRate >= 50) return 1;
+    return 0;
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!";
+    if (coins > 1) return `Brilliant work — you earned ${coins} YanBo Coins!`;
+    return "Score 50% or more next time to earn YanBo Coins.";
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test || mode === "review") return;
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate);
+
+    try {
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "english",
+          testId: test.id,
+          scorePercent: successRate,
+          mainCategory: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        console.error("Error awarding Primary Word Classes YanBo Coins:", data);
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message);
+          return;
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+        );
+        return;
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number"
+          ? data.coinsAwarded
+          : typeof data?.coins === "number"
+            ? data.coins
+            : typeof data?.amount === "number"
+              ? data.amount
+              : expectedCoins;
+
+      if (typeof data?.message === "string" && data.message.trim() !== "") {
+        setRewardMessage(data.message);
+        return;
+      }
+
+      if (data?.alreadyAwarded || data?.duplicate) {
+        setRewardMessage(
+          "You have already earned YanBo Coins for this test today.",
+        );
+        return;
+      }
+
+      setRewardMessage(getYanBoCoinRewardMessage(awardedCoins));
+    } catch (error) {
+      console.error("Error awarding Primary Word Classes YanBo Coins:", error);
+      setRewardMessage(getYanBoCoinRewardMessage(expectedCoins));
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return;
     if (!userId || !test) return;
@@ -553,6 +632,7 @@ export default function PrimaryWordClassesTestPage() {
     setSubmitting(true);
     setErrorMessage("");
     setResultSaved(false);
+    setRewardMessage("");
 
     let correctAnswers = 0;
 
@@ -636,6 +716,7 @@ export default function PrimaryWordClassesTestPage() {
     }
 
     await saveLatestTestResult(finalAnswers, correctAnswers, successRate);
+    await awardNormalTestCoins(successRate);
 
     if (correctlyAnsweredReviewQuestionIds.length > 0) {
       const { error: deleteReviewError } = await supabase
@@ -715,6 +796,7 @@ export default function PrimaryWordClassesTestPage() {
     setScore(0);
     setErrorMessage("");
     setResultSaved(false);
+    setRewardMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -939,6 +1021,10 @@ export default function PrimaryWordClassesTestPage() {
 
                 {resultSaved && (
                   <p style={styles.savedText}>Full result saved.</p>
+                )}
+
+                {rewardMessage && (
+                  <p style={styles.rewardText}>{rewardMessage}</p>
                 )}
 
                 {submitting && (
@@ -1423,6 +1509,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "16px",
     color: "#166534",
     fontWeight: 700,
+  },
+
+  rewardText: {
+    margin: "10px 0",
+    fontSize: "18px",
+    color: "#166534",
+    fontWeight: 800,
   },
 
   resultBanner: {

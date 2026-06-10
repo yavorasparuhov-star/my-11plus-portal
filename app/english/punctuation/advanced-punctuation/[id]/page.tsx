@@ -100,6 +100,7 @@ export default function AdvancedPunctuationTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [accessBlocked, setAccessBlocked] = useState<"guest" | "upgrade" | null>(
     null
@@ -146,6 +147,7 @@ export default function AdvancedPunctuationTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setRewardMessage("")
       setAccessBlocked(null)
       setFinished(false)
       setSubmitting(false)
@@ -606,6 +608,49 @@ export default function AdvancedPunctuationTestPage() {
     }
   }
 
+  async function awardNormalTestReward(successRate: number) {
+    if (!test || mode === "review") return
+
+    try {
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "english",
+          testId: test.id,
+          scorePercent: successRate,
+          mainCategory: MAIN_CATEGORY,
+          subcategory: SUBCATEGORY,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding Advanced Punctuation YanBo Coins:", data)
+        setRewardMessage("")
+        return
+      }
+
+      const coinsAwarded = Number(data?.coinsAwarded ?? 0)
+
+      if (coinsAwarded === 1) {
+        setRewardMessage("Brilliant work — you earned 1 YanBo Coin!")
+      } else if (coinsAwarded > 1) {
+        setRewardMessage(
+          `Brilliant work — you earned ${coinsAwarded} YanBo Coins!`
+        )
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (rewardError) {
+      console.error("Unexpected Advanced Punctuation reward error:", rewardError)
+      setRewardMessage("")
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -749,6 +794,8 @@ export default function AdvancedPunctuationTestPage() {
       successRate
     )
 
+    await awardNormalTestReward(successRate)
+
     setScore(correctAnswers)
     setFinished(true)
     setSubmitting(false)
@@ -777,6 +824,7 @@ export default function AdvancedPunctuationTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -996,6 +1044,10 @@ export default function AdvancedPunctuationTestPage() {
                 <p style={styles.resultText}>
                   <strong>Category:</strong> Advanced Punctuation
                 </p>
+
+                {rewardMessage && (
+                  <p style={styles.rewardText}>{rewardMessage}</p>
+                )}
 
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
@@ -1369,6 +1421,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  rewardText: {
+    margin: "14px 0 0",
+    padding: "12px 14px",
+    borderRadius: "16px",
+    background: "#ecfdf5",
+    border: "1px solid #bbf7d0",
+    color: "#166534",
+    fontWeight: 800,
   },
 
   resultButtons: {

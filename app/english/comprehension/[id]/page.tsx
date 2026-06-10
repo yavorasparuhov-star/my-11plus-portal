@@ -57,6 +57,16 @@ type CompletedQuestionReview = {
   difficulty: number | null
 }
 
+type NormalTestRewardResponse =
+  | {
+      awarded: boolean
+      coinsAwarded: number
+      scorePercent: number
+    }
+  | {
+      error: string
+    }
+
 const MAIN_CATEGORY = "comprehension"
 const SUBCATEGORY = "comprehension"
 const REVIEW_STORAGE_KEY = "comprehension_review_ids"
@@ -88,6 +98,8 @@ export default function ComprehensionTestPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [score, setScore] = useState(0)
+  const [coinsAwarded, setCoinsAwarded] = useState(0)
+  const [coinMessage, setCoinMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [timerEnabled, setTimerEnabled] = useState(false)
@@ -204,6 +216,8 @@ export default function ComprehensionTestPage() {
       setAnswers({})
       setSubmitted(false)
       setScore(0)
+    setCoinsAwarded(0)
+    setCoinMessage("")
       setShowIncompleteModal(false)
       setSubmitting(false)
       setTimeLeft(TEST_TIME)
@@ -435,6 +449,72 @@ export default function ComprehensionTestPage() {
     }))
   }
 
+  async function awardNormalTestCoins(scorePercent: number) {
+    if (!test || mode === "review") {
+      setCoinsAwarded(0)
+      setCoinMessage("")
+      return
+    }
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setCoinsAwarded(0)
+        setCoinMessage("")
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "english",
+          category: MAIN_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const result = (await response.json()) as NormalTestRewardResponse
+
+      if (!response.ok || "error" in result) {
+        console.error(
+          "Could not award YanBo Coins:",
+          "error" in result ? result.error : "Unknown reward error"
+        )
+        setCoinsAwarded(0)
+        setCoinMessage("")
+        return
+      }
+
+      setCoinsAwarded(result.awarded ? result.coinsAwarded : 0)
+
+      if (scorePercent >= 50) {
+        if (result.awarded) {
+          setCoinMessage(
+            `Brilliant work — you earned ${result.coinsAwarded} YanBo ${
+              result.coinsAwarded === 1 ? "Coin" : "Coins"
+            }!`
+          )
+        } else {
+          setCoinMessage("You have already earned YanBo Coins for this test today.")
+        }
+      } else {
+        setCoinMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Could not award YanBo Coins:", error)
+      setCoinsAwarded(0)
+      setCoinMessage("")
+    }
+  }
+
   async function submitTest() {
     if (!userId || !test) return
     if (questions.length === 0) return
@@ -661,6 +741,8 @@ export default function ComprehensionTestPage() {
 
     localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedReviewIds))
 
+    await awardNormalTestCoins(successRate)
+
     // Do not call setReviewIds here. reviewIds is part of the page-loading
     // effect dependency for review mode. Updating it after submit can reload
     // the whole page and make the finished test look like it restarted.
@@ -719,6 +801,8 @@ export default function ComprehensionTestPage() {
     setAnswers({})
     setSubmitted(false)
     setScore(0)
+    setCoinsAwarded(0)
+    setCoinMessage("")
     setShowIncompleteModal(false)
     setErrorMessage("")
     setTimeLeft(TEST_TIME)
@@ -875,6 +959,19 @@ export default function ComprehensionTestPage() {
                     %
                   </strong>
                 </p>
+
+                {coinMessage && (
+                  <div
+                    style={{
+                      ...styles.coinRewardBox,
+                      borderColor: coinsAwarded > 0 ? "#bbf7d0" : "#fde68a",
+                      background: coinsAwarded > 0 ? "#f0fdf4" : "#fffbeb",
+                      color: coinsAwarded > 0 ? "#166534" : "#92400e",
+                    }}
+                  >
+                    {coinMessage}
+                  </div>
+                )}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
 
@@ -1244,6 +1341,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   resultText: {
     margin: "8px 0",
     fontSize: "18px",
+  },
+
+  coinRewardBox: {
+    margin: "16px auto 0",
+    padding: "14px 16px",
+    borderRadius: "14px",
+    border: "1px solid",
+    fontWeight: 700,
+    lineHeight: 1.5,
+    maxWidth: "520px",
   },
 
   resultButtons: {
