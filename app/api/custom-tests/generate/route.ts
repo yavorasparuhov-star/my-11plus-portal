@@ -50,6 +50,13 @@ type EnglishTestRow = {
   difficulty?: number | string | null;
 };
 
+type EnglishComprehensionTestLookupRow = {
+  id: number;
+  main_category: string | null;
+  subcategory: string | null;
+  difficulty: number | string | null;
+};
+
 type StandardTestRow = {
   id: number;
   title: string | null;
@@ -881,6 +888,68 @@ async function fetchEnglishQuestions(
   return (data ?? []) as EnglishQuestionRow[];
 }
 
+async function fetchComprehensionQuestionRowsForDifficulty(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  selectedDifficulty: DifficultyFilter,
+): Promise<EnglishQuestionRow[]> {
+  const { data: testData, error: testError } = await supabase
+    .from("english_tests")
+    .select("id, main_category, subcategory, difficulty")
+    .or("main_category.eq.comprehension,subcategory.eq.comprehension")
+    .range(0, 9999);
+
+  if (testError) {
+    throw new Error(
+      `Could not load comprehension english_tests: ${testError.message}`,
+    );
+  }
+
+  const comprehensionTests = (testData ??
+    []) as EnglishComprehensionTestLookupRow[];
+
+  const matchingTestIds = comprehensionTests
+    .filter((test) => matchesDifficulty(test.difficulty, selectedDifficulty))
+    .map((test) => test.id)
+    .filter((id): id is number => typeof id === "number");
+
+  if (matchingTestIds.length === 0) {
+    return [];
+  }
+
+  const { data: questionData, error: questionError } = await supabase
+    .from("english_questions")
+    .select(
+      `
+      id,
+      test_id,
+      main_category,
+      subcategory,
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation,
+      difficulty,
+      question_order
+      `,
+    )
+    .in("test_id", matchingTestIds)
+    .range(0, 9999)
+    .order("test_id", { ascending: true })
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (questionError) {
+    throw new Error(
+      `Could not load comprehension questions by test_id: ${questionError.message}`,
+    );
+  }
+
+  return (questionData ?? []) as EnglishQuestionRow[];
+}
+
 async function fetchEnglishPassages(
   supabase: ReturnType<typeof getSupabaseClient>,
   testIds: number[],
@@ -1469,15 +1538,8 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const fetchedRows = await fetchEnglishQuestions(
+        const rows = await fetchComprehensionQuestionRowsForDifficulty(
           supabase,
-          "comprehension",
-          [],
-        );
-
-        const rows = await filterComprehensionRowsByTestDifficulty(
-          supabase,
-          fetchedRows,
           config.selectedDifficulty,
         );
 
