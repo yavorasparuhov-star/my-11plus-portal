@@ -612,17 +612,32 @@ export default function AdvancedPunctuationTestPage() {
     if (!test || mode === "review") return
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        console.error(
+          "Could not verify session for Advanced Punctuation YanBo Coins:",
+          sessionError
+        )
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
       const response = await fetch("/api/tokens/normal-test-reward", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           subject: "english",
+          category: RESULT_CATEGORY,
           testId: test.id,
-          scorePercent: successRate,
-          mainCategory: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
         }),
       })
 
@@ -630,7 +645,9 @@ export default function AdvancedPunctuationTestPage() {
 
       if (!response.ok) {
         console.error("Error awarding Advanced Punctuation YanBo Coins:", data)
-        setRewardMessage("")
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
         return
       }
 
@@ -647,7 +664,9 @@ export default function AdvancedPunctuationTestPage() {
       }
     } catch (rewardError) {
       console.error("Unexpected Advanced Punctuation reward error:", rewardError)
-      setRewardMessage("")
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
     }
   }
 
