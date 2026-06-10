@@ -14,7 +14,7 @@ import type {
   TopicCatalogItem,
 } from "../../../../lib/custom-tests/types"
 
-const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60]
+const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, 50, 60]
 const TIME_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60]
 
 const DIFFICULTY_OPTIONS: Array<{
@@ -37,6 +37,14 @@ function buildBuilderStorageKey(mainCategory: MainCategory) {
 
 function buildGeneratedTestStorageKey(mainCategory: MainCategory) {
   return `custom-test-generated:${mainCategory}`
+}
+
+function normalizeQuestionCount(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 20
+  if (QUESTION_COUNT_OPTIONS.includes(value)) return value
+  return QUESTION_COUNT_OPTIONS.reduce((closest, option) =>
+    Math.abs(option - value) < Math.abs(closest - value) ? option : closest
+  )
 }
 
 function renderDifficultyLabel(value: DifficultyFilter) {
@@ -932,9 +940,7 @@ export default function CustomTestBuilderPage() {
 
       setSelectedTopicKeys(Array.isArray(parsed.topicKeys) ? parsed.topicKeys : [])
       setSubtopicMap(parsed.subtopicMap ?? {})
-      setQuestionCount(
-        typeof parsed.questionCount === "number" ? parsed.questionCount : 20
-      )
+      setQuestionCount(normalizeQuestionCount(parsed.questionCount))
       setTotalTimeMinutes(
         typeof parsed.totalTimeMinutes === "number" ? parsed.totalTimeMinutes : 15
       )
@@ -950,11 +956,6 @@ export default function CustomTestBuilderPage() {
       // ignore bad session storage
     }
   }, [mainCategoryParam])
-
-  const selectedTopics = useMemo(() => {
-    if (!catalog) return []
-    return catalog.topics.filter((topic) => selectedTopicKeys.includes(topic.key))
-  }, [catalog, selectedTopicKeys])
 
   function toggleTopic(topic: TopicCatalogItem) {
     setErrorMessage("")
@@ -1017,26 +1018,6 @@ export default function CustomTestBuilderPage() {
       questionCount,
       totalTimeMinutes,
       selectedDifficulty,
-    }
-  }
-
-  function handleSaveBuilderConfig() {
-    setErrorMessage("")
-    setSuccessMessage("")
-
-    const config = buildConfig()
-    if (!config) return
-
-    try {
-      sessionStorage.setItem(
-        buildBuilderStorageKey(config.mainCategory),
-        JSON.stringify(config)
-      )
-      sessionStorage.setItem("custom-test-builder:last-config", JSON.stringify(config))
-
-      setSuccessMessage("Builder settings saved.")
-    } catch {
-      setErrorMessage("Could not save builder settings in the browser.")
     }
   }
 
@@ -1197,24 +1178,6 @@ export default function CustomTestBuilderPage() {
     }
   }
 
-  function renderSelectedTopicSummary(topic: TopicCatalogItem) {
-    const selectedSubtopics = subtopicMap[topic.key] ?? []
-
-    if (!topic.childSubtopics || topic.childSubtopics.length === 0) {
-      return topic.label
-    }
-
-    if (selectedSubtopics.length === 0) {
-      return `${topic.label} (all subtopics)`
-    }
-
-    const labels = topic.childSubtopics
-      .filter((sub) => selectedSubtopics.includes(sub.key))
-      .map((sub) => sub.label)
-
-    return `${topic.label}: ${labels.join(", ")}`
-  }
-
   if (!mainCategoryParam || !catalog) {
     return (
       <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
@@ -1299,74 +1262,20 @@ export default function CustomTestBuilderPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            marginBottom: 24,
-          }}
-        >
-          <div>
-            <p style={{ margin: "0 0 6px 0", color: "#6b7280", fontSize: "0.95rem" }}>
-              <button
-                onClick={handleDownloadPrintableTest}
-                type="button"
-                disabled={isGenerating || isDownloading}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #bfdbfe",
-                  background: isDownloading ? "#e5e7eb" : "#dbeafe",
-                  color: isDownloading ? "#6b7280" : "#1e3a8a",
-                  fontWeight: 700,
-                  cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
-                }}
-              >
-                {isDownloading ? "Preparing Download..." : "Download Printable Test"}
-              </button>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
+            {catalog.label} Custom Test Builder
+          </h1>
 
-              <Link
-                href="/custom-tests"
-                style={{ color: "#6b7280", textDecoration: "none" }}
-              >
-                Custom Tests
-              </Link>{" "}
-              / {catalog.label}
-            </p>
-
-            <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-              {catalog.label} Custom Test Builder
-            </h1>
-          </div>
-
-          <div
-            style={{
-              background: "#ecfccb",
-              color: "#365314",
-              border: "1px solid #d9f99d",
-              borderRadius: 999,
-              padding: "8px 14px",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-            }}
-          >
-            One main category only
-          </div>
+          <p style={{ margin: "8px 0 0 0", color: "#4b5563", lineHeight: 1.6 }}>
+            Choose the topics, difficulty and length, then select whether the student
+            wants to complete the test online or download a printable paper.
+          </p>
         </div>
 
-        <div
+        <section
           style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)",
-            gap: 20,
-          }}
-        >
-          <section
-            style={{
               background: "#ffffff",
               border: "1px solid #e5e7eb",
               borderRadius: 16,
@@ -1664,182 +1573,67 @@ export default function CustomTestBuilderPage() {
             <div
               style={{
                 marginTop: 24,
-                display: "flex",
-                gap: 12,
-                flexWrap: "wrap",
+                padding: 18,
+                borderRadius: 14,
+                border: "1px solid #d9f99d",
+                background: "#f7fee7",
               }}
             >
-              <button
-                onClick={handleSaveBuilderConfig}
-                type="button"
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Save Builder Settings
-              </button>
+              <h2 style={{ margin: "0 0 6px 0", color: "#111827", fontSize: "1.2rem" }}>
+                Choose test format
+              </h2>
 
-              <button
-                onClick={handleGenerateCustomTest}
-                type="button"
-                disabled={isGenerating || isDownloading}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #bef264",
-                  background: isGenerating ? "#e5e7eb" : "#d9f99d",
-                  color: isGenerating ? "#6b7280" : "#14532d",
-                  fontWeight: 700,
-                  cursor: isGenerating ? "not-allowed" : "pointer",
-                }}
-              >
-                {isGenerating ? "Generating..." : "Generate Custom Test"}
-              </button>
+              <p style={{ margin: "0 0 16px 0", color: "#4b5563", lineHeight: 1.6 }}>
+                Start the test online for instant marking, or download a printable paper
+                for exam-style practice.
+              </p>
 
-              <Link
-                href="/custom-tests"
+              <div
                 style={{
-                  display: "inline-block",
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  textDecoration: "none",
-                  fontWeight: 600,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 12,
                 }}
               >
-                Back
-              </Link>
+                <button
+                  onClick={handleGenerateCustomTest}
+                  type="button"
+                  disabled={isGenerating || isDownloading}
+                  style={{
+                    width: "100%",
+                    padding: "14px 18px",
+                    borderRadius: 12,
+                    border: "1px solid #bef264",
+                    background: isGenerating ? "#e5e7eb" : "#d9f99d",
+                    color: isGenerating ? "#6b7280" : "#14532d",
+                    fontWeight: 800,
+                    cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {isGenerating ? "Generating..." : "Start Online Test"}
+                </button>
+
+                <button
+                  onClick={handleDownloadPrintableTest}
+                  type="button"
+                  disabled={isGenerating || isDownloading}
+                  style={{
+                    width: "100%",
+                    padding: "14px 18px",
+                    borderRadius: 12,
+                    border: "1px solid #bfdbfe",
+                    background: isDownloading ? "#e5e7eb" : "#dbeafe",
+                    color: isDownloading ? "#6b7280" : "#1e3a8a",
+                    fontWeight: 800,
+                    cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {isDownloading ? "Preparing Download..." : "Download Printable Test"}
+                </button>
+              </div>
             </div>
+
           </section>
-
-          <aside
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 16,
-              padding: 24,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-              alignSelf: "start",
-              position: "sticky",
-              top: 20,
-            }}
-          >
-            <h2 style={{ margin: "0 0 14px 0", color: "#111827", fontSize: "1.2rem" }}>
-              Test Summary
-            </h2>
-
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  Main category
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>{catalog.label}</div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  Selected topics
-                </div>
-
-                {selectedTopics.length === 0 ? (
-                  <div style={{ color: "#9ca3af" }}>No topics selected yet</div>
-                ) : (
-                  <ul
-                    style={{
-                      margin: 0,
-                      paddingLeft: 18,
-                      color: "#111827",
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    {selectedTopics.map((topic) => (
-                      <li key={topic.key}>{renderSelectedTopicSummary(topic)}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  Question count
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>{questionCount}</div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  Total time
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>
-                  {totalTimeMinutes} minutes
-                </div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  Difficulty
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>
-                  {renderDifficultyLabel(selectedDifficulty)}
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 20,
-                padding: 14,
-                borderRadius: 12,
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
-                color: "#4b5563",
-                lineHeight: 1.6,
-                fontSize: "0.95rem",
-              }}
-            >
-              This builder stays inside one main category only. Custom tests are available
-              for monthly, annual and admin members.
-            </div>
-          </aside>
-        </div>
       </div>
     </main>
   )
