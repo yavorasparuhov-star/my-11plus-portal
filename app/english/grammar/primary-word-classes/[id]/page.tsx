@@ -561,68 +561,69 @@ export default function PrimaryWordClassesTestPage() {
   }
 
   async function awardNormalTestCoins(successRate: number) {
-    if (!test || mode === "review") return;
+  if (!test || mode === "review") return;
 
-    const expectedCoins = getYanBoCoinRewardAmount(successRate);
+  const expectedCoins = getYanBoCoinRewardAmount(successRate);
 
-    try {
-      const response = await fetch("/api/tokens/normal-test-reward", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subject: "english",
-          testId: test.id,
-          scorePercent: successRate,
-          mainCategory: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
-        }),
-      });
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-      const data = await response.json().catch(() => null);
+    if (sessionError || !session?.access_token) {
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified.",
+      );
+      return;
+    }
 
-      if (!response.ok) {
-        console.error("Error awarding Primary Word Classes YanBo Coins:", data);
+    const response = await fetch("/api/tokens/normal-test-reward", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        subject: "english",
+        category: RESULT_CATEGORY,
+        testId: test.id,
+      }),
+    });
 
-        if (typeof data?.message === "string" && data.message.trim() !== "") {
-          setRewardMessage(data.message);
-          return;
-        }
+    const data = await response.json().catch(() => null);
 
-        setRewardMessage(
-          "Your result was saved, but YanBo Coins could not be awarded. Please try again.",
-        );
-        return;
-      }
-
-      const awardedCoins =
-        typeof data?.coinsAwarded === "number"
-          ? data.coinsAwarded
-          : typeof data?.coins === "number"
-            ? data.coins
-            : typeof data?.amount === "number"
-              ? data.amount
-              : expectedCoins;
+    if (!response.ok) {
+      console.error("Error awarding Primary Word Classes YanBo Coins:", data);
 
       if (typeof data?.message === "string" && data.message.trim() !== "") {
         setRewardMessage(data.message);
         return;
       }
 
-      if (data?.alreadyAwarded || data?.duplicate) {
-        setRewardMessage(
-          "You have already earned YanBo Coins for this test today.",
-        );
-        return;
-      }
-
-      setRewardMessage(getYanBoCoinRewardMessage(awardedCoins));
-    } catch (error) {
-      console.error("Error awarding Primary Word Classes YanBo Coins:", error);
-      setRewardMessage(getYanBoCoinRewardMessage(expectedCoins));
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+      );
+      return;
     }
+
+    const awardedCoins =
+      typeof data?.coinsAwarded === "number"
+        ? data.coinsAwarded
+        : expectedCoins;
+
+    if (awardedCoins > 0) {
+      setRewardMessage(getYanBoCoinRewardMessage(awardedCoins));
+    } else {
+      setRewardMessage("Score 50% or more next time to earn YanBo Coins.");
+    }
+  } catch (error) {
+    console.error("Error awarding Primary Word Classes YanBo Coins:", error);
+    setRewardMessage(
+      "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+    );
   }
+}
 
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return;
