@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+type RewardSubject = "math" | "english" | "vr" | "nvr"
+
 type RewardRequestBody = {
   subject?: string
   category?: string
@@ -12,6 +14,15 @@ function calculateCoins(scorePercent: number) {
   if (scorePercent >= 75) return 2
   if (scorePercent >= 50) return 1
   return 0
+}
+
+function isSupportedSubject(subject: string | undefined): subject is RewardSubject {
+  return (
+    subject === "math" ||
+    subject === "english" ||
+    subject === "vr" ||
+    subject === "nvr"
+  )
 }
 
 function getSupabaseClient(authHeader: string) {
@@ -56,7 +67,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as RewardRequestBody
 
     if (
-      (body.subject !== "math" && body.subject !== "english") ||
+      !isSupportedSubject(body.subject) ||
       !body.category ||
       typeof body.category !== "string" ||
       typeof body.testId !== "number"
@@ -97,8 +108,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fallback for English grammar/punctuation pages where category naming may differ.
-    if (!latestResult && body.subject === "english") {
+    // Fallback for pages where the saved result category differs from the route category.
+    // This was originally needed for English grammar/punctuation, but it is safe for NVR/VR too.
+    if (!latestResult) {
       const fallbackResult = await supabase
         .from("latest_test_results")
         .select("success_rate, category")
@@ -141,6 +153,7 @@ export async function POST(request: Request) {
         awarded: false,
         coinsAwarded: 0,
         scorePercent,
+        savedCategory: latestResult.category,
       })
     }
 
