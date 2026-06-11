@@ -101,6 +101,7 @@ export default function VRCodesLogicTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
   const [timeUp, setTimeUp] = useState(false)
@@ -132,6 +133,7 @@ export default function VRCodesLogicTestPage() {
       setShowFeedback(false)
       setScore(0)
       setErrorMessage("")
+      setRewardMessage("")
       setQuestions([])
       setSavingResults(false)
       setTimeLeft(QUESTION_TIME)
@@ -411,6 +413,92 @@ export default function VRCodesLogicTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3
+    if (successRate >= 75) return 2
+    if (successRate >= 50) return 1
+    return 0
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test) return
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: SUBJECT,
+          category: DB_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        if (typeof data?.error === "string" && data.error.trim() !== "") {
+          setRewardMessage(data.error)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number"
+          ? data.coinsAwarded
+          : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+      } else if (expectedCoins > 0) {
+        setRewardMessage("YanBo Coins for this test have already been awarded today.")
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (savingResults) return
     if (!userId || !test) return
@@ -418,6 +506,7 @@ export default function VRCodesLogicTestPage() {
 
     setSavingResults(true)
     setErrorMessage("")
+    setRewardMessage("")
 
     const testCategory = test.category || DB_CATEGORY
 
@@ -576,6 +665,7 @@ export default function VRCodesLogicTestPage() {
         )
       } else {
         console.log("Latest VR Codes & Logic result saved:", savedLatestResult)
+        await awardNormalTestCoins(successRate)
       }
 
       if (wrongAnswersForReview.length > 0) {
@@ -632,6 +722,7 @@ export default function VRCodesLogicTestPage() {
     setShowFeedback(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUp(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -854,6 +945,8 @@ export default function VRCodesLogicTestPage() {
                 </p>
 
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
+
+                {rewardMessage && <p style={styles.resultText}>{rewardMessage}</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </div>
