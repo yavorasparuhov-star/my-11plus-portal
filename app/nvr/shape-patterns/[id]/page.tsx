@@ -7,10 +7,10 @@ import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
-const RESULT_CATEGORY = "shape-patterns"
-const NVR_CATEGORY = "shape-patterns"
+const RESULT_CATEGORY = "codes-spatial-logic"
+const NVR_CATEGORY = "codes-spatial-logic"
 const QUESTION_TIME = 60
-const TIMER_STORAGE_KEY = "nvr_shape_patterns_timer_enabled"
+const TIMER_STORAGE_KEY = "nvr_codes_spatial_logic_timer_enabled"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
@@ -98,6 +98,7 @@ export default function NVRShapePatternsTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
@@ -126,6 +127,7 @@ export default function NVRShapePatternsTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setRewardMessage("")
       setQuestions([])
       setAnswers({})
       setCurrentIndex(0)
@@ -534,166 +536,231 @@ export default function NVRShapePatternsTestPage() {
     }
   }
 
-  async function submitResults(finalAnswers: UserAnswerMap) {
-  if (submitting) return
-  if (!userId || !test) return
-  if (questions.length === 0) return
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3
+    if (successRate >= 75) return 2
+    if (successRate >= 50) return 1
+    return 0
+  }
 
-  setSubmitting(true)
-  setErrorMessage("")
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    return `Brilliant work — you earned ${coins} YanBo Coins!`
+  }
 
-  try {
-    let correctAnswers = 0
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test) return
 
-    const nowIso = new Date().toISOString()
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
 
-    const wrongAnswersForReview: {
-      user_id: string
-      test_id: number
-      question_id: number
-      category: string | null
-      question_text: string
-      user_answer: string | null
-      correct_answer: string
-      difficulty: number | null
-      updated_at: string
-      last_attempted_at: string
-    }[] = []
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    const correctQuestionIds: number[] = []
-
-    for (const question of questions) {
-      const selected = finalAnswers[question.id] ?? null
-
-console.log("NVR question check:", {
-  question_id: question.id,
-  question_order: question.question_order,
-  question_text: question.question_text,
-  selected,
-  correct_answer: question.correct_answer,
-  is_correct: selected === question.correct_answer,
-})
-
-      if (selected === question.correct_answer) {
-        correctAnswers += 1
-        correctQuestionIds.push(question.id)
-      } else {
-        wrongAnswersForReview.push({
-          user_id: userId,
-          test_id: test.id,
-          question_id: question.id,
-          category: test.category,
-          question_text: question.question_text,
-          user_answer: selected,
-          correct_answer: question.correct_answer,
-          difficulty: question.difficulty ?? test.difficulty ?? null,
-          updated_at: nowIso,
-          last_attempted_at: nowIso,
-        })
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
       }
-    }
 
-    const totalQuestions = questions.length
-    const successRate =
-      totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
-    const progressPayload = {
-      user_id: userId,
-      test_id: test.id,
-      category: test.category,
-      total_questions: totalQuestions,
-      correct_answers: correctAnswers,
-      success_rate: successRate,
-      difficulty: test.difficulty ?? null,
-    }
-
-    const { error: progressError } = await supabase
-      .from("nvr_progress")
-      .insert([progressPayload])
-
-    if (progressError) {
-      console.error("Error saving NVR progress:", {
-        message: progressError.message,
-        details: progressError.details,
-        hint: progressError.hint,
-        code: progressError.code,
-        full: progressError,
-        payload: progressPayload,
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "nvr",
+          category: RESULT_CATEGORY,
+          testId: test.id,
+        }),
       })
 
-      setErrorMessage(
-        progressError.message || "Could not save your progress. Please try again."
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        if (typeof data?.error === "string" && data.error.trim() !== "") {
+          setRewardMessage(data.error)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+      } else if (expectedCoins > 0 && data?.awarded === false) {
+        setRewardMessage("YanBo Coins for this test have already been awarded today.")
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
       )
+    }
+  }
+
+  async function submitResults(finalAnswers: UserAnswerMap) {
+    if (submitting) return
+    if (!userId || !test) return
+    if (questions.length === 0) return
+
+    setSubmitting(true)
+    setErrorMessage("")
+    setRewardMessage("")
+
+    try {
+      let correctAnswers = 0
+
+      const attemptedAt = new Date().toISOString()
+
+      const wrongAnswersForReview: {
+        user_id: string
+        test_id: number
+        question_id: number
+        category: string | null
+        question_text: string
+        user_answer: string | null
+        correct_answer: string
+        difficulty: number | null
+        updated_at: string
+        last_attempted_at: string
+      }[] = []
+
+      const correctedReviewQuestionIds: number[] = []
+
+      for (const question of questions) {
+        const selected = finalAnswers[question.id]
+
+        if (selected === question.correct_answer) {
+          correctAnswers += 1
+          correctedReviewQuestionIds.push(question.id)
+        } else {
+          wrongAnswersForReview.push({
+            user_id: userId,
+            test_id: test.id,
+            question_id: question.id,
+            category: test.category,
+            question_text: question.question_text,
+            user_answer: selected ?? null,
+            correct_answer: question.correct_answer,
+            difficulty: question.difficulty ?? test.difficulty ?? null,
+            updated_at: attemptedAt,
+            last_attempted_at: attemptedAt,
+          })
+        }
+      }
+
+      const totalQuestions = questions.length
+      const successRate =
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+      const progressPayload = {
+        user_id: userId,
+        test_id: test.id,
+        category: test.category,
+        total_questions: totalQuestions,
+        correct_answers: correctAnswers,
+        success_rate: successRate,
+        difficulty: test.difficulty ?? null,
+      }
+
+      const { error: progressError } = await supabase
+        .from("nvr_progress")
+        .insert([progressPayload])
+
+      if (progressError) {
+        console.error("Error saving NVR progress:", {
+          message: progressError.message,
+          details: progressError.details,
+          hint: progressError.hint,
+          code: progressError.code,
+          full: progressError,
+          payload: progressPayload,
+        })
+
+        setErrorMessage(
+          progressError.message || "Could not save your progress. Please try again."
+        )
+        setSubmitting(false)
+        return
+      }
+
+      await saveLatestTestResult(
+        finalAnswers,
+        correctAnswers,
+        totalQuestions,
+        successRate
+      )
+
+      await awardNormalTestCoins(successRate)
+
+      if (wrongAnswersForReview.length > 0) {
+        const { error: reviewError } = await supabase
+          .from("nvr_review")
+          .upsert(wrongAnswersForReview, {
+            onConflict: "user_id,question_id",
+          })
+
+        if (reviewError) {
+          console.error("Error saving NVR review:", {
+            message: reviewError.message,
+            details: reviewError.details,
+            hint: reviewError.hint,
+            code: reviewError.code,
+            full: reviewError,
+          })
+        }
+      }
+
+      if (correctedReviewQuestionIds.length > 0) {
+        const { error: deleteReviewError } = await supabase
+          .from("nvr_review")
+          .delete()
+          .eq("user_id", userId)
+          .in("question_id", correctedReviewQuestionIds)
+
+        if (deleteReviewError) {
+          console.error("Error removing corrected NVR review items:", {
+            message: deleteReviewError.message,
+            details: deleteReviewError.details,
+            hint: deleteReviewError.hint,
+            code: deleteReviewError.code,
+            full: deleteReviewError,
+          })
+        }
+      }
+
+      setScore(correctAnswers)
+      setFinished(true)
       setSubmitting(false)
       setTimeExpiredProcessing(false)
-      return
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch (error) {
+      console.error("Unexpected NVR submit error:", error)
+      setErrorMessage("Something went wrong while submitting. Please try again.")
+      setSubmitting(false)
+      setTimeExpiredProcessing(false)
     }
-
-    await saveLatestTestResult(
-      finalAnswers,
-      correctAnswers,
-      totalQuestions,
-      successRate
-    )
-
-    if (correctQuestionIds.length > 0) {
-      const { error: removeReviewError } = await supabase
-        .from("nvr_review")
-        .delete()
-        .eq("user_id", userId)
-        .in("question_id", correctQuestionIds)
-
-      if (removeReviewError) {
-        console.error("Error removing corrected NVR review items:", {
-          message: removeReviewError.message,
-          details: removeReviewError.details,
-          hint: removeReviewError.hint,
-          code: removeReviewError.code,
-          full: removeReviewError,
-        })
-      }
-    }
-
-  console.log("NVR wrongAnswersForReview:", wrongAnswersForReview)
-
-if (wrongAnswersForReview.length > 0) {
-  const { data: savedReviewRows, error: reviewError } = await supabase
-    .from("nvr_review")
-    .upsert(wrongAnswersForReview, {
-      onConflict: "user_id,question_id",
-    })
-    .select()
-
-  if (reviewError) {
-    console.error("Error saving NVR review:", {
-      message: reviewError.message,
-      details: reviewError.details,
-      hint: reviewError.hint,
-      code: reviewError.code,
-      full: reviewError,
-      payload: wrongAnswersForReview,
-    })
-
-    setErrorMessage(
-      `NVR review could not be saved: ${reviewError.message}`
-    )
-  } else {
-    console.log("NVR review rows saved:", savedReviewRows)
   }
-}
-
-    setScore(correctAnswers)
-    setFinished(true)
-    setSubmitting(false)
-    setTimeExpiredProcessing(false)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  } catch (error) {
-    console.error("Unexpected NVR submit error:", error)
-    setErrorMessage("Something went wrong while submitting. Please try again.")
-    setSubmitting(false)
-    setTimeExpiredProcessing(false)
-  }
-}
 
   function getOptionText(question: NVRQuestion, option: AnswerOption) {
     if (option === "A") return question.option_a
@@ -717,6 +784,7 @@ if (wrongAnswersForReview.length > 0) {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
@@ -922,6 +990,8 @@ if (wrongAnswersForReview.length > 0) {
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
+                {rewardMessage && <p style={styles.resultText}>{rewardMessage}</p>}
               </div>
 
               <div style={styles.resultButtons}>
@@ -1091,7 +1161,7 @@ if (wrongAnswersForReview.length > 0) {
               <div style={styles.submitRow}>
                 <ReportQuestionButton
                   subject="nvr"
-                  category="shape-patterns"
+                  category={NVR_CATEGORY}
                   testId={testId}
                   questionId={currentQuestion.id}
                 />
@@ -1414,7 +1484,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   feedbackActionRow: {
-    width: "100%",
     marginTop: "24px",
     display: "flex",
     justifyContent: "flex-end",
