@@ -52,6 +52,7 @@ type EnglishTestRow = {
 
 type EnglishComprehensionTestLookupRow = {
   id: number;
+  title?: string | null;
   main_category: string | null;
   subcategory: string | null;
   difficulty: number | string | null;
@@ -59,6 +60,7 @@ type EnglishComprehensionTestLookupRow = {
 
 type EnglishTopicTestLookupRow = {
   id: number;
+  title?: string | null;
   main_category: string | null;
   subcategory: string | null;
   difficulty: number | string | null;
@@ -189,7 +191,58 @@ function toOptionKey(value: unknown): OptionKey | null {
   }
 
   const normalized = value.trim().toUpperCase();
-  return isOptionKey(normalized) ? normalized : null;
+
+  if (isOptionKey(normalized)) {
+    return normalized;
+  }
+
+  const compactMatch = normalized.match(
+    /^(?:CORRECT\s*)?(?:ANSWER\s*)?(?:OPTION\s*)?[\(\[]?([ABCD])[\)\].:\-]?$/,
+  );
+
+  if (compactMatch && isOptionKey(compactMatch[1])) {
+    return compactMatch[1];
+  }
+
+  return null;
+}
+
+function normalizeAnswerTextForComparison(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^option\s+[a-d]\s*[:.)-]?\s*/i, "")
+    .replace(/^[a-d]\s*[:.)-]\s*/i, "")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/\s+/g, " ");
+}
+
+function resolveCorrectAnswerKey(
+  correctAnswerValue: string | null,
+  options: NormalizedOption[],
+): OptionKey | null {
+  const directKey = toOptionKey(correctAnswerValue);
+
+  if (directKey) {
+    return directKey;
+  }
+
+  const normalizedCorrectAnswer = normalizeAnswerTextForComparison(
+    correctAnswerValue,
+  );
+
+  if (!normalizedCorrectAnswer) {
+    return null;
+  }
+
+  const matchingOption = options.find(
+    (option) =>
+      typeof option.text === "string" &&
+      normalizeAnswerTextForComparison(option.text) === normalizedCorrectAnswer,
+  );
+
+  return matchingOption?.key ?? null;
 }
 
 function jsonError(error: string, status = 400) {
@@ -617,18 +670,18 @@ function normalizeEnglishQuestions(
   passagesByTestId: Map<number, string>,
 ): NormalizedQuestion[] {
   return rows.flatMap((row) => {
-    const correctAnswer = toOptionKey(row.correct_answer);
-
-    if (!correctAnswer) {
-      return [];
-    }
-
     const options: NormalizedOption[] = [
       { key: "A", text: row.option_a, imageUrl: null },
       { key: "B", text: row.option_b, imageUrl: null },
       { key: "C", text: row.option_c, imageUrl: null },
       { key: "D", text: row.option_d, imageUrl: null },
     ];
+
+    const correctAnswer = resolveCorrectAnswerKey(row.correct_answer, options);
+
+    if (!correctAnswer) {
+      return [];
+    }
 
     const hasAnyOptionContent = options.some(
       (option) => typeof option.text === "string" && option.text.trim(),
@@ -906,7 +959,7 @@ async function fetchComprehensionQuestionRowsForDifficulty(
 ): Promise<EnglishQuestionRow[]> {
   const { data: testData, error: testError } = await supabase
     .from("english_tests")
-    .select("id, main_category, subcategory, difficulty")
+    .select("id, title, main_category, subcategory, difficulty")
     .or("main_category.eq.comprehension,subcategory.eq.comprehension")
     .range(0, 9999);
 
@@ -1116,6 +1169,72 @@ function getEnglishSubtopicCandidates(
   return uniqueStrings(candidates);
 }
 
+
+async function fetchEnglishQuestionRowsByCategoryAndDifficulty(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  topicKey: string,
+  selectedSubtopics: string[],
+  selectedDifficulty: DifficultyFilter,
+): Promise<EnglishQuestionRow[]> {
+  let query = supabase
+    .from("english_questions")
+    .select(
+      `
+      id,
+      test_id,
+      main_category,
+      subcategory,
+      question_text,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_answer,
+      explanation,
+      difficulty,
+      question_order
+      `,
+    )
+    .range(0, 9999)
+    .order("test_id", { ascending: true })
+    .order("question_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (topicKey === "comprehension") {
+    query = query.or(
+      "main_category.eq.comprehension,subcategory.eq.comprehension",
+    );
+  } else {
+    query = query.eq("main_category", topicKey);
+  }
+
+  const expandedSelectedSubtopics = getEnglishSubtopicCandidates(
+    topicKey,
+    selectedSubtopics,
+  );
+
+  if (
+    (topicKey === "grammar" || topicKey === "punctuation") &&
+    expandedSelectedSubtopics.length > 0
+  ) {
+    query = query.in("subcategory", expandedSelectedSubtopics);
+  }
+
+  if (selectedDifficulty !== "all") {
+    query = query.eq("difficulty", selectedDifficulty);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(
+      `Could not directly load english_questions for ${topicKey}: ${error.message}`,
+    );
+  }
+
+  return (data ?? []) as EnglishQuestionRow[];
+}
+
 async function fetchEnglishTopicQuestionRowsForDifficulty(
   supabase: ReturnType<typeof getSupabaseClient>,
   topicKey: string,
@@ -1124,7 +1243,7 @@ async function fetchEnglishTopicQuestionRowsForDifficulty(
 ): Promise<EnglishQuestionRow[]> {
   const { data: testData, error: testError } = await supabase
     .from("english_tests")
-    .select("id, main_category, subcategory, difficulty")
+    .select("id, title, main_category, subcategory, difficulty")
     .range(0, 9999);
 
   if (testError) {
@@ -1145,10 +1264,12 @@ async function fetchEnglishTopicQuestionRowsForDifficulty(
 
       const normalizedMainCategory = normalizeCategoryValue(test.main_category);
       const normalizedSubcategory = normalizeCategoryValue(test.subcategory);
+      const normalizedTitle = normalizeCategoryValue(test.title ?? null);
 
       const matchesTopic =
         normalizedMainCategory === normalizedTopicKey ||
-        normalizedSubcategory === normalizedTopicKey;
+        normalizedSubcategory === normalizedTopicKey ||
+        normalizedTitle.includes(normalizedTopicKey);
 
       if (selectedSubtopicSet.size === 0) {
         return matchesTopic;
@@ -1156,7 +1277,10 @@ async function fetchEnglishTopicQuestionRowsForDifficulty(
 
       return (
         selectedSubtopicSet.has(normalizedSubcategory) ||
-        selectedSubtopicSet.has(normalizedMainCategory)
+        selectedSubtopicSet.has(normalizedMainCategory) ||
+        Array.from(selectedSubtopicSet).some((subtopic) =>
+          normalizedTitle.includes(subtopic),
+        )
       );
     })
     .map((test) => test.id)
@@ -1169,6 +1293,20 @@ async function fetchEnglishTopicQuestionRowsForDifficulty(
 
   if (rowsFromTests.length > 0) {
     return rowsFromTests;
+  }
+
+  // Some migrated English rows are easier to find from english_questions than
+  // from english_tests. This keeps Hard Direct Speech Punctuation available
+  // even if the parent-test lookup misses it for any reason.
+  const directRows = await fetchEnglishQuestionRowsByCategoryAndDifficulty(
+    supabase,
+    topicKey,
+    selectedSubtopics,
+    selectedDifficulty,
+  );
+
+  if (directRows.length > 0) {
+    return directRows;
   }
 
   // Fallback for any older rows/tests that are not consistently linked through
