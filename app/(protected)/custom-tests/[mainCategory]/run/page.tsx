@@ -665,6 +665,11 @@ export default function CustomTestRunPage() {
                   {questions.map((question, index) => {
                     const selectedAnswer = answers[question.runnerId]
                     const isCorrect = selectedAnswer === question.correctAnswer
+                    const passageText = question.passageText?.trim() ?? ""
+                    const firstPassageIndex = passageText
+                      ? questions.findIndex((item) => item.passageText?.trim() === passageText)
+                      : -1
+                    const shouldShowPassage = passageText.length > 0 && firstPassageIndex === index
 
                     return (
                       <div
@@ -676,6 +681,32 @@ export default function CustomTestRunPage() {
                           background: "#ffffff",
                         }}
                       >
+                        {shouldShowPassage ? (
+                          <div
+                            style={{
+                              marginBottom: 14,
+                              padding: 14,
+                              borderRadius: 12,
+                              background: "#f9fafb",
+                              border: "1px solid #d1d5db",
+                              color: "#374151",
+                              lineHeight: 1.75,
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Comprehension passage
+                            </div>
+                            {passageText}
+                          </div>
+                        ) : null}
+
                         <div
                           style={{
                             fontWeight: 700,
@@ -685,23 +716,6 @@ export default function CustomTestRunPage() {
                         >
                           Question {index + 1}
                         </div>
-
-                        {question.passageText ? (
-                          <div
-                            style={{
-                              marginBottom: 12,
-                              padding: 12,
-                              borderRadius: 10,
-                              background: "#f9fafb",
-                              border: "1px solid #e5e7eb",
-                              color: "#4b5563",
-                              lineHeight: 1.7,
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            {question.passageText}
-                          </div>
-                        ) : null}
 
                         {question.questionText ? (
                           <div
