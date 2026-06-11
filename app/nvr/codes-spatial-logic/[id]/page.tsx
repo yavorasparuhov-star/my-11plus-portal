@@ -98,6 +98,7 @@ export default function NVRRotationsReflectionsTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
@@ -534,6 +535,89 @@ export default function NVRRotationsReflectionsTestPage() {
     }
   }
 
+  function getYanBoCoinRewardAmount(scorePercent: number) {
+    if (scorePercent >= 90) return 3
+    if (scorePercent >= 75) return 2
+    if (scorePercent >= 50) return 1
+    return 0
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test) return
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "nvr",
+          category: RESULT_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+        return
+      }
+
+      if (expectedCoins > 0) {
+        setRewardMessage("YanBo Coins for this test have already been awarded today.")
+        return
+      }
+
+      setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -541,6 +625,7 @@ export default function NVRRotationsReflectionsTestPage() {
 
     setSubmitting(true)
     setErrorMessage("")
+    setRewardMessage("")
 
     try {
       let correctAnswers = 0
@@ -626,6 +711,8 @@ export default function NVRRotationsReflectionsTestPage() {
         successRate
       )
 
+      await awardNormalTestCoins(successRate)
+
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
           .from("nvr_review")
@@ -697,6 +784,7 @@ export default function NVRRotationsReflectionsTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
@@ -902,6 +990,18 @@ export default function NVRRotationsReflectionsTestPage() {
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
+                {rewardMessage && (
+                  <p
+                    style={{
+                      ...styles.resultText,
+                      color: rewardMessage.includes("earned") ? "#047857" : "#92400e",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {rewardMessage}
+                  </p>
+                )}
               </div>
 
               <div style={styles.resultButtons}>
