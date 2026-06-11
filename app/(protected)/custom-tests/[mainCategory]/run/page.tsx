@@ -1,134 +1,225 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { supabase } from "../../../../../lib/supabaseClient"
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "../../../../../lib/supabaseClient";
+import ReportQuestionButton from "../../../../../components/ReportQuestionButton";
 import type {
   GeneratedCustomTest,
   MainCategory,
   OptionKey,
-} from "../../../../../lib/custom-tests/types"
+} from "../../../../../lib/custom-tests/types";
 
-type AnswerMap = Record<string, OptionKey>
+type AnswerMap = Record<string, OptionKey>;
+
+type ReportSubject = "english" | "math" | "vr" | "nvr";
+
+type ReportableCustomQuestion = {
+  sourceType?: string | null;
+  sourceId?: string | number | null;
+  mainCategory?: MainCategory | string | null;
+  topicKey?: string | null;
+  subtopicKey?: string | null;
+  meta?: {
+    test_id?: string | number | null;
+    category?: string | null;
+    subcategory?: string | null;
+  } | null;
+};
+
+function getReportSubject(
+  question: ReportableCustomQuestion,
+  fallback: MainCategory,
+): ReportSubject {
+  if (
+    question.sourceType === "math_question" ||
+    question.mainCategory === "math"
+  ) {
+    return "math";
+  }
+
+  if (question.sourceType === "vr_question" || question.mainCategory === "vr") {
+    return "vr";
+  }
+
+  if (
+    question.sourceType === "nvr_question" ||
+    question.mainCategory === "nvr"
+  ) {
+    return "nvr";
+  }
+
+  return fallback === "math" || fallback === "vr" || fallback === "nvr"
+    ? fallback
+    : "english";
+}
+
+function getReportCategory(question: ReportableCustomQuestion) {
+  return (
+    question.subtopicKey ??
+    question.meta?.subcategory ??
+    question.topicKey ??
+    question.meta?.category ??
+    null
+  );
+}
+
+function normalizeReportNumber(value: string | number | null | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function getReportTestId(question: ReportableCustomQuestion) {
+  return normalizeReportNumber(question.meta?.test_id);
+}
+
+function getReportQuestionId(question: ReportableCustomQuestion) {
+  return normalizeReportNumber(question.sourceId);
+}
 
 type SubmitCustomTestResponse =
   | {
-      ok: true
-      attemptId: string
-      coinsAwarded: number
+      ok: true;
+      attemptId: string;
+      coinsAwarded: number;
     }
   | {
-      ok: false
-      error: string
-    }
+      ok: false;
+      error: string;
+    };
 
 function isMainCategory(value: string): value is MainCategory {
-  return value === "english" || value === "math" || value === "vr" || value === "nvr"
+  return (
+    value === "english" || value === "math" || value === "vr" || value === "nvr"
+  );
 }
 
 function buildGeneratedTestStorageKey(mainCategory: MainCategory) {
-  return `custom-test-generated:${mainCategory}`
+  return `custom-test-generated:${mainCategory}`;
 }
 
 function formatSeconds(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 export default function CustomTestRunPage() {
-  const params = useParams<{ mainCategory: string }>()
-  const router = useRouter()
+  const params = useParams<{ mainCategory: string }>();
+  const router = useRouter();
 
   const mainCategoryParam = Array.isArray(params?.mainCategory)
     ? params.mainCategory[0]
-    : params?.mainCategory
+    : params?.mainCategory;
 
-  const [generatedTest, setGeneratedTest] = useState<GeneratedCustomTest | null>(null)
-  const [answers, setAnswers] = useState<AnswerMap>({})
-  const [currentIndex, setCurrentIndex] = useState<number>(0)
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(0)
-  const [hasSubmitted, setHasSubmitted] = useState<boolean>(false)
-  const [loadError, setLoadError] = useState<string>("")
-  const [isSavingResult, setIsSavingResult] = useState<boolean>(false)
-  const [saveError, setSaveError] = useState<string>("")
-  const [savedAttemptId, setSavedAttemptId] = useState<string>("")
-  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
-  const [saveStarted, setSaveStarted] = useState<boolean>(false)
+  const [generatedTest, setGeneratedTest] =
+    useState<GeneratedCustomTest | null>(null);
+  const [answers, setAnswers] = useState<AnswerMap>({});
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(0);
+  const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string>("");
+  const [isSavingResult, setIsSavingResult] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>("");
+  const [savedAttemptId, setSavedAttemptId] = useState<string>("");
+  const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null);
+  const [saveStarted, setSaveStarted] = useState<boolean>(false);
 
   useEffect(() => {
     if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) {
-      setLoadError("Invalid main category.")
-      return
+      setLoadError("Invalid main category.");
+      return;
     }
 
     try {
-      const raw = sessionStorage.getItem(buildGeneratedTestStorageKey(mainCategoryParam))
+      const raw = sessionStorage.getItem(
+        buildGeneratedTestStorageKey(mainCategoryParam),
+      );
 
       if (!raw) {
-        setLoadError("No generated custom test was found. Please build a new test first.")
-        return
+        setLoadError(
+          "No generated custom test was found. Please build a new test first.",
+        );
+        return;
       }
 
-      const parsed = JSON.parse(raw) as GeneratedCustomTest
+      const parsed = JSON.parse(raw) as GeneratedCustomTest;
 
       if (!parsed?.config || parsed.config.mainCategory !== mainCategoryParam) {
-        setLoadError("Generated test data does not match this category.")
-        return
+        setLoadError("Generated test data does not match this category.");
+        return;
       }
 
-      setGeneratedTest(parsed)
-      setTimeLeftSeconds(parsed.config.totalTimeMinutes * 60)
+      setGeneratedTest(parsed);
+      setTimeLeftSeconds(parsed.config.totalTimeMinutes * 60);
     } catch {
-      setLoadError("Could not load the generated custom test.")
+      setLoadError("Could not load the generated custom test.");
     }
-  }, [mainCategoryParam])
+  }, [mainCategoryParam]);
 
   useEffect(() => {
-    if (!generatedTest || hasSubmitted) return
+    if (!generatedTest || hasSubmitted) return;
 
     if (timeLeftSeconds <= 0) {
-      setHasSubmitted(true)
-      return
+      setHasSubmitted(true);
+      return;
     }
 
     const timer = window.setInterval(() => {
       setTimeLeftSeconds((prev) => {
         if (prev <= 1) {
-          window.clearInterval(timer)
-          return 0
+          window.clearInterval(timer);
+          return 0;
         }
 
-        return prev - 1
-      })
-    }, 1000)
+        return prev - 1;
+      });
+    }, 1000);
 
-    return () => window.clearInterval(timer)
-  }, [generatedTest, hasSubmitted, timeLeftSeconds])
+    return () => window.clearInterval(timer);
+  }, [generatedTest, hasSubmitted, timeLeftSeconds]);
 
   useEffect(() => {
-    if (!generatedTest || !hasSubmitted || saveStarted) return
+    if (!generatedTest || !hasSubmitted || saveStarted) return;
 
-    const testToSave = generatedTest
+    const testToSave = generatedTest;
 
     async function saveAttempt() {
       try {
-        setSaveStarted(true)
-        setIsSavingResult(true)
-        setSaveError("")
+        setSaveStarted(true);
+        setIsSavingResult(true);
+        setSaveError("");
 
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession()
+        } = await supabase.auth.getSession();
 
         if (sessionError || !session?.access_token) {
-          setSaveError("Results were shown, but the logged-in session could not be verified.")
-          return
+          setSaveError(
+            "Results were shown, but the logged-in session could not be verified.",
+          );
+          return;
         }
 
-        const totalTimeSeconds = testToSave.config.totalTimeMinutes * 60
-        const timeTakenSeconds = Math.max(0, totalTimeSeconds - timeLeftSeconds)
+        const totalTimeSeconds = testToSave.config.totalTimeMinutes * 60;
+        const timeTakenSeconds = Math.max(
+          0,
+          totalTimeSeconds - timeLeftSeconds,
+        );
 
         const response = await fetch("/api/custom-tests/submit", {
           method: "POST",
@@ -141,84 +232,94 @@ export default function CustomTestRunPage() {
             answers,
             timeTakenSeconds,
           }),
-        })
+        });
 
-        const result = (await response.json()) as SubmitCustomTestResponse
+        const result = (await response.json()) as SubmitCustomTestResponse;
 
         if (!response.ok || !result.ok) {
-          setSaveError(result.ok ? "Could not save custom test." : result.error)
-          return
+          setSaveError(
+            result.ok ? "Could not save custom test." : result.error,
+          );
+          return;
         }
 
-        setSavedAttemptId(result.attemptId)
-        setCoinsAwarded(result.coinsAwarded)
+        setSavedAttemptId(result.attemptId);
+        setCoinsAwarded(result.coinsAwarded);
       } catch (error) {
         setSaveError(
           error instanceof Error
             ? error.message
-            : "Unexpected error while saving the custom test."
-        )
+            : "Unexpected error while saving the custom test.",
+        );
       } finally {
-        setIsSavingResult(false)
+        setIsSavingResult(false);
       }
     }
 
-    void saveAttempt()
-  }, [answers, generatedTest, hasSubmitted, saveStarted, timeLeftSeconds])
+    void saveAttempt();
+  }, [answers, generatedTest, hasSubmitted, saveStarted, timeLeftSeconds]);
 
-  const questions = generatedTest?.questions ?? []
-  const currentQuestion = questions[currentIndex] ?? null
+  const questions = generatedTest?.questions ?? [];
+  const currentQuestion = questions[currentIndex] ?? null;
 
   const correctCount = useMemo(() => {
-    if (!generatedTest) return 0
+    if (!generatedTest) return 0;
 
     return generatedTest.questions.reduce((total, question) => {
-      return total + (answers[question.runnerId] === question.correctAnswer ? 1 : 0)
-    }, 0)
-  }, [answers, generatedTest])
+      return (
+        total + (answers[question.runnerId] === question.correctAnswer ? 1 : 0)
+      );
+    }, 0);
+  }, [answers, generatedTest]);
 
   const answeredCount = useMemo(() => {
-    return Object.keys(answers).length
-  }, [answers])
+    return Object.keys(answers).length;
+  }, [answers]);
 
   const scorePercent = useMemo(() => {
-    if (!generatedTest || generatedTest.questions.length === 0) return 0
-    return Math.round((correctCount / generatedTest.questions.length) * 100)
-  }, [correctCount, generatedTest])
+    if (!generatedTest || generatedTest.questions.length === 0) return 0;
+    return Math.round((correctCount / generatedTest.questions.length) * 100);
+  }, [correctCount, generatedTest]);
 
   function handleSelectAnswer(runnerId: string, optionKey: OptionKey) {
-    if (hasSubmitted) return
+    if (hasSubmitted) return;
 
     setAnswers((prev) => ({
       ...prev,
       [runnerId]: optionKey,
-    }))
+    }));
   }
 
   function handleSubmit() {
-    const unansweredCount = questions.length - answeredCount
+    const unansweredCount = questions.length - answeredCount;
 
     if (unansweredCount > 0) {
       const confirmed = window.confirm(
-        `You still have ${unansweredCount} unanswered question${unansweredCount === 1 ? "" : "s"}. Do you want to submit the test anyway?`
-      )
+        `You still have ${unansweredCount} unanswered question${unansweredCount === 1 ? "" : "s"}. Do you want to submit the test anyway?`,
+      );
 
       if (!confirmed) {
-        return
+        return;
       }
     }
 
-    setHasSubmitted(true)
+    setHasSubmitted(true);
   }
 
   function handleRestartBuilder() {
-    if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) return
-    router.push(`/custom-tests/${mainCategoryParam}`)
+    if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) return;
+    router.push(`/custom-tests/${mainCategoryParam}`);
   }
 
   if (loadError) {
     return (
-      <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#f6f8fb",
+          padding: "32px 16px",
+        }}
+      >
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div
             style={{
@@ -229,9 +330,17 @@ export default function CustomTestRunPage() {
               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
             }}
           >
-            <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>Custom Test Runner</h1>
+            <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>
+              Custom Test Runner
+            </h1>
 
-            <p style={{ margin: "0 0 20px 0", color: "#991b1b", lineHeight: 1.6 }}>
+            <p
+              style={{
+                margin: "0 0 20px 0",
+                color: "#991b1b",
+                lineHeight: 1.6,
+              }}
+            >
               {loadError}
             </p>
 
@@ -271,21 +380,35 @@ export default function CustomTestRunPage() {
           </div>
         </div>
       </main>
-    )
+    );
   }
 
   if (!generatedTest || !currentQuestion) {
     return (
-      <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", color: "#4b5563" }}>Loading...</div>
+      <main
+        style={{
+          minHeight: "100vh",
+          background: "#f6f8fb",
+          padding: "32px 16px",
+        }}
+      >
+        <div style={{ maxWidth: 900, margin: "0 auto", color: "#4b5563" }}>
+          Loading...
+        </div>
       </main>
-    )
+    );
   }
 
-  const test = generatedTest
+  const test = generatedTest;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#f6f8fb",
+        padding: "32px 16px",
+      }}
+    >
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div
           style={{
@@ -316,10 +439,22 @@ export default function CustomTestRunPage() {
                   }}
                 >
                   <div>
-                    <p style={{ margin: "0 0 6px 0", color: "#6b7280", fontSize: "0.95rem" }}>
+                    <p
+                      style={{
+                        margin: "0 0 6px 0",
+                        color: "#6b7280",
+                        fontSize: "0.95rem",
+                      }}
+                    >
                       Question {currentIndex + 1} of {questions.length}
                     </p>
-                    <h1 style={{ margin: 0, color: "#111827", fontSize: "1.75rem" }}>
+                    <h1
+                      style={{
+                        margin: 0,
+                        color: "#111827",
+                        fontSize: "1.75rem",
+                      }}
+                    >
                       Custom Test
                     </h1>
                   </div>
@@ -409,19 +544,27 @@ export default function CustomTestRunPage() {
 
                 <div style={{ display: "grid", gap: 12 }}>
                   {currentQuestion.options.map((option) => {
-                    const selected = answers[currentQuestion.runnerId] === option.key
+                    const selected =
+                      answers[currentQuestion.runnerId] === option.key;
 
                     return (
                       <button
                         key={option.key}
                         type="button"
-                        onClick={() => handleSelectAnswer(currentQuestion.runnerId, option.key)}
+                        onClick={() =>
+                          handleSelectAnswer(
+                            currentQuestion.runnerId,
+                            option.key,
+                          )
+                        }
                         style={{
                           textAlign: "left",
                           width: "100%",
                           padding: "14px 16px",
                           borderRadius: 12,
-                          border: selected ? "2px solid #84cc16" : "1px solid #d1d5db",
+                          border: selected
+                            ? "2px solid #84cc16"
+                            : "1px solid #d1d5db",
                           background: selected ? "#f7fee7" : "#ffffff",
                           cursor: "pointer",
                         }}
@@ -430,14 +573,17 @@ export default function CustomTestRunPage() {
                           style={{
                             fontWeight: 700,
                             color: "#111827",
-                            marginBottom: option.text || option.imageUrl ? 6 : 0,
+                            marginBottom:
+                              option.text || option.imageUrl ? 6 : 0,
                           }}
                         >
                           {option.key}
                         </div>
 
                         {option.text ? (
-                          <div style={{ color: "#374151", lineHeight: 1.6 }}>{option.text}</div>
+                          <div style={{ color: "#374151", lineHeight: 1.6 }}>
+                            {option.text}
+                          </div>
                         ) : null}
 
                         {option.imageUrl ? (
@@ -453,95 +599,105 @@ export default function CustomTestRunPage() {
                           />
                         ) : null}
                       </button>
-                    )
+                    );
                   })}
                 </div>
 
-               <div
-  style={{
-    marginTop: 24,
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 12,
-      flexWrap: "wrap",
-    }}
-  >
-    <button
-      type="button"
-      onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
-      disabled={currentIndex === 0}
-      style={{
-        padding: "12px 18px",
-        borderRadius: 10,
-        border: "1px solid #d1d5db",
-        background: currentIndex === 0 ? "#f3f4f6" : "#ffffff",
-        color: currentIndex === 0 ? "#9ca3af" : "#111827",
-        fontWeight: 700,
-        cursor: currentIndex === 0 ? "not-allowed" : "pointer",
-        minWidth: 120,
-      }}
-    >
-      Previous
-    </button>
+                <div
+                  style={{
+                    marginTop: 24,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentIndex((prev) => Math.max(prev - 1, 0))
+                      }
+                      disabled={currentIndex === 0}
+                      style={{
+                        padding: "12px 18px",
+                        borderRadius: 10,
+                        border: "1px solid #d1d5db",
+                        background: currentIndex === 0 ? "#f3f4f6" : "#ffffff",
+                        color: currentIndex === 0 ? "#9ca3af" : "#111827",
+                        fontWeight: 700,
+                        cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+                        minWidth: 120,
+                      }}
+                    >
+                      Previous
+                    </button>
 
-    {currentIndex < questions.length - 1 ? (
-      <button
-        type="button"
-        onClick={() =>
-          setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1))
-        }
-        style={{
-          padding: "12px 18px",
-          borderRadius: 10,
-          border: "1px solid #bef264",
-          background: "#d9f99d",
-          color: "#14532d",
-          fontWeight: 700,
-          cursor: "pointer",
-          minWidth: 120,
-        }}
-      >
-        Next
-      </button>
-    ) : (
-      <div style={{ minWidth: 120 }} />
-    )}
-  </div>
+                    {currentIndex < questions.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentIndex((prev) =>
+                            Math.min(prev + 1, questions.length - 1),
+                          )
+                        }
+                        style={{
+                          padding: "12px 18px",
+                          borderRadius: 10,
+                          border: "1px solid #bef264",
+                          background: "#d9f99d",
+                          color: "#14532d",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          minWidth: 120,
+                        }}
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <div style={{ minWidth: 120 }} />
+                    )}
+                  </div>
 
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "flex-start",
-      marginTop: 18,
-    }}
-  >
-    <button
-      type="button"
-      onClick={handleSubmit}
-      style={{
-        padding: "12px 18px",
-        borderRadius: 10,
-        border: "1px solid #86efac",
-        background: "#22c55e",
-        color: "#ffffff",
-        fontWeight: 700,
-        cursor: "pointer",
-        minWidth: 150,
-      }}
-    >
-      Submit Test
-    </button>
-  </div>
-</div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-start",
+                      marginTop: 18,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      style={{
+                        padding: "12px 18px",
+                        borderRadius: 10,
+                        border: "1px solid #86efac",
+                        background: "#22c55e",
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        minWidth: 150,
+                      }}
+                    >
+                      Submit Test
+                    </button>
+                  </div>
+                </div>
               </>
             ) : (
               <>
-                <h1 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "1.9rem" }}>
+                <h1
+                  style={{
+                    margin: "0 0 16px 0",
+                    color: "#111827",
+                    fontSize: "1.9rem",
+                  }}
+                >
                   Test Results
                 </h1>
 
@@ -561,10 +717,22 @@ export default function CustomTestRunPage() {
                       padding: 16,
                     }}
                   >
-                    <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
+                    <div
+                      style={{
+                        color: "#6b7280",
+                        fontSize: "0.9rem",
+                        marginBottom: 6,
+                      }}
+                    >
                       Score
                     </div>
-                    <div style={{ color: "#111827", fontSize: "1.6rem", fontWeight: 800 }}>
+                    <div
+                      style={{
+                        color: "#111827",
+                        fontSize: "1.6rem",
+                        fontWeight: 800,
+                      }}
+                    >
                       {scorePercent}%
                     </div>
                   </div>
@@ -577,10 +745,22 @@ export default function CustomTestRunPage() {
                       padding: 16,
                     }}
                   >
-                    <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
+                    <div
+                      style={{
+                        color: "#6b7280",
+                        fontSize: "0.9rem",
+                        marginBottom: 6,
+                      }}
+                    >
                       Correct answers
                     </div>
-                    <div style={{ color: "#111827", fontSize: "1.6rem", fontWeight: 800 }}>
+                    <div
+                      style={{
+                        color: "#111827",
+                        fontSize: "1.6rem",
+                        fontWeight: 800,
+                      }}
+                    >
                       {correctCount} / {questions.length}
                     </div>
                   </div>
@@ -593,10 +773,22 @@ export default function CustomTestRunPage() {
                       padding: 16,
                     }}
                   >
-                    <div style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}>
+                    <div
+                      style={{
+                        color: "#6b7280",
+                        fontSize: "0.9rem",
+                        marginBottom: 6,
+                      }}
+                    >
                       Answered
                     </div>
-                    <div style={{ color: "#111827", fontSize: "1.6rem", fontWeight: 800 }}>
+                    <div
+                      style={{
+                        color: "#111827",
+                        fontSize: "1.6rem",
+                        fontWeight: 800,
+                      }}
+                    >
                       {answeredCount} / {questions.length}
                     </div>
                   </div>
@@ -629,12 +821,15 @@ export default function CustomTestRunPage() {
                       lineHeight: 1.5,
                     }}
                   >
-                    <div style={{ fontWeight: 800 }}>Results saved successfully.</div>
+                    <div style={{ fontWeight: 800 }}>
+                      Results saved successfully.
+                    </div>
                     {coinsAwarded !== null && coinsAwarded > 0 ? (
                       <div style={{ marginTop: 6 }}>
                         Brilliant work — you earned{" "}
                         <strong>
-                          {coinsAwarded} YanBo {coinsAwarded === 1 ? "Coin" : "Coins"}
+                          {coinsAwarded} YanBo{" "}
+                          {coinsAwarded === 1 ? "Coin" : "Coins"}
                         </strong>
                         !
                       </div>
@@ -663,13 +858,16 @@ export default function CustomTestRunPage() {
 
                 <div style={{ display: "grid", gap: 14 }}>
                   {questions.map((question, index) => {
-                    const selectedAnswer = answers[question.runnerId]
-                    const isCorrect = selectedAnswer === question.correctAnswer
-                    const passageText = question.passageText?.trim() ?? ""
+                    const selectedAnswer = answers[question.runnerId];
+                    const isCorrect = selectedAnswer === question.correctAnswer;
+                    const passageText = question.passageText?.trim() ?? "";
                     const firstPassageIndex = passageText
-                      ? questions.findIndex((item) => item.passageText?.trim() === passageText)
-                      : -1
-                    const shouldShowPassage = passageText.length > 0 && firstPassageIndex === index
+                      ? questions.findIndex(
+                          (item) => item.passageText?.trim() === passageText,
+                        )
+                      : -1;
+                    const shouldShowPassage =
+                      passageText.length > 0 && firstPassageIndex === index;
 
                     return (
                       <div
@@ -730,11 +928,22 @@ export default function CustomTestRunPage() {
                           </div>
                         ) : null}
 
-                        <div style={{ color: isCorrect ? "#166534" : "#991b1b", fontWeight: 700 }}>
+                        <div
+                          style={{
+                            color: isCorrect ? "#166534" : "#991b1b",
+                            fontWeight: 700,
+                          }}
+                        >
                           Your answer: {selectedAnswer ?? "No answer"}
                         </div>
 
-                        <div style={{ color: "#111827", marginTop: 4, fontWeight: 700 }}>
+                        <div
+                          style={{
+                            color: "#111827",
+                            marginTop: 4,
+                            fontWeight: 700,
+                          }}
+                        >
                           Correct answer: {question.correctAnswer}
                         </div>
 
@@ -752,12 +961,37 @@ export default function CustomTestRunPage() {
                             {question.explanation}
                           </div>
                         ) : null}
+
+                        <div
+                          style={{
+                            marginTop: 12,
+                            paddingTop: 10,
+                            borderTop: "1px solid #f3f4f6",
+                          }}
+                        >
+                          <ReportQuestionButton
+                            subject={getReportSubject(
+                              question,
+                              test.config.mainCategory,
+                            )}
+                            category={getReportCategory(question)}
+                            testId={getReportTestId(question)}
+                            questionId={getReportQuestionId(question)}
+                          />
+                        </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
 
-                <div style={{ marginTop: 22, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    marginTop: 22,
+                    display: "flex",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
                     type="button"
                     onClick={handleRestartBuilder}
@@ -796,5 +1030,5 @@ export default function CustomTestRunPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }
