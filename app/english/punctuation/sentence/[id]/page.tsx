@@ -92,6 +92,7 @@ export default function SentencePunctuationTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
@@ -145,6 +146,7 @@ export default function SentencePunctuationTestPage() {
     async function loadPage() {
       setLoading(true)
       setErrorMessage("")
+      setRewardMessage("")
       setQuestions([])
       setAnswers({})
       setCurrentIndex(0)
@@ -590,6 +592,83 @@ export default function SentencePunctuationTestPage() {
     }
   }
 
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3
+    if (successRate >= 75) return 2
+    if (successRate >= 50) return 1
+    return 0
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test || mode === "review") return
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "english",
+          category: RESULT_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
+    }
+  }
+
   async function submitResults(finalAnswers: UserAnswerMap) {
     if (submitting) return
     if (!userId || !test) return
@@ -597,6 +676,7 @@ export default function SentencePunctuationTestPage() {
 
     setSubmitting(true)
     setErrorMessage("")
+    setRewardMessage("")
 
     let correctAnswers = 0
 
@@ -683,6 +763,8 @@ export default function SentencePunctuationTestPage() {
       successRate
     )
 
+    await awardNormalTestCoins(successRate)
+
     if (correctlyAnsweredReviewQuestionIds.length > 0) {
       const { error: deleteReviewError } = await supabase
         .from("english_review")
@@ -759,6 +841,7 @@ export default function SentencePunctuationTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
@@ -987,6 +1070,8 @@ export default function SentencePunctuationTestPage() {
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
+                {rewardMessage && <p style={styles.rewardMessage}>{rewardMessage}</p>}
               </div>
 
               <div style={styles.resultButtons}>
@@ -1356,6 +1441,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  rewardMessage: {
+    margin: "12px 0 0 0",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    background: "#ecfdf5",
+    color: "#065f46",
+    fontWeight: 700,
+    lineHeight: 1.5,
   },
 
   resultButtons: {
