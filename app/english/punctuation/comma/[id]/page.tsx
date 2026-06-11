@@ -607,32 +607,73 @@ export default function CommaPunctuationTestPage() {
     return "Brilliant work — you earned 3 YanBo Coins!"
   }
 
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins >= 3) return "Brilliant work — you earned 3 YanBo Coins!"
+
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
   async function awardYanBoCoins(successRate: number) {
     if (!test || mode === "review") return
 
-    setRewardMessage(getLocalRewardMessage(successRate))
-
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
       const response = await fetch("/api/tokens/normal-test-reward", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           subject: "english",
+          category: RESULT_CATEGORY,
           testId: test.id,
-          scorePercent: successRate,
-          mainCategory: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
         }),
       })
 
+      const data = await response.json().catch(() => null)
+
       if (!response.ok) {
-        const data = await response.json().catch(() => null)
         console.error("Error awarding YanBo Coins for comma:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
       }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : null
+
+      if (awardedCoins !== null) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+        return
+      }
+
+      setRewardMessage(getLocalRewardMessage(successRate))
     } catch (rewardError) {
       console.error("Error awarding YanBo Coins for comma:", rewardError)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
     }
   }
 
