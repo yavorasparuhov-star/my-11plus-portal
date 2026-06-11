@@ -92,6 +92,7 @@ export default function DirectSpeechPunctuationTestPage() {
   const [finished, setFinished] = useState(false)
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [rewardMessage, setRewardMessage] = useState("")
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
@@ -152,6 +153,7 @@ export default function DirectSpeechPunctuationTestPage() {
       setShowFeedback(false)
       setFinished(false)
       setScore(0)
+      setRewardMessage("")
       setSubmitting(false)
       setTimeLeft(QUESTION_TIME)
       setTimeUpMessage("")
@@ -513,6 +515,83 @@ export default function DirectSpeechPunctuationTestPage() {
     })
   }
 
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3
+    if (successRate >= 75) return 2
+    if (successRate >= 50) return 1
+    return 0
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test || mode === "review") return
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "english",
+          category: RESULT_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
+    }
+  }
+
   async function saveLatestTestResult(
     finalAnswers: UserAnswerMap,
     correctAnswers: number,
@@ -690,6 +769,8 @@ export default function DirectSpeechPunctuationTestPage() {
       successRate
     )
 
+    await awardNormalTestCoins(successRate)
+
     if (wrongAnswersForReview.length > 0) {
       const { error: reviewError } = await supabase
         .from("english_review")
@@ -762,6 +843,7 @@ export default function DirectSpeechPunctuationTestPage() {
     setFinished(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUpMessage("")
     setTimeExpiredProcessing(false)
@@ -979,6 +1061,10 @@ export default function DirectSpeechPunctuationTestPage() {
                 </p>
 
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
+
+                {rewardMessage && (
+                  <p style={styles.inlineSuccess}>{rewardMessage}</p>
+                )}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </div>
@@ -1321,6 +1407,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#b91c1c",
     fontWeight: 700,
     fontSize: "18px",
+  },
+
+  inlineSuccess: {
+    marginTop: "12px",
+    marginBottom: 0,
+    color: "#047857",
+    lineHeight: 1.6,
+    fontWeight: 700,
   },
 
   inlineError: {
