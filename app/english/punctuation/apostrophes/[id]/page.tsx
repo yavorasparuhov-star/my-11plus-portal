@@ -598,41 +598,71 @@ export default function ApostrophesTestPage() {
     }
   }
 
-  function getLocalRewardMessage(successRate: number) {
-    if (successRate < 50) return "Score 50% or more next time to earn YanBo Coins."
-
-    if (successRate < 75) return "Brilliant work — you earned 1 YanBo Coin!"
-    if (successRate < 90) return "Brilliant work — you earned 2 YanBo Coins!"
-
-    return "Brilliant work — you earned 3 YanBo Coins!"
-  }
-
   async function awardYanBoCoins(successRate: number) {
     if (!test || mode === "review") return
 
-    setRewardMessage(getLocalRewardMessage(successRate))
-
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        console.error(
+          "Could not verify session for Apostrophes YanBo Coins:",
+          sessionError
+        )
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
       const response = await fetch("/api/tokens/normal-test-reward", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           subject: "english",
+          category: RESULT_CATEGORY,
           testId: test.id,
-          scorePercent: successRate,
-          mainCategory: MAIN_CATEGORY,
-          subcategory: SUBCATEGORY,
         }),
       })
 
+      const data = await response.json().catch(() => null)
+
       if (!response.ok) {
-        const data = await response.json().catch(() => null)
-        console.error("Error awarding YanBo Coins for apostrophes:", data)
+        console.error("Error awarding Apostrophes YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const coinsAwarded = Number(data?.coinsAwarded ?? 0)
+
+      if (coinsAwarded === 1) {
+        setRewardMessage("Brilliant work — you earned 1 YanBo Coin!")
+      } else if (coinsAwarded > 1) {
+        setRewardMessage(
+          `Brilliant work — you earned ${coinsAwarded} YanBo Coins!`
+        )
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
       }
     } catch (rewardError) {
-      console.error("Error awarding YanBo Coins for apostrophes:", rewardError)
+      console.error("Unexpected Apostrophes reward error:", rewardError)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
     }
   }
 
