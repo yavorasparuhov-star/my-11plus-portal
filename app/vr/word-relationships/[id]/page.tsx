@@ -9,6 +9,7 @@ import { useParams, useRouter } from "next/navigation"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
+const RESULT_CATEGORY = "word-relationships"
 const QUESTION_TIME = 60
 const TIMER_STORAGE_KEY = "vr_word_relationships_timer_enabled"
 
@@ -97,6 +98,7 @@ export default function VRWordRelationshipsTestPage() {
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
+  const [rewardMessage, setRewardMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
@@ -131,6 +133,7 @@ export default function VRWordRelationshipsTestPage() {
       setErrorMessage("")
       setQuestions([])
       setSavingResults(false)
+      setRewardMessage("")
       setTimeLeft(QUESTION_TIME)
       setTimeUp(false)
 
@@ -144,7 +147,7 @@ export default function VRWordRelationshipsTestPage() {
         .from("vr_tests")
         .select("*")
         .eq("id", testId)
-        .eq("category", "word-relationships")
+        .eq("category", RESULT_CATEGORY)
         .maybeSingle()
 
       if (testError || !testData) {
@@ -414,6 +417,83 @@ export default function VRWordRelationshipsTestPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  function getYanBoCoinRewardAmount(successRate: number) {
+    if (successRate >= 90) return 3
+    if (successRate >= 75) return 2
+    if (successRate >= 50) return 1
+    return 0
+  }
+
+  function getYanBoCoinRewardMessage(coins: number) {
+    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
+    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
+  async function awardNormalTestCoins(successRate: number) {
+    if (!test) return
+
+    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
+        )
+        return
+      }
+
+      const response = await fetch("/api/tokens/normal-test-reward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject: "vr",
+          category: RESULT_CATEGORY,
+          testId: test.id,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        console.error("Error awarding YanBo Coins:", data)
+
+        if (typeof data?.message === "string" && data.message.trim() !== "") {
+          setRewardMessage(data.message)
+          return
+        }
+
+        setRewardMessage(
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+        )
+        return
+      }
+
+      const awardedCoins =
+        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+
+      if (awardedCoins > 0) {
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
+      } else {
+        setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      }
+    } catch (error) {
+      console.error("Error awarding YanBo Coins:", error)
+      setRewardMessage(
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
+      )
+    }
+  }
+
   async function saveResults(finalScore: number, finalAnswers: UserAnswerMap) {
     if (!userId || !test) return
     if (questions.length === 0) return
@@ -426,7 +506,7 @@ export default function VRWordRelationshipsTestPage() {
       const successRate =
         totalQuestions > 0 ? Math.round((finalScore / totalQuestions) * 100) : 0
 
-      const category = test.category || "word-relationships"
+      const category = test.category || RESULT_CATEGORY
 
       const fullReview: CompletedQuestionReview[] = questions.map((question) => {
         const selected = finalAnswers[question.id] ?? null
@@ -532,6 +612,8 @@ export default function VRWordRelationshipsTestPage() {
         )
       }
 
+      await awardNormalTestCoins(successRate)
+
       const reviewAttemptedAt = new Date().toISOString()
 
       const reviewRows = questions
@@ -611,6 +693,7 @@ export default function VRWordRelationshipsTestPage() {
     setShowFeedback(false)
     setScore(0)
     setErrorMessage("")
+    setRewardMessage("")
     setTimeLeft(QUESTION_TIME)
     setTimeUp(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -835,6 +918,10 @@ export default function VRWordRelationshipsTestPage() {
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+
+                {rewardMessage && (
+                  <p style={styles.resultText}>🪙 {rewardMessage}</p>
+                )}
               </div>
 
               <div style={styles.finishButtons}>
@@ -1064,7 +1151,7 @@ export default function VRWordRelationshipsTestPage() {
               <div style={styles.submitRow}>
                 <ReportQuestionButton
                   subject="vr"
-                  category="word-relationships"
+                  category={RESULT_CATEGORY}
                   testId={testId}
                   questionId={currentQuestion.id}
                 />
