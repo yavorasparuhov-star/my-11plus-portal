@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { supabase } from "../../../../../lib/supabaseClient"
-import { getTopicByKey } from "../../../../../lib/custom-tests/catalog"
 import type {
   GeneratedCustomTest,
   MainCategory,
@@ -36,31 +35,6 @@ function formatSeconds(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
-}
-function formatTopicKey(topicKey: string, mainCategory: MainCategory) {
-  const topic = getTopicByKey(mainCategory, topicKey)
-
-  if (topic) {
-    return topic.label
-  }
-
-  return topicKey
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
-function formatTopicKeys(topicKeys: string[], mainCategory: MainCategory) {
-  if (topicKeys.length === 0) {
-    return "—"
-  }
-
-  return topicKeys
-    .map((topicKey) => formatTopicKey(topicKey, mainCategory))
-    .join(", ")
 }
 export default function CustomTestRunPage() {
   const params = useParams<{ mainCategory: string }>()
@@ -316,7 +290,7 @@ export default function CustomTestRunPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)",
+            gridTemplateColumns: "minmax(0, 1fr)",
             gap: 20,
           }}
         >
@@ -805,93 +779,6 @@ export default function CustomTestRunPage() {
               </>
             )}
           </section>
-
-          <aside
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 16,
-              padding: 24,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-              alignSelf: "start",
-              position: "sticky",
-              top: 20,
-            }}
-          >
-            <h2 style={{ margin: "0 0 14px 0", color: "#111827", fontSize: "1.2rem" }}>
-              Test Summary
-            </h2>
-
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-    Topics
-  </div>
-  <div style={{ color: "#111827", lineHeight: 1.7 }}>
-    {formatTopicKeys(test.config.topicKeys, test.config.mainCategory)}
-  </div>
-</div>
-
-              <div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                  Topics
-                </div>
-                <div style={{ color: "#111827", lineHeight: 1.7 }}>
-                  {test.config.topicKeys.join(", ")}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                  Question count
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>
-                  {test.questions.length}
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                  Answered
-                </div>
-                <div style={{ color: "#111827", fontWeight: 700 }}>{answeredCount}</div>
-              </div>
-
-              {!hasSubmitted ? (
-                <div>
-                  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                    Progress
-                  </div>
-                  <div style={{ color: "#111827", fontWeight: 700 }}>
-                    {currentIndex + 1} / {questions.length}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: 4 }}>
-                    Final score
-                  </div>
-                  <div style={{ color: "#111827", fontWeight: 700 }}>{scorePercent}%</div>
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                marginTop: 20,
-                padding: 14,
-                borderRadius: 12,
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
-                color: "#4b5563",
-                lineHeight: 1.6,
-                fontSize: "0.95rem",
-              }}
-            >
-              Custom Test YanBo Coins: 50%+ earns 1 coin, 75%+ earns 2 coins,
-              and 90%+ earns 3 coins.
-            </div>
-          </aside>
         </div>
       </div>
     </main>
