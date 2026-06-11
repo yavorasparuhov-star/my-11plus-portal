@@ -7,8 +7,8 @@ import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
-const RESULT_CATEGORY = "codes-spatial-logic"
-const NVR_CATEGORY = "codes-spatial-logic"
+const RESULT_CATEGORY = "shape-patterns"
+const NVR_CATEGORY = "shape-patterns"
 const QUESTION_TIME = 60
 const TIMER_STORAGE_KEY = "nvr_codes_spatial_logic_timer_enabled"
 
