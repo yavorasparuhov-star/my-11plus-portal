@@ -1,55 +1,67 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { supabase } from "../../../lib/supabaseClient"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../../lib/supabaseClient";
 
-type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin";
 
 type ProfileFormData = {
-  first_name: string
-  last_name: string
-  nickname: string
-  phone: string
-  email: string
-}
+  first_name: string;
+  last_name: string;
+  nickname: string;
+  phone: string;
+  email: string;
+};
 
 type ProfileRow = {
-  first_name: string | null
-  last_name: string | null
-  nickname: string | null
-  phone: string | null
-  email: string | null
-  plan: string | null
-}
+  first_name: string | null;
+  last_name: string | null;
+  nickname: string | null;
+  phone: string | null;
+  email: string | null;
+  plan: string | null;
+};
 
-type AvatarBase = "yan" | "bo"
+type AvatarBase = "yan" | "bo";
 
 type AvatarConfig = {
-  base?: "yan" | "bo" | "girl" | "boy" | null
-}
+  base?: "yan" | "bo" | "girl" | "boy" | null;
+};
+
+type CoinTransaction = {
+  id: string;
+  amount: number;
+  reason: string | null;
+  source_type: string | null;
+  source_id: string | null;
+  created_at: string;
+};
 
 function normaliseAvatarBase(config: AvatarConfig | null): AvatarBase {
-  if (!config?.base) return "bo"
+  if (!config?.base) return "bo";
 
   if (config.base === "yan" || config.base === "girl") {
-    return "yan"
+    return "yan";
   }
 
-  return "bo"
+  return "bo";
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState("")
-  const [plan, setPlan] = useState<UserPlan>("free")
-  const [avatarBase, setAvatarBase] = useState<AvatarBase>("bo")
-  const [coins, setCoins] = useState(0)
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [plan, setPlan] = useState<UserPlan>("free");
+  const [avatarBase, setAvatarBase] = useState<AvatarBase>("bo");
+  const [coins, setCoins] = useState(0);
+  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>(
+    [],
+  );
 
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: "",
@@ -57,7 +69,7 @@ export default function ProfilePage() {
     nickname: "",
     phone: "",
     email: "",
-  })
+  });
 
   function normalisePlan(value: string | null | undefined): UserPlan {
     if (
@@ -66,44 +78,44 @@ export default function ProfilePage() {
       value === "annual" ||
       value === "admin"
     ) {
-      return value
+      return value;
     }
 
-    return "free"
+    return "free";
   }
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function loadProfile() {
-      setLoading(true)
-      setMessage("")
+      setLoading(true);
+      setMessage("");
 
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
-      if (!mounted) return
+      if (!mounted) return;
 
       if (userError || !user) {
-        router.replace("/login")
-        return
+        router.replace("/login");
+        return;
       }
 
-      setUser(user)
+      setUser(user);
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("first_name, last_name, nickname, phone, email, plan")
         .eq("id", user.id)
-        .maybeSingle()
+        .maybeSingle();
 
-      if (!mounted) return
+      if (!mounted) return;
 
       if (profileError) {
-        console.error("Error loading profile:", profileError)
-        setMessage("There was a problem loading your profile.")
+        console.error("Error loading profile:", profileError);
+        setMessage("There was a problem loading your profile.");
 
         setFormData({
           first_name: "",
@@ -111,14 +123,14 @@ export default function ProfilePage() {
           nickname: "",
           phone: "",
           email: user.email || "",
-        })
+        });
 
-        setPlan("free")
-        setLoading(false)
-        return
+        setPlan("free");
+        setLoading(false);
+        return;
       }
 
-      let safeProfile = profile as ProfileRow | null
+      let safeProfile = profile as ProfileRow | null;
 
       if (!safeProfile) {
         const { data: createdProfile, error: createProfileError } =
@@ -135,15 +147,15 @@ export default function ProfilePage() {
               updated_at: new Date().toISOString(),
             })
             .select("first_name, last_name, nickname, phone, email, plan")
-            .single()
+            .single();
 
-        if (!mounted) return
+        if (!mounted) return;
 
         if (createProfileError) {
-          console.error("Error creating profile row:", createProfileError)
+          console.error("Error creating profile row:", createProfileError);
           setMessage(
-            "Your account is active, but there was a problem creating your profile."
-          )
+            "Your account is active, but there was a problem creating your profile.",
+          );
 
           setFormData({
             first_name: "",
@@ -151,14 +163,14 @@ export default function ProfilePage() {
             nickname: "",
             phone: "",
             email: user.email || "",
-          })
+          });
 
-          setPlan("free")
-          setLoading(false)
-          return
+          setPlan("free");
+          setLoading(false);
+          return;
         }
 
-        safeProfile = createdProfile as ProfileRow
+        safeProfile = createdProfile as ProfileRow;
       }
 
       setFormData({
@@ -167,65 +179,82 @@ export default function ProfilePage() {
         nickname: safeProfile?.nickname || "",
         phone: safeProfile?.phone || "",
         email: safeProfile?.email || user.email || "",
-      })
+      });
 
-      setPlan(normalisePlan(safeProfile?.plan))
+      setPlan(normalisePlan(safeProfile?.plan));
 
       const { data: avatarData, error: avatarError } = await supabase
         .from("student_avatars")
         .select("avatar_config")
         .eq("user_id", user.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (avatarError) {
-        console.error("Error loading YanBo avatar:", avatarError)
+        console.error("Error loading YanBo avatar:", avatarError);
       } else if (avatarData?.avatar_config) {
         setAvatarBase(
-          normaliseAvatarBase(avatarData.avatar_config as AvatarConfig)
-        )
+          normaliseAvatarBase(avatarData.avatar_config as AvatarConfig),
+        );
       }
 
       const { data: walletData, error: walletError } = await supabase
         .from("yanbo_wallets")
         .select("balance")
         .eq("user_id", user.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (walletError) {
-        console.error("Error loading YanBo Coins:", walletError)
+        console.error("Error loading YanBo Coins:", walletError);
       } else if (
         walletData?.balance !== undefined &&
         walletData?.balance !== null
       ) {
-        setCoins(walletData.balance)
+        setCoins(walletData.balance);
       }
 
-      setLoading(false)
+      const { data: transactionsData, error: transactionsError } =
+        await supabase
+          .from("yanbo_token_transactions")
+          .select("id, amount, reason, source_type, source_id, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+      if (transactionsError) {
+        console.error(
+          "Error loading recent YanBo Coin activity:",
+          transactionsError,
+        );
+      } else {
+        setCoinTransactions((transactionsData || []) as CoinTransaction[]);
+      }
+
+      setLoading(false);
     }
 
-    loadProfile()
+    loadProfile();
 
     return () => {
-      mounted = false
-    }
-  }, [router])
+      mounted = false;
+    };
+  }, [router]);
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value } = event.target
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
       [name]: value,
-    }))
+    }));
   }
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    if (!user) return
+    if (!user) return;
 
-    setSaving(true)
-    setMessage("")
+    setSaving(true);
+    setMessage("");
 
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
@@ -235,22 +264,57 @@ export default function ProfilePage() {
       phone: formData.phone.trim(),
       email: formData.email.trim() || user.email || "",
       updated_at: new Date().toISOString(),
-    })
+    });
 
     if (error) {
-      console.error("Error saving profile:", error)
-      setMessage("There was a problem saving your profile. Please try again.")
+      console.error("Error saving profile:", error);
+      setMessage("There was a problem saving your profile. Please try again.");
     } else {
       setMessage(
-        "Profile saved successfully. Refresh the page if the header name has not updated yet."
-      )
+        "Profile saved successfully. Refresh the page if the header name has not updated yet.",
+      );
     }
 
-    setSaving(false)
+    setSaving(false);
   }
 
   function handleChangePassword() {
-    router.push("/forgot-password")
+    router.push("/forgot-password");
+  }
+
+  function formatCoinReason(transaction: CoinTransaction) {
+    const reason = transaction.reason?.toLowerCase() || "";
+    const sourceType = transaction.source_type?.toLowerCase() || "";
+
+    if (reason.includes("daily") || sourceType.includes("daily")) {
+      return "Daily login reward";
+    }
+
+    if (reason.includes("custom") || sourceType.includes("custom")) {
+      return "Custom test reward";
+    }
+
+    if (reason.includes("avatar") || sourceType.includes("avatar")) {
+      return "Avatar shop purchase";
+    }
+
+    if (reason.includes("test") || sourceType.includes("test")) {
+      return "Test reward";
+    }
+
+    return transaction.amount >= 0 ? "YanBo Coins earned" : "YanBo Coins spent";
+  }
+
+  function formatTransactionDate(value: string) {
+    return new Date(value).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function formatCoinAmount(amount: number) {
+    return amount > 0 ? `+${amount}` : `${amount}`;
   }
 
   const planLabel =
@@ -260,7 +324,7 @@ export default function ProfilePage() {
         ? "Monthly"
         : plan === "annual"
           ? "Annual"
-          : "Free"
+          : "Free";
 
   if (loading) {
     return (
@@ -269,7 +333,7 @@ export default function ProfilePage() {
           <p style={styles.loadingText}>Loading your profile...</p>
         </section>
       </main>
-    )
+    );
   }
 
   return (
@@ -323,6 +387,53 @@ export default function ProfilePage() {
                   </Link>
                 </div>
               </div>
+            </div>
+
+            <div style={styles.coinActivityCard}>
+              <div style={styles.coinActivityHeader}>
+                <div>
+                  <h2 style={styles.cardTitle}>Recent YanBo Coin Activity</h2>
+                  <p style={styles.cardText}>
+                    Your latest rewards and avatar shop purchases.
+                  </p>
+                </div>
+              </div>
+
+              {coinTransactions.length === 0 ? (
+                <p style={styles.emptyActivityText}>
+                  No YanBo Coin activity yet. Complete a test or claim your
+                  daily reward to start earning coins.
+                </p>
+              ) : (
+                <div style={styles.activityList}>
+                  {coinTransactions.map((transaction) => {
+                    const isPositive = transaction.amount >= 0;
+
+                    return (
+                      <div key={transaction.id} style={styles.activityRow}>
+                        <div
+                          style={{
+                            ...styles.activityAmount,
+                            background: isPositive ? "#ecfdf5" : "#fef2f2",
+                            color: isPositive ? "#047857" : "#b91c1c",
+                          }}
+                        >
+                          {formatCoinAmount(transaction.amount)}
+                        </div>
+
+                        <div style={styles.activityDetails}>
+                          <p style={styles.activityReason}>
+                            {formatCoinReason(transaction)}
+                          </p>
+                          <p style={styles.activityDate}>
+                            {formatTransactionDate(transaction.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={styles.securityCard}>
@@ -459,7 +570,7 @@ export default function ProfilePage() {
         </section>
       </div>
     </main>
-  )
+  );
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -545,7 +656,6 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: 24,
   },
-
 
   avatarCard: {
     background: "#ffffff",
@@ -670,6 +780,73 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 10px 22px rgba(22, 163, 74, 0.22)",
   },
 
+  coinActivityCard: {
+    background: "#ffffff",
+    borderRadius: 24,
+    padding: 24,
+    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
+    border: "1px solid rgba(245, 158, 11, 0.22)",
+  },
+
+  coinActivityHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    marginBottom: 16,
+  },
+
+  emptyActivityText: {
+    margin: "16px 0 0",
+    color: "#6b7280",
+    lineHeight: 1.6,
+    fontSize: "0.95rem",
+  },
+
+  activityList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 18,
+  },
+
+  activityRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: "12px 14px",
+    background: "#ffffff",
+  },
+
+  activityAmount: {
+    minWidth: 48,
+    borderRadius: 999,
+    padding: "7px 10px",
+    textAlign: "center",
+    fontWeight: 900,
+    fontSize: "0.95rem",
+  },
+
+  activityDetails: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  activityReason: {
+    margin: 0,
+    color: "#111827",
+    fontWeight: 800,
+    fontSize: "0.95rem",
+  },
+
+  activityDate: {
+    margin: "3px 0 0",
+    color: "#6b7280",
+    fontSize: "0.82rem",
+    fontWeight: 600,
+  },
+
   securityCard: {
     background: "#ffffff",
     borderRadius: 24,
@@ -711,9 +888,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 8px 18px rgba(79, 70, 229, 0.16)",
   },
 
-
-
-
   formCard: {
     background: "#ffffff",
     borderRadius: 24,
@@ -742,11 +916,6 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.6,
     fontSize: "0.95rem",
   },
-
-
-
-
-
 
   formGrid: {
     display: "grid",
@@ -820,4 +989,4 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#4b5563",
     fontWeight: 700,
   },
-}
+};
