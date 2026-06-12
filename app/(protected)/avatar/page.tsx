@@ -372,6 +372,134 @@ function getShopIcon(category: string) {
   return "⭐"
 }
 
+
+function getShopItemEmoji(itemKey: string, category: string) {
+  if (itemKey.includes("yellow")) return "💛"
+  if (itemKey.includes("pink")) return "🌸"
+  if (itemKey.includes("blue")) return "💙"
+  if (itemKey.includes("green")) return "💚"
+  if (itemKey.includes("maths")) return "🧮"
+  if (itemKey.includes("english")) return "📚"
+  if (itemKey.includes("vr")) return "🧩"
+  if (itemKey.includes("nvr")) return "🔷"
+  if (itemKey.includes("space")) return "🚀"
+  if (itemKey.includes("library")) return "📖"
+  if (itemKey.includes("gold") || itemKey.includes("crown")) return "👑"
+  if (itemKey.includes("star")) return "⭐"
+  if (itemKey.includes("classroom")) return "🏫"
+  if (itemKey.includes("forest")) return "🌳"
+  if (itemKey.includes("beach")) return "🏖️"
+  if (itemKey.includes("football")) return "⚽"
+  if (itemKey.includes("science")) return "🔬"
+  if (itemKey.includes("art")) return "🎨"
+  if (itemKey.includes("castle")) return "🏰"
+  if (itemKey.includes("stage")) return "🌟"
+  if (itemKey.includes("wizard")) return "🪄"
+  if (itemKey.includes("graduation")) return "🎓"
+  if (itemKey.includes("explorer")) return "🧭"
+  if (itemKey.includes("headphones")) return "🎧"
+  if (itemKey.includes("beanie")) return "🧢"
+  if (itemKey.includes("book")) return "📘"
+  if (itemKey.includes("pencil")) return "✏️"
+  if (itemKey.includes("calculator")) return "🧮"
+  if (itemKey.includes("trophy")) return "🏆"
+  if (itemKey.includes("backpack")) return "🎒"
+  if (itemKey.includes("magnifier")) return "🔎"
+  if (itemKey.includes("rainbow")) return "🌈"
+  if (itemKey.includes("silver")) return "⚪"
+  if (itemKey.includes("sport")) return "🥽"
+
+  return getShopIcon(category)
+}
+
+function getShopItemTone(category: string, itemKey: string) {
+  if (itemKey.includes("pink")) {
+    return {
+      frame: "bg-gradient-to-br from-pink-100 via-white to-rose-100 ring-pink-200",
+      blob: "bg-pink-300",
+      sparkle: "bg-rose-300",
+    }
+  }
+
+  if (itemKey.includes("yellow") || itemKey.includes("gold")) {
+    return {
+      frame: "bg-gradient-to-br from-yellow-100 via-white to-amber-100 ring-yellow-200",
+      blob: "bg-yellow-300",
+      sparkle: "bg-amber-300",
+    }
+  }
+
+  if (itemKey.includes("green") || itemKey.includes("forest")) {
+    return {
+      frame: "bg-gradient-to-br from-emerald-100 via-white to-green-100 ring-emerald-200",
+      blob: "bg-emerald-300",
+      sparkle: "bg-green-300",
+    }
+  }
+
+  if (itemKey.includes("space") || itemKey.includes("vr")) {
+    return {
+      frame: "bg-gradient-to-br from-indigo-100 via-white to-violet-100 ring-indigo-200",
+      blob: "bg-indigo-300",
+      sparkle: "bg-violet-300",
+    }
+  }
+
+  if (itemKey.includes("blue") || itemKey.includes("nvr")) {
+    return {
+      frame: "bg-gradient-to-br from-sky-100 via-white to-blue-100 ring-sky-200",
+      blob: "bg-sky-300",
+      sparkle: "bg-blue-300",
+    }
+  }
+
+  if (category === "top") {
+    return {
+      frame: "bg-gradient-to-br from-blue-100 via-white to-pink-100 ring-blue-200",
+      blob: "bg-blue-300",
+      sparkle: "bg-pink-300",
+    }
+  }
+
+  if (category === "glasses") {
+    return {
+      frame: "bg-gradient-to-br from-cyan-100 via-white to-slate-100 ring-cyan-200",
+      blob: "bg-cyan-300",
+      sparkle: "bg-slate-300",
+    }
+  }
+
+  if (category === "hat") {
+    return {
+      frame: "bg-gradient-to-br from-purple-100 via-white to-pink-100 ring-purple-200",
+      blob: "bg-purple-300",
+      sparkle: "bg-pink-300",
+    }
+  }
+
+  if (category === "accessory") {
+    return {
+      frame: "bg-gradient-to-br from-orange-100 via-white to-yellow-100 ring-orange-200",
+      blob: "bg-orange-300",
+      sparkle: "bg-yellow-300",
+    }
+  }
+
+  if (category === "background") {
+    return {
+      frame: "bg-gradient-to-br from-teal-100 via-white to-emerald-100 ring-teal-200",
+      blob: "bg-teal-300",
+      sparkle: "bg-emerald-300",
+    }
+  }
+
+  return {
+    frame: "bg-gradient-to-br from-slate-100 via-white to-blue-100 ring-slate-200",
+    blob: "bg-slate-300",
+    sparkle: "bg-blue-300",
+  }
+}
+
 function formatCategoryName(category: string) {
   return category
     .replace(/_/g, " ")
@@ -1305,7 +1433,7 @@ export default function AvatarPage() {
                     Avatar Shop
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Unlock styles with YanBo Coins.
+                    Pick bright outfits, accessories and backgrounds.
                   </p>
                 </div>
                 <div className="rounded-2xl bg-yellow-100 px-3 py-2 text-xl">
@@ -1378,7 +1506,7 @@ export default function AvatarPage() {
                 </div>
               </div>
 
-              <div className="mt-5 space-y-5 xl:max-h-[640px] xl:overflow-y-auto xl:pr-1">
+              <div className="mt-5 space-y-5 xl:max-h-[680px] xl:overflow-y-auto xl:pr-1">
                 {filteredShopItems.length === 0 && (
                   <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
                     No shop items match this filter yet.
@@ -1408,7 +1536,7 @@ export default function AvatarPage() {
                           return (
                             <div
                               key={item.item_key}
-                              className={`rounded-2xl border p-3 transition ${
+                              className={`rounded-3xl border p-3 transition ${
                                 unlocked
                                   ? "border-emerald-200 bg-emerald-50"
                                   : canAfford
@@ -1416,21 +1544,18 @@ export default function AvatarPage() {
                                     : "border-slate-200 bg-slate-50 opacity-80"
                               }`}
                             >
-                              <div className="relative flex h-20 items-center justify-center rounded-xl bg-white text-3xl shadow-sm">
-                                {getShopIcon(item.category)}
-                                {unlocked && (
-                                  <span className="absolute right-2 top-2 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">
-                                    ✓
-                                  </span>
-                                )}
-                              </div>
+                              <ShopItemThumbnail
+                                item={item}
+                                unlocked={unlocked}
+                                equipped={equipped}
+                              />
 
                               <h4 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
                                 {item.name}
                               </h4>
 
                               <div className="mt-1 flex items-center justify-between gap-2">
-                                <p className="text-xs font-bold text-yellow-700">
+                                <p className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-black text-yellow-800">
                                   {item.price} coins
                                 </p>
                                 {!unlocked && !canAfford && (
@@ -1504,6 +1629,63 @@ export default function AvatarPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+
+function ShopItemThumbnail({
+  item,
+  unlocked,
+  equipped,
+}: {
+  item: ShopItem
+  unlocked: boolean
+  equipped: boolean
+}) {
+  const tone = getShopItemTone(item.category, item.item_key)
+  const emoji = getShopItemEmoji(item.item_key, item.category)
+
+  return (
+    <div
+      className={`relative flex h-24 items-center justify-center overflow-hidden rounded-2xl shadow-sm ring-1 ${tone.frame}`}
+    >
+      <div
+        className={`absolute -left-6 -top-6 h-20 w-20 rounded-full opacity-70 blur-sm ${tone.blob}`}
+      />
+      <div
+        className={`absolute -bottom-8 -right-8 h-24 w-24 rounded-full opacity-60 blur-sm ${tone.sparkle}`}
+      />
+      <div className="absolute left-2 top-2 text-sm opacity-70">✦</div>
+      <div className="absolute bottom-2 right-3 text-sm opacity-70">✧</div>
+
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 text-4xl shadow-md ring-1 ring-white/80 backdrop-blur">
+        {item.image_url ? (
+          <img
+            src={item.image_url}
+            alt={item.name}
+            className="h-12 w-12 object-contain"
+          />
+        ) : (
+          <span>{emoji}</span>
+        )}
+      </div>
+
+      <span className="absolute left-2 bottom-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-sm">
+        {formatCategoryName(item.category)}
+      </span>
+
+      {equipped && (
+        <span className="absolute right-2 top-2 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+          Equipped
+        </span>
+      )}
+
+      {!equipped && unlocked && (
+        <span className="absolute right-2 top-2 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700 shadow-sm">
+          ✓
+        </span>
+      )}
+    </div>
   )
 }
 
