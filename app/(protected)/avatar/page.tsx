@@ -405,32 +405,42 @@ export default function AvatarPage() {
                 </h1>
                 <p className="mt-3 max-w-2xl text-lg font-medium text-slate-600">
                   Build your learning hero, save your style, and unlock fun
-                  items with YanBo Coins.
+                  items as you practise.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:w-[430px]">
                 <div className="rounded-3xl bg-yellow-50 p-5 ring-1 ring-yellow-200">
-                  <p className="text-sm font-bold text-yellow-800">
-                    YanBo Coins
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-yellow-800">
+                      YanBo Coins
+                    </p>
+                    <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">
+                      🪙
+                    </span>
+                  </div>
                   <p className="mt-1 text-4xl font-black text-slate-900">
                     {coins}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Earn by learning. Spend in the shop.
+                    Your current balance.
                   </p>
                 </div>
 
                 <div className="rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100">
-                  <p className="text-sm font-bold text-blue-800">
-                    Items unlocked
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-blue-800">
+                      Items unlocked
+                    </p>
+                    <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">
+                      🎒
+                    </span>
+                  </div>
                   <p className="mt-1 text-4xl font-black text-slate-900">
                     {unlockedCount}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Keep practising to unlock more.
+                    Clothes, glasses and backgrounds.
                   </p>
                 </div>
               </div>
@@ -442,7 +452,7 @@ export default function AvatarPage() {
                 disabled={claimingDailyCoins}
                 className="rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {claimingDailyCoins ? "Claiming..." : "Claim today’s 3 coins"}
+                {claimingDailyCoins ? "Checking..." : "Daily check-in: collect 3 coins"}
               </button>
 
               <Link
@@ -475,7 +485,7 @@ export default function AvatarPage() {
         )}
 
         <section className="grid gap-6 xl:grid-cols-[330px_1fr_360px]">
-          <aside className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+          <aside className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100 xl:sticky xl:top-6 xl:self-start">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-slate-900">
@@ -661,7 +671,7 @@ export default function AvatarPage() {
               </button>
             </div>
 
-            <div className="mt-6 flex min-h-[520px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
+            <div className="mt-6 flex min-h-[540px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
               <div className="relative flex w-full max-w-xl flex-col items-center">
                 <div className="absolute left-8 top-10 text-3xl">⭐</div>
                 <div className="absolute right-10 top-16 text-2xl">✨</div>
@@ -745,11 +755,17 @@ export default function AvatarPage() {
                     {avatarConfig.background} background • {avatarConfig.eyeColor} eyes
                   </p>
                 </div>
+
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <AvatarStyleChip label={avatarConfig.top === "yanbo_green" ? "Green hoodie" : "Navy jumper"} />
+                  <AvatarStyleChip label={avatarConfig.glasses === "none" ? "No glasses" : `${avatarConfig.glasses} glasses`} />
+                  <AvatarStyleChip label={`${avatarConfig.hairColor} hair`} />
+                </div>
               </div>
             </div>
           </section>
 
-          <aside className="space-y-6">
+          <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
             <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -777,7 +793,7 @@ export default function AvatarPage() {
                 </div>
               )}
 
-              <div className="mt-5 space-y-5">
+              <div className="mt-5 space-y-5 xl:max-h-[560px] xl:overflow-y-auto xl:pr-1">
                 {Object.entries(groupedShopItems).map(([category, items]) => (
                   <div key={category}>
                     <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">
@@ -787,11 +803,18 @@ export default function AvatarPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {items.map((item) => {
                         const unlocked = isShopItemUnlocked(item.item_key)
+                        const canAfford = coins >= item.price
 
                         return (
                           <div
                             key={item.item_key}
-                            className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                            className={`rounded-2xl border p-3 transition ${
+                              unlocked
+                                ? "border-emerald-200 bg-emerald-50"
+                                : canAfford
+                                  ? "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
+                                  : "border-slate-200 bg-slate-50 opacity-80"
+                            }`}
                           >
                             <div className="flex h-20 items-center justify-center rounded-xl bg-white text-3xl shadow-sm">
                               {getShopIcon(item.category)}
@@ -801,9 +824,16 @@ export default function AvatarPage() {
                               {item.name}
                             </h4>
 
-                            <p className="mt-1 text-xs font-bold text-yellow-700">
-                              {item.price} YanBo Coins
-                            </p>
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-yellow-700">
+                                {item.price} coins
+                              </p>
+                              {!unlocked && !canAfford && (
+                                <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                                  Need more
+                                </span>
+                              )}
+                            </div>
 
                             {unlocked ? (
                               <div className="mt-2 rounded-full bg-emerald-100 px-3 py-1 text-center text-xs font-black text-emerald-700">
@@ -814,12 +844,18 @@ export default function AvatarPage() {
                                 onClick={() =>
                                   purchaseAvatarItem(item.item_key)
                                 }
-                                disabled={purchasingItemKey === item.item_key}
-                                className="mt-2 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={purchasingItemKey === item.item_key || !canAfford}
+                                className={`mt-2 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  canAfford
+                                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                                    : "bg-slate-200 text-slate-500"
+                                }`}
                               >
                                 {purchasingItemKey === item.item_key
                                   ? "Buying..."
-                                  : "Buy"}
+                                  : canAfford
+                                    ? "Buy"
+                                    : "Not enough"}
                               </button>
                             )}
                           </div>
@@ -836,7 +872,7 @@ export default function AvatarPage() {
                 Earn by learning
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                YanBo Coins reward steady practice, not just perfect scores.
+                A simple guide for how children collect YanBo Coins.
               </p>
 
               <div className="mt-4 grid gap-3">
@@ -850,6 +886,15 @@ export default function AvatarPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+
+function AvatarStyleChip({ label }: { label: string }) {
+  return (
+    <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+      {label}
+    </span>
   )
 }
 
