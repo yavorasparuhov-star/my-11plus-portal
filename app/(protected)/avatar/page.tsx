@@ -1687,6 +1687,8 @@ function ShopItemThumbnail({
 }) {
   const tone = getShopItemTone(item.category, item.item_key)
   const emoji = getShopItemEmoji(item.item_key, item.category)
+  const [imageFailed, setImageFailed] = useState(false)
+  const showImage = Boolean(item.image_url) && !imageFailed
 
   return (
     <div
@@ -1701,10 +1703,19 @@ function ShopItemThumbnail({
       <div className="absolute left-2 top-2 text-sm opacity-70">✦</div>
       <div className="absolute bottom-2 right-3 text-sm opacity-70">✧</div>
 
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 text-5xl shadow-md ring-1 ring-white/80 backdrop-blur">
-        <span className="drop-shadow-sm" aria-hidden="true">
-          {emoji}
-        </span>
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-white/80 backdrop-blur">
+        {showImage ? (
+          <img
+            src={item.image_url || ""}
+            alt=""
+            className="h-14 w-14 object-contain drop-shadow-sm"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <span className="text-5xl drop-shadow-sm" aria-hidden="true">
+            {emoji}
+          </span>
+        )}
         <span className="sr-only">{item.name}</span>
       </div>
 
