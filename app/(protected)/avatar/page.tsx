@@ -101,6 +101,20 @@ function makeAvatarConfigSafe(
   return safeConfig
 }
 
+function getShopIcon(category: string) {
+  if (category === "top") return "👕"
+  if (category === "glasses") return "👓"
+  if (category === "background") return "🖼️"
+  if (category === "badge") return "🏅"
+  return "⭐"
+}
+
+function formatCategoryName(category: string) {
+  return category
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
@@ -358,10 +372,14 @@ export default function AvatarPage() {
     }, {})
   }, [shopItems])
 
+  const unlockedCount = useMemo(() => {
+    return new Set([...Array.from(freeStarterItemKeys), ...unlockedItems]).size
+  }, [unlockedItems])
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-pink-50 px-4 py-8">
-        <div className="mx-auto max-w-5xl rounded-3xl bg-white p-8 shadow-sm">
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 px-4 py-8">
+        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-8 shadow-sm ring-1 ring-blue-100">
           <p className="text-slate-700">Loading your YanBo avatar...</p>
         </div>
       </main>
@@ -369,38 +387,77 @@ export default function AvatarPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-pink-50 px-4 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-                YanBo Learning
-              </p>
-              <h1 className="mt-1 text-3xl font-bold text-slate-900">
-                My Avatar
-              </h1>
-              <p className="mt-2 max-w-2xl text-slate-600">
-                Choose Yan or Bo, build your learning character, save your
-                style, and unlock new items with YanBo Coins.
-              </p>
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 px-4 py-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-blue-100">
+          <div className="relative px-6 py-8 sm:px-8">
+            <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-yellow-100 blur-3xl" />
+            <div className="absolute -left-20 top-20 h-56 w-56 rounded-full bg-pink-100 blur-3xl" />
+
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
+                  YanBo Learning
+                </p>
+                <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+                  <span className="text-pink-500">Yan</span>
+                  <span className="text-yellow-400">Bo</span> Avatar Builder
+                </h1>
+                <p className="mt-3 max-w-2xl text-lg font-medium text-slate-600">
+                  Build your learning hero, save your style, and unlock fun
+                  items with YanBo Coins.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:w-[430px]">
+                <div className="rounded-3xl bg-yellow-50 p-5 ring-1 ring-yellow-200">
+                  <p className="text-sm font-bold text-yellow-800">
+                    YanBo Coins
+                  </p>
+                  <p className="mt-1 text-4xl font-black text-slate-900">
+                    {coins}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Earn by learning. Spend in the shop.
+                  </p>
+                </div>
+
+                <div className="rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100">
+                  <p className="text-sm font-bold text-blue-800">
+                    Items unlocked
+                  </p>
+                  <p className="mt-1 text-4xl font-black text-slate-900">
+                    {unlockedCount}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Keep practising to unlock more.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-2xl bg-emerald-50 px-5 py-4 text-center ring-1 ring-emerald-100">
-              <p className="text-sm font-medium text-emerald-700">
-                YanBo Coins
-              </p>
-              <p className="text-3xl font-bold text-emerald-900">{coins}</p>
-
+            <div className="relative mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={claimDailyCoins}
                 disabled={claimingDailyCoins}
-                className="mt-3 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {claimingDailyCoins
-                  ? "Claiming..."
-                  : "Claim today’s 3 coins"}
+                {claimingDailyCoins ? "Claiming..." : "Claim today’s 3 coins"}
               </button>
+
+              <Link
+                href="/custom-tests"
+                className="rounded-2xl border border-blue-200 bg-white px-5 py-3 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+              >
+                Practise to earn coins
+              </Link>
+
+              <Link
+                href="/profile"
+                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Back to profile
+              </Link>
             </div>
           </div>
         </section>
@@ -417,121 +474,44 @@ export default function AvatarPage() {
           </div>
         )}
 
-        <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-            <h2 className="text-xl font-bold text-slate-900">Preview</h2>
-
-            <div className="mt-5 flex justify-center">
-              <div
-                className={`relative flex h-72 w-72 items-center justify-center overflow-hidden rounded-full border-8 border-white shadow-lg ring-4 ${
-                  avatarConfig.background === "classroom"
-                    ? "bg-amber-100 ring-amber-200"
-                    : avatarConfig.background === "library"
-                      ? "bg-sky-100 ring-sky-200"
-                      : "bg-emerald-100 ring-emerald-200"
-                }`}
-              >
-                <div className="absolute inset-0 flex items-end justify-center text-7xl opacity-20">
-                  {avatarConfig.background === "classroom"
-                    ? "📚"
-                    : avatarConfig.background === "library"
-                      ? "🏛️"
-                      : "✨"}
-                </div>
-
-                <div className="relative flex flex-col items-center">
-                  <div
-                    className={`flex h-32 w-32 items-center justify-center rounded-full text-6xl shadow-md ${
-                      avatarConfig.skinTone === "light"
-                        ? "bg-orange-100"
-                        : avatarConfig.skinTone === "medium"
-                          ? "bg-orange-200"
-                          : "bg-orange-300"
-                    }`}
-                  >
-                    {avatarConfig.base === "yan" ? "😊" : "🙂"}
-                  </div>
-
-                  <div
-                    className={`-mt-28 mb-16 h-10 rounded-full ${
-                      avatarConfig.hairStyle === "long"
-                        ? "w-28"
-                        : avatarConfig.hairStyle === "medium"
-                          ? "w-24"
-                          : "w-20"
-                    } ${
-                      avatarConfig.hairColor === "brown"
-                        ? "bg-amber-900"
-                        : avatarConfig.hairColor === "black"
-                          ? "bg-slate-900"
-                          : avatarConfig.hairColor === "blonde"
-                            ? "bg-yellow-300"
-                            : "bg-orange-500"
-                    }`}
-                  />
-
-                  {avatarConfig.glasses !== "none" && (
-                    <div className="-mt-14 mb-10 text-4xl">
-                      {avatarConfig.glasses === "round" ? "👓" : "▭▭"}
-                    </div>
-                  )}
-
-                  <div
-                    className={`mt-2 flex h-24 w-36 items-center justify-center rounded-t-3xl text-xl font-black shadow-md ${
-                      avatarConfig.top === "yanbo_green"
-                        ? "bg-emerald-700 text-white"
-                        : "bg-slate-800 text-white"
-                    }`}
-                  >
-                    <span>
-                      <span className="text-pink-400">Y</span>an
-                      <span className="text-yellow-300">B</span>o
-                    </span>
-                  </div>
-
-                  <div className="mt-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-                    {avatarConfig.base === "yan" ? "Yan" : "Bo"} avatar • Eyes:{" "}
-                    {avatarConfig.eyeColor}
-                  </div>
-                </div>
+        <section className="grid gap-6 xl:grid-cols-[330px_1fr_360px]">
+          <aside className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">
+                  Customise
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose the look for your learning hero.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-blue-100 px-3 py-2 text-xl">
+                ✨
               </div>
             </div>
 
-            <button
-              onClick={saveAvatar}
-              disabled={saving}
-              className="mt-6 w-full rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Avatar"}
-            </button>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-            <h2 className="text-xl font-bold text-slate-900">
-              Avatar Builder
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-600">
-              Yan — girl avatar. Bo — boy avatar. Choose one to start building
-              your YanBo Learning character.
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-emerald-700">
-              Locked options can be unlocked in the Avatar Shop below.
-            </p>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <SelectBox
-                label="Base avatar"
-                value={avatarConfig.base}
-                onChange={(value) =>
-                  updateAvatar("base", value as AvatarConfig["base"])
-                }
-                options={[
-                  { value: "yan", label: "Yan — girl avatar" },
-                  { value: "bo", label: "Bo — boy avatar" },
-                ]}
-              />
+            <div className="mt-5 space-y-5">
+              <div>
+                <p className="mb-2 text-sm font-bold text-slate-700">
+                  Base avatar
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <ChoiceButton
+                    active={avatarConfig.base === "yan"}
+                    title="Yan"
+                    subtitle="Girl avatar"
+                    emoji="😊"
+                    onClick={() => updateAvatar("base", "yan")}
+                  />
+                  <ChoiceButton
+                    active={avatarConfig.base === "bo"}
+                    title="Bo"
+                    subtitle="Boy avatar"
+                    emoji="🙂"
+                    onClick={() => updateAvatar("base", "bo")}
+                  />
+                </div>
+              </div>
 
               <SelectBox
                 label="Skin tone"
@@ -546,32 +526,34 @@ export default function AvatarPage() {
                 ]}
               />
 
-              <SelectBox
-                label="Hair style"
-                value={avatarConfig.hairStyle}
-                onChange={(value) =>
-                  updateAvatar("hairStyle", value as AvatarConfig["hairStyle"])
-                }
-                options={[
-                  { value: "short", label: "Short" },
-                  { value: "medium", label: "Medium" },
-                  { value: "long", label: "Long" },
-                ]}
-              />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <SelectBox
+                  label="Hair style"
+                  value={avatarConfig.hairStyle}
+                  onChange={(value) =>
+                    updateAvatar("hairStyle", value as AvatarConfig["hairStyle"])
+                  }
+                  options={[
+                    { value: "short", label: "Short" },
+                    { value: "medium", label: "Medium" },
+                    { value: "long", label: "Long" },
+                  ]}
+                />
 
-              <SelectBox
-                label="Hair colour"
-                value={avatarConfig.hairColor}
-                onChange={(value) =>
-                  updateAvatar("hairColor", value as AvatarConfig["hairColor"])
-                }
-                options={[
-                  { value: "brown", label: "Brown" },
-                  { value: "black", label: "Black" },
-                  { value: "blonde", label: "Blonde" },
-                  { value: "ginger", label: "Ginger" },
-                ]}
-              />
+                <SelectBox
+                  label="Hair colour"
+                  value={avatarConfig.hairColor}
+                  onChange={(value) =>
+                    updateAvatar("hairColor", value as AvatarConfig["hairColor"])
+                  }
+                  options={[
+                    { value: "brown", label: "Brown" },
+                    { value: "black", label: "Black" },
+                    { value: "blonde", label: "Blonde" },
+                    { value: "ginger", label: "Ginger" },
+                  ]}
+                />
+              </div>
 
               <SelectBox
                 label="Eye colour"
@@ -657,102 +639,258 @@ export default function AvatarPage() {
                 ]}
               />
             </div>
-          </div>
-        </section>
+          </aside>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-emerald-100">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                Avatar Shop Preview
-              </h2>
-              <p className="mt-1 text-slate-600">
-                These are the first shop items from Supabase. Students can buy
-                them with YanBo Coins.
-              </p>
+          <section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-blue-100">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">
+                  Your avatar
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Preview your current YanBo Learning style.
+                </p>
+              </div>
+
+              <button
+                onClick={saveAvatar}
+                disabled={saving}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save Avatar"}
+              </button>
             </div>
 
-            <Link
-              href="/custom-tests"
-              className="rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-            >
-              Practise to earn coins
-            </Link>
-          </div>
+            <div className="mt-6 flex min-h-[520px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
+              <div className="relative flex w-full max-w-xl flex-col items-center">
+                <div className="absolute left-8 top-10 text-3xl">⭐</div>
+                <div className="absolute right-10 top-16 text-2xl">✨</div>
+                <div className="absolute bottom-16 left-12 text-3xl">📘</div>
+                <div className="absolute bottom-20 right-12 text-3xl">🏆</div>
 
-          {shopError && (
-            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-              {shopError}
-            </div>
-          )}
+                <div
+                  className={`relative flex h-80 w-80 items-center justify-center overflow-hidden rounded-full border-8 border-white shadow-xl ring-8 ${
+                    avatarConfig.background === "classroom"
+                      ? "bg-amber-100 ring-amber-200"
+                      : avatarConfig.background === "library"
+                        ? "bg-sky-100 ring-sky-200"
+                        : "bg-emerald-100 ring-emerald-200"
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-end justify-center text-8xl opacity-20">
+                    {avatarConfig.background === "classroom"
+                      ? "📚"
+                      : avatarConfig.background === "library"
+                        ? "🏛️"
+                        : "✨"}
+                  </div>
 
-          {shopMessage && (
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
-              {shopMessage}
-            </div>
-          )}
+                  <div className="relative flex flex-col items-center">
+                    <div
+                      className={`flex h-36 w-36 items-center justify-center rounded-full text-7xl shadow-md ${
+                        avatarConfig.skinTone === "light"
+                          ? "bg-orange-100"
+                          : avatarConfig.skinTone === "medium"
+                            ? "bg-orange-200"
+                            : "bg-orange-300"
+                      }`}
+                    >
+                      {avatarConfig.base === "yan" ? "😊" : "🙂"}
+                    </div>
 
-          <div className="mt-6 space-y-6">
-            {Object.entries(groupedShopItems).map(([category, items]) => (
-              <div key={category}>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
-                  {category}
-                </h3>
+                    <div
+                      className={`-mt-32 mb-20 h-12 rounded-full ${
+                        avatarConfig.hairStyle === "long"
+                          ? "w-32"
+                          : avatarConfig.hairStyle === "medium"
+                            ? "w-28"
+                            : "w-24"
+                      } ${
+                        avatarConfig.hairColor === "brown"
+                          ? "bg-amber-900"
+                          : avatarConfig.hairColor === "black"
+                            ? "bg-slate-900"
+                            : avatarConfig.hairColor === "blonde"
+                              ? "bg-yellow-300"
+                              : "bg-orange-500"
+                      }`}
+                    />
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {items.map((item) => {
-                    const unlocked = isShopItemUnlocked(item.item_key)
-
-                    return (
-                      <div
-                        key={item.item_key}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                      >
-                        <div className="flex h-24 items-center justify-center rounded-xl bg-white text-4xl shadow-sm">
-                          {item.category === "top"
-                            ? "👕"
-                            : item.category === "glasses"
-                              ? "👓"
-                              : item.category === "background"
-                                ? "🖼️"
-                                : item.category === "badge"
-                                  ? "🏅"
-                                  : "⭐"}
-                        </div>
-
-                        <h4 className="mt-3 font-bold text-slate-900">
-                          {item.name}
-                        </h4>
-
-                        <p className="mt-1 text-sm text-slate-600">
-                          {item.price} YanBo Coins
-                        </p>
-
-                        {unlocked ? (
-                          <div className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                            Unlocked
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => purchaseAvatarItem(item.item_key)}
-                            disabled={purchasingItemKey === item.item_key}
-                            className="mt-3 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {purchasingItemKey === item.item_key
-                              ? "Buying..."
-                              : "Buy"}
-                          </button>
-                        )}
+                    {avatarConfig.glasses !== "none" && (
+                      <div className="-mt-16 mb-12 text-5xl">
+                        {avatarConfig.glasses === "round" ? "👓" : "▭▭"}
                       </div>
-                    )
-                  })}
+                    )}
+
+                    <div
+                      className={`mt-2 flex h-28 w-44 items-center justify-center rounded-t-[2rem] text-2xl font-black shadow-md ${
+                        avatarConfig.top === "yanbo_green"
+                          ? "bg-emerald-700 text-white"
+                          : "bg-slate-800 text-white"
+                      }`}
+                    >
+                      <span>
+                        <span className="text-pink-400">Y</span>an
+                        <span className="text-yellow-300">B</span>o
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-3xl bg-white px-5 py-3 text-center shadow-sm ring-1 ring-slate-100">
+                  <p className="font-black text-slate-900">
+                    {avatarConfig.base === "yan" ? "Yan" : "Bo"} avatar
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {avatarConfig.background} background • {avatarConfig.eyeColor} eyes
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          </section>
+
+          <aside className="space-y-6">
+            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">
+                    Avatar Shop
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Unlock new looks with YanBo Coins.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-yellow-100 px-3 py-2 text-xl">
+                  🛒
+                </div>
+              </div>
+
+              {shopError && (
+                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                  {shopError}
+                </div>
+              )}
+
+              {shopMessage && (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                  {shopMessage}
+                </div>
+              )}
+
+              <div className="mt-5 space-y-5">
+                {Object.entries(groupedShopItems).map(([category, items]) => (
+                  <div key={category}>
+                    <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">
+                      {formatCategoryName(category)}
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {items.map((item) => {
+                        const unlocked = isShopItemUnlocked(item.item_key)
+
+                        return (
+                          <div
+                            key={item.item_key}
+                            className="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                          >
+                            <div className="flex h-20 items-center justify-center rounded-xl bg-white text-3xl shadow-sm">
+                              {getShopIcon(item.category)}
+                            </div>
+
+                            <h4 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
+                              {item.name}
+                            </h4>
+
+                            <p className="mt-1 text-xs font-bold text-yellow-700">
+                              {item.price} YanBo Coins
+                            </p>
+
+                            {unlocked ? (
+                              <div className="mt-2 rounded-full bg-emerald-100 px-3 py-1 text-center text-xs font-black text-emerald-700">
+                                Unlocked
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  purchaseAvatarItem(item.item_key)
+                                }
+                                disabled={purchasingItemKey === item.item_key}
+                                className="mt-2 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {purchasingItemKey === item.item_key
+                                  ? "Buying..."
+                                  : "Buy"}
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+              <h2 className="text-lg font-black text-slate-900">
+                Earn by learning
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                YanBo Coins reward steady practice, not just perfect scores.
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                <RewardRule amount="3" label="Daily login reward" />
+                <RewardRule amount="1" label="50% to 74% in a test" />
+                <RewardRule amount="2" label="75% to 89% in a test" />
+                <RewardRule amount="3" label="90%+ in a test" />
+              </div>
+            </section>
+          </aside>
         </section>
       </div>
     </main>
+  )
+}
+
+function ChoiceButton({
+  active,
+  title,
+  subtitle,
+  emoji,
+  onClick,
+}: {
+  active: boolean
+  title: string
+  subtitle: string
+  emoji: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border p-4 text-left transition ${
+        active
+          ? "border-blue-400 bg-blue-50 shadow-sm ring-4 ring-blue-100"
+          : "border-slate-200 bg-white hover:bg-slate-50"
+      }`}
+    >
+      <div className="text-3xl">{emoji}</div>
+      <p className="mt-2 font-black text-slate-900">{title}</p>
+      <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+    </button>
+  )
+}
+
+function RewardRule({ amount, label }: { amount: string; label: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
+      <span className="text-sm font-bold text-slate-700">{label}</span>
+      <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-black text-yellow-800">
+        +{amount}
+      </span>
+    </div>
   )
 }
 
@@ -769,13 +907,13 @@ function SelectBox({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-700">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
         {label}
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       >
         {options.map((option) => (
           <option
