@@ -1113,6 +1113,14 @@ export default function AvatarPage() {
     (item) => !isShopItemUnlocked(item.item_key) && coins >= item.price,
   ).length
 
+  const wardrobeItems = useMemo(() => {
+    return shopItems.filter(
+      (item) =>
+        freeStarterItemKeys.has(item.item_key) ||
+        unlockedItems.includes(item.item_key),
+    )
+  }, [shopItems, unlockedItems])
+
   const previewImages = useMemo(
     () => ({
       top: getSlotImageUrl(shopItems, "top", avatarConfig.top),
@@ -1588,6 +1596,78 @@ export default function AvatarPage() {
                   onChange={(value) => updateAvatar("background", value)}
                   options={getSelectOptions("background", unlockedItems)}
                 />
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">
+                    My Wardrobe
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your unlocked avatar items. Equip favourites quickly from here.
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-xl">
+                  🎒
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {wardrobeItems.length === 0 && (
+                  <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 lg:col-span-3">
+                    Your wardrobe is empty for now. Unlock items from the shop to see them here.
+                  </div>
+                )}
+
+                {wardrobeItems.map((item) => {
+                  const equipped = isShopItemEquipped(item.item_key)
+                  const canEquip = Boolean(getSlotMatchFromItemKey(item.item_key))
+
+                  return (
+                    <div
+                      key={item.item_key}
+                      className={`rounded-3xl border p-3 transition ${
+                        equipped
+                          ? "border-blue-200 bg-blue-50"
+                          : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
+                      }`}
+                    >
+                      <ShopItemThumbnail
+                        item={item}
+                        unlocked={true}
+                        equipped={equipped}
+                      />
+
+                      <h3 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
+                        {item.name}
+                      </h3>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+                        {formatCategoryName(item.category)}
+                      </p>
+
+                      {canEquip ? (
+                        <button
+                          type="button"
+                          onClick={() => equipShopItem(item.item_key)}
+                          disabled={equipped}
+                          className={`mt-3 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed ${
+                            equipped
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-900 text-white hover:bg-blue-700"
+                          }`}
+                        >
+                          {equipped ? "Equipped" : "Equip"}
+                        </button>
+                      ) : (
+                        <div className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-center text-xs font-black text-slate-500">
+                          Collected
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </section>
           </div>
