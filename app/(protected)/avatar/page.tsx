@@ -738,6 +738,42 @@ function getSlotMatchFromItemKey(itemKey: string) {
   return null
 }
 
+function getSlotImageUrl(
+  shopItems: ShopItem[],
+  slot: AvatarSlot,
+  value: string,
+) {
+  const itemKey = getSlotItemKey(slot, value)
+  if (!itemKey) return null
+
+  return (
+    shopItems.find((item) => item.item_key === itemKey)?.image_url || null
+  )
+}
+
+function previewBackgroundOverlay(background: string) {
+  switch (background) {
+    case "space":
+      return "from-indigo-900/20 via-violet-400/10 to-sky-300/20"
+    case "forest":
+      return "from-emerald-700/20 via-green-300/10 to-lime-300/20"
+    case "beach":
+      return "from-cyan-500/20 via-sky-200/10 to-yellow-200/30"
+    case "football":
+      return "from-green-700/20 via-emerald-300/10 to-lime-200/20"
+    case "science_lab":
+      return "from-violet-700/20 via-blue-300/10 to-cyan-200/20"
+    case "art_room":
+      return "from-pink-600/20 via-rose-200/10 to-yellow-200/20"
+    case "castle":
+      return "from-purple-700/20 via-violet-200/10 to-yellow-200/20"
+    case "yanbo_stage":
+      return "from-yellow-500/25 via-pink-200/10 to-blue-300/20"
+    default:
+      return "from-white/70 via-white/20 to-white/70"
+  }
+}
+
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
@@ -1077,6 +1113,30 @@ export default function AvatarPage() {
     (item) => !isShopItemUnlocked(item.item_key) && coins >= item.price,
   ).length
 
+  const previewImages = useMemo(
+    () => ({
+      top: getSlotImageUrl(shopItems, "top", avatarConfig.top),
+      glasses: getSlotImageUrl(shopItems, "glasses", avatarConfig.glasses),
+      hat: getSlotImageUrl(shopItems, "hat", avatarConfig.hat),
+      accessory: getSlotImageUrl(shopItems, "accessory", avatarConfig.accessory),
+      badge: getSlotImageUrl(shopItems, "badge", avatarConfig.badge),
+      background: getSlotImageUrl(
+        shopItems,
+        "background",
+        avatarConfig.background,
+      ),
+    }),
+    [
+      avatarConfig.accessory,
+      avatarConfig.background,
+      avatarConfig.badge,
+      avatarConfig.glasses,
+      avatarConfig.hat,
+      avatarConfig.top,
+      shopItems,
+    ],
+  )
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 px-4 py-8">
@@ -1199,36 +1259,61 @@ export default function AvatarPage() {
 
               <div className="grid gap-6 bg-gradient-to-br from-blue-50 via-white to-pink-50 p-6 lg:grid-cols-[1fr_260px]">
                 <div
-                  className={`relative min-h-[540px] overflow-hidden rounded-[2rem] p-6 shadow-inner ring-1 ${backgroundStyle(
+                  className={`relative min-h-[560px] overflow-hidden rounded-[2rem] p-6 shadow-inner ring-1 ${backgroundStyle(
                     avatarConfig.background,
                   )}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/20 to-white/70" />
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-b ${previewBackgroundOverlay(
+                      avatarConfig.background,
+                    )}`}
+                  />
+
+                  {previewImages.background && (
+                    <PreviewLayerImage
+                      src={previewImages.background}
+                      alt=""
+                      className="absolute right-8 top-20 h-40 w-40 object-contain opacity-25 drop-shadow-md"
+                      fallback={null}
+                    />
+                  )}
+
                   <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
                   <div className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-white/40 blur-2xl" />
-                  <div className="absolute left-6 top-6 rounded-2xl bg-white/80 px-4 py-2 text-sm font-black text-slate-700 shadow-sm backdrop-blur">
+                  <div className="absolute left-6 top-6 rounded-2xl bg-white/85 px-4 py-2 text-sm font-black text-slate-700 shadow-sm backdrop-blur">
                     {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
                   </div>
                   <div className="absolute right-8 top-9 text-3xl">✨</div>
                   <div className="absolute bottom-10 left-8 text-4xl opacity-80">📘</div>
                   <div className="absolute bottom-12 right-10 text-4xl opacity-80">🏆</div>
 
-                  <div className="relative z-10 flex min-h-[490px] items-center justify-center">
+                  <div className="absolute inset-x-10 bottom-20 h-20 rounded-[50%] bg-slate-900/10 blur-sm" />
+
+                  <div className="relative z-10 flex min-h-[510px] items-center justify-center">
                     <div className="relative flex flex-col items-center">
                       {avatarConfig.hat !== "none" && (
-                        <div className="z-30 -mb-3 text-6xl drop-shadow-md">
-                          {hatDisplay(avatarConfig.hat)}
+                        <div className="z-40 -mb-4 flex h-24 items-end justify-center">
+                          <PreviewLayerImage
+                            src={previewImages.hat}
+                            alt={getSlotLabel("hat", avatarConfig.hat)}
+                            className="h-24 w-28 object-contain drop-shadow-xl"
+                            fallback={
+                              <span className="text-7xl drop-shadow-md">
+                                {hatDisplay(avatarConfig.hat)}
+                              </span>
+                            }
+                          />
                         </div>
                       )}
 
-                      <div className="relative z-20">
+                      <div className="relative z-30">
                         <div
                           className={`absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-t-full shadow-sm ${hairStyleClass(
                             avatarConfig.hairStyle,
                           )} ${hairColourClass(avatarConfig.hairColor)}`}
                         />
                         <div
-                          className={`relative z-10 flex h-44 w-44 items-center justify-center rounded-full text-7xl shadow-xl ring-8 ring-white ${skinToneClass(
+                          className={`relative z-10 flex h-48 w-48 items-center justify-center rounded-full text-7xl shadow-xl ring-8 ring-white ${skinToneClass(
                             avatarConfig.skinTone,
                           )}`}
                         >
@@ -1237,7 +1322,7 @@ export default function AvatarPage() {
                           </span>
                         </div>
 
-                        <div className="absolute left-1/2 top-[5.8rem] z-30 flex -translate-x-1/2 gap-8">
+                        <div className="absolute left-1/2 top-[6.2rem] z-30 flex -translate-x-1/2 gap-9">
                           <span
                             className={`h-3 w-3 rounded-full shadow-sm ${eyeColourClass(
                               avatarConfig.eyeColor,
@@ -1251,31 +1336,70 @@ export default function AvatarPage() {
                         </div>
 
                         {avatarConfig.glasses !== "none" && (
-                          <div className="absolute left-1/2 top-[4.7rem] z-40 -translate-x-1/2 text-5xl drop-shadow-sm">
-                            {glassesDisplay(avatarConfig.glasses)}
+                          <div className="absolute left-1/2 top-[5rem] z-40 flex -translate-x-1/2 items-center justify-center">
+                            <PreviewLayerImage
+                              src={previewImages.glasses}
+                              alt={getSlotLabel("glasses", avatarConfig.glasses)}
+                              className="h-16 w-28 object-contain drop-shadow-md"
+                              fallback={
+                                <span className="text-5xl drop-shadow-sm">
+                                  {glassesDisplay(avatarConfig.glasses)}
+                                </span>
+                              }
+                            />
                           </div>
                         )}
                       </div>
 
                       <div
-                        className={`relative -mt-3 flex h-36 w-60 items-center justify-center rounded-t-[2.5rem] border-4 border-white text-3xl font-black shadow-xl ${topStyle(
+                        className={`relative -mt-4 flex h-40 w-64 items-center justify-center overflow-hidden rounded-t-[2.75rem] border-4 border-white text-3xl font-black shadow-xl ${topStyle(
                           avatarConfig.top,
                         )}`}
                       >
+                        <div className="absolute inset-x-0 top-0 h-14 bg-white/10" />
+
+                        {previewImages.top && (
+                          <PreviewLayerImage
+                            src={previewImages.top}
+                            alt={getSlotLabel("top", avatarConfig.top)}
+                            className="absolute left-5 top-5 h-24 w-24 object-contain opacity-95 drop-shadow-lg"
+                            fallback={null}
+                          />
+                        )}
+
                         {avatarConfig.badge !== "none" && (
-                          <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-md ring-1 ring-slate-100">
-                            {badgeDisplay(avatarConfig.badge)}
+                          <div className="absolute right-5 top-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100">
+                            <PreviewLayerImage
+                              src={previewImages.badge}
+                              alt={getSlotLabel("badge", avatarConfig.badge)}
+                              className="h-12 w-12 object-contain drop-shadow-sm"
+                              fallback={
+                                <span className="text-xs font-black text-slate-900">
+                                  {badgeDisplay(avatarConfig.badge)}
+                                </span>
+                              }
+                            />
                           </div>
                         )}
-                        <span>
+
+                        <span className="relative z-10 drop-shadow-sm">
                           <span className="text-pink-400">Y</span>an
                           <span className="text-yellow-300">B</span>o
                         </span>
                       </div>
 
                       {avatarConfig.accessory !== "none" && (
-                        <div className="absolute -bottom-1 -right-16 rounded-[1.5rem] bg-white p-4 text-5xl shadow-xl ring-1 ring-slate-100">
-                          {accessoryDisplay(avatarConfig.accessory)}
+                        <div className="absolute -bottom-2 -right-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white p-3 shadow-xl ring-1 ring-slate-100">
+                          <PreviewLayerImage
+                            src={previewImages.accessory}
+                            alt={getSlotLabel("accessory", avatarConfig.accessory)}
+                            className="h-20 w-20 object-contain drop-shadow-md"
+                            fallback={
+                              <span className="text-6xl">
+                                {accessoryDisplay(avatarConfig.accessory)}
+                              </span>
+                            }
+                          />
                         </div>
                       )}
                     </div>
@@ -1675,6 +1799,33 @@ export default function AvatarPage() {
   )
 }
 
+
+function PreviewLayerImage({
+  src,
+  alt,
+  className,
+  fallback,
+}: {
+  src: string | null
+  alt: string
+  className: string
+  fallback: React.ReactNode
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (!src || imageFailed) {
+    return <>{fallback}</>
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setImageFailed(true)}
+    />
+  )
+}
 
 function ShopItemThumbnail({
   item,
