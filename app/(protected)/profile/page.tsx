@@ -218,7 +218,7 @@ export default function ProfilePage() {
           .select("id, amount, reason, source_type, source_id, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(8);
+          .limit(20);
 
       if (transactionsError) {
         console.error(
@@ -283,26 +283,49 @@ export default function ProfilePage() {
   }
 
   function formatCoinReason(transaction: CoinTransaction) {
-    const reason = transaction.reason?.toLowerCase() || "";
-    const sourceType = transaction.source_type?.toLowerCase() || "";
+    const reason = transaction.reason?.toLowerCase().trim() || "";
+    const sourceType = transaction.source_type?.toLowerCase().trim() || "";
 
-    if (reason.includes("daily") || sourceType.includes("daily")) {
+    if (reason === "daily_login" || sourceType === "daily_login") {
       return "Daily login reward";
     }
 
-    if (reason.includes("custom") || sourceType.includes("custom")) {
-      return "Custom test reward";
-    }
-
-    if (reason.includes("avatar") || sourceType.includes("avatar")) {
-      return "Avatar shop purchase";
-    }
-
-    if (reason.includes("test") || sourceType.includes("test")) {
+    if (
+      reason === "normal_test_score_reward" ||
+      sourceType === "normal_test_reward" ||
+      sourceType === "normal_test"
+    ) {
       return "Test reward";
     }
 
-    return transaction.amount >= 0 ? "YanBo Coins earned" : "YanBo Coins spent";
+    if (
+      reason === "custom_test_score_reward" ||
+      sourceType === "custom_test_reward" ||
+      sourceType === "custom_test"
+    ) {
+      return "Custom test reward";
+    }
+
+    if (reason === "avatar_purchase" || sourceType === "avatar_purchase") {
+      return "Avatar shop purchase";
+    }
+
+    if (transaction.amount < 0) {
+      return "YanBo Coins spent";
+    }
+
+    return "YanBo Coins earned";
+  }
+
+  function isTodayTransaction(value: string) {
+    const transactionDate = new Date(value);
+    const today = new Date();
+
+    return (
+      transactionDate.getFullYear() === today.getFullYear() &&
+      transactionDate.getMonth() === today.getMonth() &&
+      transactionDate.getDate() === today.getDate()
+    );
   }
 
   function formatTransactionDate(value: string) {
@@ -316,6 +339,33 @@ export default function ProfilePage() {
   function formatCoinAmount(amount: number) {
     return amount > 0 ? `+${amount}` : `${amount}`;
   }
+
+  const todayCoinSummary = coinTransactions.reduce(
+    (summary, transaction) => {
+      if (!isTodayTransaction(transaction.created_at)) {
+        return summary;
+      }
+
+      if (transaction.amount > 0) {
+        return {
+          ...summary,
+          earned: summary.earned + transaction.amount,
+        };
+      }
+
+      if (transaction.amount < 0) {
+        return {
+          ...summary,
+          spent: summary.spent + Math.abs(transaction.amount),
+        };
+      }
+
+      return summary;
+    },
+    { earned: 0, spent: 0 },
+  );
+
+  const recentCoinTransactions = coinTransactions.slice(0, 3);
 
   const planLabel =
     plan === "admin"
@@ -392,47 +442,66 @@ export default function ProfilePage() {
             <div style={styles.coinActivityCard}>
               <div style={styles.coinActivityHeader}>
                 <div>
-                  <h2 style={styles.cardTitle}>Recent YanBo Coin Activity</h2>
+                  <h2 style={styles.cardTitle}>YanBo Coins today</h2>
                   <p style={styles.cardText}>
-                    Your latest rewards and avatar shop purchases.
+                    A small summary of coins collected and spent today.
                   </p>
                 </div>
               </div>
 
-              {coinTransactions.length === 0 ? (
-                <p style={styles.emptyActivityText}>
-                  No YanBo Coin activity yet. Complete a test or claim your
-                  daily reward to start earning coins.
-                </p>
-              ) : (
-                <div style={styles.activityList}>
-                  {coinTransactions.map((transaction) => {
-                    const isPositive = transaction.amount >= 0;
-
-                    return (
-                      <div key={transaction.id} style={styles.activityRow}>
-                        <div
-                          style={{
-                            ...styles.activityAmount,
-                            background: isPositive ? "#ecfdf5" : "#fef2f2",
-                            color: isPositive ? "#047857" : "#b91c1c",
-                          }}
-                        >
-                          {formatCoinAmount(transaction.amount)}
-                        </div>
-
-                        <div style={styles.activityDetails}>
-                          <p style={styles.activityReason}>
-                            {formatCoinReason(transaction)}
-                          </p>
-                          <p style={styles.activityDate}>
-                            {formatTransactionDate(transaction.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div style={styles.todayCoinSummaryGrid}>
+                <div style={styles.todayCoinSummaryBox}>
+                  <p style={styles.todayCoinSummaryLabel}>Collected today</p>
+                  <p style={styles.todayCoinSummaryEarned}>
+                    +{todayCoinSummary.earned}
+                  </p>
                 </div>
+
+                <div style={styles.todayCoinSummaryBox}>
+                  <p style={styles.todayCoinSummaryLabel}>Spent today</p>
+                  <p style={styles.todayCoinSummarySpent}>
+                    -{todayCoinSummary.spent}
+                  </p>
+                </div>
+              </div>
+
+              {recentCoinTransactions.length > 0 && (
+                <div style={styles.compactActivityWrap}>
+                  <p style={styles.compactActivityTitle}>Last 3 activities</p>
+
+                  <div style={styles.activityList}>
+                    {recentCoinTransactions.map((transaction) => {
+                      const isPositive = transaction.amount >= 0;
+
+                      return (
+                        <div key={transaction.id} style={styles.compactActivityRow}>
+                          <span
+                            style={{
+                              ...styles.compactActivityAmount,
+                              color: isPositive ? "#047857" : "#b91c1c",
+                            }}
+                          >
+                            {formatCoinAmount(transaction.amount)}
+                          </span>
+
+                          <span style={styles.compactActivityReason}>
+                            {formatCoinReason(transaction)}
+                          </span>
+
+                          <span style={styles.compactActivityDate}>
+                            {formatTransactionDate(transaction.created_at)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {coinTransactions.length === 0 && (
+                <p style={styles.emptyActivityText}>
+                  No YanBo Coin activity yet.
+                </p>
               )}
             </div>
 
@@ -793,6 +862,82 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: 16,
     marginBottom: 16,
+  },
+
+  todayCoinSummaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 16,
+  },
+
+  todayCoinSummaryBox: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 18,
+    padding: "14px 16px",
+    background: "#f9fafb",
+  },
+
+  todayCoinSummaryLabel: {
+    margin: 0,
+    color: "#6b7280",
+    fontSize: "0.82rem",
+    fontWeight: 800,
+  },
+
+  todayCoinSummaryEarned: {
+    margin: "8px 0 0",
+    color: "#047857",
+    fontSize: "1.4rem",
+    fontWeight: 900,
+  },
+
+  todayCoinSummarySpent: {
+    margin: "8px 0 0",
+    color: "#b91c1c",
+    fontSize: "1.4rem",
+    fontWeight: 900,
+  },
+
+  compactActivityWrap: {
+    marginTop: 18,
+    borderTop: "1px solid #e5e7eb",
+    paddingTop: 14,
+  },
+
+  compactActivityTitle: {
+    margin: "0 0 10px",
+    color: "#374151",
+    fontSize: "0.86rem",
+    fontWeight: 900,
+  },
+
+  compactActivityRow: {
+    display: "grid",
+    gridTemplateColumns: "48px 1fr auto",
+    alignItems: "center",
+    gap: 10,
+    padding: "8px 0",
+    borderBottom: "1px solid #f3f4f6",
+  },
+
+  compactActivityAmount: {
+    fontWeight: 900,
+    fontSize: "0.92rem",
+  },
+
+  compactActivityReason: {
+    color: "#111827",
+    fontWeight: 750,
+    fontSize: "0.9rem",
+    minWidth: 0,
+  },
+
+  compactActivityDate: {
+    color: "#6b7280",
+    fontSize: "0.8rem",
+    fontWeight: 650,
+    whiteSpace: "nowrap",
   },
 
   emptyActivityText: {
