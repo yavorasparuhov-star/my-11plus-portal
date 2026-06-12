@@ -679,6 +679,31 @@ function badgeDisplay(badge: string) {
   }
 }
 
+function skinToneClass(skinTone: string) {
+  if (skinTone === "medium") return "bg-orange-200"
+  if (skinTone === "dark") return "bg-orange-300"
+  return "bg-orange-100"
+}
+
+function hairColourClass(hairColor: string) {
+  if (hairColor === "black") return "bg-slate-900"
+  if (hairColor === "blonde") return "bg-yellow-300"
+  if (hairColor === "ginger") return "bg-orange-500"
+  return "bg-amber-900"
+}
+
+function hairStyleClass(hairStyle: string) {
+  if (hairStyle === "long") return "h-20 w-36 rounded-b-[2rem]"
+  if (hairStyle === "medium") return "h-16 w-32 rounded-b-3xl"
+  return "h-14 w-28 rounded-b-2xl"
+}
+
+function eyeColourClass(eyeColor: string) {
+  if (eyeColor === "green") return "bg-emerald-500"
+  if (eyeColor === "blue") return "bg-sky-500"
+  return "bg-amber-700"
+}
+
 function getSlotLabel(slot: AvatarSlot, value: string) {
   return (
     slotOptions[slot]
@@ -1152,14 +1177,14 @@ export default function AvatarPage() {
 
         <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
           <div className="space-y-6">
-            <section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-blue-100">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-blue-100">
+              <div className="flex flex-col gap-3 border-b border-blue-50 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-black text-slate-900">
                     Your avatar
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Preview your current YanBo Learning style.
+                    Preview your current YanBo Learning hero before saving.
                   </p>
                 </div>
 
@@ -1172,72 +1197,73 @@ export default function AvatarPage() {
                 </button>
               </div>
 
-              <div className="mt-6 flex min-h-[590px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
-                <div className="relative flex w-full max-w-xl flex-col items-center">
-                  <div className="absolute left-6 top-8 text-3xl">⭐</div>
-                  <div className="absolute right-8 top-12 text-2xl">✨</div>
-                  <div className="absolute bottom-20 left-10 text-3xl">📘</div>
-                  <div className="absolute bottom-24 right-10 text-3xl">🏆</div>
+              <div className="grid gap-6 bg-gradient-to-br from-blue-50 via-white to-pink-50 p-6 lg:grid-cols-[1fr_260px]">
+                <div
+                  className={`relative min-h-[540px] overflow-hidden rounded-[2rem] p-6 shadow-inner ring-1 ${backgroundStyle(
+                    avatarConfig.background,
+                  )}`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/20 to-white/70" />
+                  <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
+                  <div className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-white/40 blur-2xl" />
+                  <div className="absolute left-6 top-6 rounded-2xl bg-white/80 px-4 py-2 text-sm font-black text-slate-700 shadow-sm backdrop-blur">
+                    {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
+                  </div>
+                  <div className="absolute right-8 top-9 text-3xl">✨</div>
+                  <div className="absolute bottom-10 left-8 text-4xl opacity-80">📘</div>
+                  <div className="absolute bottom-12 right-10 text-4xl opacity-80">🏆</div>
 
-                  <div
-                    className={`relative flex h-80 w-80 items-center justify-center overflow-hidden rounded-full border-8 border-white shadow-xl ring-8 ${backgroundStyle(
-                      avatarConfig.background,
-                    )}`}
-                  >
-                    <div className="absolute inset-0 flex items-end justify-center text-8xl opacity-20">
-                      {backgroundEmoji(avatarConfig.background)}
-                    </div>
-
+                  <div className="relative z-10 flex min-h-[490px] items-center justify-center">
                     <div className="relative flex flex-col items-center">
                       {avatarConfig.hat !== "none" && (
-                        <div className="z-20 -mb-4 text-5xl drop-shadow-sm">
+                        <div className="z-30 -mb-3 text-6xl drop-shadow-md">
                           {hatDisplay(avatarConfig.hat)}
                         </div>
                       )}
 
-                      <div
-                        className={`flex h-36 w-36 items-center justify-center rounded-full text-7xl shadow-md ${
-                          avatarConfig.skinTone === "light"
-                            ? "bg-orange-100"
-                            : avatarConfig.skinTone === "medium"
-                              ? "bg-orange-200"
-                              : "bg-orange-300"
-                        }`}
-                      >
-                        {avatarConfig.base === "yan" ? "😊" : "🙂"}
+                      <div className="relative z-20">
+                        <div
+                          className={`absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-t-full shadow-sm ${hairStyleClass(
+                            avatarConfig.hairStyle,
+                          )} ${hairColourClass(avatarConfig.hairColor)}`}
+                        />
+                        <div
+                          className={`relative z-10 flex h-44 w-44 items-center justify-center rounded-full text-7xl shadow-xl ring-8 ring-white ${skinToneClass(
+                            avatarConfig.skinTone,
+                          )}`}
+                        >
+                          <span className="mt-4">
+                            {avatarConfig.base === "yan" ? "😊" : "🙂"}
+                          </span>
+                        </div>
+
+                        <div className="absolute left-1/2 top-[5.8rem] z-30 flex -translate-x-1/2 gap-8">
+                          <span
+                            className={`h-3 w-3 rounded-full shadow-sm ${eyeColourClass(
+                              avatarConfig.eyeColor,
+                            )}`}
+                          />
+                          <span
+                            className={`h-3 w-3 rounded-full shadow-sm ${eyeColourClass(
+                              avatarConfig.eyeColor,
+                            )}`}
+                          />
+                        </div>
+
+                        {avatarConfig.glasses !== "none" && (
+                          <div className="absolute left-1/2 top-[4.7rem] z-40 -translate-x-1/2 text-5xl drop-shadow-sm">
+                            {glassesDisplay(avatarConfig.glasses)}
+                          </div>
+                        )}
                       </div>
 
                       <div
-                        className={`-mt-32 mb-20 h-12 rounded-full ${
-                          avatarConfig.hairStyle === "long"
-                            ? "w-32"
-                            : avatarConfig.hairStyle === "medium"
-                              ? "w-28"
-                              : "w-24"
-                        } ${
-                          avatarConfig.hairColor === "brown"
-                            ? "bg-amber-900"
-                            : avatarConfig.hairColor === "black"
-                              ? "bg-slate-900"
-                              : avatarConfig.hairColor === "blonde"
-                                ? "bg-yellow-300"
-                                : "bg-orange-500"
-                        }`}
-                      />
-
-                      {avatarConfig.glasses !== "none" && (
-                        <div className="-mt-16 mb-12 text-4xl drop-shadow-sm">
-                          {glassesDisplay(avatarConfig.glasses)}
-                        </div>
-                      )}
-
-                      <div
-                        className={`relative mt-2 flex h-28 w-48 items-center justify-center rounded-t-[2rem] text-2xl font-black shadow-md ${topStyle(
+                        className={`relative -mt-3 flex h-36 w-60 items-center justify-center rounded-t-[2.5rem] border-4 border-white text-3xl font-black shadow-xl ${topStyle(
                           avatarConfig.top,
                         )}`}
                       >
                         {avatarConfig.badge !== "none" && (
-                          <div className="absolute right-4 top-4 rounded-full bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-sm">
+                          <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-md ring-1 ring-slate-100">
                             {badgeDisplay(avatarConfig.badge)}
                           </div>
                         )}
@@ -1248,39 +1274,56 @@ export default function AvatarPage() {
                       </div>
 
                       {avatarConfig.accessory !== "none" && (
-                        <div className="absolute -bottom-3 -right-10 rounded-3xl bg-white p-3 text-4xl shadow-lg ring-1 ring-slate-100">
+                        <div className="absolute -bottom-1 -right-16 rounded-[1.5rem] bg-white p-4 text-5xl shadow-xl ring-1 ring-slate-100">
                           {accessoryDisplay(avatarConfig.accessory)}
                         </div>
                       )}
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-6 rounded-3xl bg-white px-5 py-3 text-center shadow-sm ring-1 ring-slate-100">
-                    <p className="font-black text-slate-900">
-                      {avatarConfig.base === "yan" ? "Yan" : "Bo"} avatar
+                <div className="space-y-4">
+                  <div className="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                      Current style
+                    </p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">
+                      {avatarConfig.base === "yan" ? "Yan" : "Bo"}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      {getSlotLabel("background", avatarConfig.background)} •{" "}
-                      {avatarConfig.eyeColor} eyes
+                      {avatarConfig.eyeColor} eyes • {avatarConfig.hairColor} hair
                     </p>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <AvatarStyleChip
-                      label={getSlotLabel("top", avatarConfig.top)}
-                    />
-                    <AvatarStyleChip
-                      label={getSlotLabel("glasses", avatarConfig.glasses)}
-                    />
-                    <AvatarStyleChip
-                      label={getSlotLabel("hat", avatarConfig.hat)}
-                    />
-                    <AvatarStyleChip
-                      label={getSlotLabel("accessory", avatarConfig.accessory)}
-                    />
-                    <AvatarStyleChip
-                      label={getSlotLabel("badge", avatarConfig.badge)}
-                    />
+                  <EquippedMiniCard
+                    icon="👕"
+                    label="Top"
+                    value={getSlotLabel("top", avatarConfig.top)}
+                  />
+                  <EquippedMiniCard
+                    icon="👓"
+                    label="Glasses"
+                    value={getSlotLabel("glasses", avatarConfig.glasses)}
+                  />
+                  <EquippedMiniCard
+                    icon="🧢"
+                    label="Hat"
+                    value={getSlotLabel("hat", avatarConfig.hat)}
+                  />
+                  <EquippedMiniCard
+                    icon="🎒"
+                    label="Accessory"
+                    value={getSlotLabel("accessory", avatarConfig.accessory)}
+                  />
+                  <EquippedMiniCard
+                    icon="🏅"
+                    label="Badge"
+                    value={getSlotLabel("badge", avatarConfig.badge)}
+                  />
+
+                  <div className="rounded-[1.75rem] bg-yellow-50 p-4 text-sm font-bold text-yellow-900 ring-1 ring-yellow-200">
+                    Use <span className="font-black">Equip</span> in the shop to try items on, then press
+                    <span className="font-black"> Save Avatar</span> to keep the look.
                   </div>
                 </div>
               </div>
@@ -1728,6 +1771,30 @@ function AvatarStyleChip({ label }: { label: string }) {
     <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
       {label}
     </span>
+  )
+}
+
+function EquippedMiniCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: string
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-[1.4rem] bg-white p-3 shadow-sm ring-1 ring-slate-100">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-2xl">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+          {label}
+        </p>
+        <p className="truncate text-sm font-black text-slate-800">{value}</p>
+      </div>
+    </div>
   )
 }
 
