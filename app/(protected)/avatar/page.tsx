@@ -26,6 +26,8 @@ type AvatarSlot =
   | "accessory"
   | "badge"
 
+type ShopStatusFilter = "all" | "affordable" | "owned" | "locked"
+
 type ShopItem = {
   item_key: string
   name: string
@@ -557,6 +559,32 @@ function getSlotLabel(slot: AvatarSlot, value: string) {
   )
 }
 
+function getSlotMatchFromItemKey(itemKey: string) {
+  const slots: AvatarSlot[] = [
+    "top",
+    "glasses",
+    "hat",
+    "accessory",
+    "background",
+    "badge",
+  ]
+
+  for (const slot of slots) {
+    const option = slotOptions[slot].find(
+      (currentOption) => currentOption.itemKey === itemKey,
+    )
+
+    if (option) {
+      return {
+        slot,
+        value: option.value,
+      }
+    }
+  }
+
+  return null
+}
+
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
@@ -573,6 +601,9 @@ export default function AvatarPage() {
   const [error, setError] = useState<string | null>(null)
   const [shopMessage, setShopMessage] = useState<string | null>(null)
   const [shopError, setShopError] = useState<string | null>(null)
+  const [activeShopCategory, setActiveShopCategory] = useState<string>("all")
+  const [activeShopStatus, setActiveShopStatus] =
+    useState<ShopStatusFilter>("all")
 
   useEffect(() => {
     loadAvatarPage()
@@ -779,7 +810,7 @@ export default function AvatarPage() {
           ? current
           : [...current, result.itemKey],
       )
-      setShopMessage("Item unlocked successfully.")
+      setShopMessage("Item unlocked successfully. Use Equip to try it on.")
     } catch (error) {
       setShopError(
         error instanceof Error
@@ -805,6 +836,30 @@ export default function AvatarPage() {
     return freeStarterItemKeys.has(itemKey) || unlockedItems.includes(itemKey)
   }
 
+  function isShopItemEquipped(itemKey: string) {
+    const match = getSlotMatchFromItemKey(itemKey)
+    if (!match) return false
+    return avatarConfig[match.slot] === match.value
+  }
+
+  function equipShopItem(itemKey: string) {
+    const match = getSlotMatchFromItemKey(itemKey)
+
+    if (!match) {
+      setShopError("This item is unlocked, but it cannot be equipped yet.")
+      return
+    }
+
+    setAvatarConfig((current) => ({
+      ...current,
+      [match.slot]: match.value,
+    }))
+    setMessage(null)
+    setError(null)
+    setShopError(null)
+    setShopMessage("Item equipped. Remember to save your avatar.")
+  }
+
   const groupedShopItems = useMemo(() => {
     return shopItems.reduce<Record<string, ShopItem[]>>(
       (currentGroups, item) => {
@@ -823,6 +878,42 @@ export default function AvatarPage() {
       return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB)
     })
   }, [groupedShopItems])
+
+  const filteredShopItems = useMemo(() => {
+    return shopItems.filter((item) => {
+      const unlocked = isShopItemUnlocked(item.item_key)
+      const affordable = !unlocked && coins >= item.price
+
+      if (activeShopCategory !== "all" && item.category !== activeShopCategory) {
+        return false
+      }
+
+      if (activeShopStatus === "owned") return unlocked
+      if (activeShopStatus === "affordable") return affordable
+      if (activeShopStatus === "locked") return !unlocked
+
+      return true
+    })
+  }, [activeShopCategory, activeShopStatus, coins, shopItems, unlockedItems])
+
+  const groupedFilteredShopItems = useMemo(() => {
+    return filteredShopItems.reduce<Record<string, ShopItem[]>>(
+      (currentGroups, item) => {
+        if (!currentGroups[item.category]) currentGroups[item.category] = []
+        currentGroups[item.category].push(item)
+        return currentGroups
+      },
+      {},
+    )
+  }, [filteredShopItems])
+
+  const sortedFilteredShopCategories = useMemo(() => {
+    return Object.keys(groupedFilteredShopItems).sort((categoryA, categoryB) => {
+      const indexA = shopCategoryOrder.indexOf(categoryA)
+      const indexB = shopCategoryOrder.indexOf(categoryB)
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB)
+    })
+  }, [groupedFilteredShopItems])
 
   const unlockedCount = useMemo(() => {
     return new Set([...Array.from(freeStarterItemKeys), ...unlockedItems]).size
@@ -1234,9 +1325,68 @@ export default function AvatarPage() {
                 </div>
               )}
 
-              <div className="mt-5 space-y-5 xl:max-h-[740px] xl:overflow-y-auto xl:pr-1">
-                {sortedShopCategories.map((category) => {
-                  const items = groupedShopItems[category] || []
+              <div className="mt-5 space-y-4">
+                <div>
+                  <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                    Category
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <ShopFilterButton
+                      active={activeShopCategory === "all"}
+                      label="All"
+                      icon="✨"
+                      onClick={() => setActiveShopCategory("all")}
+                    />
+                    {sortedShopCategories.map((category) => (
+                      <ShopFilterButton
+                        key={category}
+                        active={activeShopCategory === category}
+                        label={formatCategoryName(category)}
+                        icon={getShopIcon(category)}
+                        onClick={() => setActiveShopCategory(category)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                    Show
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ShopStatusButton
+                      active={activeShopStatus === "all"}
+                      label="All items"
+                      onClick={() => setActiveShopStatus("all")}
+                    />
+                    <ShopStatusButton
+                      active={activeShopStatus === "affordable"}
+                      label="Ready to buy"
+                      onClick={() => setActiveShopStatus("affordable")}
+                    />
+                    <ShopStatusButton
+                      active={activeShopStatus === "owned"}
+                      label="Unlocked"
+                      onClick={() => setActiveShopStatus("owned")}
+                    />
+                    <ShopStatusButton
+                      active={activeShopStatus === "locked"}
+                      label="Locked"
+                      onClick={() => setActiveShopStatus("locked")}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-5 xl:max-h-[640px] xl:overflow-y-auto xl:pr-1">
+                {filteredShopItems.length === 0 && (
+                  <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
+                    No shop items match this filter yet.
+                  </div>
+                )}
+
+                {sortedFilteredShopCategories.map((category) => {
+                  const items = groupedFilteredShopItems[category] || []
 
                   return (
                     <div key={category}>
@@ -1253,6 +1403,7 @@ export default function AvatarPage() {
                         {items.map((item) => {
                           const unlocked = isShopItemUnlocked(item.item_key)
                           const canAfford = coins >= item.price
+                          const equipped = isShopItemEquipped(item.item_key)
 
                           return (
                             <div
@@ -1265,8 +1416,13 @@ export default function AvatarPage() {
                                     : "border-slate-200 bg-slate-50 opacity-80"
                               }`}
                             >
-                              <div className="flex h-20 items-center justify-center rounded-xl bg-white text-3xl shadow-sm">
+                              <div className="relative flex h-20 items-center justify-center rounded-xl bg-white text-3xl shadow-sm">
                                 {getShopIcon(item.category)}
+                                {unlocked && (
+                                  <span className="absolute right-2 top-2 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">
+                                    ✓
+                                  </span>
+                                )}
                               </div>
 
                               <h4 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
@@ -1285,9 +1441,18 @@ export default function AvatarPage() {
                               </div>
 
                               {unlocked ? (
-                                <div className="mt-2 rounded-full bg-emerald-100 px-3 py-1 text-center text-xs font-black text-emerald-700">
-                                  Unlocked
-                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => equipShopItem(item.item_key)}
+                                  disabled={equipped}
+                                  className={`mt-2 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed ${
+                                    equipped
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
+                                  }`}
+                                >
+                                  {equipped ? "Equipped" : "Equip"}
+                                </button>
                               ) : (
                                 <button
                                   onClick={() =>
@@ -1410,6 +1575,57 @@ function ChoiceButton({
       <div className="text-3xl">{emoji}</div>
       <p className="mt-2 font-black text-slate-900">{title}</p>
       <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+    </button>
+  )
+}
+
+function ShopFilterButton({
+  active,
+  label,
+  icon,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  icon: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3 py-2 text-xs font-black transition ${
+        active
+          ? "bg-blue-600 text-white shadow-sm"
+          : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+      }`}
+    >
+      <span className="mr-1">{icon}</span>
+      {label}
+    </button>
+  )
+}
+
+function ShopStatusButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl px-3 py-2 text-xs font-black transition ${
+        active
+          ? "bg-slate-900 text-white shadow-sm"
+          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+      }`}
+    >
+      {label}
     </button>
   )
 }
