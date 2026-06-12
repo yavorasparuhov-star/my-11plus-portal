@@ -10,10 +10,15 @@ type AvatarConfig = {
   hairStyle: "short" | "medium" | "long"
   hairColor: "brown" | "black" | "blonde" | "ginger"
   eyeColor: "brown" | "blue" | "green"
-  glasses: "none" | "round" | "square"
-  top: "yanbo_navy" | "yanbo_green"
-  background: "plain" | "classroom" | "library"
+  glasses: string
+  top: string
+  background: string
+  hat: string
+  accessory: string
+  badge: string
 }
+
+type AvatarSlot = "glasses" | "top" | "background" | "hat" | "accessory" | "badge"
 
 type ShopItem = {
   item_key: string
@@ -30,6 +35,12 @@ type SelectOption = {
   disabled?: boolean
 }
 
+type SlotOption = {
+  value: string
+  label: string
+  itemKey?: string
+}
+
 const defaultAvatar: AvatarConfig = {
   base: "bo",
   skinTone: "light",
@@ -39,15 +50,90 @@ const defaultAvatar: AvatarConfig = {
   glasses: "none",
   top: "yanbo_navy",
   background: "plain",
+  hat: "none",
+  accessory: "none",
+  badge: "none",
 }
 
 const freeStarterItemKeys = new Set(["yanbo_jumper_navy"])
+
+const shopCategoryOrder = ["top", "glasses", "hat", "accessory", "background", "badge"]
+
+const slotOptions: Record<AvatarSlot, SlotOption[]> = {
+  top: [
+    { value: "yanbo_navy", label: "YanBo Navy Jumper — free", itemKey: "yanbo_jumper_navy" },
+    { value: "yanbo_green", label: "YanBo Green Hoodie", itemKey: "yanbo_hoodie_green" },
+    { value: "yellow_hoodie", label: "YanBo Yellow Hoodie", itemKey: "top_yanbo_yellow_hoodie" },
+    { value: "pink_hoodie", label: "Pink Learning Hoodie", itemKey: "top_pink_learning_hoodie" },
+    { value: "blue_jacket", label: "Blue Study Jacket", itemKey: "top_blue_study_jacket" },
+    { value: "green_star_tshirt", label: "Green Star T-Shirt", itemKey: "top_green_star_tshirt" },
+    { value: "maths_champion", label: "Maths Champion T-Shirt", itemKey: "top_maths_champion_tshirt" },
+    { value: "english_reader", label: "English Reader T-Shirt", itemKey: "top_english_reader_tshirt" },
+    { value: "vr_puzzle", label: "VR Puzzle T-Shirt", itemKey: "top_vr_puzzle_tshirt" },
+    { value: "nvr_shapes", label: "NVR Shapes T-Shirt", itemKey: "top_nvr_shapes_tshirt" },
+    { value: "space_explorer", label: "Space Explorer Jacket", itemKey: "top_space_explorer_jacket" },
+    { value: "library_cardigan", label: "Library Cardigan", itemKey: "top_library_cardigan" },
+    { value: "gold_champion", label: "Gold Champion Hoodie", itemKey: "top_gold_champion_hoodie" },
+  ],
+  glasses: [
+    { value: "none", label: "No glasses — free" },
+    { value: "round", label: "Round Smart Glasses", itemKey: "smart_glasses_round" },
+    { value: "square", label: "Square Smart Glasses", itemKey: "smart_glasses_square" },
+    { value: "blue", label: "Blue Frame Glasses", itemKey: "glasses_blue_frames" },
+    { value: "green", label: "Green Frame Glasses", itemKey: "glasses_green_frames" },
+    { value: "star", label: "Star Frame Glasses", itemKey: "glasses_star_frames" },
+    { value: "silver", label: "Silver Reading Glasses", itemKey: "glasses_reading_silver" },
+    { value: "sport", label: "Sport Goggles", itemKey: "glasses_sport_goggles" },
+    { value: "rainbow", label: "Rainbow Frame Glasses", itemKey: "glasses_rainbow_frames" },
+  ],
+  background: [
+    { value: "plain", label: "Plain — free" },
+    { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
+    { value: "library", label: "Library", itemKey: "background_library" },
+    { value: "space", label: "Space", itemKey: "background_space" },
+    { value: "forest", label: "Forest", itemKey: "background_forest" },
+    { value: "beach", label: "Beach", itemKey: "background_beach" },
+    { value: "football", label: "Football Pitch", itemKey: "background_football_pitch" },
+    { value: "science_lab", label: "Science Lab", itemKey: "background_science_lab" },
+    { value: "art_room", label: "Art Room", itemKey: "background_art_room" },
+    { value: "puzzle_wall", label: "Puzzle Wall", itemKey: "background_puzzle_wall" },
+    { value: "reading_corner", label: "Reading Corner", itemKey: "background_reading_corner" },
+    { value: "castle", label: "Castle", itemKey: "background_castle" },
+    { value: "yanbo_stage", label: "YanBo Stage", itemKey: "background_yanbo_stage" },
+  ],
+  hat: [
+    { value: "none", label: "No hat — free" },
+    { value: "yanbo_cap", label: "YanBo Cap", itemKey: "hat_yanbo_cap" },
+    { value: "graduation", label: "Graduation Cap", itemKey: "hat_graduation_cap" },
+    { value: "wizard", label: "Wizard Hat", itemKey: "hat_wizard_hat" },
+    { value: "crown", label: "Champion Crown", itemKey: "hat_crown" },
+    { value: "explorer", label: "Explorer Hat", itemKey: "hat_explorer_hat" },
+    { value: "headphones", label: "Study Headphones", itemKey: "hat_headphones" },
+    { value: "star_headband", label: "Star Headband", itemKey: "hat_star_headband" },
+    { value: "blue_beanie", label: "Blue Beanie", itemKey: "hat_blue_beanie" },
+  ],
+  accessory: [
+    { value: "none", label: "No accessory — free" },
+    { value: "book", label: "Favourite Book", itemKey: "accessory_book" },
+    { value: "pencil", label: "Super Pencil", itemKey: "accessory_pencil" },
+    { value: "calculator", label: "Calculator Buddy", itemKey: "accessory_calculator" },
+    { value: "trophy", label: "Winner Trophy", itemKey: "accessory_trophy" },
+    { value: "backpack", label: "Learning Backpack", itemKey: "accessory_backpack" },
+    { value: "magnifier", label: "Detective Magnifier", itemKey: "accessory_magnifier" },
+  ],
+  badge: [
+    { value: "none", label: "No badge — free" },
+    { value: "english", label: "English Star Badge", itemKey: "badge_english_star" },
+    { value: "maths", label: "Maths Star Badge", itemKey: "badge_maths_star" },
+    { value: "vr", label: "VR Master Badge", itemKey: "badge_vr_master" },
+    { value: "nvr", label: "NVR Master Badge", itemKey: "badge_nvr_master" },
+  ],
+}
 
 function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   if (!savedConfig) return defaultAvatar
 
   const savedBase = savedConfig.base
-
   let base: AvatarConfig["base"] = "bo"
 
   if (savedBase === "yan" || savedBase === "girl") {
@@ -65,40 +151,44 @@ function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   } as AvatarConfig
 }
 
-function makeAvatarConfigSafe(
-  config: AvatarConfig,
-  unlockedItemKeys: string[]
-): AvatarConfig {
-  const unlocked = new Set(unlockedItemKeys)
-  const safeConfig = { ...config }
+function getSlotItemKey(slot: AvatarSlot, value: string) {
+  return slotOptions[slot].find((option) => option.value === value)?.itemKey
+}
 
-  if (safeConfig.glasses === "round" && !unlocked.has("smart_glasses_round")) {
-    safeConfig.glasses = "none"
-  }
+function isItemKeyUnlocked(itemKey: string | undefined, unlockedItemKeys: string[]) {
+  if (!itemKey) return true
+  return freeStarterItemKeys.has(itemKey) || unlockedItemKeys.includes(itemKey)
+}
 
-  if (safeConfig.glasses === "square" && !unlocked.has("smart_glasses_square")) {
-    safeConfig.glasses = "none"
-  }
+function isSlotValueUnlocked(slot: AvatarSlot, value: string, unlockedItemKeys: string[]) {
+  return isItemKeyUnlocked(getSlotItemKey(slot, value), unlockedItemKeys)
+}
 
-  if (safeConfig.top === "yanbo_green" && !unlocked.has("yanbo_hoodie_green")) {
-    safeConfig.top = "yanbo_navy"
-  }
+function makeAvatarConfigSafe(config: AvatarConfig, unlockedItemKeys: string[]): AvatarConfig {
+  const safeConfig = { ...defaultAvatar, ...config }
 
-  if (
-    safeConfig.background === "classroom" &&
-    !unlocked.has("background_classroom")
-  ) {
-    safeConfig.background = "plain"
-  }
-
-  if (
-    safeConfig.background === "library" &&
-    !unlocked.has("background_library")
-  ) {
-    safeConfig.background = "plain"
-  }
+  ;(["glasses", "top", "background", "hat", "accessory", "badge"] as AvatarSlot[]).forEach(
+    (slot) => {
+      if (!isSlotValueUnlocked(slot, safeConfig[slot], unlockedItemKeys)) {
+        safeConfig[slot] = defaultAvatar[slot]
+      }
+    }
+  )
 
   return safeConfig
+}
+
+function getSelectOptions(slot: AvatarSlot, unlockedItemKeys: string[]): SelectOption[] {
+  return slotOptions[slot].map((option) => {
+    const unlocked = isItemKeyUnlocked(option.itemKey, unlockedItemKeys)
+    const suffix = option.itemKey ? (unlocked ? " — unlocked" : " — locked") : ""
+
+    return {
+      value: option.value,
+      label: `${option.label}${suffix}`,
+      disabled: !unlocked,
+    }
+  })
 }
 
 function getShopIcon(category: string) {
@@ -106,6 +196,8 @@ function getShopIcon(category: string) {
   if (category === "glasses") return "👓"
   if (category === "background") return "🖼️"
   if (category === "badge") return "🏅"
+  if (category === "hat") return "🧢"
+  if (category === "accessory") return "🎒"
   return "⭐"
 }
 
@@ -113,6 +205,183 @@ function formatCategoryName(category: string) {
   return category
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function backgroundStyle(background: string) {
+  switch (background) {
+    case "classroom":
+      return "bg-amber-100 ring-amber-200"
+    case "library":
+      return "bg-sky-100 ring-sky-200"
+    case "space":
+      return "bg-indigo-100 ring-indigo-200"
+    case "forest":
+      return "bg-emerald-100 ring-emerald-200"
+    case "beach":
+      return "bg-cyan-100 ring-cyan-200"
+    case "football":
+      return "bg-green-100 ring-green-200"
+    case "science_lab":
+      return "bg-violet-100 ring-violet-200"
+    case "art_room":
+      return "bg-pink-100 ring-pink-200"
+    case "puzzle_wall":
+      return "bg-blue-100 ring-blue-200"
+    case "reading_corner":
+      return "bg-orange-100 ring-orange-200"
+    case "castle":
+      return "bg-purple-100 ring-purple-200"
+    case "yanbo_stage":
+      return "bg-yellow-100 ring-yellow-200"
+    default:
+      return "bg-emerald-100 ring-emerald-200"
+  }
+}
+
+function backgroundEmoji(background: string) {
+  switch (background) {
+    case "classroom":
+      return "📚"
+    case "library":
+      return "🏛️"
+    case "space":
+      return "🚀"
+    case "forest":
+      return "🌳"
+    case "beach":
+      return "🏖️"
+    case "football":
+      return "⚽"
+    case "science_lab":
+      return "🔬"
+    case "art_room":
+      return "🎨"
+    case "puzzle_wall":
+      return "🧩"
+    case "reading_corner":
+      return "📖"
+    case "castle":
+      return "🏰"
+    case "yanbo_stage":
+      return "🌟"
+    default:
+      return "✨"
+  }
+}
+
+function topStyle(top: string) {
+  switch (top) {
+    case "yanbo_green":
+      return "bg-emerald-700 text-white"
+    case "yellow_hoodie":
+      return "bg-yellow-400 text-slate-900"
+    case "pink_hoodie":
+      return "bg-pink-500 text-white"
+    case "blue_jacket":
+      return "bg-blue-700 text-white"
+    case "green_star_tshirt":
+      return "bg-green-600 text-white"
+    case "maths_champion":
+      return "bg-red-600 text-white"
+    case "english_reader":
+      return "bg-purple-700 text-white"
+    case "vr_puzzle":
+      return "bg-pink-600 text-white"
+    case "nvr_shapes":
+      return "bg-cyan-700 text-white"
+    case "space_explorer":
+      return "bg-indigo-800 text-white"
+    case "library_cardigan":
+      return "bg-orange-700 text-white"
+    case "gold_champion":
+      return "bg-yellow-500 text-slate-950"
+    default:
+      return "bg-slate-800 text-white"
+  }
+}
+
+function glassesDisplay(glasses: string) {
+  switch (glasses) {
+    case "round":
+      return "👓"
+    case "square":
+      return "▭▭"
+    case "blue":
+      return "🔵👓"
+    case "green":
+      return "🟢👓"
+    case "star":
+      return "⭐👓"
+    case "silver":
+      return "⚪👓"
+    case "sport":
+      return "🥽"
+    case "rainbow":
+      return "🌈👓"
+    default:
+      return ""
+  }
+}
+
+function hatDisplay(hat: string) {
+  switch (hat) {
+    case "yanbo_cap":
+      return "🧢"
+    case "graduation":
+      return "🎓"
+    case "wizard":
+      return "🧙‍♂️"
+    case "crown":
+      return "👑"
+    case "explorer":
+      return "🤠"
+    case "headphones":
+      return "🎧"
+    case "star_headband":
+      return "⭐"
+    case "blue_beanie":
+      return "💙"
+    default:
+      return ""
+  }
+}
+
+function accessoryDisplay(accessory: string) {
+  switch (accessory) {
+    case "book":
+      return "📘"
+    case "pencil":
+      return "✏️"
+    case "calculator":
+      return "🧮"
+    case "trophy":
+      return "🏆"
+    case "backpack":
+      return "🎒"
+    case "magnifier":
+      return "🔎"
+    default:
+      return ""
+  }
+}
+
+function badgeDisplay(badge: string) {
+  switch (badge) {
+    case "english":
+      return "E★"
+    case "maths":
+      return "M★"
+    case "vr":
+      return "VR"
+    case "nvr":
+      return "NVR"
+    default:
+      return ""
+  }
+}
+
+function getSlotLabel(slot: AvatarSlot, value: string) {
+  return slotOptions[slot].find((option) => option.value === value)?.label.replace(" — free", "") || value
 }
 
 export default function AvatarPage() {
@@ -201,7 +470,6 @@ export default function AvatarPage() {
       : defaultAvatar
 
     setAvatarConfig(makeAvatarConfigSafe(loadedAvatar, unlockedKeys))
-
     setLoading(false)
   }
 
@@ -280,11 +548,7 @@ export default function AvatarPage() {
         setMessage("You have already claimed today’s YanBo Coins.")
       }
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Could not claim today’s YanBo Coins."
-      )
+      setError(error instanceof Error ? error.message : "Could not claim today’s YanBo Coins.")
     }
 
     setClaimingDailyCoins(false)
@@ -334,20 +598,13 @@ export default function AvatarPage() {
       )
       setShopMessage("Item unlocked successfully.")
     } catch (error) {
-      setShopError(
-        error instanceof Error
-          ? error.message
-          : "Could not buy this avatar item."
-      )
+      setShopError(error instanceof Error ? error.message : "Could not buy this avatar item.")
     }
 
     setPurchasingItemKey(null)
   }
 
-  function updateAvatar<K extends keyof AvatarConfig>(
-    key: K,
-    value: AvatarConfig[K]
-  ) {
+  function updateAvatar<K extends keyof AvatarConfig>(key: K, value: AvatarConfig[K]) {
     setAvatarConfig((current) => ({
       ...current,
       [key]: value,
@@ -358,23 +615,30 @@ export default function AvatarPage() {
     return freeStarterItemKeys.has(itemKey) || unlockedItems.includes(itemKey)
   }
 
-  const canUseRoundGlasses = unlockedItems.includes("smart_glasses_round")
-  const canUseSquareGlasses = unlockedItems.includes("smart_glasses_square")
-  const canUseGreenHoodie = unlockedItems.includes("yanbo_hoodie_green")
-  const canUseClassroomBackground = unlockedItems.includes("background_classroom")
-  const canUseLibraryBackground = unlockedItems.includes("background_library")
-
   const groupedShopItems = useMemo(() => {
-    return shopItems.reduce<Record<string, ShopItem[]>>((groups, item) => {
-      if (!groups[item.category]) groups[item.category] = []
-      groups[item.category].push(item)
-      return groups
+    return shopItems.reduce<Record<string, ShopItem[]>>((currentGroups, item) => {
+      if (!currentGroups[item.category]) currentGroups[item.category] = []
+      currentGroups[item.category].push(item)
+      return currentGroups
     }, {})
   }, [shopItems])
+
+  const sortedShopCategories = useMemo(() => {
+    return Object.keys(groupedShopItems).sort((categoryA, categoryB) => {
+      const indexA = shopCategoryOrder.indexOf(categoryA)
+      const indexB = shopCategoryOrder.indexOf(categoryB)
+      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB)
+    })
+  }, [groupedShopItems])
 
   const unlockedCount = useMemo(() => {
     return new Set([...Array.from(freeStarterItemKeys), ...unlockedItems]).size
   }, [unlockedItems])
+
+  const shopItemCount = shopItems.length
+  const affordableCount = shopItems.filter(
+    (item) => !isShopItemUnlocked(item.item_key) && coins >= item.price
+  ).length
 
   if (loading) {
     return (
@@ -397,52 +661,21 @@ export default function AvatarPage() {
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
-                  YanBo Learning
+                  YanBo Learning rewards
                 </p>
                 <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
                   <span className="text-pink-500">Yan</span>
-                  <span className="text-yellow-400">Bo</span> Avatar Builder
+                  <span className="text-yellow-400">Bo</span> Avatar Studio
                 </h1>
                 <p className="mt-3 max-w-2xl text-lg font-medium text-slate-600">
-                  Build your learning hero, save your style, and unlock fun
-                  items as you practise.
+                  Create your learning hero, unlock new styles, and spend YanBo Coins on avatar items.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:w-[430px]">
-                <div className="rounded-3xl bg-yellow-50 p-5 ring-1 ring-yellow-200">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-yellow-800">
-                      YanBo Coins
-                    </p>
-                    <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">
-                      🪙
-                    </span>
-                  </div>
-                  <p className="mt-1 text-4xl font-black text-slate-900">
-                    {coins}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Your current balance.
-                  </p>
-                </div>
-
-                <div className="rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-blue-800">
-                      Items unlocked
-                    </p>
-                    <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">
-                      🎒
-                    </span>
-                  </div>
-                  <p className="mt-1 text-4xl font-black text-slate-900">
-                    {unlockedCount}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Clothes, glasses and backgrounds.
-                  </p>
-                </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px]">
+                <StatCard title="YanBo Coins" value={coins} icon="🪙" tone="yellow" subtitle="Current balance" />
+                <StatCard title="Unlocked" value={unlockedCount} icon="🎒" tone="blue" subtitle="Items collected" />
+                <StatCard title="Shop items" value={shopItemCount} icon="🛒" tone="pink" subtitle={`${affordableCount} affordable now`} />
               </div>
             </div>
 
@@ -484,27 +717,19 @@ export default function AvatarPage() {
           </div>
         )}
 
-        <section className="grid gap-6 xl:grid-cols-[330px_1fr_360px]">
+        <section className="grid gap-6 xl:grid-cols-[310px_1fr_420px]">
           <aside className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100 xl:sticky xl:top-6 xl:self-start">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-900">
-                  Customise
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Choose the look for your learning hero.
-                </p>
+                <h2 className="text-xl font-black text-slate-900">Customise</h2>
+                <p className="mt-1 text-sm text-slate-500">Choose your avatar style.</p>
               </div>
-              <div className="rounded-2xl bg-blue-100 px-3 py-2 text-xl">
-                ✨
-              </div>
+              <div className="rounded-2xl bg-blue-100 px-3 py-2 text-xl">✨</div>
             </div>
 
             <div className="mt-5 space-y-5">
               <div>
-                <p className="mb-2 text-sm font-bold text-slate-700">
-                  Base avatar
-                </p>
+                <p className="mb-2 text-sm font-bold text-slate-700">Base avatar</p>
                 <div className="grid grid-cols-2 gap-3">
                   <ChoiceButton
                     active={avatarConfig.base === "yan"}
@@ -526,9 +751,7 @@ export default function AvatarPage() {
               <SelectBox
                 label="Skin tone"
                 value={avatarConfig.skinTone}
-                onChange={(value) =>
-                  updateAvatar("skinTone", value as AvatarConfig["skinTone"])
-                }
+                onChange={(value) => updateAvatar("skinTone", value as AvatarConfig["skinTone"])}
                 options={[
                   { value: "light", label: "Light" },
                   { value: "medium", label: "Medium" },
@@ -540,9 +763,7 @@ export default function AvatarPage() {
                 <SelectBox
                   label="Hair style"
                   value={avatarConfig.hairStyle}
-                  onChange={(value) =>
-                    updateAvatar("hairStyle", value as AvatarConfig["hairStyle"])
-                  }
+                  onChange={(value) => updateAvatar("hairStyle", value as AvatarConfig["hairStyle"])}
                   options={[
                     { value: "short", label: "Short" },
                     { value: "medium", label: "Medium" },
@@ -553,9 +774,7 @@ export default function AvatarPage() {
                 <SelectBox
                   label="Hair colour"
                   value={avatarConfig.hairColor}
-                  onChange={(value) =>
-                    updateAvatar("hairColor", value as AvatarConfig["hairColor"])
-                  }
+                  onChange={(value) => updateAvatar("hairColor", value as AvatarConfig["hairColor"])}
                   options={[
                     { value: "brown", label: "Brown" },
                     { value: "black", label: "Black" },
@@ -568,9 +787,7 @@ export default function AvatarPage() {
               <SelectBox
                 label="Eye colour"
                 value={avatarConfig.eyeColor}
-                onChange={(value) =>
-                  updateAvatar("eyeColor", value as AvatarConfig["eyeColor"])
-                }
+                onChange={(value) => updateAvatar("eyeColor", value as AvatarConfig["eyeColor"])}
                 options={[
                   { value: "brown", label: "Brown" },
                   { value: "blue", label: "Blue" },
@@ -578,88 +795,20 @@ export default function AvatarPage() {
                 ]}
               />
 
-              <SelectBox
-                label="Glasses"
-                value={avatarConfig.glasses}
-                onChange={(value) =>
-                  updateAvatar("glasses", value as AvatarConfig["glasses"])
-                }
-                options={[
-                  { value: "none", label: "No glasses — free" },
-                  {
-                    value: "round",
-                    label: canUseRoundGlasses
-                      ? "Round glasses — unlocked"
-                      : "Round glasses — locked",
-                    disabled: !canUseRoundGlasses,
-                  },
-                  {
-                    value: "square",
-                    label: canUseSquareGlasses
-                      ? "Square glasses — unlocked"
-                      : "Square glasses — locked",
-                    disabled: !canUseSquareGlasses,
-                  },
-                ]}
-              />
-
-              <SelectBox
-                label="Top"
-                value={avatarConfig.top}
-                onChange={(value) =>
-                  updateAvatar("top", value as AvatarConfig["top"])
-                }
-                options={[
-                  { value: "yanbo_navy", label: "YanBo Navy Jumper — free" },
-                  {
-                    value: "yanbo_green",
-                    label: canUseGreenHoodie
-                      ? "YanBo Green Hoodie — unlocked"
-                      : "YanBo Green Hoodie — locked",
-                    disabled: !canUseGreenHoodie,
-                  },
-                ]}
-              />
-
-              <SelectBox
-                label="Background"
-                value={avatarConfig.background}
-                onChange={(value) =>
-                  updateAvatar(
-                    "background",
-                    value as AvatarConfig["background"]
-                  )
-                }
-                options={[
-                  { value: "plain", label: "Plain — free" },
-                  {
-                    value: "classroom",
-                    label: canUseClassroomBackground
-                      ? "Classroom — unlocked"
-                      : "Classroom — locked",
-                    disabled: !canUseClassroomBackground,
-                  },
-                  {
-                    value: "library",
-                    label: canUseLibraryBackground
-                      ? "Library — unlocked"
-                      : "Library — locked",
-                    disabled: !canUseLibraryBackground,
-                  },
-                ]}
-              />
+              <SelectBox label="Top" value={avatarConfig.top} onChange={(value) => updateAvatar("top", value)} options={getSelectOptions("top", unlockedItems)} />
+              <SelectBox label="Glasses" value={avatarConfig.glasses} onChange={(value) => updateAvatar("glasses", value)} options={getSelectOptions("glasses", unlockedItems)} />
+              <SelectBox label="Hat" value={avatarConfig.hat} onChange={(value) => updateAvatar("hat", value)} options={getSelectOptions("hat", unlockedItems)} />
+              <SelectBox label="Accessory" value={avatarConfig.accessory} onChange={(value) => updateAvatar("accessory", value)} options={getSelectOptions("accessory", unlockedItems)} />
+              <SelectBox label="Badge" value={avatarConfig.badge} onChange={(value) => updateAvatar("badge", value)} options={getSelectOptions("badge", unlockedItems)} />
+              <SelectBox label="Background" value={avatarConfig.background} onChange={(value) => updateAvatar("background", value)} options={getSelectOptions("background", unlockedItems)} />
             </div>
           </aside>
 
           <section className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-blue-100">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-900">
-                  Your avatar
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Preview your current YanBo Learning style.
-                </p>
+                <h2 className="text-xl font-black text-slate-900">Your avatar</h2>
+                <p className="mt-1 text-sm text-slate-500">Preview your current YanBo Learning style.</p>
               </div>
 
               <button
@@ -671,31 +820,29 @@ export default function AvatarPage() {
               </button>
             </div>
 
-            <div className="mt-6 flex min-h-[540px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
+            <div className="mt-6 flex min-h-[590px] items-center justify-center rounded-[2rem] bg-gradient-to-b from-blue-50 via-white to-pink-50 p-6 ring-1 ring-blue-100">
               <div className="relative flex w-full max-w-xl flex-col items-center">
-                <div className="absolute left-8 top-10 text-3xl">⭐</div>
-                <div className="absolute right-10 top-16 text-2xl">✨</div>
-                <div className="absolute bottom-16 left-12 text-3xl">📘</div>
-                <div className="absolute bottom-20 right-12 text-3xl">🏆</div>
+                <div className="absolute left-6 top-8 text-3xl">⭐</div>
+                <div className="absolute right-8 top-12 text-2xl">✨</div>
+                <div className="absolute bottom-20 left-10 text-3xl">📘</div>
+                <div className="absolute bottom-24 right-10 text-3xl">🏆</div>
 
                 <div
-                  className={`relative flex h-80 w-80 items-center justify-center overflow-hidden rounded-full border-8 border-white shadow-xl ring-8 ${
-                    avatarConfig.background === "classroom"
-                      ? "bg-amber-100 ring-amber-200"
-                      : avatarConfig.background === "library"
-                        ? "bg-sky-100 ring-sky-200"
-                        : "bg-emerald-100 ring-emerald-200"
-                  }`}
+                  className={`relative flex h-80 w-80 items-center justify-center overflow-hidden rounded-full border-8 border-white shadow-xl ring-8 ${backgroundStyle(
+                    avatarConfig.background
+                  )}`}
                 >
                   <div className="absolute inset-0 flex items-end justify-center text-8xl opacity-20">
-                    {avatarConfig.background === "classroom"
-                      ? "📚"
-                      : avatarConfig.background === "library"
-                        ? "🏛️"
-                        : "✨"}
+                    {backgroundEmoji(avatarConfig.background)}
                   </div>
 
                   <div className="relative flex flex-col items-center">
+                    {avatarConfig.hat !== "none" && (
+                      <div className="z-20 -mb-4 text-5xl drop-shadow-sm">
+                        {hatDisplay(avatarConfig.hat)}
+                      </div>
+                    )}
+
                     <div
                       className={`flex h-36 w-36 items-center justify-center rounded-full text-7xl shadow-md ${
                         avatarConfig.skinTone === "light"
@@ -727,23 +874,32 @@ export default function AvatarPage() {
                     />
 
                     {avatarConfig.glasses !== "none" && (
-                      <div className="-mt-16 mb-12 text-5xl">
-                        {avatarConfig.glasses === "round" ? "👓" : "▭▭"}
+                      <div className="-mt-16 mb-12 text-4xl drop-shadow-sm">
+                        {glassesDisplay(avatarConfig.glasses)}
                       </div>
                     )}
 
                     <div
-                      className={`mt-2 flex h-28 w-44 items-center justify-center rounded-t-[2rem] text-2xl font-black shadow-md ${
-                        avatarConfig.top === "yanbo_green"
-                          ? "bg-emerald-700 text-white"
-                          : "bg-slate-800 text-white"
-                      }`}
+                      className={`relative mt-2 flex h-28 w-48 items-center justify-center rounded-t-[2rem] text-2xl font-black shadow-md ${topStyle(
+                        avatarConfig.top
+                      )}`}
                     >
+                      {avatarConfig.badge !== "none" && (
+                        <div className="absolute right-4 top-4 rounded-full bg-white px-2 py-1 text-xs font-black text-slate-900 shadow-sm">
+                          {badgeDisplay(avatarConfig.badge)}
+                        </div>
+                      )}
                       <span>
                         <span className="text-pink-400">Y</span>an
                         <span className="text-yellow-300">B</span>o
                       </span>
                     </div>
+
+                    {avatarConfig.accessory !== "none" && (
+                      <div className="absolute -bottom-3 -right-10 rounded-3xl bg-white p-3 text-4xl shadow-lg ring-1 ring-slate-100">
+                        {accessoryDisplay(avatarConfig.accessory)}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -752,14 +908,16 @@ export default function AvatarPage() {
                     {avatarConfig.base === "yan" ? "Yan" : "Bo"} avatar
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {avatarConfig.background} background • {avatarConfig.eyeColor} eyes
+                    {getSlotLabel("background", avatarConfig.background)} • {avatarConfig.eyeColor} eyes
                   </p>
                 </div>
 
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <AvatarStyleChip label={avatarConfig.top === "yanbo_green" ? "Green hoodie" : "Navy jumper"} />
-                  <AvatarStyleChip label={avatarConfig.glasses === "none" ? "No glasses" : `${avatarConfig.glasses} glasses`} />
-                  <AvatarStyleChip label={`${avatarConfig.hairColor} hair`} />
+                  <AvatarStyleChip label={getSlotLabel("top", avatarConfig.top)} />
+                  <AvatarStyleChip label={getSlotLabel("glasses", avatarConfig.glasses)} />
+                  <AvatarStyleChip label={getSlotLabel("hat", avatarConfig.hat)} />
+                  <AvatarStyleChip label={getSlotLabel("accessory", avatarConfig.accessory)} />
+                  <AvatarStyleChip label={getSlotLabel("badge", avatarConfig.badge)} />
                 </div>
               </div>
             </div>
@@ -767,18 +925,12 @@ export default function AvatarPage() {
 
           <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
             <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Avatar Shop
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Unlock new looks with YanBo Coins.
-                  </p>
+                  <h2 className="text-xl font-black text-slate-900">Avatar Shop</h2>
+                  <p className="mt-1 text-sm text-slate-500">Unlock styles with YanBo Coins.</p>
                 </div>
-                <div className="rounded-2xl bg-yellow-100 px-3 py-2 text-xl">
-                  🛒
-                </div>
+                <div className="rounded-2xl bg-yellow-100 px-3 py-2 text-xl">🛒</div>
               </div>
 
               {shopError && (
@@ -793,12 +945,20 @@ export default function AvatarPage() {
                 </div>
               )}
 
-              <div className="mt-5 space-y-5 xl:max-h-[560px] xl:overflow-y-auto xl:pr-1">
-                {Object.entries(groupedShopItems).map(([category, items]) => (
+              <div className="mt-5 space-y-5 xl:max-h-[740px] xl:overflow-y-auto xl:pr-1">
+                {sortedShopCategories.map((category) => {
+                  const items = groupedShopItems[category] || []
+
+                  return (
                   <div key={category}>
-                    <h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">
-                      {formatCategoryName(category)}
-                    </h3>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-wide text-slate-500">
+                        {formatCategoryName(category)}
+                      </h3>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+                        {items.length} items
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       {items.map((item) => {
@@ -825,9 +985,7 @@ export default function AvatarPage() {
                             </h4>
 
                             <div className="mt-1 flex items-center justify-between gap-2">
-                              <p className="text-xs font-bold text-yellow-700">
-                                {item.price} coins
-                              </p>
+                              <p className="text-xs font-bold text-yellow-700">{item.price} coins</p>
                               {!unlocked && !canAfford && (
                                 <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">
                                   Need more
@@ -841,9 +999,7 @@ export default function AvatarPage() {
                               </div>
                             ) : (
                               <button
-                                onClick={() =>
-                                  purchaseAvatarItem(item.item_key)
-                                }
+                                onClick={() => purchaseAvatarItem(item.item_key)}
                                 disabled={purchasingItemKey === item.item_key || !canAfford}
                                 className={`mt-2 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
                                   canAfford
@@ -863,17 +1019,14 @@ export default function AvatarPage() {
                       })}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </section>
 
             <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-              <h2 className="text-lg font-black text-slate-900">
-                Earn by learning
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                A simple guide for how children collect YanBo Coins.
-              </p>
+              <h2 className="text-lg font-black text-slate-900">Earn by learning</h2>
+              <p className="mt-1 text-sm text-slate-500">A simple guide for collecting YanBo Coins.</p>
 
               <div className="mt-4 grid gap-3">
                 <RewardRule amount="3" label="Daily login reward" />
@@ -889,6 +1042,37 @@ export default function AvatarPage() {
   )
 }
 
+function StatCard({
+  title,
+  value,
+  icon,
+  subtitle,
+  tone,
+}: {
+  title: string
+  value: number
+  icon: string
+  subtitle: string
+  tone: "yellow" | "blue" | "pink"
+}) {
+  const toneClass =
+    tone === "yellow"
+      ? "bg-yellow-50 ring-yellow-200 text-yellow-800"
+      : tone === "blue"
+        ? "bg-blue-50 ring-blue-100 text-blue-800"
+        : "bg-pink-50 ring-pink-100 text-pink-800"
+
+  return (
+    <div className={`rounded-3xl p-5 ring-1 ${toneClass}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-bold">{title}</p>
+        <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">{icon}</span>
+      </div>
+      <p className="mt-1 text-4xl font-black text-slate-900">{value}</p>
+      <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
+    </div>
+  )
+}
 
 function AvatarStyleChip({ label }: { label: string }) {
   return (
@@ -952,20 +1136,14 @@ function SelectBox({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-slate-700">
-        {label}
-      </span>
+      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       >
         {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}
