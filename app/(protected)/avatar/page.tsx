@@ -1701,16 +1701,11 @@ function ShopItemThumbnail({
       <div className="absolute left-2 top-2 text-sm opacity-70">✦</div>
       <div className="absolute bottom-2 right-3 text-sm opacity-70">✧</div>
 
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/90 text-4xl shadow-md ring-1 ring-white/80 backdrop-blur">
-        {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="h-12 w-12 object-contain"
-          />
-        ) : (
-          <span>{emoji}</span>
-        )}
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 text-5xl shadow-md ring-1 ring-white/80 backdrop-blur">
+        <span className="drop-shadow-sm" aria-hidden="true">
+          {emoji}
+        </span>
+        <span className="sr-only">{item.name}</span>
       </div>
 
       <span className="absolute left-2 bottom-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-sm">
