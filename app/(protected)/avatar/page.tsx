@@ -796,6 +796,11 @@ function getPreviewLayerImageSources(
 }
 
 
+function builderOnlySources(sources: string[]) {
+  return sources.filter((source) => source.startsWith("/avatars/builder/"))
+}
+
+
 function previewBackgroundOverlay(background: string) {
   switch (background) {
     case "space":
@@ -1851,6 +1856,103 @@ function AvatarPreviewBody({
   config: AvatarConfig
   imageSources: PreviewImageSources
 }) {
+  const builderTopSources = builderOnlySources(imageSources.top)
+  const builderGlassesSources = builderOnlySources(imageSources.glasses)
+  const builderHatSources = builderOnlySources(imageSources.hat)
+  const builderBadgeSources = builderOnlySources(imageSources.badge)
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <div className="relative h-[520px] w-[330px] sm:h-[560px] sm:w-[360px]">
+        <PreviewLayerImage
+          srcs={imageSources.base}
+          alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
+          className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-2xl"
+          fallback={<CssAvatarPreviewBody config={config} imageSources={imageSources} />}
+        />
+
+        <PreviewLayerImage
+          srcs={builderTopSources}
+          alt={getSlotLabel("top", config.top)}
+          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-lg"
+          fallback={null}
+        />
+
+        {config.hat !== "none" && (
+          <div className="absolute left-1/2 top-3 z-50 flex -translate-x-1/2 items-center justify-center sm:top-4">
+            <PreviewLayerImage
+              srcs={builderHatSources}
+              alt={getSlotLabel("hat", config.hat)}
+              className="h-20 w-28 object-contain drop-shadow-xl sm:h-24 sm:w-32"
+              fallback={
+                <span className="text-6xl drop-shadow-md sm:text-7xl">
+                  {hatDisplay(config.hat)}
+                </span>
+              }
+            />
+          </div>
+        )}
+
+        {config.glasses !== "none" && (
+          <div className="absolute left-1/2 top-[5.7rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[6.1rem]">
+            <PreviewLayerImage
+              srcs={builderGlassesSources}
+              alt={getSlotLabel("glasses", config.glasses)}
+              className="h-12 w-24 object-contain drop-shadow-md sm:h-14 sm:w-28"
+              fallback={
+                <span className="text-4xl drop-shadow-sm sm:text-5xl">
+                  {glassesDisplay(config.glasses)}
+                </span>
+              }
+            />
+          </div>
+        )}
+
+        {config.badge !== "none" && (
+          <div className="absolute right-[5.4rem] top-[15.2rem] z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[5.8rem] sm:top-[16.2rem] sm:h-14 sm:w-14">
+            <PreviewLayerImage
+              srcs={builderBadgeSources}
+              alt={getSlotLabel("badge", config.badge)}
+              className="h-10 w-10 object-contain drop-shadow-sm sm:h-11 sm:w-11"
+              fallback={
+                <span className="text-[10px] font-black text-slate-900 sm:text-xs">
+                  {badgeDisplay(config.badge)}
+                </span>
+              }
+            />
+          </div>
+        )}
+
+        {config.accessory !== "none" && (
+          <div className="absolute -right-4 bottom-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white/95 p-3 shadow-xl ring-1 ring-slate-100 sm:-right-8 sm:bottom-24">
+            <PreviewLayerImage
+              srcs={imageSources.accessory}
+              alt={getSlotLabel("accessory", config.accessory)}
+              className="h-20 w-20 object-contain drop-shadow-md"
+              fallback={
+                <span className="text-6xl">
+                  {accessoryDisplay(config.accessory)}
+                </span>
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      <p className="mt-3 rounded-full bg-white/85 px-4 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+        Builder-ready Yan/Bo base avatar
+      </p>
+    </div>
+  )
+}
+
+function CssAvatarPreviewBody({
+  config,
+  imageSources,
+}: {
+  config: AvatarConfig
+  imageSources: PreviewImageSources
+}) {
   return (
     <div className="relative flex flex-col items-center">
       {config.hat !== "none" && (
@@ -1963,7 +2065,6 @@ function AvatarPreviewBody({
     </div>
   )
 }
-
 
 function PreviewLayerImage({
   srcs,
