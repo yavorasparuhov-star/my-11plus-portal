@@ -110,6 +110,14 @@ function escapeHtml(value: string | null | undefined) {
     .replaceAll("'", "&#039;")
 }
 
+function escapeCssContent(value: string | null | undefined) {
+  return String(value ?? "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function formatDateForFileName(value: string) {
   const date = new Date(value)
 
@@ -202,6 +210,9 @@ function buildPrintableHtml(
       (testNumber
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
         : "YanBo Learning Printable Custom Test")
+  )
+  const footerTestLabel = escapeCssContent(
+    testNumber ? `YanBo ${categoryLabel} Test ${testNumber}` : "YanBo Printable Test"
   )
 
   const passageBlocks = Array.from(
@@ -331,10 +342,10 @@ function buildPrintableHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 24mm 14mm 28mm 14mm;
+      margin: 22mm 13mm 26mm 13mm;
 
       @bottom-left {
-        content: "yanbo.co.uk";
+        content: "yanbo.co.uk | ${footerTestLabel}";
         font-family: Arial, Helvetica, sans-serif;
         font-size: 10pt;
         color: #374151;
@@ -784,7 +795,7 @@ function buildPrintableHtml(
       }
 
       .question-paper-page .question-image {
-        max-height: 95mm !important;
+        max-height: 90mm !important;
       }
 
       .question-paper-page .option-content img {
