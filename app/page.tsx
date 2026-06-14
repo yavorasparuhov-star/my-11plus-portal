@@ -4,6 +4,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import Header from "../components/Header"
 import Footer from "../components/Footer"
+import { EnglishIcon, MathsIcon, NVRIcon, VRIcon } from "../components/icons/PortalIcons"
 
 const hoverCardStyle = {
   transition: "all 0.25s ease",
@@ -16,25 +17,25 @@ export default function LandingPage() {
   const subjects = [
     {
       title: "English",
-      icon: "📘",
+      icon: <EnglishIcon size={46} />,
       text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
       path: "/english",
     },
     {
       title: "Maths",
-      icon: "➗",
+      icon: <MathsIcon size={46} />,
       text: "Arithmetic, fractions, reasoning, problem-solving and exam-style practice.",
       path: "/math",
     },
     {
-      title: "Verbal Reasoning",
-      icon: "🧠",
+      title: "VR",
+      icon: <VRIcon size={46} />,
       text: "Words, codes, logic, patterns and reasoning question types.",
       path: "/vr",
     },
     {
-      title: "Non-Verbal Reasoning",
-      icon: "🔷",
+      title: "NVR",
+      icon: <NVRIcon size={46} />,
       text: "Shape patterns, rotations, reflections and spatial reasoning.",
       path: "/nvr",
     },
@@ -544,8 +545,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   subjectIcon: {
-    fontSize: "40px",
-    marginBottom: "12px",
+    width: "70px",
+    height: "70px",
+    borderRadius: "22px",
+    background: "#f8fafc",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "16px",
+    boxShadow: "inset 0 0 0 1px #e5e7eb",
+    zIndex: 1,
   },
 
   subjectTitle: {
