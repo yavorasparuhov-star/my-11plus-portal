@@ -235,10 +235,21 @@ function buildPrintableHtml(
 
   const questionBlocks = downloadData.questions
     .map((question, index) => {
-      const questionText =
-        question.questionText?.trim() ||
-        question.prompt?.trim() ||
-        "Choose the correct answer."
+      const promptText = question.prompt?.trim() ?? ""
+      const rawQuestionText = question.questionText?.trim() ?? ""
+      const questionText = rawQuestionText || promptText || "Choose the correct answer."
+      const shouldShowPromptInline = Boolean(promptText && promptText !== questionText)
+      const combinedQuestionText = shouldShowPromptInline
+        ? `${promptText} ${questionText}`
+        : questionText
+
+      const hasOptionImages = question.options.some(
+        (option) => typeof option.imageUrl === "string" && option.imageUrl.trim()
+      )
+      const useCompactPrintableOptions =
+        downloadData.config.mainCategory === "math" &&
+        !hasOptionImages &&
+        question.options.length === 4
 
       const optionBlocks = question.options
         .map((option) => {
@@ -269,20 +280,15 @@ function buildPrintableHtml(
 
       return `
         <section class="question-block">
-          <div class="question-header">
-            <h3>Question ${index + 1}</h3>
-          </div>
-          ${
-            question.prompt && question.prompt.trim() !== questionText.trim()
-              ? `<p class="prompt">${escapeHtml(question.prompt)}</p>`
-              : ""
-          }
-          <p class="question-text">${escapeHtml(questionText).replaceAll(
-            "\n",
-            "<br />"
-          )}</p>
+          <p class="question-title-line">
+            <strong>Question ${index + 1}.</strong>
+            <span>${escapeHtml(combinedQuestionText).replaceAll(
+              "\n",
+              "<br />"
+            )}</span>
+          </p>
           ${questionImage}
-          <ul class="options">
+          <ul class="options${useCompactPrintableOptions ? " compact-options" : ""}">
             ${optionBlocks}
           </ul>
         </section>
@@ -543,6 +549,20 @@ function buildPrintableHtml(
       margin-bottom: 4px;
     }
 
+    .question-title-line {
+      margin: 0 0 5px;
+      font-size: 12pt;
+      line-height: 1.35;
+    }
+
+    .question-title-line strong {
+      font-weight: 800;
+    }
+
+    .question-title-line span {
+      display: inline;
+    }
+
     .question-meta {
       color: #6b7280;
       font-size: 12px;
@@ -577,6 +597,27 @@ function buildPrintableHtml(
       gap: 5px;
       margin-bottom: 4px;
       align-items: start;
+    }
+
+    .options.compact-options {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px 10px;
+      align-items: start;
+    }
+
+    .options.compact-options li {
+      display: block;
+      margin-bottom: 0;
+      min-width: 0;
+    }
+
+    .options.compact-options .option-letter {
+      margin-right: 4px;
+    }
+
+    .options.compact-options .option-content {
+      display: inline;
     }
 
     .option-letter {
@@ -782,6 +823,9 @@ function buildPrintableHtml(
         page-break-inside: avoid;
       }
 
+      .question-paper-page .question-title-line,
+      .question-paper-page .question-title-line strong,
+      .question-paper-page .question-title-line span,
       .question-paper-page .question-header h3,
       .question-paper-page .prompt,
       .question-paper-page .question-text,
@@ -792,6 +836,24 @@ function buildPrintableHtml(
       .question-paper-page .option-content span {
         font-size: 12pt !important;
         line-height: 1.35 !important;
+      }
+
+      .question-paper-page .question-title-line {
+        margin-bottom: 4px !important;
+      }
+
+      .question-paper-page .options.compact-options {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 3mm !important;
+        margin-top: 3mm !important;
+      }
+
+      .question-paper-page .options.compact-options li {
+        display: block !important;
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+        min-width: 0 !important;
       }
 
       .question-paper-page .question-image {
