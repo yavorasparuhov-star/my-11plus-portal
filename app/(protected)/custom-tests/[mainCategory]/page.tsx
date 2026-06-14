@@ -342,7 +342,7 @@ function buildPrintableHtml(
   <style>
     @page {
       size: A4 portrait;
-      margin: 22mm 13mm 26mm 13mm;
+      margin: 21mm 13mm 25mm 13mm;
 
       @bottom-left {
         content: "yanbo.co.uk | ${footerTestLabel}";
@@ -795,7 +795,7 @@ function buildPrintableHtml(
       }
 
       .question-paper-page .question-image {
-        max-height: 90mm !important;
+        max-height: 84mm !important;
       }
 
       .question-paper-page .option-content img {
