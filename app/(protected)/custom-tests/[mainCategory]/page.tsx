@@ -198,6 +198,9 @@ function buildPrintableHtml(
   const selectedCategoryLabel = escapeHtml(
     buildSelectedCategoryLabel(downloadData.config, catalog)
   )
+  const selectedDifficultyLabel = escapeHtml(
+    renderDifficultyLabel(downloadData.config.selectedDifficulty ?? "all")
+  )
   const safeUserEmail = escapeHtml(userEmail ?? "member")
   const printedDate = escapeHtml(formatDateForPrint(downloadData.createdAt))
   const timeAllowedLabel = escapeHtml(
@@ -873,6 +876,7 @@ function buildPrintableHtml(
       <div><strong>Website:</strong> yanbo.co.uk</div>
       <div><strong>Subject:</strong> ${safeCategoryLabel}</div>
       <div><strong>Categories selected:</strong> ${selectedCategoryLabel}</div>
+      <div><strong>Difficulty selected:</strong> ${selectedDifficultyLabel}</div>
       <div><strong>Time allowed:</strong> ${timeAllowedLabel}</div>
       <div><strong>Questions:</strong> ${downloadData.questions.length}</div>
       <div><strong>Downloaded:</strong> ${printedDate}</div>
