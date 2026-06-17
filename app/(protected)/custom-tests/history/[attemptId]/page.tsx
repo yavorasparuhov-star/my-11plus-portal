@@ -404,8 +404,22 @@ export default function CustomTestAttemptDetailsPage() {
     }, 0)
   }, [items, answerSelections])
 
+  const unansweredCount = Math.max(items.length - answeredCount, 0)
+
   async function handleSubmitPrintableResults() {
     if (!attemptId || !attempt || submitting) return
+
+    if (unansweredCount > 0) {
+      const confirmed = window.confirm(
+        `There ${unansweredCount === 1 ? "is" : "are"} ${unansweredCount} unanswered question${
+          unansweredCount === 1 ? "" : "s"
+        }. Blank answers will be counted as incorrect. Do you still want to submit the results?`
+      )
+
+      if (!confirmed) {
+        return
+      }
+    }
 
     try {
       setSubmitting(true)
@@ -751,70 +765,6 @@ export default function CustomTestAttemptDetailsPage() {
           </div>
         </section>
 
-        {canEnterPrintableResults ? (
-          <section
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 16,
-              padding: 20,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-              marginBottom: 24,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <h2 style={{ margin: "0 0 6px 0", color: "#111827", fontSize: "1.2rem" }}>
-                  Result entry
-                </h2>
-                <p style={{ margin: 0, color: "#6b7280", lineHeight: 1.5 }}>
-                  Answers entered: {answeredCount} / {items.length}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSubmitPrintableResults}
-                disabled={submitting || items.length === 0}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #2563eb",
-                  background: submitting ? "#93c5fd" : "#2563eb",
-                  color: "#ffffff",
-                  fontWeight: 800,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                }}
-              >
-                {submitting ? "Saving..." : "Save Results"}
-              </button>
-            </div>
-
-            {submitErrorMessage ? (
-              <div
-                style={{
-                  marginTop: 14,
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  color: "#991b1b",
-                }}
-              >
-                {submitErrorMessage}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
         <section
           style={{
             background: "#ffffff",
@@ -829,13 +779,13 @@ export default function CustomTestAttemptDetailsPage() {
           </h2>
 
           <div style={{ display: "grid", gap: 14 }}>
-            {items.map((item) => {
+            {items.map((item, displayIndex) => {
               const snapshot = parseQuestionSnapshot(item.question_snapshot)
               const currentAnswer = answerSelections[item.question_index] ?? null
 
               return (
                 <div
-                  key={item.question_index}
+                  key={`${item.question_index}-${displayIndex}`}
                   style={{
                     border: "1px solid #e5e7eb",
                     borderRadius: 14,
@@ -853,7 +803,7 @@ export default function CustomTestAttemptDetailsPage() {
                     }}
                   >
                     <div style={{ fontWeight: 700, color: "#111827" }}>
-                      Question {item.question_index + 1}
+                      Question {displayIndex + 1}
                     </div>
 
                     <div
@@ -1138,6 +1088,73 @@ export default function CustomTestAttemptDetailsPage() {
             })}
           </div>
         </section>
+
+        {canEnterPrintableResults ? (
+          <section
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 20,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+              marginTop: 24,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: "0 0 6px 0", color: "#111827", fontSize: "1.2rem" }}>
+                  Ready to save results?
+                </h2>
+                <p style={{ margin: 0, color: "#6b7280", lineHeight: 1.5 }}>
+                  Answers entered: {answeredCount} / {items.length}
+                  {unansweredCount > 0
+                    ? ` — ${unansweredCount} unanswered question${unansweredCount === 1 ? "" : "s"}`
+                    : " — all questions answered"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSubmitPrintableResults}
+                disabled={submitting || items.length === 0}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #2563eb",
+                  background: submitting ? "#93c5fd" : "#2563eb",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Saving..." : "Save Results"}
+              </button>
+            </div>
+
+            {submitErrorMessage ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#991b1b",
+                }}
+              >
+                {submitErrorMessage}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </div>
     </main>
   )

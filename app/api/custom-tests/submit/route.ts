@@ -98,11 +98,9 @@ function isDownloadedAttemptStatus(value: string | null | undefined) {
 }
 
 function isAlreadyMarkedAttempt(attempt: ExistingAttemptRow) {
-  return (
-    typeof attempt.score_percent === "number" ||
-    typeof attempt.correct_answers === "number" ||
-    Boolean(attempt.completed_at)
-  )
+  const normalized = (attempt.status ?? "").toLowerCase()
+
+  return normalized.includes("marked") || normalized === "completed"
 }
 
 function validateOnlineBody(
