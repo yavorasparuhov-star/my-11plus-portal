@@ -1373,6 +1373,7 @@ export default function CustomTestBuilderPage() {
               textDecoration: "none",
               fontWeight: 700,
               whiteSpace: "nowrap",
+              marginLeft: "auto",
             }}
           >
             View History
