@@ -222,8 +222,26 @@ function getAttemptScorePercent(attempt: CustomTestAttemptRow) {
   return null
 }
 
+function getDisplayScorePercent(attempt: CustomTestAttemptRow) {
+  const scorePercent = getAttemptScorePercent(attempt)
+
+  if (scorePercent === null) {
+    return null
+  }
+
+  // Downloaded printable tests are created before the parent/student enters answers.
+  // Those unmarked rows can look like 0%, so keep them as "Needs marking" until
+  // there is a positive saved score. This avoids treating unfinished printable
+  // tests as real results for History averages, and later for Progress/Review sync.
+  if (isDownloadedAttempt(attempt) && scorePercent <= 0) {
+    return null
+  }
+
+  return scorePercent
+}
+
 function hasAttemptScore(attempt: CustomTestAttemptRow) {
-  return getAttemptScorePercent(attempt) !== null
+  return getDisplayScorePercent(attempt) !== null
 }
 
 function getAttemptMainCategory(attempt: CustomTestAttemptRow) {
@@ -405,7 +423,7 @@ export default function CustomTestHistoryPage() {
       scoredAttempts.length > 0
         ? Math.round(
             scoredAttempts.reduce(
-              (sum, item) => sum + (getAttemptScorePercent(item) ?? 0),
+              (sum, item) => sum + (getDisplayScorePercent(item) ?? 0),
               0
             ) / scoredAttempts.length
           )
@@ -776,7 +794,7 @@ export default function CustomTestHistoryPage() {
                 const attemptNumber = attemptDisplayNumbers[attempt.id]
                 const downloadedAttempt = isDownloadedAttempt(attempt)
                 const normalizedStatus = (attempt.status ?? "").toLowerCase()
-                const scorePercent = getAttemptScorePercent(attempt)
+                const scorePercent = getDisplayScorePercent(attempt)
                 const printableResultsAlreadyEntered =
                   normalizedStatus.includes("marked") ||
                   normalizedStatus.includes("completed") ||
