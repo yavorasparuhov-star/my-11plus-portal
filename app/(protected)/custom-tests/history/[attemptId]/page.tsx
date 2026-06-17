@@ -647,7 +647,7 @@ export default function CustomTestAttemptDetailsPage() {
                 : "This downloaded printable test can be marked here."}
             </strong>{" "}
             Enter or update the student&apos;s answers below. Blank answers are allowed
-            and will be counted as incorrect. Correct answers will appear after
+            and will be counted as incorrect. The score will appear after
             results are saved.
           </section>
         ) : null}
@@ -726,9 +726,7 @@ export default function CustomTestAttemptDetailsPage() {
                 Score
               </div>
               <div style={{ color: "#111827", fontWeight: 700 }}>
-                {canEnterPrintableResults
-                  ? "Not marked yet"
-                  : typeof attempt.score_percent === "number"
+                {typeof attempt.score_percent === "number"
                   ? `${Math.round(attempt.score_percent)}%`
                   : "Not marked yet"}
               </div>
@@ -739,8 +737,8 @@ export default function CustomTestAttemptDetailsPage() {
                 Correct answers
               </div>
               <div style={{ color: "#111827", fontWeight: 600 }}>
-                {canEnterPrintableResults ? "—" : attempt.correct_answers ?? "—"}
-                {!canEnterPrintableResults && typeof attempt.question_count === "number"
+                {attempt.correct_answers ?? "—"}
+                {typeof attempt.question_count === "number"
                   ? ` / ${attempt.question_count}`
                   : ""}
               </div>
@@ -782,170 +780,49 @@ export default function CustomTestAttemptDetailsPage() {
             background: "#ffffff",
             border: "1px solid #e5e7eb",
             borderRadius: 16,
-            padding: 24,
+            padding: canEnterPrintableResults ? 18 : 24,
             boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
           }}
         >
           <h2 style={{ margin: "0 0 16px 0", color: "#111827", fontSize: "1.25rem" }}>
-            Questions
+            {canEnterPrintableResults ? "Printable Answer Sheet" : "Questions"}
           </h2>
 
-          <div style={{ display: "grid", gap: 14 }}>
-            {items.map((item, displayIndex) => {
-              const snapshot = parseQuestionSnapshot(item.question_snapshot)
-              const currentAnswer = answerSelections[item.question_index] ?? null
+          {canEnterPrintableResults ? (
+            <>
+              <p style={{ margin: "0 0 16px 0", color: "#6b7280", lineHeight: 1.5 }}>
+                Select the student&apos;s answer for each question. Use
+                <strong> Unanswered</strong> when the question was left blank.
+              </p>
 
-              return (
-                <div
-                  key={`${item.question_index}-${displayIndex}`}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 14,
-                    padding: 16,
-                    background: "#ffffff",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, color: "#111827" }}>
-                      Question {displayIndex + 1}
-                    </div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {items.map((item, displayIndex) => {
+                  const currentAnswer = answerSelections[item.question_index] ?? null
+                  const snapshot = parseQuestionSnapshot(item.question_snapshot)
+                  const correctAnswer = item.correct_answer ?? snapshot.correctAnswer ?? null
+                  const hasSavedMark =
+                    printableResultSaved &&
+                    (item.selected_answer !== null || item.is_correct !== null)
+                  const rowIsCorrect =
+                    hasSavedMark && currentAnswer !== null && currentAnswer === correctAnswer
+                  const rowIsIncorrect = hasSavedMark && !rowIsCorrect
 
+                  return (
                     <div
+                      key={`${item.question_index}-${displayIndex}`}
                       style={{
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        background: canEnterPrintableResults
-                          ? printableResultSaved && currentAnswer
-                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
-                              ? "#f0fdf4"
-                              : "#fef2f2"
-                            : "#eff6ff"
-                          : item.is_correct
-                          ? "#f0fdf4"
-                          : "#fef2f2",
-                        border: canEnterPrintableResults
-                          ? printableResultSaved && currentAnswer
-                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
-                              ? "1px solid #bbf7d0"
-                              : "1px solid #fecaca"
-                            : "1px solid #bfdbfe"
-                          : item.is_correct
-                          ? "1px solid #bbf7d0"
-                          : "1px solid #fecaca",
-                        color: canEnterPrintableResults
-                          ? printableResultSaved && currentAnswer
-                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
-                              ? "#166534"
-                              : "#991b1b"
-                            : "#1d4ed8"
-                          : item.is_correct
-                          ? "#166534"
-                          : "#991b1b",
-                        fontWeight: 700,
-                        fontSize: "0.9rem",
-                      }}
-                    >
-                      {canEnterPrintableResults
-                        ? printableResultSaved && currentAnswer
-                          ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
-                            ? "Correct"
-                            : "Incorrect"
-                          : currentAnswer ?? "Awaiting answer"
-                        : item.is_correct
-                        ? "Correct"
-                        : "Incorrect"}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 16,
-                      flexWrap: "wrap",
-                      marginBottom: 12,
-                      color: "#4b5563",
-                      fontSize: "0.92rem",
-                    }}
-                  >
-                    <div>
-                      <strong>Topic:</strong>{" "}
-                      {formatTopicLabel(item.topic_key, parsedConfig.mainCategory)}
-                    </div>
-
-                    <div>
-                      <strong>Subtopic:</strong> {formatTopicLabel(item.subtopic_key)}
-                    </div>
-                  </div>
-
-                  {snapshot.prompt ? (
-                    <div
-                      style={{
-                        color: "#6b7280",
-                        marginBottom: 8,
-                        fontSize: "0.95rem",
-                      }}
-                    >
-                      {snapshot.prompt}
-                    </div>
-                  ) : null}
-
-                  {snapshot.passageText ? (
-                    <div
-                      style={{
-                        marginBottom: 12,
-                        padding: 14,
+                        display: "grid",
+                        gridTemplateColumns: "minmax(92px, 120px) 1fr auto",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 12px",
                         borderRadius: 12,
-                        background: "#f9fafb",
                         border: "1px solid #e5e7eb",
-                        color: "#374151",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-wrap",
+                        background: displayIndex % 2 === 0 ? "#ffffff" : "#f9fafb",
                       }}
                     >
-                      {snapshot.passageText}
-                    </div>
-                  ) : null}
-
-                  {snapshot.questionText ? (
-                    <div
-                      style={{
-                        color: "#111827",
-                        fontWeight: 600,
-                        lineHeight: 1.7,
-                        marginBottom: 12,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {snapshot.questionText}
-                    </div>
-                  ) : null}
-
-                  {canEnterPrintableResults ? (
-                    <div
-                      style={{
-                        marginBottom: 14,
-                        padding: 12,
-                        borderRadius: 12,
-                        background: "#f9fafb",
-                        border: "1px solid #e5e7eb",
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: "#374151",
-                          fontWeight: 700,
-                          marginBottom: 10,
-                        }}
-                      >
-                        Student answer
+                      <div style={{ fontWeight: 800, color: "#111827" }}>
+                        Question {displayIndex + 1}
                       </div>
 
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -964,7 +841,7 @@ export default function CustomTestAttemptDetailsPage() {
                               }
                               style={{
                                 width: 44,
-                                height: 40,
+                                height: 38,
                                 borderRadius: 10,
                                 border: selected
                                   ? "2px solid #2563eb"
@@ -989,7 +866,7 @@ export default function CustomTestAttemptDetailsPage() {
                             }))
                           }
                           style={{
-                            height: 40,
+                            height: 38,
                             padding: "0 12px",
                             borderRadius: 10,
                             border:
@@ -998,147 +875,238 @@ export default function CustomTestAttemptDetailsPage() {
                                 : "1px solid #d1d5db",
                             background: currentAnswer === null ? "#f3f4f6" : "#ffffff",
                             color: "#111827",
-                            fontWeight: 700,
+                            fontWeight: 800,
                             cursor: "pointer",
                           }}
                         >
-                          No answer
+                          Unanswered
                         </button>
                       </div>
-                    </div>
-                  ) : null}
 
-                  {snapshot.options && snapshot.options.length > 0 ? (
-                    <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-                      {snapshot.options.map((option) => {
-                        const correctAnswer =
-                          item.correct_answer ?? snapshot.correctAnswer ?? null
-                        const isSelected = canEnterPrintableResults
-                          ? currentAnswer === option.key
-                          : item.selected_answer === option.key
-                        const isCorrect = correctAnswer === option.key
-                        const isSelectedCorrect =
-                          printableResultSaved && isSelected && isCorrect
-                        const isSelectedIncorrect =
-                          printableResultSaved && isSelected && !isCorrect
-
-                        return (
-                          <div
-                            key={option.key}
-                            style={{
-                              padding: "12px 14px",
-                              borderRadius: 12,
-                              border: canEnterPrintableResults
-                                ? isSelectedCorrect
-                                  ? "2px solid #86efac"
-                                  : isSelectedIncorrect
-                                  ? "2px solid #fca5a5"
-                                  : isSelected
-                                  ? "2px solid #2563eb"
-                                  : printableResultSaved && isCorrect
-                                  ? "2px solid #86efac"
-                                  : "1px solid #d1d5db"
-                                : isCorrect
-                                ? "2px solid #86efac"
-                                : isSelected
-                                ? "2px solid #fca5a5"
-                                : "1px solid #d1d5db",
-                              background: canEnterPrintableResults
-                                ? isSelectedCorrect
-                                  ? "#f0fdf4"
-                                  : isSelectedIncorrect
-                                  ? "#fef2f2"
-                                  : isSelected
-                                  ? "#eff6ff"
-                                  : printableResultSaved && isCorrect
-                                  ? "#f0fdf4"
-                                  : "#ffffff"
-                                : isCorrect
-                                ? "#f0fdf4"
-                                : isSelected
-                                ? "#fef2f2"
-                                : "#ffffff",
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color: "#111827",
-                                marginBottom: option.text || option.imageUrl ? 6 : 0,
-                              }}
-                            >
-                              {option.key}
-                              {(!canEnterPrintableResults || printableResultSaved) && isCorrect
-                                ? " — Correct answer"
-                                : ""}
-                              {!canEnterPrintableResults && !isCorrect && isSelected
-                                ? " — Your answer"
-                                : ""}
-                              {canEnterPrintableResults && isSelected
-                                ? printableResultSaved
-                                  ? isCorrect
-                                    ? " — Your answer"
-                                    : " — Your answer"
-                                  : " — Selected"
-                                : ""}
-                            </div>
-
-                            {option.text ? (
-                              <div style={{ color: "#374151", lineHeight: 1.6 }}>
-                                {getOptionText(option)}
-                              </div>
-                            ) : null}
-
-                            {option.imageUrl ? (
-                              <img
-                                src={option.imageUrl}
-                                alt={`Option ${option.key}`}
-                                style={{
-                                  display: "block",
-                                  maxWidth: "100%",
-                                  maxHeight: 180,
-                                  objectFit: "contain",
-                                  marginTop: 8,
-                                }}
-                              />
-                            ) : null}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : null}
-
-                  {!canEnterPrintableResults ? (
-                    <>
-                      <div style={{ color: "#111827", fontWeight: 600 }}>
-                        Your answer: {item.selected_answer ?? "No answer"}
-                      </div>
-
-                      <div style={{ color: "#111827", fontWeight: 600, marginTop: 4 }}>
-                        Correct answer: {item.correct_answer ?? snapshot.correctAnswer ?? "—"}
-                      </div>
-
-                      {snapshot.explanation ? (
+                      {hasSavedMark ? (
                         <div
                           style={{
-                            marginTop: 10,
-                            padding: 12,
-                            borderRadius: 10,
-                            background: "#f9fafb",
-                            color: "#4b5563",
-                            lineHeight: 1.6,
-                            whiteSpace: "pre-wrap",
+                            justifySelf: "end",
+                            padding: "5px 9px",
+                            borderRadius: 999,
+                            background: rowIsCorrect ? "#f0fdf4" : "#fef2f2",
+                            border: rowIsCorrect
+                              ? "1px solid #bbf7d0"
+                              : "1px solid #fecaca",
+                            color: rowIsCorrect ? "#166534" : "#991b1b",
+                            fontWeight: 800,
+                            fontSize: "0.82rem",
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {snapshot.explanation}
+                          {rowIsCorrect ? "Correct" : "Incorrect"}
                         </div>
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
+                      ) : (
+                        <div style={{ width: 1 }} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "grid", gap: 14 }}>
+              {items.map((item, displayIndex) => {
+                const snapshot = parseQuestionSnapshot(item.question_snapshot)
+
+                return (
+                  <div
+                    key={`${item.question_index}-${displayIndex}`}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 14,
+                      padding: 16,
+                      background: "#ffffff",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: "#111827" }}>
+                        Question {displayIndex + 1}
+                      </div>
+
+                      <div
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background: item.is_correct ? "#f0fdf4" : "#fef2f2",
+                          border: item.is_correct
+                            ? "1px solid #bbf7d0"
+                            : "1px solid #fecaca",
+                          color: item.is_correct ? "#166534" : "#991b1b",
+                          fontWeight: 700,
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        {item.is_correct ? "Correct" : "Incorrect"}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 16,
+                        flexWrap: "wrap",
+                        marginBottom: 12,
+                        color: "#4b5563",
+                        fontSize: "0.92rem",
+                      }}
+                    >
+                      <div>
+                        <strong>Topic:</strong>{" "}
+                        {formatTopicLabel(item.topic_key, parsedConfig.mainCategory)}
+                      </div>
+
+                      <div>
+                        <strong>Subtopic:</strong> {formatTopicLabel(item.subtopic_key)}
+                      </div>
+                    </div>
+
+                    {snapshot.prompt ? (
+                      <div
+                        style={{
+                          color: "#6b7280",
+                          marginBottom: 8,
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        {snapshot.prompt}
+                      </div>
+                    ) : null}
+
+                    {snapshot.passageText ? (
+                      <div
+                        style={{
+                          marginBottom: 12,
+                          padding: 14,
+                          borderRadius: 12,
+                          background: "#f9fafb",
+                          border: "1px solid #e5e7eb",
+                          color: "#374151",
+                          lineHeight: 1.7,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {snapshot.passageText}
+                      </div>
+                    ) : null}
+
+                    {snapshot.questionText ? (
+                      <div
+                        style={{
+                          color: "#111827",
+                          fontWeight: 600,
+                          lineHeight: 1.7,
+                          marginBottom: 12,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {snapshot.questionText}
+                      </div>
+                    ) : null}
+
+                    {snapshot.options && snapshot.options.length > 0 ? (
+                      <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                        {snapshot.options.map((option) => {
+                          const correctAnswer = item.correct_answer ?? snapshot.correctAnswer ?? null
+                          const isSelected = item.selected_answer === option.key
+                          const isCorrect = correctAnswer === option.key
+
+                          return (
+                            <div
+                              key={option.key}
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: 12,
+                                border: isCorrect
+                                  ? "2px solid #86efac"
+                                  : isSelected
+                                  ? "2px solid #fca5a5"
+                                  : "1px solid #d1d5db",
+                                background: isCorrect
+                                  ? "#f0fdf4"
+                                  : isSelected
+                                  ? "#fef2f2"
+                                  : "#ffffff",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontWeight: 700,
+                                  color: "#111827",
+                                  marginBottom: option.text || option.imageUrl ? 6 : 0,
+                                }}
+                              >
+                                {option.key}
+                                {isCorrect ? " — Correct answer" : ""}
+                                {!isCorrect && isSelected ? " — Your answer" : ""}
+                              </div>
+
+                              {option.text ? (
+                                <div style={{ color: "#374151", lineHeight: 1.6 }}>
+                                  {getOptionText(option)}
+                                </div>
+                              ) : null}
+
+                              {option.imageUrl ? (
+                                <img
+                                  src={option.imageUrl}
+                                  alt={`Option ${option.key}`}
+                                  style={{
+                                    display: "block",
+                                    maxWidth: "100%",
+                                    maxHeight: 180,
+                                    objectFit: "contain",
+                                    marginTop: 8,
+                                  }}
+                                />
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+
+                    <div style={{ color: "#111827", fontWeight: 600 }}>
+                      Your answer: {item.selected_answer ?? "No answer"}
+                    </div>
+
+                    <div style={{ color: "#111827", fontWeight: 600, marginTop: 4 }}>
+                      Correct answer: {item.correct_answer ?? snapshot.correctAnswer ?? "—"}
+                    </div>
+
+                    {snapshot.explanation ? (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          padding: 12,
+                          borderRadius: 10,
+                          background: "#f9fafb",
+                          color: "#4b5563",
+                          lineHeight: 1.6,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {snapshot.explanation}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         {canEnterPrintableResults ? (
