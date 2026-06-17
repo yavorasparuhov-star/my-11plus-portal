@@ -247,12 +247,10 @@ function isDownloadedAttempt(attempt: AttemptRow) {
   return normalized.includes("download") || normalized.includes("print")
 }
 
-function isMarkedAttempt(attempt: AttemptRow) {
-  return (
-    typeof attempt.score_percent === "number" ||
-    typeof attempt.correct_answers === "number" ||
-    Boolean(attempt.completed_at)
-  )
+function printableResultsAlreadyEntered(attempt: AttemptRow) {
+  const normalized = (attempt.status ?? "").toLowerCase()
+
+  return normalized.includes("marked") || normalized.includes("completed")
 }
 
 function formatAttemptStatus(value: string | null | undefined) {
@@ -396,7 +394,9 @@ export default function CustomTestAttemptDetailsPage() {
   const parsedConfig = useMemo(() => parseAttemptConfig(attempt?.config), [attempt])
 
   const canEnterPrintableResults =
-    attempt !== null && isDownloadedAttempt(attempt) && !isMarkedAttempt(attempt)
+    attempt !== null &&
+    isDownloadedAttempt(attempt) &&
+    !printableResultsAlreadyEntered(attempt)
 
   const answeredCount = useMemo(() => {
     return items.reduce((total, item) => {
@@ -700,7 +700,9 @@ export default function CustomTestAttemptDetailsPage() {
                 Score
               </div>
               <div style={{ color: "#111827", fontWeight: 700 }}>
-                {typeof attempt.score_percent === "number"
+                {canEnterPrintableResults
+                  ? "Not marked yet"
+                  : typeof attempt.score_percent === "number"
                   ? `${Math.round(attempt.score_percent)}%`
                   : "Not marked yet"}
               </div>
@@ -711,8 +713,8 @@ export default function CustomTestAttemptDetailsPage() {
                 Correct answers
               </div>
               <div style={{ color: "#111827", fontWeight: 600 }}>
-                {attempt.correct_answers ?? "—"}
-                {typeof attempt.question_count === "number"
+                {canEnterPrintableResults ? "—" : attempt.correct_answers ?? "—"}
+                {!canEnterPrintableResults && typeof attempt.question_count === "number"
                   ? ` / ${attempt.question_count}`
                   : ""}
               </div>

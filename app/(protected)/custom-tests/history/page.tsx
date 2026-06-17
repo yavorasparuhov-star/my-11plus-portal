@@ -757,8 +757,12 @@ export default function CustomTestHistoryPage() {
                 const config = parseAttemptConfig(attempt.config)
                 const attemptNumber = attemptDisplayNumbers[attempt.id]
                 const downloadedAttempt = isDownloadedAttempt(attempt)
+                const normalizedStatus = (attempt.status ?? "").toLowerCase()
+                const printableResultsAlreadyEntered =
+                  normalizedStatus.includes("marked") ||
+                  normalizedStatus.includes("completed")
                 const canEnterResults =
-                  downloadedAttempt && typeof attempt.score_percent !== "number"
+                  downloadedAttempt && !printableResultsAlreadyEntered
                 const attemptType = formatAttemptType(attempt)
                 const attemptDateLabel = downloadedAttempt ? "Downloaded" : "Completed"
 
@@ -812,7 +816,9 @@ export default function CustomTestHistoryPage() {
                           fontWeight: 700,
                         }}
                       >
-                        {typeof attempt.score_percent === "number"
+                        {canEnterResults
+                          ? "Needs marking"
+                          : typeof attempt.score_percent === "number"
                           ? `${Math.round(attempt.score_percent)}%`
                           : attemptType}
                       </div>
