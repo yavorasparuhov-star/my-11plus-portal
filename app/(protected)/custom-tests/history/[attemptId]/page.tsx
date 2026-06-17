@@ -250,7 +250,11 @@ function isDownloadedAttempt(attempt: AttemptRow) {
 function printableResultsAlreadyEntered(attempt: AttemptRow) {
   const normalized = (attempt.status ?? "").toLowerCase()
 
-  return normalized.includes("marked") || normalized.includes("completed")
+  return (
+    normalized.includes("marked") ||
+    normalized.includes("completed") ||
+    Boolean(attempt.completed_at)
+  )
 }
 
 function formatAttemptStatus(value: string | null | undefined) {

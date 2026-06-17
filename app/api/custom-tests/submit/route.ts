@@ -100,7 +100,11 @@ function isDownloadedAttemptStatus(value: string | null | undefined) {
 function isAlreadyMarkedAttempt(attempt: ExistingAttemptRow) {
   const normalized = (attempt.status ?? "").toLowerCase()
 
-  return normalized.includes("marked") || normalized === "completed"
+  return (
+    normalized.includes("marked") ||
+    normalized === "completed" ||
+    Boolean(attempt.completed_at)
+  )
 }
 
 function validateOnlineBody(
@@ -450,7 +454,6 @@ async function submitPrintableCustomTestResults({
   const completedAt = new Date().toISOString()
 
   const updatePayload: Record<string, unknown> = {
-    status: "printable_marked",
     question_count: attempt.question_count ?? questionCount,
     correct_answers: correctAnswers,
     score_percent: scorePercent,

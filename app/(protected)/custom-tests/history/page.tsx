@@ -760,7 +760,8 @@ export default function CustomTestHistoryPage() {
                 const normalizedStatus = (attempt.status ?? "").toLowerCase()
                 const printableResultsAlreadyEntered =
                   normalizedStatus.includes("marked") ||
-                  normalizedStatus.includes("completed")
+                  normalizedStatus.includes("completed") ||
+                  Boolean(attempt.completed_at)
                 const canEnterResults =
                   downloadedAttempt && !printableResultsAlreadyEntered
                 const attemptType = formatAttemptType(attempt)
