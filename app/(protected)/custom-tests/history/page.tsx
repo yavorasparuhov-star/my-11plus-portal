@@ -206,6 +206,26 @@ function formatAttemptStatus(value: string | null | undefined) {
     .join(" ")
 }
 
+function getAttemptScorePercent(attempt: CustomTestAttemptRow) {
+  if (typeof attempt.score_percent === "number") {
+    return attempt.score_percent
+  }
+
+  if (
+    typeof attempt.correct_answers === "number" &&
+    typeof attempt.question_count === "number" &&
+    attempt.question_count > 0
+  ) {
+    return (attempt.correct_answers / attempt.question_count) * 100
+  }
+
+  return null
+}
+
+function hasAttemptScore(attempt: CustomTestAttemptRow) {
+  return getAttemptScorePercent(attempt) !== null
+}
+
 function getAttemptMainCategory(attempt: CustomTestAttemptRow) {
   const config = parseAttemptConfig(attempt.config)
 
@@ -379,15 +399,13 @@ export default function CustomTestHistoryPage() {
       0
     )
 
-    const scoredAttempts = filteredAttempts.filter(
-      (item) => typeof item.score_percent === "number"
-    )
+    const scoredAttempts = filteredAttempts.filter(hasAttemptScore)
 
     const averageScore =
       scoredAttempts.length > 0
         ? Math.round(
             scoredAttempts.reduce(
-              (sum, item) => sum + (item.score_percent ?? 0),
+              (sum, item) => sum + (getAttemptScorePercent(item) ?? 0),
               0
             ) / scoredAttempts.length
           )
@@ -758,12 +776,11 @@ export default function CustomTestHistoryPage() {
                 const attemptNumber = attemptDisplayNumbers[attempt.id]
                 const downloadedAttempt = isDownloadedAttempt(attempt)
                 const normalizedStatus = (attempt.status ?? "").toLowerCase()
+                const scorePercent = getAttemptScorePercent(attempt)
                 const printableResultsAlreadyEntered =
                   normalizedStatus.includes("marked") ||
                   normalizedStatus.includes("completed") ||
-                  Boolean(attempt.completed_at) ||
-                  typeof attempt.score_percent === "number" ||
-                  typeof attempt.correct_answers === "number"
+                  scorePercent !== null
                 const canEnterResults = downloadedAttempt
                 const attemptType = formatAttemptType(attempt)
                 const attemptDateLabel = downloadedAttempt ? "Downloaded" : "Completed"
@@ -818,10 +835,10 @@ export default function CustomTestHistoryPage() {
                           fontWeight: 700,
                         }}
                       >
-                        {canEnterResults
+                        {scorePercent !== null
+                          ? `${Math.round(scorePercent)}%`
+                          : canEnterResults
                           ? "Needs marking"
-                          : typeof attempt.score_percent === "number"
-                          ? `${Math.round(attempt.score_percent)}%`
                           : attemptType}
                       </div>
                     </div>
