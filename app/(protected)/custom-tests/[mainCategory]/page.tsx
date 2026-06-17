@@ -1340,15 +1340,43 @@ export default function CustomTestBuilderPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-            {catalog.label} Custom Test Builder
-          </h1>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 24,
+          }}
+        >
+          <div>
+            <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
+              {catalog.label} Custom Test Builder
+            </h1>
 
-          <p style={{ margin: "8px 0 0 0", color: "#4b5563", lineHeight: 1.6 }}>
-            Choose the topics, difficulty and length, then select whether the student
-            wants to complete the test online or download a printable paper.
-          </p>
+            <p style={{ margin: "8px 0 0 0", color: "#4b5563", lineHeight: 1.6 }}>
+              Choose the topics, difficulty and length, then select whether the student
+              wants to complete the test online or download a printable paper.
+            </p>
+          </div>
+
+          <Link
+            href="/custom-tests/history"
+            style={{
+              display: "inline-block",
+              padding: "12px 18px",
+              borderRadius: 10,
+              border: "1px solid #d1d5db",
+              background: "#ffffff",
+              color: "#111827",
+              textDecoration: "none",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            View History
+          </Link>
         </div>
 
         <section
@@ -1641,9 +1669,23 @@ export default function CustomTestBuilderPage() {
                   background: "#f0fdf4",
                   border: "1px solid #bbf7d0",
                   color: "#166534",
+                  lineHeight: 1.5,
                 }}
               >
-                {successMessage}
+                <div>{successMessage}</div>
+
+                <Link
+                  href="/custom-tests/history"
+                  style={{
+                    display: "inline-block",
+                    marginTop: 10,
+                    color: "#14532d",
+                    fontWeight: 800,
+                    textDecoration: "underline",
+                  }}
+                >
+                  View this in Custom Test History
+                </Link>
               </div>
             ) : null}
 
