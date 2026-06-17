@@ -756,10 +756,11 @@ export default function CustomTestHistoryPage() {
               {filteredAttempts.map((attempt) => {
                 const config = parseAttemptConfig(attempt.config)
                 const attemptNumber = attemptDisplayNumbers[attempt.id]
+                const downloadedAttempt = isDownloadedAttempt(attempt)
+                const canEnterResults =
+                  downloadedAttempt && typeof attempt.score_percent !== "number"
                 const attemptType = formatAttemptType(attempt)
-                const attemptDateLabel = isDownloadedAttempt(attempt)
-                  ? "Downloaded"
-                  : "Completed"
+                const attemptDateLabel = downloadedAttempt ? "Downloaded" : "Completed"
 
                 return (
                   <div
@@ -794,7 +795,7 @@ export default function CustomTestHistoryPage() {
                         <div style={{ color: "#6b7280", fontSize: "0.92rem" }}>
                           {attemptDateLabel}:{" "}
                           {formatDateTime(
-                            isDownloadedAttempt(attempt)
+                            downloadedAttempt
                               ? attempt.created_at
                               : attempt.completed_at ?? attempt.created_at
                           )}
@@ -971,14 +972,16 @@ export default function CustomTestHistoryPage() {
                         marginTop: 14,
                         padding: "10px 14px",
                         borderRadius: 10,
-                        border: "1px solid #d1d5db",
-                        background: "#ffffff",
-                        color: "#111827",
+                        border: canEnterResults
+                          ? "1px solid #2563eb"
+                          : "1px solid #d1d5db",
+                        background: canEnterResults ? "#2563eb" : "#ffffff",
+                        color: canEnterResults ? "#ffffff" : "#111827",
                         textDecoration: "none",
-                        fontWeight: 600,
+                        fontWeight: 700,
                       }}
                     >
-                      View Details
+                      {canEnterResults ? "Enter Results" : "View Details"}
                     </Link>
                   </div>
                 )

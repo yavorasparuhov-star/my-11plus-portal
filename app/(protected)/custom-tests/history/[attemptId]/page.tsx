@@ -62,6 +62,23 @@ type AttemptItemRow = {
   is_correct: boolean | null
 }
 
+type SubmitPrintableResultsResponse =
+  | {
+      ok: true
+      attemptId: string
+      coinsAwarded: number
+    }
+  | {
+      ok: false
+      error: string
+    }
+
+const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
+
+function isOptionKey(value: unknown): value is OptionKey {
+  return value === "A" || value === "B" || value === "C" || value === "D"
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—"
 
@@ -88,6 +105,9 @@ function formatSeconds(totalSeconds: number | null | undefined) {
 
 function formatMainCategory(value: string | null | undefined) {
   if (!value) return "—"
+  if (value === "math") return "Maths"
+  if (value === "vr") return "VR"
+  if (value === "nvr") return "NVR"
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
@@ -196,7 +216,7 @@ function parseQuestionSnapshot(value: unknown): QuestionSnapshot {
           const option = item as Record<string, unknown>
           const key = option.key
 
-          if (key !== "A" && key !== "B" && key !== "C" && key !== "D") {
+          if (!isOptionKey(key)) {
             return null
           }
 
@@ -214,17 +234,48 @@ function parseQuestionSnapshot(value: unknown): QuestionSnapshot {
     questionText: typeof raw.questionText === "string" ? raw.questionText : null,
     passageText: typeof raw.passageText === "string" ? raw.passageText : null,
     options,
-    correctAnswer:
-      raw.correctAnswer === "A" ||
-      raw.correctAnswer === "B" ||
-      raw.correctAnswer === "C" ||
-      raw.correctAnswer === "D"
-        ? raw.correctAnswer
-        : undefined,
+    correctAnswer: isOptionKey(raw.correctAnswer) ? raw.correctAnswer : undefined,
     explanation: typeof raw.explanation === "string" ? raw.explanation : null,
     topicKey: typeof raw.topicKey === "string" ? raw.topicKey : undefined,
     subtopicKey: typeof raw.subtopicKey === "string" ? raw.subtopicKey : null,
   }
+}
+
+function isDownloadedAttempt(attempt: AttemptRow) {
+  const normalized = (attempt.status ?? "").toLowerCase()
+
+  return normalized.includes("download") || normalized.includes("print")
+}
+
+function isMarkedAttempt(attempt: AttemptRow) {
+  return (
+    typeof attempt.score_percent === "number" ||
+    typeof attempt.correct_answers === "number" ||
+    Boolean(attempt.completed_at)
+  )
+}
+
+function formatAttemptStatus(value: string | null | undefined) {
+  const normalized = (value ?? "").toLowerCase()
+
+  if (normalized.includes("download")) return "Downloaded"
+  if (normalized.includes("print")) return "Printable marked"
+  if (normalized === "completed") return "Completed"
+  if (normalized === "in_progress") return "In progress"
+  if (normalized === "started") return "Started"
+  if (!value) return "—"
+
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+function getOptionText(option: QuestionSnapshotOption) {
+  return option.text?.trim() ? option.text : `Option ${option.key}`
 }
 
 export default function CustomTestAttemptDetailsPage() {
@@ -235,8 +286,15 @@ export default function CustomTestAttemptDetailsPage() {
 
   const [attempt, setAttempt] = useState<AttemptRow | null>(null)
   const [items, setItems] = useState<AttemptItemRow[]>([])
+  const [answerSelections, setAnswerSelections] = useState<
+    Record<number, OptionKey | null>
+  >({})
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
+  const [submitErrorMessage, setSubmitErrorMessage] = useState("")
+  const [submitSuccessMessage, setSubmitSuccessMessage] = useState("")
 
   useEffect(() => {
     async function loadAttemptDetails() {
@@ -282,7 +340,9 @@ export default function CustomTestAttemptDetailsPage() {
           .single()
 
         if (attemptError || !attemptData) {
-          setErrorMessage(attemptError?.message || "Could not load custom test attempt.")
+          setErrorMessage(
+            attemptError?.message || "Could not load custom test attempt."
+          )
           return
         }
 
@@ -307,8 +367,18 @@ export default function CustomTestAttemptDetailsPage() {
           return
         }
 
+        const loadedItems = (itemData ?? []) as AttemptItemRow[]
+        const initialAnswers: Record<number, OptionKey | null> = {}
+
+        loadedItems.forEach((item) => {
+          initialAnswers[item.question_index] = isOptionKey(item.selected_answer)
+            ? item.selected_answer
+            : null
+        })
+
         setAttempt(attemptData as AttemptRow)
-        setItems((itemData ?? []) as AttemptItemRow[])
+        setItems(loadedItems)
+        setAnswerSelections(initialAnswers)
       } catch (error) {
         setErrorMessage(
           error instanceof Error
@@ -321,10 +391,78 @@ export default function CustomTestAttemptDetailsPage() {
     }
 
     void loadAttemptDetails()
-  }, [attemptId])
+  }, [attemptId, reloadKey])
 
   const parsedConfig = useMemo(() => parseAttemptConfig(attempt?.config), [attempt])
-    if (loading) {
+
+  const canEnterPrintableResults =
+    attempt !== null && isDownloadedAttempt(attempt) && !isMarkedAttempt(attempt)
+
+  const answeredCount = useMemo(() => {
+    return items.reduce((total, item) => {
+      return total + (isOptionKey(answerSelections[item.question_index]) ? 1 : 0)
+    }, 0)
+  }, [items, answerSelections])
+
+  async function handleSubmitPrintableResults() {
+    if (!attemptId || !attempt || submitting) return
+
+    try {
+      setSubmitting(true)
+      setSubmitErrorMessage("")
+      setSubmitSuccessMessage("")
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setSubmitErrorMessage("Could not verify the logged-in user.")
+        return
+      }
+
+      const response = await fetch("/api/custom-tests/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          attemptId,
+          answers: answerSelections,
+        }),
+      })
+
+      const result = (await response.json()) as SubmitPrintableResultsResponse
+
+      if (!response.ok || !result.ok) {
+        setSubmitErrorMessage(
+          result.ok ? "Could not save printable results." : result.error
+        )
+        return
+      }
+
+      setSubmitSuccessMessage(
+        result.coinsAwarded > 0
+          ? `Printable results saved. The student earned ${result.coinsAwarded} YanBo Coin${
+              result.coinsAwarded === 1 ? "" : "s"
+            }.`
+          : "Printable results saved. Score 50% or more next time to earn YanBo Coins."
+      )
+      setReloadKey((value) => value + 1)
+    } catch (error) {
+      setSubmitErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unexpected error while saving printable results."
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
     return (
       <main style={{ minHeight: "100vh", background: "#f6f8fb", padding: "32px 16px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -424,11 +562,13 @@ export default function CustomTestAttemptDetailsPage() {
               >
                 History
               </Link>{" "}
-              / Attempt Details
+              / {canEnterPrintableResults ? "Enter Results" : "Attempt Details"}
             </p>
 
             <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-              Custom Test Attempt Details
+              {canEnterPrintableResults
+                ? "Enter Printable Test Results"
+                : "Custom Test Attempt Details"}
             </h1>
           </div>
 
@@ -466,6 +606,41 @@ export default function CustomTestAttemptDetailsPage() {
             </Link>
           </div>
         </div>
+
+        {canEnterPrintableResults ? (
+          <section
+            style={{
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: 16,
+              padding: 18,
+              marginBottom: 24,
+              color: "#1e3a8a",
+              lineHeight: 1.6,
+            }}
+          >
+            <strong>This downloaded printable test has not been marked yet.</strong>{" "}
+            Enter the student&apos;s answers below. Blank answers are allowed and will be
+            counted as incorrect. Correct answers and explanations will appear after
+            the results are saved.
+          </section>
+        ) : null}
+
+        {submitSuccessMessage ? (
+          <section
+            style={{
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 24,
+              color: "#166534",
+              fontWeight: 700,
+            }}
+          >
+            {submitSuccessMessage}
+          </section>
+        ) : null}
 
         <section
           style={{
@@ -513,12 +688,21 @@ export default function CustomTestAttemptDetailsPage() {
 
             <div>
               <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                Status
+              </div>
+              <div style={{ color: "#111827", fontWeight: 700 }}>
+                {formatAttemptStatus(attempt.status)}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
                 Score
               </div>
               <div style={{ color: "#111827", fontWeight: 700 }}>
                 {typeof attempt.score_percent === "number"
                   ? `${Math.round(attempt.score_percent)}%`
-                  : "—"}
+                  : "Not marked yet"}
               </div>
             </div>
 
@@ -554,7 +738,9 @@ export default function CustomTestAttemptDetailsPage() {
 
             <div>
               <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
-                Completed
+                {isDownloadedAttempt(attempt) && !attempt.completed_at
+                  ? "Downloaded"
+                  : "Completed"}
               </div>
               <div style={{ color: "#111827", fontWeight: 600 }}>
                 {formatDateTime(attempt.completed_at ?? attempt.created_at)}
@@ -562,6 +748,70 @@ export default function CustomTestAttemptDetailsPage() {
             </div>
           </div>
         </section>
+
+        {canEnterPrintableResults ? (
+          <section
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 20,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: "0 0 6px 0", color: "#111827", fontSize: "1.2rem" }}>
+                  Result entry
+                </h2>
+                <p style={{ margin: 0, color: "#6b7280", lineHeight: 1.5 }}>
+                  Answers entered: {answeredCount} / {items.length}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSubmitPrintableResults}
+                disabled={submitting || items.length === 0}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 10,
+                  border: "1px solid #2563eb",
+                  background: submitting ? "#93c5fd" : "#2563eb",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Saving..." : "Save Results"}
+              </button>
+            </div>
+
+            {submitErrorMessage ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#991b1b",
+                }}
+              >
+                {submitErrorMessage}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section
           style={{
@@ -579,6 +829,7 @@ export default function CustomTestAttemptDetailsPage() {
           <div style={{ display: "grid", gap: 14 }}>
             {items.map((item) => {
               const snapshot = parseQuestionSnapshot(item.question_snapshot)
+              const currentAnswer = answerSelections[item.question_index] ?? null
 
               return (
                 <div
@@ -607,16 +858,30 @@ export default function CustomTestAttemptDetailsPage() {
                       style={{
                         padding: "6px 10px",
                         borderRadius: 999,
-                        background: item.is_correct ? "#f0fdf4" : "#fef2f2",
-                        border: item.is_correct
+                        background: canEnterPrintableResults
+                          ? "#eff6ff"
+                          : item.is_correct
+                          ? "#f0fdf4"
+                          : "#fef2f2",
+                        border: canEnterPrintableResults
+                          ? "1px solid #bfdbfe"
+                          : item.is_correct
                           ? "1px solid #bbf7d0"
                           : "1px solid #fecaca",
-                        color: item.is_correct ? "#166534" : "#991b1b",
+                        color: canEnterPrintableResults
+                          ? "#1d4ed8"
+                          : item.is_correct
+                          ? "#166534"
+                          : "#991b1b",
                         fontWeight: 700,
                         fontSize: "0.9rem",
                       }}
                     >
-                      {item.is_correct ? "Correct" : "Incorrect"}
+                      {canEnterPrintableResults
+                        ? currentAnswer ?? "Awaiting answer"
+                        : item.is_correct
+                        ? "Correct"
+                        : "Incorrect"}
                     </div>
                   </div>
 
@@ -632,7 +897,7 @@ export default function CustomTestAttemptDetailsPage() {
                   >
                     <div>
                       <strong>Topic:</strong>{" "}
-{formatTopicLabel(item.topic_key, parsedConfig.mainCategory)}
+                      {formatTopicLabel(item.topic_key, parsedConfig.mainCategory)}
                     </div>
 
                     <div>
@@ -683,6 +948,86 @@ export default function CustomTestAttemptDetailsPage() {
                     </div>
                   ) : null}
 
+                  {canEnterPrintableResults ? (
+                    <div
+                      style={{
+                        marginBottom: 14,
+                        padding: 12,
+                        borderRadius: 12,
+                        background: "#f9fafb",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#374151",
+                          fontWeight: 700,
+                          marginBottom: 10,
+                        }}
+                      >
+                        Student answer
+                      </div>
+
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {OPTION_KEYS.map((optionKey) => {
+                          const selected = currentAnswer === optionKey
+
+                          return (
+                            <button
+                              key={optionKey}
+                              type="button"
+                              onClick={() =>
+                                setAnswerSelections((current) => ({
+                                  ...current,
+                                  [item.question_index]: optionKey,
+                                }))
+                              }
+                              style={{
+                                width: 44,
+                                height: 40,
+                                borderRadius: 10,
+                                border: selected
+                                  ? "2px solid #2563eb"
+                                  : "1px solid #d1d5db",
+                                background: selected ? "#dbeafe" : "#ffffff",
+                                color: selected ? "#1d4ed8" : "#111827",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {optionKey}
+                            </button>
+                          )
+                        })}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAnswerSelections((current) => ({
+                              ...current,
+                              [item.question_index]: null,
+                            }))
+                          }
+                          style={{
+                            height: 40,
+                            padding: "0 12px",
+                            borderRadius: 10,
+                            border:
+                              currentAnswer === null
+                                ? "2px solid #6b7280"
+                                : "1px solid #d1d5db",
+                            background: currentAnswer === null ? "#f3f4f6" : "#ffffff",
+                            color: "#111827",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          No answer
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {snapshot.options && snapshot.options.length > 0 ? (
                     <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
                       {snapshot.options.map((option) => {
@@ -695,12 +1040,20 @@ export default function CustomTestAttemptDetailsPage() {
                             style={{
                               padding: "12px 14px",
                               borderRadius: 12,
-                              border: isCorrect
+                              border: canEnterPrintableResults
+                                ? currentAnswer === option.key
+                                  ? "2px solid #93c5fd"
+                                  : "1px solid #d1d5db"
+                                : isCorrect
                                 ? "2px solid #86efac"
                                 : isSelected
                                 ? "2px solid #fca5a5"
                                 : "1px solid #d1d5db",
-                              background: isCorrect
+                              background: canEnterPrintableResults
+                                ? currentAnswer === option.key
+                                  ? "#eff6ff"
+                                  : "#ffffff"
+                                : isCorrect
                                 ? "#f0fdf4"
                                 : isSelected
                                 ? "#fef2f2"
@@ -711,18 +1064,39 @@ export default function CustomTestAttemptDetailsPage() {
                               style={{
                                 fontWeight: 700,
                                 color: "#111827",
-                                marginBottom: option.text ? 6 : 0,
+                                marginBottom: option.text || option.imageUrl ? 6 : 0,
                               }}
                             >
                               {option.key}
-                              {isCorrect ? " — Correct answer" : ""}
-                              {!isCorrect && isSelected ? " — Your answer" : ""}
+                              {!canEnterPrintableResults && isCorrect
+                                ? " — Correct answer"
+                                : ""}
+                              {!canEnterPrintableResults && !isCorrect && isSelected
+                                ? " — Your answer"
+                                : ""}
+                              {canEnterPrintableResults && currentAnswer === option.key
+                                ? " — Selected"
+                                : ""}
                             </div>
 
                             {option.text ? (
                               <div style={{ color: "#374151", lineHeight: 1.6 }}>
-                                {option.text}
+                                {getOptionText(option)}
                               </div>
+                            ) : null}
+
+                            {option.imageUrl ? (
+                              <img
+                                src={option.imageUrl}
+                                alt={`Option ${option.key}`}
+                                style={{
+                                  display: "block",
+                                  maxWidth: "100%",
+                                  maxHeight: 180,
+                                  objectFit: "contain",
+                                  marginTop: 8,
+                                }}
+                              />
                             ) : null}
                           </div>
                         )
@@ -730,28 +1104,32 @@ export default function CustomTestAttemptDetailsPage() {
                     </div>
                   ) : null}
 
-                  <div style={{ color: "#111827", fontWeight: 600 }}>
-                    Your answer: {item.selected_answer ?? "No answer"}
-                  </div>
+                  {!canEnterPrintableResults ? (
+                    <>
+                      <div style={{ color: "#111827", fontWeight: 600 }}>
+                        Your answer: {item.selected_answer ?? "No answer"}
+                      </div>
 
-                  <div style={{ color: "#111827", fontWeight: 600, marginTop: 4 }}>
-                    Correct answer: {item.correct_answer ?? snapshot.correctAnswer ?? "—"}
-                  </div>
+                      <div style={{ color: "#111827", fontWeight: 600, marginTop: 4 }}>
+                        Correct answer: {item.correct_answer ?? snapshot.correctAnswer ?? "—"}
+                      </div>
 
-                  {snapshot.explanation ? (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: 12,
-                        borderRadius: 10,
-                        background: "#f9fafb",
-                        color: "#4b5563",
-                        lineHeight: 1.6,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {snapshot.explanation}
-                    </div>
+                      {snapshot.explanation ? (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: 12,
+                            borderRadius: 10,
+                            background: "#f9fafb",
+                            color: "#4b5563",
+                            lineHeight: 1.6,
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {snapshot.explanation}
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
                 </div>
               )
