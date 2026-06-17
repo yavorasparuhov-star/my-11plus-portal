@@ -34,6 +34,7 @@ type AttemptConfig = {
 }
 
 type TimeFilter = "all" | "7d" | "30d" | "90d"
+type AttemptTypeFilter = "all" | "online" | "downloaded"
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—"
@@ -60,7 +61,13 @@ function formatSeconds(totalSeconds: number | null | undefined) {
 }
 
 function formatMainCategory(value: string | null | undefined) {
-  if (!value) return "—"
+  if (!value) return "Custom"
+
+  if (value === "english") return "English"
+  if (value === "math") return "Maths"
+  if (value === "vr") return "VR"
+  if (value === "nvr") return "NVR"
+
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
@@ -141,6 +148,76 @@ function getAttemptDate(attempt: CustomTestAttemptRow) {
   return attempt.completed_at ?? attempt.created_at ?? attempt.started_at ?? null
 }
 
+function getAttemptNumberDate(attempt: CustomTestAttemptRow) {
+  return attempt.created_at ?? attempt.started_at ?? attempt.completed_at ?? null
+}
+
+function getAttemptNumberTimestamp(attempt: CustomTestAttemptRow) {
+  const dateValue = getAttemptNumberDate(attempt)
+
+  if (!dateValue) return 0
+
+  const date = new Date(dateValue)
+
+  if (Number.isNaN(date.getTime())) return 0
+
+  return date.getTime()
+}
+
+function isDownloadedAttempt(attempt: CustomTestAttemptRow) {
+  const normalized = (attempt.status ?? "").toLowerCase()
+
+  return normalized.includes("download") || normalized.includes("print")
+}
+
+function matchesAttemptTypeFilter(
+  attempt: CustomTestAttemptRow,
+  attemptTypeFilter: AttemptTypeFilter
+) {
+  if (attemptTypeFilter === "all") return true
+
+  const downloaded = isDownloadedAttempt(attempt)
+
+  if (attemptTypeFilter === "downloaded") return downloaded
+
+  return !downloaded
+}
+
+function formatAttemptType(attempt: CustomTestAttemptRow) {
+  return isDownloadedAttempt(attempt) ? "Downloaded" : "Online"
+}
+
+function formatAttemptStatus(value: string | null | undefined) {
+  const normalized = (value ?? "").toLowerCase()
+
+  if (normalized.includes("download")) return "Downloaded"
+  if (normalized.includes("print")) return "Printable marked"
+  if (normalized === "completed") return "Completed"
+  if (normalized === "in_progress") return "In progress"
+  if (normalized === "started") return "Started"
+  if (!value) return "—"
+
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+function getAttemptMainCategory(attempt: CustomTestAttemptRow) {
+  const config = parseAttemptConfig(attempt.config)
+
+  return config.mainCategory ?? attempt.main_category ?? undefined
+}
+
+function buildAttemptTitle(attempt: CustomTestAttemptRow, attemptNumber: number | undefined) {
+  const categoryLabel = formatMainCategory(getAttemptMainCategory(attempt))
+
+  return `${categoryLabel} Custom Test${attemptNumber ? ` ${attemptNumber}` : ""}`
+}
+
 function matchesTimeFilter(
   attempt: CustomTestAttemptRow,
   timeFilter: TimeFilter
@@ -192,6 +269,8 @@ export default function CustomTestHistoryPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
+  const [attemptTypeFilter, setAttemptTypeFilter] =
+    useState<AttemptTypeFilter>("all")
 
   useEffect(() => {
     async function loadAttempts() {
@@ -251,14 +330,38 @@ export default function CustomTestHistoryPage() {
     void loadAttempts()
   }, [])
 
+  const attemptDisplayNumbers = useMemo(() => {
+    const sortedAttempts = [...attempts].sort((a, b) => {
+      const timeDifference =
+        getAttemptNumberTimestamp(a) - getAttemptNumberTimestamp(b)
+
+      if (timeDifference !== 0) return timeDifference
+
+      return a.id.localeCompare(b.id)
+    })
+
+    const categoryCounters: Record<string, number> = {}
+    const numberMap: Record<string, number> = {}
+
+    sortedAttempts.forEach((attempt) => {
+      const categoryKey = getAttemptMainCategory(attempt) ?? "custom"
+
+      categoryCounters[categoryKey] = (categoryCounters[categoryKey] ?? 0) + 1
+      numberMap[attempt.id] = categoryCounters[categoryKey]
+    })
+
+    return numberMap
+  }, [attempts])
+
   const filteredAttempts = useMemo(() => {
     return attempts.filter((attempt) => {
       return (
         matchesTimeFilter(attempt, timeFilter) &&
-        matchesDifficultyFilter(attempt, difficultyFilter)
+        matchesDifficultyFilter(attempt, difficultyFilter) &&
+        matchesAttemptTypeFilter(attempt, attemptTypeFilter)
       )
     })
-  }, [attempts, timeFilter, difficultyFilter])
+  }, [attempts, timeFilter, difficultyFilter, attemptTypeFilter])
 
   const summary = useMemo(() => {
     if (filteredAttempts.length === 0) {
@@ -393,7 +496,7 @@ export default function CustomTestHistoryPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Filter your custom test history by time and difficulty.
+                Filter your custom test history by time, difficulty and test type.
               </p>
             </div>
 
@@ -402,6 +505,7 @@ export default function CustomTestHistoryPage() {
               onClick={() => {
                 setTimeFilter("all")
                 setDifficultyFilter("all")
+                setAttemptTypeFilter("all")
               }}
               style={{
                 padding: "10px 14px",
@@ -483,6 +587,33 @@ export default function CustomTestHistoryPage() {
                 <option value="3">Hard</option>
               </select>
             </div>
+
+            <div>
+              <label
+                htmlFor="attempt-type-filter"
+                style={{
+                  display: "block",
+                  color: "#374151",
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Test type
+              </label>
+
+              <select
+                id="attempt-type-filter"
+                value={attemptTypeFilter}
+                onChange={(event) =>
+                  setAttemptTypeFilter(event.target.value as AttemptTypeFilter)
+                }
+                style={selectStyle}
+              >
+                <option value="all">Online and downloaded</option>
+                <option value="online">Online tests</option>
+                <option value="downloaded">Downloaded tests</option>
+              </select>
+            </div>
           </div>
         </section>
 
@@ -506,7 +637,7 @@ export default function CustomTestHistoryPage() {
             <div
               style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}
             >
-              Filtered custom tests
+              Filtered history items
             </div>
             <div
               style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}
@@ -551,7 +682,7 @@ export default function CustomTestHistoryPage() {
             <div
               style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: 6 }}
             >
-              Total questions completed
+              Total questions created
             </div>
             <div
               style={{ color: "#111827", fontSize: "1.8rem", fontWeight: 800 }}
@@ -605,7 +736,7 @@ export default function CustomTestHistoryPage() {
                 lineHeight: 1.6,
               }}
             >
-              No custom tests have been completed yet.
+              No custom test history found yet.
             </div>
           ) : filteredAttempts.length === 0 ? (
             <div
@@ -624,6 +755,11 @@ export default function CustomTestHistoryPage() {
             <div style={{ display: "grid", gap: 14 }}>
               {filteredAttempts.map((attempt) => {
                 const config = parseAttemptConfig(attempt.config)
+                const attemptNumber = attemptDisplayNumbers[attempt.id]
+                const attemptType = formatAttemptType(attempt)
+                const attemptDateLabel = isDownloadedAttempt(attempt)
+                  ? "Downloaded"
+                  : "Completed"
 
                 return (
                   <div
@@ -653,12 +789,14 @@ export default function CustomTestHistoryPage() {
                             marginBottom: 4,
                           }}
                         >
-                          {formatMainCategory(attempt.main_category)} Custom Test
+                          {buildAttemptTitle(attempt, attemptNumber)}
                         </div>
                         <div style={{ color: "#6b7280", fontSize: "0.92rem" }}>
-                          Completed:{" "}
+                          {attemptDateLabel}:{" "}
                           {formatDateTime(
-                            attempt.completed_at ?? attempt.created_at
+                            isDownloadedAttempt(attempt)
+                              ? attempt.created_at
+                              : attempt.completed_at ?? attempt.created_at
                           )}
                         </div>
                       </div>
@@ -675,7 +813,7 @@ export default function CustomTestHistoryPage() {
                       >
                         {typeof attempt.score_percent === "number"
                           ? `${Math.round(attempt.score_percent)}%`
-                          : "—"}
+                          : attemptType}
                       </div>
                     </div>
 
@@ -788,10 +926,25 @@ export default function CustomTestHistoryPage() {
                             marginBottom: 4,
                           }}
                         >
+                          Test type
+                        </div>
+                        <div style={{ color: "#111827", fontWeight: 600 }}>
+                          {attemptType}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            color: "#6b7280",
+                            fontSize: "0.85rem",
+                            marginBottom: 4,
+                          }}
+                        >
                           Status
                         </div>
                         <div style={{ color: "#111827", fontWeight: 600 }}>
-                          {attempt.status ?? "—"}
+                          {formatAttemptStatus(attempt.status)}
                         </div>
                       </div>
 
