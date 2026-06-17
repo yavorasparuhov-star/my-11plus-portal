@@ -23,6 +23,9 @@ type SubmitCustomTestResponse =
       ok: true
       attemptId: string
       coinsAwarded: number
+      correctAnswers?: number
+      questionCount?: number
+      scorePercent?: number
     }
   | {
       ok: false
@@ -43,6 +46,7 @@ type ExistingAttemptRow = {
 type ExistingAttemptItemRow = {
   question_index: number
   correct_answer: OptionKey | null
+  question_snapshot: unknown
 }
 
 function isMainCategory(value: unknown): value is MainCategory {
@@ -97,14 +101,13 @@ function isDownloadedAttemptStatus(value: string | null | undefined) {
   return normalized.includes("download") || normalized.includes("print")
 }
 
-function isAlreadyMarkedAttempt(attempt: ExistingAttemptRow) {
-  const normalized = (attempt.status ?? "").toLowerCase()
+function extractCorrectAnswerFromSnapshot(snapshot: unknown): OptionKey | null {
+  if (!snapshot || typeof snapshot !== "object") return null
 
-  return (
-    normalized.includes("marked") ||
-    normalized === "completed" ||
-    Boolean(attempt.completed_at)
-  )
+  const raw = snapshot as Record<string, unknown>
+  const value = raw.correctAnswer ?? raw.correct_answer
+
+  return isOptionKey(value) ? value : null
 }
 
 function validateOnlineBody(
@@ -343,6 +346,9 @@ async function submitOnlineCustomTest({
     ok: true,
     attemptId: attempt.id,
     coinsAwarded,
+    correctAnswers,
+    questionCount,
+    scorePercent,
   })
 }
 
@@ -372,6 +378,7 @@ async function submitPrintableCustomTestResults({
       `
     )
     .eq("id", attemptId)
+    .eq("user_id", userId)
     .single()
 
   if (attemptError || !attemptData) {
@@ -390,16 +397,13 @@ async function submitPrintableCustomTestResults({
     )
   }
 
-  if (isAlreadyMarkedAttempt(attempt)) {
-    return jsonError("This printable custom test has already been marked.", 409)
-  }
-
   const { data: itemData, error: itemError } = await supabase
     .from("custom_test_attempt_items")
     .select(
       `
       question_index,
-      correct_answer
+      correct_answer,
+      question_snapshot
       `
     )
     .eq("attempt_id", attemptId)
@@ -425,8 +429,11 @@ async function submitPrintableCustomTestResults({
 
   for (const item of items) {
     const selectedAnswer = safeAnswers[item.question_index] ?? null
+    const correctAnswer =
+      item.correct_answer ?? extractCorrectAnswerFromSnapshot(item.question_snapshot)
+
     const isCorrect =
-      isOptionKey(selectedAnswer) && selectedAnswer === item.correct_answer
+      isOptionKey(selectedAnswer) && isOptionKey(correctAnswer) && selectedAnswer === correctAnswer
 
     if (isCorrect) {
       correctAnswers += 1
@@ -436,6 +443,7 @@ async function submitPrintableCustomTestResults({
       .from("custom_test_attempt_items")
       .update({
         selected_answer: selectedAnswer,
+        correct_answer: correctAnswer,
         is_correct: isCorrect,
       })
       .eq("attempt_id", attemptId)
@@ -471,6 +479,7 @@ async function submitPrintableCustomTestResults({
     .from("custom_test_attempts")
     .update(updatePayload)
     .eq("id", attemptId)
+    .eq("user_id", userId)
 
   if (updateAttemptError) {
     return jsonError(
@@ -490,6 +499,9 @@ async function submitPrintableCustomTestResults({
     ok: true,
     attemptId,
     coinsAwarded,
+    correctAnswers,
+    questionCount,
+    scorePercent,
   })
 }
 

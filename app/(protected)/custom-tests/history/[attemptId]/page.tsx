@@ -67,6 +67,9 @@ type SubmitPrintableResultsResponse =
       ok: true
       attemptId: string
       coinsAwarded: number
+      correctAnswers?: number
+      questionCount?: number
+      scorePercent?: number
     }
   | {
       ok: false
@@ -247,16 +250,6 @@ function isDownloadedAttempt(attempt: AttemptRow) {
   return normalized.includes("download") || normalized.includes("print")
 }
 
-function printableResultsAlreadyEntered(attempt: AttemptRow) {
-  const normalized = (attempt.status ?? "").toLowerCase()
-
-  return (
-    normalized.includes("marked") ||
-    normalized.includes("completed") ||
-    Boolean(attempt.completed_at)
-  )
-}
-
 function formatAttemptStatus(value: string | null | undefined) {
   const normalized = (value ?? "").toLowerCase()
 
@@ -397,10 +390,14 @@ export default function CustomTestAttemptDetailsPage() {
 
   const parsedConfig = useMemo(() => parseAttemptConfig(attempt?.config), [attempt])
 
-  const canEnterPrintableResults =
+  const canEnterPrintableResults = attempt !== null && isDownloadedAttempt(attempt)
+
+  const printableResultSaved =
     attempt !== null &&
     isDownloadedAttempt(attempt) &&
-    !printableResultsAlreadyEntered(attempt)
+    (typeof attempt.score_percent === "number" ||
+      typeof attempt.correct_answers === "number" ||
+      items.some((item) => item.selected_answer !== null || item.is_correct !== null))
 
   const answeredCount = useMemo(() => {
     return items.reduce((total, item) => {
@@ -461,12 +458,19 @@ export default function CustomTestAttemptDetailsPage() {
         return
       }
 
+      const savedScore =
+        typeof result.scorePercent === "number"
+          ? ` Result: ${result.correctAnswers ?? "—"} / ${
+              result.questionCount ?? items.length
+            } (${Math.round(result.scorePercent)}%).`
+          : ""
+
       setSubmitSuccessMessage(
         result.coinsAwarded > 0
-          ? `Printable results saved. The student earned ${result.coinsAwarded} YanBo Coin${
-              result.coinsAwarded === 1 ? "" : "s"
-            }.`
-          : "Printable results saved. Score 50% or more next time to earn YanBo Coins."
+          ? `Printable results saved.${savedScore} The student earned ${
+              result.coinsAwarded
+            } YanBo Coin${result.coinsAwarded === 1 ? "" : "s"}.`
+          : `Printable results saved.${savedScore} Score 50% or more next time to earn YanBo Coins.`
       )
       setReloadKey((value) => value + 1)
     } catch (error) {
@@ -637,10 +641,14 @@ export default function CustomTestAttemptDetailsPage() {
               lineHeight: 1.6,
             }}
           >
-            <strong>This downloaded printable test has not been marked yet.</strong>{" "}
-            Enter the student&apos;s answers below. Blank answers are allowed and will be
-            counted as incorrect. Correct answers and explanations will appear after
-            the results are saved.
+            <strong>
+              {printableResultSaved
+                ? "This downloaded printable test already has saved results."
+                : "This downloaded printable test can be marked here."}
+            </strong>{" "}
+            Enter or update the student&apos;s answers below. Blank answers are allowed
+            and will be counted as incorrect. Correct answers will appear after
+            results are saved.
           </section>
         ) : null}
 
@@ -815,17 +823,29 @@ export default function CustomTestAttemptDetailsPage() {
                         padding: "6px 10px",
                         borderRadius: 999,
                         background: canEnterPrintableResults
-                          ? "#eff6ff"
+                          ? printableResultSaved && currentAnswer
+                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
+                              ? "#f0fdf4"
+                              : "#fef2f2"
+                            : "#eff6ff"
                           : item.is_correct
                           ? "#f0fdf4"
                           : "#fef2f2",
                         border: canEnterPrintableResults
-                          ? "1px solid #bfdbfe"
+                          ? printableResultSaved && currentAnswer
+                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
+                              ? "1px solid #bbf7d0"
+                              : "1px solid #fecaca"
+                            : "1px solid #bfdbfe"
                           : item.is_correct
                           ? "1px solid #bbf7d0"
                           : "1px solid #fecaca",
                         color: canEnterPrintableResults
-                          ? "#1d4ed8"
+                          ? printableResultSaved && currentAnswer
+                            ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
+                              ? "#166534"
+                              : "#991b1b"
+                            : "#1d4ed8"
                           : item.is_correct
                           ? "#166534"
                           : "#991b1b",
@@ -834,7 +854,11 @@ export default function CustomTestAttemptDetailsPage() {
                       }}
                     >
                       {canEnterPrintableResults
-                        ? currentAnswer ?? "Awaiting answer"
+                        ? printableResultSaved && currentAnswer
+                          ? currentAnswer === (item.correct_answer ?? snapshot.correctAnswer ?? null)
+                            ? "Correct"
+                            : "Incorrect"
+                          : currentAnswer ?? "Awaiting answer"
                         : item.is_correct
                         ? "Correct"
                         : "Incorrect"}
@@ -987,8 +1011,16 @@ export default function CustomTestAttemptDetailsPage() {
                   {snapshot.options && snapshot.options.length > 0 ? (
                     <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
                       {snapshot.options.map((option) => {
-                        const isSelected = item.selected_answer === option.key
-                        const isCorrect = item.correct_answer === option.key
+                        const correctAnswer =
+                          item.correct_answer ?? snapshot.correctAnswer ?? null
+                        const isSelected = canEnterPrintableResults
+                          ? currentAnswer === option.key
+                          : item.selected_answer === option.key
+                        const isCorrect = correctAnswer === option.key
+                        const isSelectedCorrect =
+                          printableResultSaved && isSelected && isCorrect
+                        const isSelectedIncorrect =
+                          printableResultSaved && isSelected && !isCorrect
 
                         return (
                           <div
@@ -997,8 +1029,14 @@ export default function CustomTestAttemptDetailsPage() {
                               padding: "12px 14px",
                               borderRadius: 12,
                               border: canEnterPrintableResults
-                                ? currentAnswer === option.key
-                                  ? "2px solid #93c5fd"
+                                ? isSelectedCorrect
+                                  ? "2px solid #86efac"
+                                  : isSelectedIncorrect
+                                  ? "2px solid #fca5a5"
+                                  : isSelected
+                                  ? "2px solid #2563eb"
+                                  : printableResultSaved && isCorrect
+                                  ? "2px solid #86efac"
                                   : "1px solid #d1d5db"
                                 : isCorrect
                                 ? "2px solid #86efac"
@@ -1006,8 +1044,14 @@ export default function CustomTestAttemptDetailsPage() {
                                 ? "2px solid #fca5a5"
                                 : "1px solid #d1d5db",
                               background: canEnterPrintableResults
-                                ? currentAnswer === option.key
+                                ? isSelectedCorrect
+                                  ? "#f0fdf4"
+                                  : isSelectedIncorrect
+                                  ? "#fef2f2"
+                                  : isSelected
                                   ? "#eff6ff"
+                                  : printableResultSaved && isCorrect
+                                  ? "#f0fdf4"
                                   : "#ffffff"
                                 : isCorrect
                                 ? "#f0fdf4"
@@ -1024,14 +1068,18 @@ export default function CustomTestAttemptDetailsPage() {
                               }}
                             >
                               {option.key}
-                              {!canEnterPrintableResults && isCorrect
+                              {(!canEnterPrintableResults || printableResultSaved) && isCorrect
                                 ? " — Correct answer"
                                 : ""}
                               {!canEnterPrintableResults && !isCorrect && isSelected
                                 ? " — Your answer"
                                 : ""}
-                              {canEnterPrintableResults && currentAnswer === option.key
-                                ? " — Selected"
+                              {canEnterPrintableResults && isSelected
+                                ? printableResultSaved
+                                  ? isCorrect
+                                    ? " — Your answer"
+                                    : " — Your answer"
+                                  : " — Selected"
                                 : ""}
                             </div>
 
@@ -1115,7 +1163,7 @@ export default function CustomTestAttemptDetailsPage() {
             >
               <div>
                 <h2 style={{ margin: "0 0 6px 0", color: "#111827", fontSize: "1.2rem" }}>
-                  Ready to save results?
+                  {printableResultSaved ? "Update saved results?" : "Ready to save results?"}
                 </h2>
                 <p style={{ margin: 0, color: "#6b7280", lineHeight: 1.5 }}>
                   Answers entered: {answeredCount} / {items.length}
@@ -1139,7 +1187,11 @@ export default function CustomTestAttemptDetailsPage() {
                   cursor: submitting ? "not-allowed" : "pointer",
                 }}
               >
-                {submitting ? "Saving..." : "Save Results"}
+                {submitting
+                  ? "Saving..."
+                  : printableResultSaved
+                  ? "Update Results"
+                  : "Save Results"}
               </button>
             </div>
 

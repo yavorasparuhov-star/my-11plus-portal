@@ -761,9 +761,10 @@ export default function CustomTestHistoryPage() {
                 const printableResultsAlreadyEntered =
                   normalizedStatus.includes("marked") ||
                   normalizedStatus.includes("completed") ||
-                  Boolean(attempt.completed_at)
-                const canEnterResults =
-                  downloadedAttempt && !printableResultsAlreadyEntered
+                  Boolean(attempt.completed_at) ||
+                  typeof attempt.score_percent === "number" ||
+                  typeof attempt.correct_answers === "number"
+                const canEnterResults = downloadedAttempt
                 const attemptType = formatAttemptType(attempt)
                 const attemptDateLabel = downloadedAttempt ? "Downloaded" : "Completed"
 
@@ -988,7 +989,11 @@ export default function CustomTestHistoryPage() {
                         fontWeight: 700,
                       }}
                     >
-                      {canEnterResults ? "Enter Results" : "View Details"}
+                      {canEnterResults
+                        ? printableResultsAlreadyEntered
+                          ? "Enter/Edit Results"
+                          : "Enter Results"
+                        : "View Details"}
                     </Link>
                   </div>
                 )
