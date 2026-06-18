@@ -36,6 +36,7 @@ type ExistingAttemptRow = {
   id: string
   main_category: MainCategory | null
   status: string | null
+  config: unknown
   question_count: number | null
   time_limit_seconds: number | null
   correct_answers: number | null
@@ -45,8 +46,33 @@ type ExistingAttemptRow = {
 
 type ExistingAttemptItemRow = {
   question_index: number
+  main_category: MainCategory | null
+  source_type: string | null
+  source_id: string | number | null
+  topic_key: string | null
+  subtopic_key: string | null
+  selected_answer: OptionKey | null
   correct_answer: OptionKey | null
+  is_correct: boolean | null
   question_snapshot: unknown
+}
+
+type MathCategory =
+  | "number_place_value"
+  | "four_operations"
+  | "fractions_decimals_percentages"
+  | "shape_space"
+  | "measurement"
+  | "data_handling"
+  | "algebra_reasoning"
+
+type MathQuestionLookupRow = {
+  id: number
+  test_id: number | null
+  category: string | null
+  question_text: string | null
+  correct_answer: string | null
+  difficulty: number | null
 }
 
 function isMainCategory(value: unknown): value is MainCategory {
@@ -108,6 +134,437 @@ function extractCorrectAnswerFromSnapshot(snapshot: unknown): OptionKey | null {
   const value = raw.correctAnswer ?? raw.correct_answer
 
   return isOptionKey(value) ? value : null
+}
+
+function getSnapshotString(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function getSnapshotNumber(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value)
+
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+function parsePositiveInteger(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value)
+
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function normaliseMathCategory(value: string | null | undefined): MathCategory | null {
+  if (!value) return null
+
+  const clean = value.trim()
+
+  if (clean === "number_place_value") return "number_place_value"
+  if (clean === "four_operations") return "four_operations"
+  if (clean === "fractions_decimals_percentages") {
+    return "fractions_decimals_percentages"
+  }
+  if (clean === "shape_space") return "shape_space"
+  if (clean === "measurement") return "measurement"
+  if (clean === "data_handling") return "data_handling"
+  if (clean === "algebra_reasoning") return "algebra_reasoning"
+
+  if (clean === "Number Place Value") return "number_place_value"
+  if (clean === "Four Operations") return "four_operations"
+  if (clean === "Fractions & Decimals") return "fractions_decimals_percentages"
+  if (clean === "Percentages") return "fractions_decimals_percentages"
+  if (clean === "Shape & Space") return "shape_space"
+  if (clean === "Measurement") return "measurement"
+  if (clean === "Data Handling") return "data_handling"
+  if (clean === "Algebra & Reasoning") return "algebra_reasoning"
+
+  return null
+}
+
+function extractAttemptDifficulty(config: unknown) {
+  if (!config || typeof config !== "object") return null
+
+  const raw = config as Record<string, unknown>
+  const value = raw.selectedDifficulty
+
+  return value === 1 || value === 2 || value === 3 ? value : null
+}
+
+function buildSyntheticMathProgressTestId(attemptId: string, category: string) {
+  const input = `${attemptId}:${category}`
+  let hash = 0
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) >>> 0
+  }
+
+  return 900000000 + (hash % 100000000)
+}
+
+function getItemMathQuestionId(item: ExistingAttemptItemRow) {
+  const sourceId = parsePositiveInteger(item.source_id)
+  const snapshotId = getSnapshotNumber(item.question_snapshot, [
+    "sourceId",
+    "source_id",
+    "id",
+    "questionId",
+    "question_id",
+  ])
+
+  return sourceId ?? parsePositiveInteger(snapshotId)
+}
+
+async function clearMathCustomProgressRows({
+  supabase,
+  userId,
+  attemptId,
+  categories,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>
+  userId: string
+  attemptId: string
+  categories: string[]
+}) {
+  const syntheticIds = categories.map((category) =>
+    buildSyntheticMathProgressTestId(attemptId, category)
+  )
+
+  if (syntheticIds.length === 0) return
+
+  const { error } = await supabase
+    .from("math_progress")
+    .delete()
+    .eq("user_id", userId)
+    .in("test_id", syntheticIds)
+
+  if (error) {
+    console.error("Could not clear previous custom Maths progress rows:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    })
+  }
+}
+
+async function syncMathCustomTestProgressAndReview({
+  supabase,
+  userId,
+  attemptId,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>
+  userId: string
+  attemptId: string
+}) {
+  const { data: attemptData, error: attemptError } = await supabase
+    .from("custom_test_attempts")
+    .select("id, main_category, config")
+    .eq("id", attemptId)
+    .eq("user_id", userId)
+    .single()
+
+  if (attemptError || !attemptData) {
+    console.error("Could not load custom attempt for Maths sync:", attemptError)
+    return
+  }
+
+  const attempt = attemptData as {
+    id: string
+    main_category: MainCategory | null
+    config: unknown
+  }
+
+  if (attempt.main_category !== "math") return
+
+  const { data: itemData, error: itemError } = await supabase
+    .from("custom_test_attempt_items")
+    .select(
+      `
+      question_index,
+      main_category,
+      source_type,
+      source_id,
+      topic_key,
+      subtopic_key,
+      selected_answer,
+      correct_answer,
+      is_correct,
+      question_snapshot
+      `
+    )
+    .eq("attempt_id", attemptId)
+    .order("question_index", { ascending: true })
+
+  if (itemError) {
+    console.error("Could not load custom attempt items for Maths sync:", itemError)
+    return
+  }
+
+  const items = (itemData ?? []) as ExistingAttemptItemRow[]
+
+  if (!items.length) return
+
+  const possibleCategories = Array.from(
+    new Set(
+      items
+        .map((item) =>
+          normaliseMathCategory(
+            item.topic_key ??
+              item.subtopic_key ??
+              getSnapshotString(item.question_snapshot, [
+                "topicKey",
+                "topic_key",
+                "category",
+              ])
+          )
+        )
+        .filter((category): category is MathCategory => category !== null)
+    )
+  )
+
+  await clearMathCustomProgressRows({
+    supabase,
+    userId,
+    attemptId,
+    categories: possibleCategories,
+  })
+
+  const hasAtLeastOneEnteredAnswer = items.some((item) =>
+    isOptionKey(item.selected_answer)
+  )
+
+  if (!hasAtLeastOneEnteredAnswer) {
+    return
+  }
+
+  const questionIds = Array.from(
+    new Set(
+      items
+        .map((item) => getItemMathQuestionId(item))
+        .filter((id): id is number => id !== null)
+    )
+  )
+
+  let questionMap = new Map<number, MathQuestionLookupRow>()
+
+  if (questionIds.length > 0) {
+    const { data: questionData, error: questionError } = await supabase
+      .from("math_questions")
+      .select("id, test_id, category, question_text, correct_answer, difficulty")
+      .in("id", questionIds)
+
+    if (questionError) {
+      console.error("Could not load Maths question details for custom sync:", {
+        message: questionError.message,
+        details: questionError.details,
+        hint: questionError.hint,
+        code: questionError.code,
+      })
+    } else {
+      questionMap = new Map(
+        ((questionData ?? []) as MathQuestionLookupRow[]).map((question) => [
+          question.id,
+          question,
+        ])
+      )
+    }
+  }
+
+  const nowIso = new Date().toISOString()
+  const attemptDifficulty = extractAttemptDifficulty(attempt.config)
+  const correctQuestionIds: number[] = []
+  const wrongAnswersForReview: Array<Record<string, unknown>> = []
+
+  const progressByCategory = new Map<
+    MathCategory,
+    {
+      totalQuestions: number
+      correctAnswers: number
+      difficulty: number | null
+    }
+  >()
+
+  for (const item of items) {
+    const questionId = getItemMathQuestionId(item)
+    const question = questionId !== null ? questionMap.get(questionId) : null
+
+    const category =
+      normaliseMathCategory(question?.category) ??
+      normaliseMathCategory(item.topic_key) ??
+      normaliseMathCategory(item.subtopic_key) ??
+      normaliseMathCategory(
+        getSnapshotString(item.question_snapshot, [
+          "topicKey",
+          "topic_key",
+          "category",
+        ])
+      )
+
+    if (!category) continue
+
+    const selectedAnswer = isOptionKey(item.selected_answer)
+      ? item.selected_answer
+      : null
+    const questionCorrectAnswer = question?.correct_answer ?? null
+    const correctAnswer =
+      item.correct_answer ??
+      (isOptionKey(questionCorrectAnswer) ? questionCorrectAnswer : null) ??
+      extractCorrectAnswerFromSnapshot(item.question_snapshot)
+    const isCorrect =
+      selectedAnswer !== null &&
+      correctAnswer !== null &&
+      selectedAnswer === correctAnswer
+    const difficulty =
+      attemptDifficulty ??
+      question?.difficulty ??
+      getSnapshotNumber(item.question_snapshot, ["difficulty"]) ??
+      null
+
+    const existingProgress = progressByCategory.get(category) ?? {
+      totalQuestions: 0,
+      correctAnswers: 0,
+      difficulty,
+    }
+
+    existingProgress.totalQuestions += 1
+    existingProgress.correctAnswers += isCorrect ? 1 : 0
+
+    if (existingProgress.difficulty === null && difficulty !== null) {
+      existingProgress.difficulty = difficulty
+    }
+
+    progressByCategory.set(category, existingProgress)
+
+    if (questionId === null) continue
+
+    if (isCorrect) {
+      correctQuestionIds.push(questionId)
+      continue
+    }
+
+    wrongAnswersForReview.push({
+      user_id: userId,
+      test_id: question?.test_id ?? null,
+      question_id: questionId,
+      category,
+      question_text:
+        question?.question_text ??
+        getSnapshotString(item.question_snapshot, [
+          "questionText",
+          "question_text",
+          "prompt",
+        ]) ??
+        "Question text unavailable.",
+      user_answer: selectedAnswer,
+      correct_answer: correctAnswer,
+      difficulty,
+      updated_at: nowIso,
+      last_attempted_at: nowIso,
+    })
+  }
+
+  if (correctQuestionIds.length > 0) {
+    const { error: removeReviewError } = await supabase
+      .from("math_review")
+      .delete()
+      .eq("user_id", userId)
+      .in("question_id", Array.from(new Set(correctQuestionIds)))
+
+    if (removeReviewError) {
+      console.error("Could not remove corrected custom Maths review items:", {
+        message: removeReviewError.message,
+        details: removeReviewError.details,
+        hint: removeReviewError.hint,
+        code: removeReviewError.code,
+      })
+    }
+  }
+
+  if (wrongAnswersForReview.length > 0) {
+    const { error: reviewError } = await supabase
+      .from("math_review")
+      .upsert(wrongAnswersForReview, {
+        onConflict: "user_id,question_id",
+      })
+
+    if (reviewError) {
+      console.error("Could not save custom Maths review items:", {
+        message: reviewError.message,
+        details: reviewError.details,
+        hint: reviewError.hint,
+        code: reviewError.code,
+      })
+    }
+  }
+
+  const progressRows = Array.from(progressByCategory.entries()).map(
+    ([category, data]) => ({
+      user_id: userId,
+      test_id: buildSyntheticMathProgressTestId(attemptId, category),
+      category,
+      total_questions: data.totalQuestions,
+      correct_answers: data.correctAnswers,
+      success_rate:
+        data.totalQuestions > 0
+          ? Math.round((data.correctAnswers / data.totalQuestions) * 100)
+          : 0,
+      difficulty: data.difficulty,
+    })
+  )
+
+  if (progressRows.length > 0) {
+    const { error: progressError } = await supabase
+      .from("math_progress")
+      .insert(progressRows)
+
+    if (progressError) {
+      console.error("Could not save custom Maths progress rows:", {
+        message: progressError.message,
+        details: progressError.details,
+        hint: progressError.hint,
+        code: progressError.code,
+        payload: progressRows,
+      })
+    }
+  }
 }
 
 function validateOnlineBody(
@@ -335,6 +792,12 @@ async function submitOnlineCustomTest({
     )
   }
 
+  await syncMathCustomTestProgressAndReview({
+    supabase,
+    userId,
+    attemptId: attempt.id,
+  })
+
   await awardCustomTestCoins({
     supabase,
     userId,
@@ -370,6 +833,7 @@ async function submitPrintableCustomTestResults({
       id,
       main_category,
       status,
+      config,
       question_count,
       time_limit_seconds,
       correct_answers,
@@ -402,7 +866,14 @@ async function submitPrintableCustomTestResults({
     .select(
       `
       question_index,
+      main_category,
+      source_type,
+      source_id,
+      topic_key,
+      subtopic_key,
+      selected_answer,
       correct_answer,
+      is_correct,
       question_snapshot
       `
     )
@@ -487,6 +958,12 @@ async function submitPrintableCustomTestResults({
       500
     )
   }
+
+  await syncMathCustomTestProgressAndReview({
+    supabase,
+    userId,
+    attemptId,
+  })
 
   await awardCustomTestCoins({
     supabase,
