@@ -69,7 +69,6 @@ type MathCategory =
 type MathQuestionLookupRow = {
   id: number;
   test_id: number | null;
-  category: string | null;
   question_text: string | null;
   correct_answer: string | null;
   difficulty: number | null;
@@ -337,9 +336,7 @@ async function syncMathCustomTestProgressAndReview({
   if (questionIds.length > 0) {
     const { data: questionData, error: questionError } = await supabase
       .from("math_questions")
-      .select(
-        "id, test_id, category, question_text, correct_answer, difficulty",
-      )
+      .select("id, test_id, question_text, correct_answer, difficulty")
       .in("id", questionIds);
 
     if (questionError) {
@@ -369,7 +366,6 @@ async function syncMathCustomTestProgressAndReview({
     const question = questionId !== null ? questionMap.get(questionId) : null;
 
     const category =
-      normaliseMathCategory(question?.category) ??
       normaliseMathCategory(item.topic_key) ??
       normaliseMathCategory(item.subtopic_key) ??
       normaliseMathCategory(

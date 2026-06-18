@@ -74,7 +74,6 @@ type CustomAttemptItemRow = {
 
 type MathQuestionLookupRow = {
   id: number;
-  category: string | null;
   difficulty: number | null;
 };
 
@@ -614,7 +613,7 @@ export default function MathProgressPage() {
               const { data: questionData, error: questionError } =
                 await supabase
                   .from("math_questions")
-                  .select("id, category, difficulty")
+                  .select("id, difficulty")
                   .in("id", questionIds);
 
               if (questionError) {
@@ -663,7 +662,6 @@ export default function MathProgressPage() {
                   ? questionMap.get(questionId)
                   : null;
                 const category =
-                  normaliseMathCategory(question?.category) ??
                   normaliseMathCategory(item.topic_key) ??
                   normaliseMathCategory(item.subtopic_key) ??
                   normaliseMathCategory(
