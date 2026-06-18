@@ -116,6 +116,25 @@ type VRTestLookupRow = {
   title: string | null;
 };
 
+type NVRCategory =
+  | "shape-patterns"
+  | "rotations-reflections"
+  | "codes-spatial-logic";
+
+type NVRQuestionLookupRow = {
+  id: number;
+  test_id: number | null;
+  question_text: string | null;
+  correct_answer: string | null;
+  difficulty: number | null;
+};
+
+type NVRTestLookupRow = {
+  id: number;
+  category: string | null;
+  title: string | null;
+};
+
 function isMainCategory(value: unknown): value is MainCategory {
   return (
     value === "english" || value === "math" || value === "vr" || value === "nvr"
@@ -500,6 +519,96 @@ function getItemVRCategory(item: ExistingAttemptItemRow): VRCategory | null {
 }
 
 function getItemVRQuestionId(item: ExistingAttemptItemRow) {
+  const sourceId = parsePositiveInteger(item.source_id);
+  const snapshotId = getSnapshotNumber(item.question_snapshot, [
+    "sourceId",
+    "source_id",
+    "id",
+    "questionId",
+    "question_id",
+  ]);
+
+  return sourceId ?? parsePositiveInteger(snapshotId);
+}
+
+function normaliseNVRCategory(
+  value: string | null | undefined,
+): NVRCategory | null {
+  if (!value) return null;
+
+  const clean = value.trim();
+
+  const normalised = clean
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replaceAll("/", " ")
+    .replaceAll("-", "_")
+    .replaceAll("–", "_")
+    .replaceAll("—", "_")
+    .replace(/[^a-z0-9_ ]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (normalised === "shape_patterns") return "shape-patterns";
+  if (normalised === "shape_pattern") return "shape-patterns";
+  if (normalised === "shape_patterns_and_series") return "shape-patterns";
+  if (normalised === "shape_pattern_and_series") return "shape-patterns";
+
+  if (normalised === "rotations_reflections") {
+    return "rotations-reflections";
+  }
+  if (normalised === "rotation_reflection") {
+    return "rotations-reflections";
+  }
+  if (normalised === "rotations_and_reflections") {
+    return "rotations-reflections";
+  }
+  if (normalised === "rotation_and_reflection") {
+    return "rotations-reflections";
+  }
+
+  if (normalised === "codes_spatial_logic") {
+    return "codes-spatial-logic";
+  }
+  if (normalised === "code_spatial_logic") {
+    return "codes-spatial-logic";
+  }
+  if (normalised === "codes_and_spatial_logic") {
+    return "codes-spatial-logic";
+  }
+  if (normalised === "code_and_spatial_logic") {
+    return "codes-spatial-logic";
+  }
+
+  return null;
+}
+
+function getItemNVRCategory(item: ExistingAttemptItemRow): NVRCategory | null {
+  return (
+    normaliseNVRCategory(item.subtopic_key) ??
+    normaliseNVRCategory(
+      getSnapshotString(item.question_snapshot, [
+        "subtopicKey",
+        "subtopic_key",
+        "subcategory",
+        "subCategory",
+      ]),
+    ) ??
+    normaliseNVRCategory(item.topic_key) ??
+    normaliseNVRCategory(
+      getSnapshotString(item.question_snapshot, [
+        "topicKey",
+        "topic_key",
+        "category",
+        "mainCategory",
+        "main_category",
+      ]),
+    )
+  );
+}
+
+function getItemNVRQuestionId(item: ExistingAttemptItemRow) {
   const sourceId = parsePositiveInteger(item.source_id);
   const snapshotId = getSnapshotNumber(item.question_snapshot, [
     "sourceId",
@@ -1325,6 +1434,236 @@ async function syncVRCustomTestProgressAndReview({
   }
 }
 
+async function syncNVRCustomTestProgressAndReview({
+  supabase,
+  userId,
+  attemptId,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  attemptId: string;
+}) {
+  const { data: attemptData, error: attemptError } = await supabase
+    .from("custom_test_attempts")
+    .select("id, main_category, config")
+    .eq("id", attemptId)
+    .eq("user_id", userId)
+    .single();
+
+  if (attemptError || !attemptData) {
+    console.error("Could not load custom attempt for NVR sync:", attemptError);
+    return;
+  }
+
+  const attempt = attemptData as {
+    id: string;
+    main_category: MainCategory | null;
+    config: unknown;
+  };
+
+  if (attempt.main_category !== "nvr") return;
+
+  const { data: itemData, error: itemError } = await supabase
+    .from("custom_test_attempt_items")
+    .select(
+      `
+      question_index,
+      main_category,
+      source_type,
+      source_id,
+      topic_key,
+      subtopic_key,
+      selected_answer,
+      correct_answer,
+      is_correct,
+      question_snapshot
+      `,
+    )
+    .eq("attempt_id", attemptId)
+    .order("question_index", { ascending: true });
+
+  if (itemError) {
+    console.error("Could not load custom attempt items for NVR sync:", itemError);
+    return;
+  }
+
+  const items = (itemData ?? []) as ExistingAttemptItemRow[];
+
+  if (!items.length) return;
+
+  const hasAtLeastOneEnteredAnswer = items.some((item) =>
+    isOptionKey(item.selected_answer),
+  );
+
+  if (!hasAtLeastOneEnteredAnswer) {
+    return;
+  }
+
+  const questionSourceIds = Array.from(
+    new Set(
+      items
+        .map((item) => getItemNVRQuestionId(item))
+        .filter((id): id is number => id !== null),
+    ),
+  );
+
+  let questionMap = new Map<number, NVRQuestionLookupRow>();
+
+  if (questionSourceIds.length > 0) {
+    const { data: questionData, error: questionError } = await supabase
+      .from("nvr_questions")
+      .select("id, test_id, question_text, correct_answer, difficulty")
+      .in("id", questionSourceIds);
+
+    if (questionError) {
+      console.error("Could not load NVR question details for custom sync:", {
+        message: questionError.message,
+        details: questionError.details,
+        hint: questionError.hint,
+        code: questionError.code,
+      });
+    } else {
+      questionMap = new Map(
+        ((questionData ?? []) as NVRQuestionLookupRow[]).map((question) => [
+          question.id,
+          question,
+        ]),
+      );
+    }
+  }
+
+  const testIds = Array.from(
+    new Set(
+      Array.from(questionMap.values())
+        .map((question) => question.test_id)
+        .filter((id): id is number => id !== null),
+    ),
+  );
+
+  let testMap = new Map<number, NVRTestLookupRow>();
+
+  if (testIds.length > 0) {
+    const { data: testData, error: testError } = await supabase
+      .from("nvr_tests")
+      .select("id, category, title")
+      .in("id", testIds);
+
+    if (testError) {
+      console.error("Could not load NVR test details for custom sync:", {
+        message: testError.message,
+        details: testError.details,
+        hint: testError.hint,
+        code: testError.code,
+      });
+    } else {
+      testMap = new Map(
+        ((testData ?? []) as NVRTestLookupRow[]).map((test) => [test.id, test]),
+      );
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const attemptDifficulty = extractAttemptDifficulty(attempt.config);
+
+  const questionIdsToClear: number[] = [];
+  const rowsForReview: Array<Record<string, unknown>> = [];
+
+  for (const item of items) {
+    const sourceId = getItemNVRQuestionId(item);
+    if (sourceId === null) continue;
+
+    const selectedAnswer = isOptionKey(item.selected_answer)
+      ? item.selected_answer
+      : null;
+
+    const question = questionMap.get(sourceId);
+    const questionCorrectAnswer =
+      question?.correct_answer && isOptionKey(question.correct_answer)
+        ? question.correct_answer
+        : null;
+    const correctAnswer =
+      item.correct_answer ??
+      extractCorrectAnswerFromSnapshot(item.question_snapshot) ??
+      questionCorrectAnswer;
+
+    if (!correctAnswer) continue;
+
+    const isCorrect = selectedAnswer !== null && selectedAnswer === correctAnswer;
+
+    questionIdsToClear.push(sourceId);
+
+    if (isCorrect) {
+      continue;
+    }
+
+    const linkedTest = question?.test_id
+      ? testMap.get(question.test_id)
+      : undefined;
+
+    const category =
+      getItemNVRCategory(item) ??
+      normaliseNVRCategory(linkedTest?.category) ??
+      null;
+
+    rowsForReview.push({
+      user_id: userId,
+      test_id: question?.test_id ?? null,
+      question_id: sourceId,
+      category,
+      question_text:
+        question?.question_text ??
+        getSnapshotString(item.question_snapshot, [
+          "questionText",
+          "question_text",
+          "prompt",
+          "text",
+        ]) ??
+        "Question text unavailable.",
+      user_answer: selectedAnswer,
+      correct_answer: correctAnswer,
+      difficulty:
+        attemptDifficulty ??
+        question?.difficulty ??
+        getSnapshotNumber(item.question_snapshot, ["difficulty"]) ??
+        null,
+      updated_at: nowIso,
+      last_attempted_at: nowIso,
+    });
+  }
+
+  const uniqueQuestionIds = Array.from(new Set(questionIdsToClear));
+
+  if (uniqueQuestionIds.length > 0) {
+    const { error } = await supabase
+      .from("nvr_review")
+      .delete()
+      .eq("user_id", userId)
+      .in("question_id", uniqueQuestionIds);
+
+    if (error) {
+      console.error("Could not clear custom NVR review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (rowsForReview.length > 0) {
+    const { error } = await supabase.from("nvr_review").insert(rowsForReview);
+
+    if (error) {
+      console.error("Could not save custom NVR review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+}
+
 async function syncCustomTestProgressAndReview({
   supabase,
   userId,
@@ -1337,6 +1676,7 @@ async function syncCustomTestProgressAndReview({
   await syncMathCustomTestProgressAndReview({ supabase, userId, attemptId });
   await syncEnglishCustomTestProgressAndReview({ supabase, userId, attemptId });
   await syncVRCustomTestProgressAndReview({ supabase, userId, attemptId });
+  await syncNVRCustomTestProgressAndReview({ supabase, userId, attemptId });
 }
 
 function validateOnlineBody(

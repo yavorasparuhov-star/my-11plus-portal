@@ -20,7 +20,7 @@ import type {
 } from "recharts/types/component/DefaultTooltipContent"
 
 type NVRProgressRow = {
-  id: number
+  id: string | number
   user_id: string
   test_id: number | null
   category: string | null
@@ -36,6 +36,30 @@ type NVRTestRow = {
   title: string
   category: string | null
   difficulty: number | null
+}
+
+type CustomNVRAttemptRow = {
+  id: string
+  main_category: string | null
+  status: string | null
+  config: unknown
+  question_count: number | null
+  correct_answers: number | null
+  score_percent: number | null
+  completed_at: string | null
+  created_at: string
+}
+
+type CustomNVRAttemptItemRow = {
+  attempt_id: string
+  question_index: number
+  main_category: string | null
+  topic_key: string | null
+  subtopic_key: string | null
+  selected_answer: string | null
+  correct_answer: string | null
+  is_correct: boolean | null
+  question_snapshot: unknown
 }
 
 type EnrichedNVRProgressRow = NVRProgressRow & {
@@ -101,6 +125,203 @@ function getCategoryLabel(category: string | null | undefined) {
   if (category === "rotations-reflections") return "Rotations & Reflections"
   if (category === "codes-spatial-logic") return "Codes & Spatial Logic"
   return "Not set"
+}
+
+function isOptionKey(value: unknown): value is "A" | "B" | "C" | "D" {
+  return value === "A" || value === "B" || value === "C" || value === "D"
+}
+
+function getSnapshotString(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function getSnapshotNumber(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value)
+
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+function extractAttemptDifficulty(config: unknown) {
+  if (!config || typeof config !== "object") return null
+
+  const raw = config as Record<string, unknown>
+  const value = raw.selectedDifficulty
+
+  if (value === 1 || value === 2 || value === 3) return value
+
+  if (typeof value === "string") {
+    const parsed = Number(value)
+
+    if (parsed === 1 || parsed === 2 || parsed === 3) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function normaliseCustomNVRCategory(
+  value: string | null | undefined
+): Exclude<CategoryFilter, "all"> | null {
+  if (!value) return null
+
+  const normalised = value
+    .trim()
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replaceAll("/", " ")
+    .replaceAll("-", "_")
+    .replaceAll("–", "_")
+    .replaceAll("—", "_")
+    .replace(/[^a-z0-9_ ]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  if (normalised === "shape_patterns") return "shape-patterns"
+  if (normalised === "shape_pattern") return "shape-patterns"
+  if (normalised === "shape_patterns_and_series") return "shape-patterns"
+  if (normalised === "shape_pattern_and_series") return "shape-patterns"
+
+  if (normalised === "rotations_reflections") return "rotations-reflections"
+  if (normalised === "rotation_reflection") return "rotations-reflections"
+  if (normalised === "rotations_and_reflections") return "rotations-reflections"
+  if (normalised === "rotation_and_reflection") return "rotations-reflections"
+
+  if (normalised === "codes_spatial_logic") return "codes-spatial-logic"
+  if (normalised === "code_spatial_logic") return "codes-spatial-logic"
+  if (normalised === "codes_and_spatial_logic") return "codes-spatial-logic"
+  if (normalised === "code_and_spatial_logic") return "codes-spatial-logic"
+
+  return null
+}
+
+function getCustomNVRItemCategory(
+  item: CustomNVRAttemptItemRow
+): Exclude<CategoryFilter, "all"> | null {
+  return (
+    normaliseCustomNVRCategory(item.subtopic_key) ??
+    normaliseCustomNVRCategory(
+      getSnapshotString(item.question_snapshot, [
+        "subtopicKey",
+        "subtopic_key",
+        "subcategory",
+        "subCategory",
+      ])
+    ) ??
+    normaliseCustomNVRCategory(item.topic_key) ??
+    normaliseCustomNVRCategory(
+      getSnapshotString(item.question_snapshot, [
+        "topicKey",
+        "topic_key",
+        "category",
+        "mainCategory",
+        "main_category",
+      ])
+    )
+  )
+}
+
+function buildCustomNVRProgressRows(
+  attempts: CustomNVRAttemptRow[],
+  items: CustomNVRAttemptItemRow[]
+): EnrichedNVRProgressRow[] {
+  const itemsByAttempt = items.reduce((acc, item) => {
+    if (!acc[item.attempt_id]) {
+      acc[item.attempt_id] = []
+    }
+
+    acc[item.attempt_id].push(item)
+    return acc
+  }, {} as Record<string, CustomNVRAttemptItemRow[]>)
+
+  return attempts.flatMap((attempt) => {
+    const attemptItems = itemsByAttempt[attempt.id] ?? []
+    const hasAtLeastOneEnteredAnswer = attemptItems.some((item) =>
+      isOptionKey(item.selected_answer)
+    )
+
+    if (!hasAtLeastOneEnteredAnswer) return []
+
+    const attemptDifficulty = extractAttemptDifficulty(attempt.config)
+
+    const groups = attemptItems.reduce((acc, item) => {
+      const category = getCustomNVRItemCategory(item)
+
+      if (!category) return acc
+
+      if (!acc[category]) {
+        acc[category] = []
+      }
+
+      acc[category].push(item)
+      return acc
+    }, {} as Partial<Record<Exclude<CategoryFilter, "all">, CustomNVRAttemptItemRow[]>>)
+
+    return Object.entries(groups).flatMap(([category, groupedItems]) => {
+      if (!groupedItems || groupedItems.length === 0) return []
+
+      const totalQuestions = groupedItems.length
+      const correctAnswers = groupedItems.filter(
+        (item) => item.is_correct === true
+      ).length
+      const successRate = Number(
+        ((correctAnswers / totalQuestions) * 100).toFixed(2)
+      )
+      const firstItem = groupedItems[0]
+      const difficulty =
+        attemptDifficulty ??
+        getSnapshotNumber(firstItem.question_snapshot, ["difficulty"]) ??
+        null
+
+      return [
+        {
+          id: `nvr-custom-${attempt.id}-${category}`,
+          user_id: "",
+          test_id: null,
+          category,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          success_rate: successRate,
+          difficulty,
+          created_at: attempt.completed_at ?? attempt.created_at,
+          resolved_difficulty: difficulty,
+          test_title: "NVR Custom Test",
+          resolved_category: category,
+        },
+      ]
+    })
+  })
 }
 
 function formatDateTime(value: string) {
@@ -438,8 +659,62 @@ export default function NVRProgressPage() {
         }
       })
 
+      const { data: customAttemptsData, error: customAttemptsError } =
+        await supabase
+          .from("custom_test_attempts")
+          .select(
+            "id, main_category, status, config, question_count, correct_answers, score_percent, completed_at, created_at"
+          )
+          .eq("user_id", user.id)
+          .eq("main_category", "nvr")
+          .order("created_at", { ascending: false })
+
+      if (customAttemptsError) {
+        console.error("Error loading custom NVR attempts:", {
+          message: customAttemptsError.message,
+          details: customAttemptsError.details,
+          hint: customAttemptsError.hint,
+          code: customAttemptsError.code,
+          full: customAttemptsError,
+        })
+      }
+
+      const customAttemptRows =
+        (customAttemptsData ?? []) as CustomNVRAttemptRow[]
+      const customAttemptIds = customAttemptRows.map((attempt) => attempt.id)
+
+      let customAttemptItemRows: CustomNVRAttemptItemRow[] = []
+
+      if (customAttemptIds.length > 0) {
+        const { data: customItemData, error: customItemError } = await supabase
+          .from("custom_test_attempt_items")
+          .select(
+            "attempt_id, question_index, main_category, topic_key, subtopic_key, selected_answer, correct_answer, is_correct, question_snapshot"
+          )
+          .in("attempt_id", customAttemptIds)
+          .order("question_index", { ascending: true })
+
+        if (customItemError) {
+          console.error("Error loading custom NVR attempt items:", {
+            message: customItemError.message,
+            details: customItemError.details,
+            hint: customItemError.hint,
+            code: customItemError.code,
+            full: customItemError,
+          })
+        } else {
+          customAttemptItemRows =
+            (customItemData ?? []) as CustomNVRAttemptItemRow[]
+        }
+      }
+
+      const customProgressRows = buildCustomNVRProgressRows(
+        customAttemptRows,
+        customAttemptItemRows
+      )
+
       if (mounted) {
-        setRows(mergedRows)
+        setRows([...mergedRows, ...customProgressRows])
         setLoadingData(false)
       }
     }
