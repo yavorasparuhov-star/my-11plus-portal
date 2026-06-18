@@ -1,61 +1,61 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import type {
   GeneratedCustomTest,
   MainCategory,
   OptionKey,
-} from "../../../../lib/custom-tests/types"
+} from "../../../../lib/custom-tests/types";
 
 type OnlineSubmitCustomTestRequest = {
-  generatedTest: GeneratedCustomTest
-  answers: Record<string, OptionKey | null | undefined>
-  timeTakenSeconds: number
-}
+  generatedTest: GeneratedCustomTest;
+  answers: Record<string, OptionKey | null | undefined>;
+  timeTakenSeconds: number;
+};
 
 type PrintableSubmitCustomTestRequest = {
-  attemptId: string
-  answers: Record<string, OptionKey | null | undefined>
-  timeTakenSeconds?: number | null
-}
+  attemptId: string;
+  answers: Record<string, OptionKey | null | undefined>;
+  timeTakenSeconds?: number | null;
+};
 
 type SubmitCustomTestResponse =
   | {
-      ok: true
-      attemptId: string
-      coinsAwarded: number
-      correctAnswers?: number
-      questionCount?: number
-      scorePercent?: number
+      ok: true;
+      attemptId: string;
+      coinsAwarded: number;
+      correctAnswers?: number;
+      questionCount?: number;
+      scorePercent?: number;
     }
   | {
-      ok: false
-      error: string
-    }
+      ok: false;
+      error: string;
+    };
 
 type ExistingAttemptRow = {
-  id: string
-  main_category: MainCategory | null
-  status: string | null
-  config: unknown
-  question_count: number | null
-  time_limit_seconds: number | null
-  correct_answers: number | null
-  score_percent: number | null
-  completed_at: string | null
-}
+  id: string;
+  main_category: MainCategory | null;
+  status: string | null;
+  config: unknown;
+  question_count: number | null;
+  time_limit_seconds: number | null;
+  correct_answers: number | null;
+  score_percent: number | null;
+  completed_at: string | null;
+};
 
 type ExistingAttemptItemRow = {
-  question_index: number
-  main_category: MainCategory | null
-  source_type: string | null
-  source_id: string | number | null
-  topic_key: string | null
-  subtopic_key: string | null
-  selected_answer: OptionKey | null
-  correct_answer: OptionKey | null
-  is_correct: boolean | null
-  question_snapshot: unknown
-}
+  question_index: number;
+  main_category: MainCategory | null;
+  source_type: string | null;
+  source_id: string | number | null;
+  topic_key: string | null;
+  subtopic_key: string | null;
+  selected_answer: OptionKey | null;
+  correct_answer: OptionKey | null;
+  is_correct: boolean | null;
+  question_snapshot: unknown;
+};
 
 type MathCategory =
   | "number_place_value"
@@ -64,52 +64,49 @@ type MathCategory =
   | "shape_space"
   | "measurement"
   | "data_handling"
-  | "algebra_reasoning"
+  | "algebra_reasoning";
 
 type MathQuestionLookupRow = {
-  id: number
-  test_id: number | null
-  category: string | null
-  question_text: string | null
-  correct_answer: string | null
-  difficulty: number | null
-}
+  id: number;
+  test_id: number | null;
+  category: string | null;
+  question_text: string | null;
+  correct_answer: string | null;
+  difficulty: number | null;
+};
 
 function isMainCategory(value: unknown): value is MainCategory {
   return (
-    value === "english" ||
-    value === "math" ||
-    value === "vr" ||
-    value === "nvr"
-  )
+    value === "english" || value === "math" || value === "vr" || value === "nvr"
+  );
 }
 
 function isOptionKey(value: unknown): value is OptionKey {
-  return value === "A" || value === "B" || value === "C" || value === "D"
+  return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
 function calculateCustomTestCoins(scorePercent: number) {
-  if (scorePercent >= 90) return 3
-  if (scorePercent >= 75) return 2
-  if (scorePercent >= 50) return 1
-  return 0
+  if (scorePercent >= 90) return 3;
+  if (scorePercent >= 75) return 2;
+  if (scorePercent >= 50) return 1;
+  return 0;
 }
 
 function jsonError(error: string, status = 400) {
   return NextResponse.json<SubmitCustomTestResponse>(
     { ok: false, error },
-    { status }
-  )
+    { status },
+  );
 }
 
 function getSupabaseClient(authHeader: string) {
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are missing.")
+    throw new Error("Supabase environment variables are missing.");
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -118,171 +115,142 @@ function getSupabaseClient(authHeader: string) {
         Authorization: authHeader,
       },
     },
-  })
+  });
 }
 
 function isDownloadedAttemptStatus(value: string | null | undefined) {
-  const normalized = (value ?? "").toLowerCase()
+  const normalized = (value ?? "").toLowerCase();
 
-  return normalized.includes("download") || normalized.includes("print")
+  return normalized.includes("download") || normalized.includes("print");
 }
 
 function extractCorrectAnswerFromSnapshot(snapshot: unknown): OptionKey | null {
-  if (!snapshot || typeof snapshot !== "object") return null
+  if (!snapshot || typeof snapshot !== "object") return null;
 
-  const raw = snapshot as Record<string, unknown>
-  const value = raw.correctAnswer ?? raw.correct_answer
+  const raw = snapshot as Record<string, unknown>;
+  const value = raw.correctAnswer ?? raw.correct_answer;
 
-  return isOptionKey(value) ? value : null
+  return isOptionKey(value) ? value : null;
 }
 
 function getSnapshotString(snapshot: unknown, keys: string[]) {
-  if (!snapshot || typeof snapshot !== "object") return null
+  if (!snapshot || typeof snapshot !== "object") return null;
 
-  const raw = snapshot as Record<string, unknown>
+  const raw = snapshot as Record<string, unknown>;
 
   for (const key of keys) {
-    const value = raw[key]
+    const value = raw[key];
 
     if (typeof value === "string" && value.trim()) {
-      return value.trim()
+      return value.trim();
     }
   }
 
-  return null
+  return null;
 }
 
 function getSnapshotNumber(snapshot: unknown, keys: string[]) {
-  if (!snapshot || typeof snapshot !== "object") return null
+  if (!snapshot || typeof snapshot !== "object") return null;
 
-  const raw = snapshot as Record<string, unknown>
+  const raw = snapshot as Record<string, unknown>;
 
   for (const key of keys) {
-    const value = raw[key]
+    const value = raw[key];
 
     if (typeof value === "number" && Number.isFinite(value)) {
-      return value
+      return value;
     }
 
     if (typeof value === "string" && value.trim()) {
-      const parsed = Number(value)
+      const parsed = Number(value);
 
       if (Number.isFinite(parsed)) {
-        return parsed
+        return parsed;
       }
     }
   }
 
-  return null
+  return null;
 }
 
 function parsePositiveInteger(value: unknown) {
   if (typeof value === "number" && Number.isInteger(value) && value > 0) {
-    return value
+    return value;
   }
 
   if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value)
+    const parsed = Number(value);
 
     if (Number.isInteger(parsed) && parsed > 0) {
-      return parsed
+      return parsed;
     }
   }
 
-  return null
+  return null;
 }
 
-function normaliseMathCategory(value: string | null | undefined): MathCategory | null {
-  if (!value) return null
+function normaliseMathCategory(
+  value: string | null | undefined,
+): MathCategory | null {
+  if (!value) return null;
 
-  const clean = value.trim()
+  const clean = value.trim();
 
-  if (clean === "number_place_value") return "number_place_value"
-  if (clean === "four_operations") return "four_operations"
-  if (clean === "fractions_decimals_percentages") {
-    return "fractions_decimals_percentages"
+  const normalised = clean
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replaceAll("/", " ")
+    .replaceAll("-", "_")
+    .replaceAll("–", "_")
+    .replaceAll("—", "_")
+    .replace(/[^a-z0-9_ ]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (normalised === "number_place_value") return "number_place_value";
+  if (normalised === "number_and_place_value") return "number_place_value";
+  if (normalised === "four_operations") return "four_operations";
+  if (normalised === "fractions_decimals_percentages") {
+    return "fractions_decimals_percentages";
   }
-  if (clean === "shape_space") return "shape_space"
-  if (clean === "measurement") return "measurement"
-  if (clean === "data_handling") return "data_handling"
-  if (clean === "algebra_reasoning") return "algebra_reasoning"
+  if (normalised === "fractions_decimals_and_percentages") {
+    return "fractions_decimals_percentages";
+  }
+  if (normalised === "fractions_and_decimals") {
+    return "fractions_decimals_percentages";
+  }
+  if (normalised === "percentages") return "fractions_decimals_percentages";
+  if (normalised === "shape_space") return "shape_space";
+  if (normalised === "shape_and_space") return "shape_space";
+  if (normalised === "measurement") return "measurement";
+  if (normalised === "data_handling") return "data_handling";
+  if (normalised === "algebra_reasoning") return "algebra_reasoning";
+  if (normalised === "algebra_and_reasoning") return "algebra_reasoning";
 
-  if (clean === "Number Place Value") return "number_place_value"
-  if (clean === "Four Operations") return "four_operations"
-  if (clean === "Fractions & Decimals") return "fractions_decimals_percentages"
-  if (clean === "Percentages") return "fractions_decimals_percentages"
-  if (clean === "Shape & Space") return "shape_space"
-  if (clean === "Measurement") return "measurement"
-  if (clean === "Data Handling") return "data_handling"
-  if (clean === "Algebra & Reasoning") return "algebra_reasoning"
-
-  return null
+  return null;
 }
 
 function extractAttemptDifficulty(config: unknown) {
-  if (!config || typeof config !== "object") return null
+  if (!config || typeof config !== "object") return null;
 
-  const raw = config as Record<string, unknown>
-  const value = raw.selectedDifficulty
+  const raw = config as Record<string, unknown>;
+  const value = raw.selectedDifficulty;
 
-  return value === 1 || value === 2 || value === 3 ? value : null
-}
-
-function buildSyntheticMathProgressTestId(attemptId: string, category: string) {
-  const input = `${attemptId}:${category}`
-  let hash = 0
-
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash * 31 + input.charCodeAt(index)) >>> 0
-  }
-
-  return 900000000 + (hash % 100000000)
+  return value === 1 || value === 2 || value === 3 ? value : null;
 }
 
 function getItemMathQuestionId(item: ExistingAttemptItemRow) {
-  const sourceId = parsePositiveInteger(item.source_id)
+  const sourceId = parsePositiveInteger(item.source_id);
   const snapshotId = getSnapshotNumber(item.question_snapshot, [
     "sourceId",
     "source_id",
     "id",
     "questionId",
     "question_id",
-  ])
+  ]);
 
-  return sourceId ?? parsePositiveInteger(snapshotId)
-}
-
-async function clearMathCustomProgressRows({
-  supabase,
-  userId,
-  attemptId,
-  categories,
-}: {
-  supabase: ReturnType<typeof getSupabaseClient>
-  userId: string
-  attemptId: string
-  categories: string[]
-}) {
-  const syntheticIds = categories.map((category) =>
-    buildSyntheticMathProgressTestId(attemptId, category)
-  )
-
-  if (syntheticIds.length === 0) return
-
-  const { error } = await supabase
-    .from("math_progress")
-    .delete()
-    .eq("user_id", userId)
-    .in("test_id", syntheticIds)
-
-  if (error) {
-    console.error("Could not clear previous custom Maths progress rows:", {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-    })
-  }
+  return sourceId ?? parsePositiveInteger(snapshotId);
 }
 
 async function syncMathCustomTestProgressAndReview({
@@ -290,29 +258,32 @@ async function syncMathCustomTestProgressAndReview({
   userId,
   attemptId,
 }: {
-  supabase: ReturnType<typeof getSupabaseClient>
-  userId: string
-  attemptId: string
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  attemptId: string;
 }) {
   const { data: attemptData, error: attemptError } = await supabase
     .from("custom_test_attempts")
     .select("id, main_category, config")
     .eq("id", attemptId)
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (attemptError || !attemptData) {
-    console.error("Could not load custom attempt for Maths sync:", attemptError)
-    return
+    console.error(
+      "Could not load custom attempt for Maths sync:",
+      attemptError,
+    );
+    return;
   }
 
   const attempt = attemptData as {
-    id: string
-    main_category: MainCategory | null
-    config: unknown
-  }
+    id: string;
+    main_category: MainCategory | null;
+    config: unknown;
+  };
 
-  if (attempt.main_category !== "math") return
+  if (attempt.main_category !== "math") return;
 
   const { data: itemData, error: itemError } = await supabase
     .from("custom_test_attempt_items")
@@ -328,68 +299,48 @@ async function syncMathCustomTestProgressAndReview({
       correct_answer,
       is_correct,
       question_snapshot
-      `
+      `,
     )
     .eq("attempt_id", attemptId)
-    .order("question_index", { ascending: true })
+    .order("question_index", { ascending: true });
 
   if (itemError) {
-    console.error("Could not load custom attempt items for Maths sync:", itemError)
-    return
+    console.error(
+      "Could not load custom attempt items for Maths sync:",
+      itemError,
+    );
+    return;
   }
 
-  const items = (itemData ?? []) as ExistingAttemptItemRow[]
+  const items = (itemData ?? []) as ExistingAttemptItemRow[];
 
-  if (!items.length) return
-
-  const possibleCategories = Array.from(
-    new Set(
-      items
-        .map((item) =>
-          normaliseMathCategory(
-            item.topic_key ??
-              item.subtopic_key ??
-              getSnapshotString(item.question_snapshot, [
-                "topicKey",
-                "topic_key",
-                "category",
-              ])
-          )
-        )
-        .filter((category): category is MathCategory => category !== null)
-    )
-  )
-
-  await clearMathCustomProgressRows({
-    supabase,
-    userId,
-    attemptId,
-    categories: possibleCategories,
-  })
+  if (!items.length) return;
 
   const hasAtLeastOneEnteredAnswer = items.some((item) =>
-    isOptionKey(item.selected_answer)
-  )
+    isOptionKey(item.selected_answer),
+  );
 
   if (!hasAtLeastOneEnteredAnswer) {
-    return
+    return;
   }
 
   const questionIds = Array.from(
     new Set(
       items
         .map((item) => getItemMathQuestionId(item))
-        .filter((id): id is number => id !== null)
-    )
-  )
+        .filter((id): id is number => id !== null),
+    ),
+  );
 
-  let questionMap = new Map<number, MathQuestionLookupRow>()
+  let questionMap = new Map<number, MathQuestionLookupRow>();
 
   if (questionIds.length > 0) {
     const { data: questionData, error: questionError } = await supabase
       .from("math_questions")
-      .select("id, test_id, category, question_text, correct_answer, difficulty")
-      .in("id", questionIds)
+      .select(
+        "id, test_id, category, question_text, correct_answer, difficulty",
+      )
+      .in("id", questionIds);
 
     if (questionError) {
       console.error("Could not load Maths question details for custom sync:", {
@@ -397,34 +348,25 @@ async function syncMathCustomTestProgressAndReview({
         details: questionError.details,
         hint: questionError.hint,
         code: questionError.code,
-      })
+      });
     } else {
       questionMap = new Map(
         ((questionData ?? []) as MathQuestionLookupRow[]).map((question) => [
           question.id,
           question,
-        ])
-      )
+        ]),
+      );
     }
   }
 
-  const nowIso = new Date().toISOString()
-  const attemptDifficulty = extractAttemptDifficulty(attempt.config)
-  const correctQuestionIds: number[] = []
-  const wrongAnswersForReview: Array<Record<string, unknown>> = []
-
-  const progressByCategory = new Map<
-    MathCategory,
-    {
-      totalQuestions: number
-      correctAnswers: number
-      difficulty: number | null
-    }
-  >()
+  const nowIso = new Date().toISOString();
+  const attemptDifficulty = extractAttemptDifficulty(attempt.config);
+  const correctQuestionIds: number[] = [];
+  const wrongAnswersForReview: Array<Record<string, unknown>> = [];
 
   for (const item of items) {
-    const questionId = getItemMathQuestionId(item)
-    const question = questionId !== null ? questionMap.get(questionId) : null
+    const questionId = getItemMathQuestionId(item);
+    const question = questionId !== null ? questionMap.get(questionId) : null;
 
     const category =
       normaliseMathCategory(question?.category) ??
@@ -435,49 +377,34 @@ async function syncMathCustomTestProgressAndReview({
           "topicKey",
           "topic_key",
           "category",
-        ])
-      )
+        ]),
+      );
 
-    if (!category) continue
+    if (!category) continue;
 
     const selectedAnswer = isOptionKey(item.selected_answer)
       ? item.selected_answer
-      : null
-    const questionCorrectAnswer = question?.correct_answer ?? null
+      : null;
+    const questionCorrectAnswer = question?.correct_answer ?? null;
     const correctAnswer =
       item.correct_answer ??
       (isOptionKey(questionCorrectAnswer) ? questionCorrectAnswer : null) ??
-      extractCorrectAnswerFromSnapshot(item.question_snapshot)
+      extractCorrectAnswerFromSnapshot(item.question_snapshot);
     const isCorrect =
       selectedAnswer !== null &&
       correctAnswer !== null &&
-      selectedAnswer === correctAnswer
+      selectedAnswer === correctAnswer;
     const difficulty =
       attemptDifficulty ??
       question?.difficulty ??
       getSnapshotNumber(item.question_snapshot, ["difficulty"]) ??
-      null
+      null;
 
-    const existingProgress = progressByCategory.get(category) ?? {
-      totalQuestions: 0,
-      correctAnswers: 0,
-      difficulty,
-    }
-
-    existingProgress.totalQuestions += 1
-    existingProgress.correctAnswers += isCorrect ? 1 : 0
-
-    if (existingProgress.difficulty === null && difficulty !== null) {
-      existingProgress.difficulty = difficulty
-    }
-
-    progressByCategory.set(category, existingProgress)
-
-    if (questionId === null) continue
+    if (questionId === null) continue;
 
     if (isCorrect) {
-      correctQuestionIds.push(questionId)
-      continue
+      correctQuestionIds.push(questionId);
+      continue;
     }
 
     wrongAnswersForReview.push({
@@ -498,7 +425,7 @@ async function syncMathCustomTestProgressAndReview({
       difficulty,
       updated_at: nowIso,
       last_attempted_at: nowIso,
-    })
+    });
   }
 
   if (correctQuestionIds.length > 0) {
@@ -506,7 +433,7 @@ async function syncMathCustomTestProgressAndReview({
       .from("math_review")
       .delete()
       .eq("user_id", userId)
-      .in("question_id", Array.from(new Set(correctQuestionIds)))
+      .in("question_id", Array.from(new Set(correctQuestionIds)));
 
     if (removeReviewError) {
       console.error("Could not remove corrected custom Maths review items:", {
@@ -514,7 +441,7 @@ async function syncMathCustomTestProgressAndReview({
         details: removeReviewError.details,
         hint: removeReviewError.hint,
         code: removeReviewError.code,
-      })
+      });
     }
   }
 
@@ -523,7 +450,7 @@ async function syncMathCustomTestProgressAndReview({
       .from("math_review")
       .upsert(wrongAnswersForReview, {
         onConflict: "user_id,question_id",
-      })
+      });
 
     if (reviewError) {
       console.error("Could not save custom Maths review items:", {
@@ -531,52 +458,21 @@ async function syncMathCustomTestProgressAndReview({
         details: reviewError.details,
         hint: reviewError.hint,
         code: reviewError.code,
-      })
-    }
-  }
-
-  const progressRows = Array.from(progressByCategory.entries()).map(
-    ([category, data]) => ({
-      user_id: userId,
-      test_id: buildSyntheticMathProgressTestId(attemptId, category),
-      category,
-      total_questions: data.totalQuestions,
-      correct_answers: data.correctAnswers,
-      success_rate:
-        data.totalQuestions > 0
-          ? Math.round((data.correctAnswers / data.totalQuestions) * 100)
-          : 0,
-      difficulty: data.difficulty,
-    })
-  )
-
-  if (progressRows.length > 0) {
-    const { error: progressError } = await supabase
-      .from("math_progress")
-      .insert(progressRows)
-
-    if (progressError) {
-      console.error("Could not save custom Maths progress rows:", {
-        message: progressError.message,
-        details: progressError.details,
-        hint: progressError.hint,
-        code: progressError.code,
-        payload: progressRows,
-      })
+      });
     }
   }
 }
 
 function validateOnlineBody(
-  body: unknown
+  body: unknown,
 ):
   | { ok: true; data: OnlineSubmitCustomTestRequest }
   | { ok: false; error: string } {
   if (!body || typeof body !== "object") {
-    return { ok: false, error: "Invalid request body." }
+    return { ok: false, error: "Invalid request body." };
   }
 
-  const request = body as Partial<OnlineSubmitCustomTestRequest>
+  const request = body as Partial<OnlineSubmitCustomTestRequest>;
 
   if (
     !request.generatedTest ||
@@ -585,18 +481,18 @@ function validateOnlineBody(
     !isMainCategory(request.generatedTest.config.mainCategory) ||
     !Array.isArray(request.generatedTest.questions)
   ) {
-    return { ok: false, error: "Invalid generated test payload." }
+    return { ok: false, error: "Invalid generated test payload." };
   }
 
   if (!request.answers || typeof request.answers !== "object") {
-    return { ok: false, error: "Invalid answers payload." }
+    return { ok: false, error: "Invalid answers payload." };
   }
 
   if (
     typeof request.timeTakenSeconds !== "number" ||
     request.timeTakenSeconds < 0
   ) {
-    return { ok: false, error: "Invalid time taken value." }
+    return { ok: false, error: "Invalid time taken value." };
   }
 
   return {
@@ -606,34 +502,35 @@ function validateOnlineBody(
       answers: request.answers,
       timeTakenSeconds: request.timeTakenSeconds,
     },
-  }
+  };
 }
 
 function validatePrintableBody(
-  body: unknown
+  body: unknown,
 ):
   | { ok: true; data: PrintableSubmitCustomTestRequest }
   | { ok: false; error: string } {
   if (!body || typeof body !== "object") {
-    return { ok: false, error: "Invalid request body." }
+    return { ok: false, error: "Invalid request body." };
   }
 
-  const request = body as Partial<PrintableSubmitCustomTestRequest>
+  const request = body as Partial<PrintableSubmitCustomTestRequest>;
 
   if (typeof request.attemptId !== "string" || !request.attemptId.trim()) {
-    return { ok: false, error: "Invalid custom test attempt id." }
+    return { ok: false, error: "Invalid custom test attempt id." };
   }
 
   if (!request.answers || typeof request.answers !== "object") {
-    return { ok: false, error: "Invalid answers payload." }
+    return { ok: false, error: "Invalid answers payload." };
   }
 
   if (
     request.timeTakenSeconds !== undefined &&
     request.timeTakenSeconds !== null &&
-    (typeof request.timeTakenSeconds !== "number" || request.timeTakenSeconds < 0)
+    (typeof request.timeTakenSeconds !== "number" ||
+      request.timeTakenSeconds < 0)
   ) {
-    return { ok: false, error: "Invalid time taken value." }
+    return { ok: false, error: "Invalid time taken value." };
   }
 
   return {
@@ -643,35 +540,35 @@ function validatePrintableBody(
       answers: request.answers,
       timeTakenSeconds: request.timeTakenSeconds ?? null,
     },
-  }
+  };
 }
 
 function sanitizeAnswersByRunnerId(answers: Record<string, unknown>) {
-  const safeAnswers: Record<string, OptionKey> = {}
+  const safeAnswers: Record<string, OptionKey> = {};
 
   for (const [runnerId, answer] of Object.entries(answers)) {
     if (isOptionKey(answer)) {
-      safeAnswers[runnerId] = answer
+      safeAnswers[runnerId] = answer;
     }
   }
 
-  return safeAnswers
+  return safeAnswers;
 }
 
 function sanitizeAnswersByQuestionIndex(answers: Record<string, unknown>) {
-  const safeAnswers: Record<number, OptionKey | null> = {}
+  const safeAnswers: Record<number, OptionKey | null> = {};
 
   for (const [questionIndex, answer] of Object.entries(answers)) {
-    const parsedQuestionIndex = Number(questionIndex)
+    const parsedQuestionIndex = Number(questionIndex);
 
     if (!Number.isInteger(parsedQuestionIndex) || parsedQuestionIndex < 0) {
-      continue
+      continue;
     }
 
-    safeAnswers[parsedQuestionIndex] = isOptionKey(answer) ? answer : null
+    safeAnswers[parsedQuestionIndex] = isOptionKey(answer) ? answer : null;
   }
 
-  return safeAnswers
+  return safeAnswers;
 }
 
 async function awardCustomTestCoins({
@@ -680,12 +577,12 @@ async function awardCustomTestCoins({
   amount,
   attemptId,
 }: {
-  supabase: ReturnType<typeof getSupabaseClient>
-  userId: string
-  amount: number
-  attemptId: string
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  amount: number;
+  attemptId: string;
 }) {
-  if (amount <= 0) return
+  if (amount <= 0) return;
 
   const { error: coinsError } = await supabase.rpc("award_yanbo_tokens", {
     p_user_id: userId,
@@ -693,10 +590,10 @@ async function awardCustomTestCoins({
     p_reason: "custom_test_score_reward",
     p_source_type: "custom_test_attempt",
     p_source_id: attemptId,
-  })
+  });
 
   if (coinsError) {
-    console.error("Could not award YanBo Coins:", coinsError.message)
+    console.error("Could not award YanBo Coins:", coinsError.message);
   }
 }
 
@@ -705,35 +602,35 @@ async function submitOnlineCustomTest({
   userId,
   data,
 }: {
-  supabase: ReturnType<typeof getSupabaseClient>
-  userId: string
-  data: OnlineSubmitCustomTestRequest
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  data: OnlineSubmitCustomTestRequest;
 }) {
-  const { generatedTest, answers, timeTakenSeconds } = data
+  const { generatedTest, answers, timeTakenSeconds } = data;
 
   if (!generatedTest.questions.length) {
-    return jsonError("Generated test does not contain any questions.", 400)
+    return jsonError("Generated test does not contain any questions.", 400);
   }
 
-  const safeAnswers = sanitizeAnswersByRunnerId(answers)
-  const questionCount = generatedTest.questions.length
+  const safeAnswers = sanitizeAnswersByRunnerId(answers);
+  const questionCount = generatedTest.questions.length;
 
   const correctAnswers = generatedTest.questions.reduce((total, question) => {
     return (
       total +
       (safeAnswers[question.runnerId] === question.correctAnswer ? 1 : 0)
-    )
-  }, 0)
+    );
+  }, 0);
 
   const scorePercent =
     questionCount > 0
       ? Number(((correctAnswers / questionCount) * 100).toFixed(2))
-      : 0
+      : 0;
 
-  const coinsAwarded = calculateCustomTestCoins(scorePercent)
+  const coinsAwarded = calculateCustomTestCoins(scorePercent);
 
-  const timeLimitSeconds = generatedTest.config.totalTimeMinutes * 60
-  const completedAt = new Date().toISOString()
+  const timeLimitSeconds = generatedTest.config.totalTimeMinutes * 60;
+  const completedAt = new Date().toISOString();
 
   const { data: attempt, error: attemptError } = await supabase
     .from("custom_test_attempts")
@@ -751,17 +648,17 @@ async function submitOnlineCustomTest({
       completed_at: completedAt,
     })
     .select("id")
-    .single()
+    .single();
 
   if (attemptError || !attempt) {
     return jsonError(
       attemptError?.message ?? "Could not save custom test attempt.",
-      500
-    )
+      500,
+    );
   }
 
   const itemRows = generatedTest.questions.map((question, index) => {
-    const selectedAnswer = safeAnswers[question.runnerId] ?? null
+    const selectedAnswer = safeAnswers[question.runnerId] ?? null;
 
     return {
       attempt_id: attempt.id,
@@ -776,34 +673,34 @@ async function submitOnlineCustomTest({
       selected_answer: selectedAnswer,
       correct_answer: question.correctAnswer,
       is_correct: selectedAnswer === question.correctAnswer,
-    }
-  })
+    };
+  });
 
   const { error: itemsError } = await supabase
     .from("custom_test_attempt_items")
-    .insert(itemRows)
+    .insert(itemRows);
 
   if (itemsError) {
-    await supabase.from("custom_test_attempts").delete().eq("id", attempt.id)
+    await supabase.from("custom_test_attempts").delete().eq("id", attempt.id);
 
     return jsonError(
       itemsError.message ?? "Could not save custom test attempt items.",
-      500
-    )
+      500,
+    );
   }
 
   await syncMathCustomTestProgressAndReview({
     supabase,
     userId,
     attemptId: attempt.id,
-  })
+  });
 
   await awardCustomTestCoins({
     supabase,
     userId,
     amount: coinsAwarded,
     attemptId: attempt.id,
-  })
+  });
 
   return NextResponse.json<SubmitCustomTestResponse>({
     ok: true,
@@ -812,7 +709,7 @@ async function submitOnlineCustomTest({
     correctAnswers,
     questionCount,
     scorePercent,
-  })
+  });
 }
 
 async function submitPrintableCustomTestResults({
@@ -820,11 +717,11 @@ async function submitPrintableCustomTestResults({
   userId,
   data,
 }: {
-  supabase: ReturnType<typeof getSupabaseClient>
-  userId: string
-  data: PrintableSubmitCustomTestRequest
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  data: PrintableSubmitCustomTestRequest;
 }) {
-  const { attemptId, answers, timeTakenSeconds } = data
+  const { attemptId, answers, timeTakenSeconds } = data;
 
   const { data: attemptData, error: attemptError } = await supabase
     .from("custom_test_attempts")
@@ -839,26 +736,26 @@ async function submitPrintableCustomTestResults({
       correct_answers,
       score_percent,
       completed_at
-      `
+      `,
     )
     .eq("id", attemptId)
     .eq("user_id", userId)
-    .single()
+    .single();
 
   if (attemptError || !attemptData) {
     return jsonError(
       attemptError?.message ?? "Could not load the downloaded custom test.",
-      404
-    )
+      404,
+    );
   }
 
-  const attempt = attemptData as ExistingAttemptRow
+  const attempt = attemptData as ExistingAttemptRow;
 
   if (!isDownloadedAttemptStatus(attempt.status)) {
     return jsonError(
       "Only downloaded printable custom tests can be marked with this option.",
-      400
-    )
+      400,
+    );
   }
 
   const { data: itemData, error: itemError } = await supabase
@@ -875,39 +772,45 @@ async function submitPrintableCustomTestResults({
       correct_answer,
       is_correct,
       question_snapshot
-      `
+      `,
     )
     .eq("attempt_id", attemptId)
-    .order("question_index", { ascending: true })
+    .order("question_index", { ascending: true });
 
   if (itemError) {
     return jsonError(
       itemError.message ?? "Could not load printable custom test questions.",
-      500
-    )
+      500,
+    );
   }
 
-  const items = (itemData ?? []) as ExistingAttemptItemRow[]
+  const items = (itemData ?? []) as ExistingAttemptItemRow[];
 
   if (!items.length) {
-    return jsonError("This printable custom test does not contain any questions.", 400)
+    return jsonError(
+      "This printable custom test does not contain any questions.",
+      400,
+    );
   }
 
-  const safeAnswers = sanitizeAnswersByQuestionIndex(answers)
-  const questionCount = items.length
+  const safeAnswers = sanitizeAnswersByQuestionIndex(answers);
+  const questionCount = items.length;
 
-  let correctAnswers = 0
+  let correctAnswers = 0;
 
   for (const item of items) {
-    const selectedAnswer = safeAnswers[item.question_index] ?? null
+    const selectedAnswer = safeAnswers[item.question_index] ?? null;
     const correctAnswer =
-      item.correct_answer ?? extractCorrectAnswerFromSnapshot(item.question_snapshot)
+      item.correct_answer ??
+      extractCorrectAnswerFromSnapshot(item.question_snapshot);
 
     const isCorrect =
-      isOptionKey(selectedAnswer) && isOptionKey(correctAnswer) && selectedAnswer === correctAnswer
+      isOptionKey(selectedAnswer) &&
+      isOptionKey(correctAnswer) &&
+      selectedAnswer === correctAnswer;
 
     if (isCorrect) {
-      correctAnswers += 1
+      correctAnswers += 1;
     }
 
     const { error: updateItemError } = await supabase
@@ -918,59 +821,62 @@ async function submitPrintableCustomTestResults({
         is_correct: isCorrect,
       })
       .eq("attempt_id", attemptId)
-      .eq("question_index", item.question_index)
+      .eq("question_index", item.question_index);
 
     if (updateItemError) {
       return jsonError(
         updateItemError.message ?? "Could not save printable answer results.",
-        500
-      )
+        500,
+      );
     }
   }
 
-  const scorePercent = Number(((correctAnswers / questionCount) * 100).toFixed(2))
-  const coinsAwarded = calculateCustomTestCoins(scorePercent)
-  const completedAt = new Date().toISOString()
+  const scorePercent = Number(
+    ((correctAnswers / questionCount) * 100).toFixed(2),
+  );
+  const coinsAwarded = calculateCustomTestCoins(scorePercent);
+  const completedAt = new Date().toISOString();
 
   const updatePayload: Record<string, unknown> = {
     question_count: attempt.question_count ?? questionCount,
     correct_answers: correctAnswers,
     score_percent: scorePercent,
     completed_at: completedAt,
-  }
+  };
 
   if (typeof timeTakenSeconds === "number") {
     updatePayload.time_taken_seconds =
       typeof attempt.time_limit_seconds === "number"
         ? Math.min(timeTakenSeconds, attempt.time_limit_seconds)
-        : timeTakenSeconds
+        : timeTakenSeconds;
   }
 
   const { error: updateAttemptError } = await supabase
     .from("custom_test_attempts")
     .update(updatePayload)
     .eq("id", attemptId)
-    .eq("user_id", userId)
+    .eq("user_id", userId);
 
   if (updateAttemptError) {
     return jsonError(
-      updateAttemptError.message ?? "Could not update printable custom test result.",
-      500
-    )
+      updateAttemptError.message ??
+        "Could not update printable custom test result.",
+      500,
+    );
   }
 
   await syncMathCustomTestProgressAndReview({
     supabase,
     userId,
     attemptId,
-  })
+  });
 
   await awardCustomTestCoins({
     supabase,
     userId,
     amount: coinsAwarded,
     attemptId,
-  })
+  });
 
   return NextResponse.json<SubmitCustomTestResponse>({
     ok: true,
@@ -979,82 +885,82 @@ async function submitPrintableCustomTestResults({
     correctAnswers,
     questionCount,
     scorePercent,
-  })
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("Authorization")
+    const authHeader = request.headers.get("Authorization");
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return jsonError("Missing or invalid authorization header.", 401)
+      return jsonError("Missing or invalid authorization header.", 401);
     }
 
-    const accessToken = authHeader.replace("Bearer ", "").trim()
+    const accessToken = authHeader.replace("Bearer ", "").trim();
 
     if (!accessToken) {
-      return jsonError("Missing access token.", 401)
+      return jsonError("Missing access token.", 401);
     }
 
-    const supabase = getSupabaseClient(authHeader)
+    const supabase = getSupabaseClient(authHeader);
 
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser(accessToken)
+    } = await supabase.auth.getUser(accessToken);
 
     if (userError || !user) {
-      return jsonError("Could not verify the logged-in user.", 401)
+      return jsonError("Could not verify the logged-in user.", 401);
     }
 
     const { data: hasPaidAccess, error: accessError } =
-      await supabase.rpc("has_paid_access")
+      await supabase.rpc("has_paid_access");
 
     if (accessError) {
-      return jsonError("Could not check your membership access.", 500)
+      return jsonError("Could not check your membership access.", 500);
     }
 
     if (!hasPaidAccess) {
       return jsonError(
         "Custom tests are available for monthly and annual members only.",
-        403
-      )
+        403,
+      );
     }
 
-    const body = await request.json()
+    const body = await request.json();
 
     if (body && typeof body === "object" && "attemptId" in body) {
-      const validatedPrintable = validatePrintableBody(body)
+      const validatedPrintable = validatePrintableBody(body);
 
       if (!validatedPrintable.ok) {
-        return jsonError(validatedPrintable.error, 400)
+        return jsonError(validatedPrintable.error, 400);
       }
 
       return submitPrintableCustomTestResults({
         supabase,
         userId: user.id,
         data: validatedPrintable.data,
-      })
+      });
     }
 
-    const validatedOnline = validateOnlineBody(body)
+    const validatedOnline = validateOnlineBody(body);
 
     if (!validatedOnline.ok) {
-      return jsonError(validatedOnline.error, 400)
+      return jsonError(validatedOnline.error, 400);
     }
 
     return submitOnlineCustomTest({
       supabase,
       userId: user.id,
       data: validatedOnline.data,
-    })
+    });
   } catch (error) {
     return jsonError(
       error instanceof Error
         ? error.message
         : "Unexpected error while saving custom test.",
-      500
-    )
+      500,
+    );
   }
 }
 
@@ -1064,6 +970,6 @@ export async function GET() {
       ok: false,
       error: "Method not allowed. Use POST.",
     },
-    { status: 405 }
-  )
+    { status: 405 },
+  );
 }
