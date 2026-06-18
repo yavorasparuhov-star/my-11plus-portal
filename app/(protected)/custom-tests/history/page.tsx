@@ -34,6 +34,7 @@ type AttemptConfig = {
 }
 
 type TimeFilter = "all" | "7d" | "30d" | "90d"
+type CategoryFilter = "all" | MainCategory
 type AttemptTypeFilter = "all" | "online" | "downloaded"
 
 function formatDateTime(value: string | null | undefined) {
@@ -250,6 +251,15 @@ function getAttemptMainCategory(attempt: CustomTestAttemptRow) {
   return config.mainCategory ?? attempt.main_category ?? undefined
 }
 
+function matchesCategoryFilter(
+  attempt: CustomTestAttemptRow,
+  categoryFilter: CategoryFilter
+) {
+  if (categoryFilter === "all") return true
+
+  return getAttemptMainCategory(attempt) === categoryFilter
+}
+
 function buildAttemptTitle(attempt: CustomTestAttemptRow, attemptNumber: number | undefined) {
   const categoryLabel = formatMainCategory(getAttemptMainCategory(attempt))
 
@@ -305,6 +315,7 @@ export default function CustomTestHistoryPage() {
   const [errorMessage, setErrorMessage] = useState("")
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all")
   const [attemptTypeFilter, setAttemptTypeFilter] =
@@ -395,11 +406,12 @@ export default function CustomTestHistoryPage() {
     return attempts.filter((attempt) => {
       return (
         matchesTimeFilter(attempt, timeFilter) &&
+        matchesCategoryFilter(attempt, categoryFilter) &&
         matchesDifficultyFilter(attempt, difficultyFilter) &&
         matchesAttemptTypeFilter(attempt, attemptTypeFilter)
       )
     })
-  }, [attempts, timeFilter, difficultyFilter, attemptTypeFilter])
+  }, [attempts, timeFilter, categoryFilter, difficultyFilter, attemptTypeFilter])
 
   const summary = useMemo(() => {
     if (filteredAttempts.length === 0) {
@@ -532,7 +544,7 @@ export default function CustomTestHistoryPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Filter your custom test history by time, difficulty and test type.
+                Filter your custom test history by time, category, difficulty and test type.
               </p>
             </div>
 
@@ -540,6 +552,7 @@ export default function CustomTestHistoryPage() {
               type="button"
               onClick={() => {
                 setTimeFilter("all")
+                setCategoryFilter("all")
                 setDifficultyFilter("all")
                 setAttemptTypeFilter("all")
               }}
@@ -589,6 +602,35 @@ export default function CustomTestHistoryPage() {
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
                 <option value="90d">Last 90 days</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="category-filter"
+                style={{
+                  display: "block",
+                  color: "#374151",
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Category
+              </label>
+
+              <select
+                id="category-filter"
+                value={categoryFilter}
+                onChange={(event) =>
+                  setCategoryFilter(event.target.value as CategoryFilter)
+                }
+                style={selectStyle}
+              >
+                <option value="all">All categories</option>
+                <option value="english">English</option>
+                <option value="math">Maths</option>
+                <option value="vr">VR</option>
+                <option value="nvr">NVR</option>
               </select>
             </div>
 
