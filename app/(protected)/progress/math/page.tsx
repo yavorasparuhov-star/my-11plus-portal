@@ -13,6 +13,7 @@ import {
   Tooltip,
   BarChart,
   Bar,
+  Cell,
 } from "recharts";
 import type {
   NameType,
@@ -116,6 +117,18 @@ const CATEGORY_ORDER: MathCategory[] = [
   "data_handling",
   "algebra_reasoning",
 ];
+
+const CATEGORY_COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+  "#ea580c",
+  "#16a34a",
+  "#0891b2",
+  "#ca8a04",
+];
+
+const STAT_CARD_ACCENTS = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed"];
 
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
@@ -362,17 +375,35 @@ function StatCard({
   title,
   value,
   subtitle,
+  accent = "#22c55e",
 }: {
   title: string;
   value: string;
   subtitle?: string;
+  accent?: string;
 }) {
   return (
-    <div style={statCardStyle}>
+    <div
+      style={{
+        ...statCardStyle,
+        borderColor: `${accent}44`,
+        background: `linear-gradient(180deg, #ffffff 0%, ${accent}14 100%)`,
+      }}
+    >
+      <div
+        style={{
+          width: "48px",
+          height: "6px",
+          borderRadius: "999px",
+          background: accent,
+          marginBottom: "14px",
+        }}
+      />
       <div style={statTitleStyle}>{title}</div>
       <div
         style={{
           ...statValueStyle,
+          color: accent,
           fontSize: value.length > 18 ? "22px" : "34px",
         }}
       >
@@ -827,6 +858,10 @@ export default function MathProgressPage() {
           )
         : null;
 
+    const normalAttempts = filteredRows.filter(
+      (row) => row.source === "normal",
+    ).length;
+
     const customAttempts = filteredRows.filter(
       (row) => row.source === "custom",
     ).length;
@@ -839,6 +874,7 @@ export default function MathProgressPage() {
       bestScore,
       strongestCategory,
       weakestCategory,
+      normalAttempts,
       customAttempts,
     };
   }, [filteredRows]);
@@ -1044,26 +1080,61 @@ export default function MathProgressPage() {
           <StatCard
             title="Progress rows"
             value={String(overallStats.attemptsCompleted)}
-            subtitle="Normal tests plus marked custom test categories."
+            subtitle="Normal test rows plus marked custom-test category rows."
+            accent={STAT_CARD_ACCENTS[0]}
           />
           <StatCard
             title="Questions practised"
             value={String(overallStats.questionsPractised)}
             subtitle="Only tests with entered answers are included."
+            accent={STAT_CARD_ACCENTS[1]}
           />
           <StatCard
             title="Average success"
             value={`${overallStats.averageSuccess.toFixed(1)}%`}
             subtitle="Average of visible progress rows."
+            accent={STAT_CARD_ACCENTS[2]}
           />
           <StatCard
             title="Best score"
             value={`${overallStats.bestScore.toFixed(0)}%`}
             subtitle="Highest visible result."
+            accent={STAT_CARD_ACCENTS[3]}
           />
         </section>
 
-        <SectionCard title="Summary" subtitle={summaryText}>
+        <SectionCard title="Overall Summary" subtitle={summaryText}>
+          <div style={summaryGridStyle}>
+            <div style={summaryPillStyle}>
+              <span style={summaryPillLabelStyle}>Normal progress rows</span>
+              <strong style={summaryPillValueStyle}>
+                {overallStats.normalAttempts}
+              </strong>
+            </div>
+            <div style={summaryPillStyle}>
+              <span style={summaryPillLabelStyle}>Custom progress rows</span>
+              <strong style={summaryPillValueStyle}>
+                {overallStats.customAttempts}
+              </strong>
+            </div>
+            <div style={summaryPillStyle}>
+              <span style={summaryPillLabelStyle}>Strongest category</span>
+              <strong style={summaryPillValueStyle}>
+                {overallStats.strongestCategory
+                  ? formatCategory(overallStats.strongestCategory.category)
+                  : "—"}
+              </strong>
+            </div>
+            <div style={summaryPillStyle}>
+              <span style={summaryPillLabelStyle}>Focus category</span>
+              <strong style={summaryPillValueStyle}>
+                {overallStats.weakestCategory
+                  ? formatCategory(overallStats.weakestCategory.category)
+                  : "—"}
+              </strong>
+            </div>
+          </div>
+
           <div style={noticeStyle}>
             Printable custom tests stay out of progress until at least one
             answer has been entered. This prevents unfinished papers from
@@ -1091,9 +1162,10 @@ export default function MathProgressPage() {
                     <Line
                       type="monotone"
                       dataKey="success"
+                      stroke="#16a34a"
                       strokeWidth={3}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
+                      dot={{ r: 4, fill: "#16a34a" }}
+                      activeDot={{ r: 6, fill: "#15803d" }}
                     />
                   </LineChart>
                 )}
@@ -1104,7 +1176,7 @@ export default function MathProgressPage() {
           </SectionCard>
 
           <SectionCard
-            title="Average by category"
+            title="Average Success by Category"
             subtitle="Average success rate for each Maths topic."
           >
             {successByCategoryData.length ? (
@@ -1119,7 +1191,14 @@ export default function MathProgressPage() {
                     <XAxis dataKey="category" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="avgSuccess" radius={[8, 8, 0, 0]}>
+                      {successByCategoryData.map((entry, index) => (
+                        <Cell
+                          key={`success-${entry.category}`}
+                          fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 )}
               </ChartBox>
@@ -1130,7 +1209,7 @@ export default function MathProgressPage() {
         </section>
 
         <SectionCard
-          title="Attempts by category"
+          title="Practice Volume by Category"
           subtitle="How many visible progress rows and questions are recorded per topic."
         >
           {attemptsByCategoryData.length ? (
@@ -1145,7 +1224,14 @@ export default function MathProgressPage() {
                   <XAxis dataKey="category" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} />
                   <Tooltip formatter={attemptsTooltipFormatter} />
-                  <Bar dataKey="attempts" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="attempts" radius={[8, 8, 0, 0]}>
+                    {attemptsByCategoryData.map((entry, index) => (
+                      <Cell
+                        key={`volume-${entry.category}`}
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               )}
             </ChartBox>
@@ -1390,6 +1476,36 @@ const emptyStateStyle: React.CSSProperties = {
   justifyContent: "center",
   padding: "18px",
   textAlign: "center",
+};
+
+const summaryGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+  gap: "14px",
+  marginBottom: "16px",
+};
+
+const summaryPillStyle: React.CSSProperties = {
+  borderRadius: "18px",
+  border: "1px solid #dcfce7",
+  background: "#ffffff",
+  padding: "14px 16px",
+  display: "grid",
+  gap: "6px",
+  minWidth: 0,
+};
+
+const summaryPillLabelStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: "13px",
+  fontWeight: 800,
+};
+
+const summaryPillValueStyle: React.CSSProperties = {
+  color: "#0f172a",
+  fontSize: "17px",
+  lineHeight: 1.3,
+  overflowWrap: "break-word",
 };
 
 const noticeStyle: React.CSSProperties = {
