@@ -13,7 +13,6 @@ import {
   Tooltip,
   BarChart,
   Bar,
-  Cell,
 } from "recharts";
 import type {
   NameType,
@@ -118,17 +117,6 @@ const CATEGORY_ORDER: MathCategory[] = [
   "algebra_reasoning",
 ];
 
-const CATEGORY_COLORS = [
-  "#2563eb",
-  "#7c3aed",
-  "#db2777",
-  "#ea580c",
-  "#16a34a",
-  "#0891b2",
-  "#ca8a04",
-];
-
-const STAT_CARD_ACCENTS = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed"];
 
 const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "all", label: "All Categories" },
@@ -375,41 +363,68 @@ function StatCard({
   title,
   value,
   subtitle,
-  accent = "#22c55e",
 }: {
   title: string;
   value: string;
   subtitle?: string;
-  accent?: string;
 }) {
   return (
     <div
       style={{
-        ...statCardStyle,
-        borderColor: `${accent}44`,
-        background: `linear-gradient(180deg, #ffffff 0%, ${accent}14 100%)`,
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #d9f99d",
+        borderRadius: "24px",
+        padding: "22px",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minHeight: "132px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
         style={{
-          width: "48px",
-          height: "6px",
-          borderRadius: "999px",
-          background: accent,
-          marginBottom: "14px",
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 600,
+          marginBottom: "10px",
         }}
-      />
-      <div style={statTitleStyle}>{title}</div>
+      >
+        {title}
+      </div>
+
       <div
         style={{
-          ...statValueStyle,
-          color: accent,
           fontSize: value.length > 18 ? "22px" : "34px",
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.15,
+          overflowWrap: "break-word",
+          wordBreak: "normal",
+          whiteSpace: "normal",
+          maxWidth: "100%",
         }}
       >
         {value}
       </div>
-      {subtitle ? <div style={statSubtitleStyle}>{subtitle}</div> : null}
+
+      {subtitle ? (
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#64748b",
+            marginTop: "8px",
+            lineHeight: 1.45,
+            overflowWrap: "break-word",
+          }}
+        >
+          {subtitle}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -424,11 +439,47 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section style={sectionCardStyle}>
+    <section
+      style={{
+        background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+        border: "1px solid #dcfce7",
+        borderRadius: "28px",
+        padding: "24px",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}
+    >
       <div style={{ marginBottom: "18px" }}>
-        <h2 style={sectionTitleStyle}>{title}</h2>
-        {subtitle ? <p style={sectionSubtitleStyle}>{subtitle}</p> : null}
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            fontWeight: 800,
+            color: "#0f172a",
+            overflowWrap: "break-word",
+          }}
+        >
+          {title}
+        </h2>
+
+        {subtitle ? (
+          <p
+            style={{
+              margin: "8px 0 0 0",
+              color: "#64748b",
+              fontSize: "14px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
+            }}
+          >
+            {subtitle}
+          </p>
+        ) : null}
       </div>
+
       {children}
     </section>
   );
@@ -1005,62 +1056,83 @@ export default function MathProgressPage() {
   }
 
   return (
-    <div style={pageStyle}>
-      <main style={mainStyle}>
-        <section style={heroStyle}>
-          <div style={heroIconWrapStyle}>
-            <MathsIcon size={56} />
-          </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
+        padding: "28px 14px 50px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1320px",
+          width: "100%",
+          margin: "0 auto",
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "16px",
+            marginBottom: "28px",
+            minWidth: 0,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "clamp(30px, 8vw, 42px)",
+                fontWeight: 900,
+                color: "#0f172a",
+                letterSpacing: "-0.02em",
+                overflowWrap: "break-word",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <MathsIcon size={42} />
+              Maths Progress
+            </h1>
 
-          <div>
-            <p style={eyebrowStyle}>YanBo Learning</p>
-            <h1 style={titleStyle}>Maths Progress</h1>
-            <p style={heroSubtitleStyle}>
-              Track normal Maths tests and marked Maths custom tests in one
-              place. Downloaded tests only appear here after answers have been
-              entered.
+            <p
+              style={{
+                margin: "10px 0 0 0",
+                color: "#475569",
+                fontSize: "17px",
+                maxWidth: "760px",
+                lineHeight: 1.6,
+                overflowWrap: "break-word",
+              }}
+            >
+              Explore Maths performance with live filters, trend tracking,
+              category insights, and recent test history.
             </p>
           </div>
-        </section>
 
-        <section style={filterBarStyle}>
-          <label style={filterLabelStyle}>
-            Time period
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px",
+              alignItems: "center",
+              width: "100%",
+              maxWidth: "820px",
+              minWidth: 0,
+            }}
+          >
             <select
-              value={timeFilter}
-              onChange={(event) =>
-                setTimeFilter(event.target.value as TimeFilter)
-              }
-              style={selectStyle}
-            >
-              {timeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={filterLabelStyle}>
-            Difficulty
-            <select
-              value={difficultyFilter}
-              onChange={(event) =>
-                setDifficultyFilter(event.target.value as DifficultyFilter)
-              }
-              style={selectStyle}
-            >
-              {difficultyOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={filterLabelStyle}>
-            Category
-            <select
+              id="maths-progress-category-filter"
+              name="mathsProgressCategoryFilter"
               value={categoryFilter}
               onChange={(event) =>
                 setCategoryFilter(event.target.value as CategoryFilter)
@@ -1073,402 +1145,487 @@ export default function MathProgressPage() {
                 </option>
               ))}
             </select>
-          </label>
-        </section>
 
-        <section style={statsGridStyle}>
+            <select
+              id="maths-progress-difficulty-filter"
+              name="mathsProgressDifficultyFilter"
+              value={difficultyFilter}
+              onChange={(event) =>
+                setDifficultyFilter(event.target.value as DifficultyFilter)
+              }
+              style={selectStyle}
+            >
+              {difficultyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              id="maths-progress-time-filter"
+              name="mathsProgressTimeFilter"
+              value={timeFilter}
+              onChange={(event) =>
+                setTimeFilter(event.target.value as TimeFilter)
+              }
+              style={selectStyle}
+            >
+              {timeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+            gap: "18px",
+            marginBottom: "24px",
+            minWidth: 0,
+          }}
+        >
           <StatCard
-            title="Progress rows"
+            title="Attempts Completed"
             value={String(overallStats.attemptsCompleted)}
-            subtitle="Normal test rows plus marked custom-test category rows."
-            accent={STAT_CARD_ACCENTS[0]}
           />
+
           <StatCard
-            title="Questions practised"
+            title="Questions Practised"
             value={String(overallStats.questionsPractised)}
-            subtitle="Only tests with entered answers are included."
-            accent={STAT_CARD_ACCENTS[1]}
           />
+
           <StatCard
-            title="Average success"
+            title="Average Success"
             value={`${overallStats.averageSuccess.toFixed(1)}%`}
-            subtitle="Average of visible progress rows."
-            accent={STAT_CARD_ACCENTS[2]}
           />
+
           <StatCard
-            title="Best score"
-            value={`${overallStats.bestScore.toFixed(0)}%`}
-            subtitle="Highest visible result."
-            accent={STAT_CARD_ACCENTS[3]}
+            title="Best Score"
+            value={`${overallStats.bestScore.toFixed(1)}%`}
           />
-        </section>
 
-        <SectionCard title="Overall Summary" subtitle={summaryText}>
-          <div style={summaryGridStyle}>
-            <div style={summaryPillStyle}>
-              <span style={summaryPillLabelStyle}>Normal progress rows</span>
-              <strong style={summaryPillValueStyle}>
-                {overallStats.normalAttempts}
-              </strong>
-            </div>
-            <div style={summaryPillStyle}>
-              <span style={summaryPillLabelStyle}>Custom progress rows</span>
-              <strong style={summaryPillValueStyle}>
-                {overallStats.customAttempts}
-              </strong>
-            </div>
-            <div style={summaryPillStyle}>
-              <span style={summaryPillLabelStyle}>Strongest category</span>
-              <strong style={summaryPillValueStyle}>
-                {overallStats.strongestCategory
-                  ? formatCategory(overallStats.strongestCategory.category)
-                  : "—"}
-              </strong>
-            </div>
-            <div style={summaryPillStyle}>
-              <span style={summaryPillLabelStyle}>Focus category</span>
-              <strong style={summaryPillValueStyle}>
-                {overallStats.weakestCategory
-                  ? formatCategory(overallStats.weakestCategory.category)
-                  : "—"}
-              </strong>
-            </div>
-          </div>
+          <StatCard
+            title="Strongest Category"
+            value={
+              overallStats.strongestCategory
+                ? formatCategory(overallStats.strongestCategory.category)
+                : "—"
+            }
+            subtitle={
+              overallStats.strongestCategory
+                ? `${overallStats.strongestCategory.avgSuccess.toFixed(
+                    1,
+                  )}% average success`
+                : undefined
+            }
+          />
 
-          <div style={noticeStyle}>
-            Printable custom tests stay out of progress until at least one
-            answer has been entered. This prevents unfinished papers from
-            damaging the student&apos;s progress data.
-          </div>
-        </SectionCard>
+          <StatCard
+            title="Weakest Category"
+            value={
+              overallStats.weakestCategory
+                ? formatCategory(overallStats.weakestCategory.category)
+                : "—"
+            }
+            subtitle={
+              overallStats.weakestCategory
+                ? `${overallStats.weakestCategory.avgSuccess.toFixed(
+                    1,
+                  )}% average success`
+                : undefined
+            }
+          />
+        </div>
 
-        <section style={twoColumnGridStyle}>
+        <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
-            title="Performance trend"
-            subtitle="Success rate over time for the selected filters."
+            title="Performance Trend"
+            subtitle="Track success rate across recent Maths attempts."
           >
-            {performanceTrendData.length ? (
-              <ChartBox>
-                {({ width, height }) => (
+            <ChartBox>
+              {({ width, height }) =>
+                performanceTrendData.length ? (
                   <LineChart
                     width={width}
                     height={height}
                     data={performanceTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="attempt" />
+                    <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={successTooltipFormatter} />
+                    <Tooltip
+                      formatter={successTooltipFormatter}
+                      labelFormatter={(label, payload) => {
+                        const point = payload?.[0]?.payload;
+
+                        return point
+                          ? `${point.date} • ${point.category} • ${point.difficulty} • ${point.source} • ${point.scoreLabel}`
+                          : label;
+                      }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="success"
                       stroke="#16a34a"
                       strokeWidth={3}
-                      dot={{ r: 4, fill: "#16a34a" }}
-                      activeDot={{ r: 6, fill: "#15803d" }}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
-                )}
-              </ChartBox>
-            ) : (
-              <div style={emptyStateStyle}>No data for this filter.</div>
-            )}
+                ) : (
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
+                )
+              }
+            </ChartBox>
           </SectionCard>
 
           <SectionCard
-            title="Average Success by Category"
-            subtitle="Average success rate for each Maths topic."
+            title="Quick Insights"
+            subtitle="A snapshot of current Maths performance."
           >
-            {successByCategoryData.length ? (
-              <ChartBox>
-                {({ width, height }) => (
+            <div style={{ display: "grid", gap: "14px" }}>
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#ecfdf5",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
+                  Accuracy
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
+                  {overallStats.averageSuccess.toFixed(1)}%
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#15803d",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
+                  Best Category
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {overallStats.strongestCategory
+                    ? formatCategory(overallStats.strongestCategory.category)
+                    : "—"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#fff7ed",
+                  border: "1px solid #fed7aa",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#c2410c",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
+                  Needs Focus
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                    overflowWrap: "break-word",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {overallStats.weakestCategory
+                    ? formatCategory(overallStats.weakestCategory.category)
+                    : "—"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "18px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#475569",
+                    fontWeight: 700,
+                    marginBottom: "6px",
+                  }}
+                >
+                  Questions Correct
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}
+                >
+                  {overallStats.totalCorrect}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+
+        <div style={responsiveTwoColumnGridStyle}>
+          <SectionCard
+            title="Average Success by Category"
+            subtitle="Compare performance across Maths categories."
+          >
+            <ChartBox>
+              {({ width, height }) =>
+                successByCategoryData.length ? (
                   <BarChart
                     width={width}
                     height={height}
                     data={successByCategoryData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="category" tick={{ fontSize: 11 }} />
                     <YAxis domain={[0, 100]} />
                     <Tooltip formatter={averageSuccessTooltipFormatter} />
-                    <Bar dataKey="avgSuccess" radius={[8, 8, 0, 0]}>
-                      {successByCategoryData.map((entry, index) => (
-                        <Cell
-                          key={`success-${entry.category}`}
-                          fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                        />
-                      ))}
-                    </Bar>
+                    <Bar
+                      dataKey="avgSuccess"
+                      fill="#16a34a"
+                      radius={[10, 10, 0, 0]}
+                    />
                   </BarChart>
-                )}
-              </ChartBox>
-            ) : (
-              <div style={emptyStateStyle}>No category data yet.</div>
-            )}
-          </SectionCard>
-        </section>
-
-        <SectionCard
-          title="Practice Volume by Category"
-          subtitle="How many visible progress rows and questions are recorded per topic."
-        >
-          {attemptsByCategoryData.length ? (
-            <ChartBox>
-              {({ width, height }) => (
-                <BarChart
-                  width={width}
-                  height={height}
-                  data={attemptsByCategoryData}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip formatter={attemptsTooltipFormatter} />
-                  <Bar dataKey="attempts" radius={[8, 8, 0, 0]}>
-                    {attemptsByCategoryData.map((entry, index) => (
-                      <Cell
-                        key={`volume-${entry.category}`}
-                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
+                ) : (
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
+                )
+              }
             </ChartBox>
-          ) : (
-            <div style={emptyStateStyle}>No attempt data yet.</div>
-          )}
-        </SectionCard>
+          </SectionCard>
+
+          <SectionCard
+            title="Practice Volume by Category"
+            subtitle="See which Maths areas have been practised the most."
+          >
+            <ChartBox>
+              {({ width, height }) =>
+                attemptsByCategoryData.length ? (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={attemptsByCategoryData}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip formatter={attemptsTooltipFormatter} />
+                    <Bar
+                      dataKey="attempts"
+                      fill="#10b981"
+                      radius={[10, 10, 0, 0]}
+                    />
+                  </BarChart>
+                ) : (
+                  <div style={emptyStateStyle}>
+                    No data available for this filter.
+                  </div>
+                )
+              }
+            </ChartBox>
+          </SectionCard>
+        </div>
 
         <SectionCard
-          title="Recent progress"
-          subtitle="Latest normal Maths and marked custom Maths results."
+          title="Recent Attempts"
+          subtitle="Your most recent Maths results for the selected filters."
         >
           {recentAttempts.length ? (
-            <div style={recentListStyle}>
-              {recentAttempts.map((row) => (
-                <div key={row.id} style={recentProgressCardStyle}>
-                  <div style={recentProgressMainStyle}>
-                    <div style={recentProgressTopLineStyle}>
-                      <span style={recentProgressDateStyle}>
-                        {formatDateTime(row.created_at)}
-                      </span>
-                      <span
-                        style={{
-                          ...recentProgressTypePillStyle,
-                          background:
-                            row.source === "custom" ? "#e0f2fe" : "#dcfce7",
-                          color: row.source === "custom" ? "#075985" : "#166534",
-                          borderColor:
-                            row.source === "custom" ? "#bae6fd" : "#bbf7d0",
-                        }}
-                      >
-                        {getChartSourceLabel(row)}
-                      </span>
-                    </div>
+            <div style={{ overflowX: "auto", maxWidth: "100%" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  minWidth: "980px",
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                    <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Type</th>
+                    <th style={thStyle}>Category</th>
+                    <th style={thStyle}>Difficulty</th>
+                    <th style={thStyle}>Correct</th>
+                    <th style={thStyle}>Questions</th>
+                    <th style={thStyle}>Success</th>
+                  </tr>
+                </thead>
 
-                    <div style={recentProgressTitleStyle}>
-                      {formatCategory(row.category)}
-                    </div>
-
-                    <div style={recentProgressMetaStyle}>
-                      <span>{getLevelLabel(row.difficulty)}</span>
-                      <span>•</span>
-                      <span>
-                        {row.correct_answers}/{row.total_questions} correct
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={recentProgressScoreCircleStyle}>
-                    <span style={recentProgressScoreValueStyle}>
-                      {Number(row.success_rate).toFixed(0)}%
-                    </span>
-                    <span style={recentProgressScoreLabelStyle}>success</span>
-                  </div>
-                </div>
-              ))}
+                <tbody>
+                  {recentAttempts.map((row) => (
+                    <tr
+                      key={row.id}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                      }}
+                    >
+                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
+                      <td style={tdStyle}>{getChartSourceLabel(row)}</td>
+                      <td style={tdStyle}>{formatCategory(row.category)}</td>
+                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
+                      <td style={tdStyle}>{row.correct_answers}</td>
+                      <td style={tdStyle}>{row.total_questions}</td>
+                      <td style={tdStyle}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "6px 10px",
+                            borderRadius: "999px",
+                            background:
+                              Number(row.success_rate) >= 70
+                                ? "#dcfce7"
+                                : Number(row.success_rate) >= 50
+                                  ? "#fef3c7"
+                                  : "#fee2e2",
+                            color:
+                              Number(row.success_rate) >= 70
+                                ? "#166534"
+                                : Number(row.success_rate) >= 50
+                                  ? "#92400e"
+                                  : "#991b1b",
+                            fontWeight: 700,
+                            fontSize: "13px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {Number(row.success_rate).toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div style={emptyStateStyle}>
-              No recent progress for this filter.
+              No recent attempts found for the selected filters.
             </div>
           )}
         </SectionCard>
-      </main>
+
+        <div
+          style={{
+            marginTop: "20px",
+            background: "linear-gradient(135deg, #16a34a 0%, #065f46 100%)",
+            color: "white",
+            borderRadius: "28px",
+            padding: "26px",
+            boxShadow: "0 12px 34px rgba(6, 95, 70, 0.22)",
+            maxWidth: "100%",
+            overflow: "hidden",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 800,
+              marginBottom: "8px",
+            }}
+          >
+            Overall Summary
+          </div>
+
+          <div
+            style={{
+              color: "#dcfce7",
+              fontSize: "16px",
+              lineHeight: 1.7,
+              overflowWrap: "break-word",
+            }}
+          >
+            {summaryText}
+          </div>
+        </div>
+      </div>
     </div>
   );
+
 }
 
-const pageStyle: React.CSSProperties = {
-  minHeight: "100vh",
-  background:
-    "radial-gradient(circle at top, rgba(34,197,94,0.14) 0%, rgba(255,255,255,1) 34%), linear-gradient(180deg, #f7fff8 0%, #ecfdf5 100%)",
-  padding: "28px 14px 50px",
-  boxSizing: "border-box",
-};
-
-const mainStyle: React.CSSProperties = {
-  maxWidth: "1180px",
-  margin: "0 auto",
+const responsiveTwoColumnGridStyle: React.CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
   gap: "20px",
-};
-
-const heroStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "18px",
-  alignItems: "center",
-  background: "linear-gradient(135deg, #ffffff 0%, #ecfccb 100%)",
-  border: "1px solid #bbf7d0",
-  borderRadius: "30px",
-  padding: "24px",
-  boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
-};
-
-const heroIconWrapStyle: React.CSSProperties = {
-  width: "76px",
-  height: "76px",
-  borderRadius: "24px",
-  background: "#ffffff",
-  border: "1px solid #dcfce7",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: "0 0 auto",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 6px 0",
-  color: "#16a34a",
-  fontWeight: 800,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-  fontSize: "13px",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "38px",
-  lineHeight: 1.1,
-  color: "#0f172a",
-  fontWeight: 900,
-};
-
-const heroSubtitleStyle: React.CSSProperties = {
-  margin: "10px 0 0 0",
-  color: "#475569",
-  lineHeight: 1.6,
-  maxWidth: "760px",
-};
-
-const filterBarStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "14px",
-  background: "#ffffff",
-  border: "1px solid #dcfce7",
-  borderRadius: "24px",
-  padding: "18px",
-  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.05)",
-};
-
-const filterLabelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "8px",
-  fontSize: "13px",
-  color: "#475569",
-  fontWeight: 800,
+  marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 };
 
 const selectStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #cbd5e1",
+  padding: "12px 14px",
   borderRadius: "14px",
-  padding: "11px 12px",
-  background: "#ffffff",
-  color: "#0f172a",
-  fontSize: "15px",
-};
-
-const statsGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-  gap: "16px",
-};
-
-const statCardStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-  border: "1px solid #d9f99d",
-  borderRadius: "24px",
-  padding: "22px",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-  minHeight: "132px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  minWidth: 0,
-  maxWidth: "100%",
-  overflow: "hidden",
-  boxSizing: "border-box",
-};
-
-const statTitleStyle: React.CSSProperties = {
+  border: "1px solid #bbf7d0",
+  backgroundColor: "white",
   fontSize: "14px",
-  color: "#64748b",
   fontWeight: 600,
-  marginBottom: "10px",
-};
-
-const statValueStyle: React.CSSProperties = {
-  fontWeight: 800,
   color: "#0f172a",
-  lineHeight: 1.15,
-  overflowWrap: "break-word",
-  whiteSpace: "normal",
-  maxWidth: "100%",
-};
-
-const statSubtitleStyle: React.CSSProperties = {
-  fontSize: "13px",
-  color: "#64748b",
-  marginTop: "8px",
-  lineHeight: 1.45,
-  overflowWrap: "break-word",
-};
-
-const sectionCardStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
-  border: "1px solid #dcfce7",
-  borderRadius: "28px",
-  padding: "24px",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-  minWidth: 0,
-  maxWidth: "100%",
-  overflow: "hidden",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
+  boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
   boxSizing: "border-box",
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "22px",
-  fontWeight: 800,
-  color: "#0f172a",
-  overflowWrap: "break-word",
-};
-
-const sectionSubtitleStyle: React.CSSProperties = {
-  margin: "8px 0 0 0",
-  color: "#64748b",
-  fontSize: "14px",
-  lineHeight: 1.5,
-  overflowWrap: "break-word",
-};
-
-const twoColumnGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-  gap: "20px",
 };
 
 const chartContainerStyle: React.CSSProperties = {
@@ -1480,168 +1637,29 @@ const chartContainerStyle: React.CSSProperties = {
 };
 
 const emptyStateStyle: React.CSSProperties = {
-  minHeight: "160px",
-  borderRadius: "20px",
-  border: "1px dashed #bbf7d0",
-  background: "#f8fafc",
-  color: "#64748b",
+  height: "100%",
+  minHeight: "180px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "18px",
+  color: "#94a3b8",
+  fontSize: "15px",
   textAlign: "center",
-};
-
-const summaryGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-  gap: "14px",
-  marginBottom: "16px",
-};
-
-const summaryPillStyle: React.CSSProperties = {
-  borderRadius: "18px",
-  border: "1px solid #dcfce7",
-  background: "#ffffff",
-  padding: "14px 16px",
-  display: "grid",
-  gap: "6px",
-  minWidth: 0,
-};
-
-const summaryPillLabelStyle: React.CSSProperties = {
-  color: "#64748b",
-  fontSize: "13px",
-  fontWeight: 800,
-};
-
-const summaryPillValueStyle: React.CSSProperties = {
-  color: "#0f172a",
-  fontSize: "17px",
-  lineHeight: 1.3,
-  overflowWrap: "break-word",
-};
-
-const noticeStyle: React.CSSProperties = {
-  borderRadius: "18px",
-  border: "1px solid #bbf7d0",
-  background: "#f0fdf4",
-  color: "#166534",
-  padding: "14px 16px",
-  lineHeight: 1.55,
-  fontWeight: 600,
-};
-
-const recentListStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "12px",
-};
-
-const recentProgressCardStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "16px",
-  padding: "16px",
-  borderRadius: "20px",
-  border: "1px solid #dcfce7",
-  background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
-  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
-};
-
-const recentProgressMainStyle: React.CSSProperties = {
-  minWidth: 0,
-  display: "grid",
-  gap: "7px",
-};
-
-const recentProgressTopLineStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  flexWrap: "wrap",
-};
-
-const recentProgressDateStyle: React.CSSProperties = {
-  color: "#64748b",
-  fontSize: "13px",
-  fontWeight: 700,
-};
-
-const recentProgressTypePillStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  border: "1px solid",
-  borderRadius: "999px",
-  padding: "4px 9px",
-  fontSize: "12px",
-  fontWeight: 800,
-  whiteSpace: "nowrap",
-};
-
-const recentProgressTitleStyle: React.CSSProperties = {
-  color: "#0f172a",
-  fontSize: "16px",
-  fontWeight: 900,
-  lineHeight: 1.3,
-};
-
-const recentProgressMetaStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  flexWrap: "wrap",
-  color: "#475569",
-  fontSize: "13px",
-  fontWeight: 700,
-};
-
-const recentProgressScoreCircleStyle: React.CSSProperties = {
-  flex: "0 0 auto",
-  width: "72px",
-  height: "72px",
-  borderRadius: "999px",
-  border: "4px solid #22c55e",
-  background: "#ecfdf5",
-  color: "#166534",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  boxShadow: "0 10px 22px rgba(34, 197, 94, 0.18)",
-};
-
-const recentProgressScoreValueStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 900,
-  lineHeight: 1,
-};
-
-const recentProgressScoreLabelStyle: React.CSSProperties = {
-  marginTop: "4px",
-  fontSize: "10px",
-  fontWeight: 800,
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-};
-
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  minWidth: "760px",
 };
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",
-  padding: "12px 10px",
-  borderBottom: "1px solid #dcfce7",
-  color: "#475569",
+  padding: "14px 12px",
   fontSize: "13px",
+  color: "#64748b",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "12px 10px",
-  borderBottom: "1px solid #ecfdf5",
-  color: "#0f172a",
+  padding: "16px 12px",
   fontSize: "14px",
+  color: "#0f172a",
+  fontWeight: 500,
+  whiteSpace: "nowrap",
 };
