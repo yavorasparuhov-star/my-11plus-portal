@@ -74,6 +74,32 @@ type MathQuestionLookupRow = {
   difficulty: number | null;
 };
 
+type EnglishProgressCategory =
+  | "vocabulary"
+  | "spelling"
+  | "comprehension"
+  | "primary_word_classes"
+  | "sentence_structure_syntax"
+  | "advanced_punctuation"
+  | "apostrophes"
+  | "comma"
+  | "direct_speech_punctuation"
+  | "sentence_punctuation";
+
+type EnglishQuestionLookupRow = {
+  id: number;
+  test_id: number | null;
+  question_text: string | null;
+  correct_answer: string | null;
+  difficulty: number | null;
+};
+
+type WordLookupRow = {
+  id: number;
+  word: string | null;
+  difficulty: number | null;
+};
+
 function isMainCategory(value: unknown): value is MainCategory {
   return (
     value === "english" || value === "math" || value === "vr" || value === "nvr"
@@ -236,7 +262,17 @@ function extractAttemptDifficulty(config: unknown) {
   const raw = config as Record<string, unknown>;
   const value = raw.selectedDifficulty;
 
-  return value === 1 || value === 2 || value === 3 ? value : null;
+  if (value === 1 || value === 2 || value === 3) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+
+    if (parsed === 1 || parsed === 2 || parsed === 3) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function getItemMathQuestionId(item: ExistingAttemptItemRow) {
@@ -247,6 +283,144 @@ function getItemMathQuestionId(item: ExistingAttemptItemRow) {
     "id",
     "questionId",
     "question_id",
+  ]);
+
+  return sourceId ?? parsePositiveInteger(snapshotId);
+}
+
+function normaliseEnglishCategory(
+  value: string | null | undefined,
+): EnglishProgressCategory | null {
+  if (!value) return null;
+
+  const clean = value.trim();
+
+  const normalised = clean
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replaceAll("/", " ")
+    .replaceAll("-", "_")
+    .replaceAll("–", "_")
+    .replaceAll("—", "_")
+    .replace(/[^a-z0-9_ ]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  if (normalised === "vocabulary") return "vocabulary";
+  if (normalised === "spelling") return "spelling";
+  if (normalised === "comprehension") return "comprehension";
+
+  if (normalised === "primary_word_classes") return "primary_word_classes";
+  if (normalised === "word_classes") return "primary_word_classes";
+  if (normalised === "sentence_structure_syntax") {
+    return "sentence_structure_syntax";
+  }
+  if (normalised === "sentence_structure_and_syntax") {
+    return "sentence_structure_syntax";
+  }
+  if (normalised === "syntax") return "sentence_structure_syntax";
+
+  if (normalised === "advanced_punctuation") return "advanced_punctuation";
+  if (normalised === "apostrophes") return "apostrophes";
+  if (normalised === "apostrophe") return "apostrophes";
+  if (normalised === "comma") return "comma";
+  if (normalised === "commas") return "comma";
+  if (normalised === "direct_speech_punctuation") {
+    return "direct_speech_punctuation";
+  }
+  if (normalised === "direct_speech") return "direct_speech_punctuation";
+  if (normalised === "sentence_punctuation") return "sentence_punctuation";
+  if (normalised === "punctuation_sentence") return "sentence_punctuation";
+  if (normalised === "sentence") return "sentence_punctuation";
+
+  return null;
+}
+
+function getItemEnglishCategory(
+  item: ExistingAttemptItemRow,
+): EnglishProgressCategory | null {
+  return (
+    normaliseEnglishCategory(item.subtopic_key) ??
+    normaliseEnglishCategory(
+      getSnapshotString(item.question_snapshot, [
+        "subtopicKey",
+        "subtopic_key",
+        "subcategory",
+        "subCategory",
+      ]),
+    ) ??
+    normaliseEnglishCategory(item.topic_key) ??
+    normaliseEnglishCategory(
+      getSnapshotString(item.question_snapshot, [
+        "topicKey",
+        "topic_key",
+        "category",
+        "mainCategory",
+        "main_category",
+      ]),
+    )
+  );
+}
+
+function getEnglishSharedReviewMeta(category: EnglishProgressCategory) {
+  if (category === "comprehension") {
+    return { main_category: "comprehension", subcategory: "comprehension" };
+  }
+
+  if (category === "primary_word_classes") {
+    return { main_category: "grammar", subcategory: "primary_word_classes" };
+  }
+
+  if (category === "sentence_structure_syntax") {
+    return {
+      main_category: "grammar",
+      subcategory: "sentence_structure_syntax",
+    };
+  }
+
+  if (category === "advanced_punctuation") {
+    return {
+      main_category: "punctuation",
+      subcategory: "advanced_punctuation",
+    };
+  }
+
+  if (category === "apostrophes") {
+    return { main_category: "punctuation", subcategory: "apostrophes" };
+  }
+
+  if (category === "comma") {
+    return { main_category: "punctuation", subcategory: "comma" };
+  }
+
+  if (category === "direct_speech_punctuation") {
+    return {
+      main_category: "punctuation",
+      subcategory: "direct_speech_punctuation",
+    };
+  }
+
+  if (category === "sentence_punctuation") {
+    return {
+      main_category: "punctuation",
+      subcategory: "sentence_punctuation",
+    };
+  }
+
+  return null;
+}
+
+function getItemEnglishSourceId(item: ExistingAttemptItemRow) {
+  const sourceId = parsePositiveInteger(item.source_id);
+  const snapshotId = getSnapshotNumber(item.question_snapshot, [
+    "sourceId",
+    "source_id",
+    "id",
+    "questionId",
+    "question_id",
+    "wordId",
+    "word_id",
   ]);
 
   return sourceId ?? parsePositiveInteger(snapshotId);
@@ -457,6 +631,394 @@ async function syncMathCustomTestProgressAndReview({
       });
     }
   }
+}
+
+
+async function syncEnglishCustomTestProgressAndReview({
+  supabase,
+  userId,
+  attemptId,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  attemptId: string;
+}) {
+  const { data: attemptData, error: attemptError } = await supabase
+    .from("custom_test_attempts")
+    .select("id, main_category, config")
+    .eq("id", attemptId)
+    .eq("user_id", userId)
+    .single();
+
+  if (attemptError || !attemptData) {
+    console.error(
+      "Could not load custom attempt for English sync:",
+      attemptError,
+    );
+    return;
+  }
+
+  const attempt = attemptData as {
+    id: string;
+    main_category: MainCategory | null;
+    config: unknown;
+  };
+
+  if (attempt.main_category !== "english") return;
+
+  const { data: itemData, error: itemError } = await supabase
+    .from("custom_test_attempt_items")
+    .select(
+      `
+      question_index,
+      main_category,
+      source_type,
+      source_id,
+      topic_key,
+      subtopic_key,
+      selected_answer,
+      correct_answer,
+      is_correct,
+      question_snapshot
+      `,
+    )
+    .eq("attempt_id", attemptId)
+    .order("question_index", { ascending: true });
+
+  if (itemError) {
+    console.error(
+      "Could not load custom attempt items for English sync:",
+      itemError,
+    );
+    return;
+  }
+
+  const items = (itemData ?? []) as ExistingAttemptItemRow[];
+
+  if (!items.length) return;
+
+  const hasAtLeastOneEnteredAnswer = items.some((item) =>
+    isOptionKey(item.selected_answer),
+  );
+
+  if (!hasAtLeastOneEnteredAnswer) {
+    return;
+  }
+
+  const wordSourceIds = Array.from(
+    new Set(
+      items
+        .filter((item) => {
+          const category = getItemEnglishCategory(item);
+          return category === "vocabulary" || category === "spelling";
+        })
+        .map((item) => getItemEnglishSourceId(item))
+        .filter((id): id is number => id !== null),
+    ),
+  );
+
+  const questionSourceIds = Array.from(
+    new Set(
+      items
+        .filter((item) => {
+          const category = getItemEnglishCategory(item);
+          return (
+            category !== null &&
+            category !== "vocabulary" &&
+            category !== "spelling"
+          );
+        })
+        .map((item) => getItemEnglishSourceId(item))
+        .filter((id): id is number => id !== null),
+    ),
+  );
+
+  let wordMap = new Map<number, WordLookupRow>();
+  let questionMap = new Map<number, EnglishQuestionLookupRow>();
+
+  if (wordSourceIds.length > 0) {
+    const { data: wordData, error: wordError } = await supabase
+      .from("words")
+      .select("id, word, difficulty")
+      .in("id", wordSourceIds);
+
+    if (wordError) {
+      console.error("Could not load English word details for custom sync:", {
+        message: wordError.message,
+        details: wordError.details,
+        hint: wordError.hint,
+        code: wordError.code,
+      });
+    } else {
+      wordMap = new Map(
+        ((wordData ?? []) as WordLookupRow[]).map((word) => [word.id, word]),
+      );
+    }
+  }
+
+  if (questionSourceIds.length > 0) {
+    const { data: questionData, error: questionError } = await supabase
+      .from("english_questions")
+      .select("id, test_id, question_text, correct_answer, difficulty")
+      .in("id", questionSourceIds);
+
+    if (questionError) {
+      console.error("Could not load English question details for custom sync:", {
+        message: questionError.message,
+        details: questionError.details,
+        hint: questionError.hint,
+        code: questionError.code,
+      });
+    } else {
+      questionMap = new Map(
+        ((questionData ?? []) as EnglishQuestionLookupRow[]).map((question) => [
+          question.id,
+          question,
+        ]),
+      );
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const attemptDifficulty = extractAttemptDifficulty(attempt.config);
+
+  const vocabularyWordIdsToClear: number[] = [];
+  const spellingWordIdsToClear: number[] = [];
+  const englishQuestionIdsToClear: number[] = [];
+
+  const vocabularyRowsForReview: Array<Record<string, unknown>> = [];
+  const spellingRowsForReview: Array<Record<string, unknown>> = [];
+  const englishRowsForReview: Array<Record<string, unknown>> = [];
+
+  for (const item of items) {
+    const category = getItemEnglishCategory(item);
+    if (!category) continue;
+
+    const selectedAnswer = isOptionKey(item.selected_answer)
+      ? item.selected_answer
+      : null;
+    const sourceId = getItemEnglishSourceId(item);
+
+    const correctAnswer =
+      item.correct_answer ?? extractCorrectAnswerFromSnapshot(item.question_snapshot);
+    const isCorrect =
+      selectedAnswer !== null &&
+      correctAnswer !== null &&
+      selectedAnswer === correctAnswer;
+
+    if (category === "vocabulary" || category === "spelling") {
+      if (sourceId === null) continue;
+
+      const word = wordMap.get(sourceId);
+      const wordText =
+        word?.word ??
+        getSnapshotString(item.question_snapshot, [
+          "word",
+          "answer",
+          "correctAnswerText",
+          "correct_answer_text",
+          "questionText",
+          "question_text",
+        ]) ??
+        "Word unavailable";
+      const difficulty =
+        attemptDifficulty ??
+        word?.difficulty ??
+        getSnapshotNumber(item.question_snapshot, ["difficulty"]) ??
+        null;
+
+      if (category === "vocabulary") {
+        vocabularyWordIdsToClear.push(sourceId);
+
+        if (!isCorrect) {
+          vocabularyRowsForReview.push({
+            user_id: userId,
+            word_id: sourceId,
+            word: wordText,
+            knew_it: false,
+            difficulty,
+            updated_at: nowIso,
+            last_attempted_at: nowIso,
+          });
+        }
+      } else {
+        spellingWordIdsToClear.push(sourceId);
+
+        if (!isCorrect) {
+          spellingRowsForReview.push({
+            user_id: userId,
+            word_id: sourceId,
+            word: wordText,
+            knew_it: false,
+            difficulty,
+            updated_at: nowIso,
+            last_attempted_at: nowIso,
+          });
+        }
+      }
+
+      continue;
+    }
+
+    if (sourceId === null) continue;
+
+    const question = questionMap.get(sourceId);
+    const questionCorrectAnswer =
+      question?.correct_answer && isOptionKey(question.correct_answer)
+        ? question.correct_answer
+        : null;
+    const finalCorrectAnswer = correctAnswer ?? questionCorrectAnswer;
+
+    if (!finalCorrectAnswer) continue;
+
+    englishQuestionIdsToClear.push(sourceId);
+
+    if (isCorrect) {
+      continue;
+    }
+
+    const reviewMeta = getEnglishSharedReviewMeta(category);
+    if (!reviewMeta) continue;
+
+    englishRowsForReview.push({
+      user_id: userId,
+      test_id: question?.test_id ?? null,
+      question_id: sourceId,
+      main_category: reviewMeta.main_category,
+      subcategory: reviewMeta.subcategory,
+      question_text:
+        question?.question_text ??
+        getSnapshotString(item.question_snapshot, [
+          "questionText",
+          "question_text",
+          "prompt",
+          "text",
+        ]) ??
+        "Question text unavailable.",
+      user_answer: selectedAnswer,
+      correct_answer: finalCorrectAnswer,
+      difficulty:
+        attemptDifficulty ??
+        question?.difficulty ??
+        getSnapshotNumber(item.question_snapshot, ["difficulty"]) ??
+        null,
+      updated_at: nowIso,
+      last_attempted_at: nowIso,
+    });
+  }
+
+  const uniqueVocabularyWordIds = Array.from(new Set(vocabularyWordIdsToClear));
+  const uniqueSpellingWordIds = Array.from(new Set(spellingWordIdsToClear));
+  const uniqueEnglishQuestionIds = Array.from(new Set(englishQuestionIdsToClear));
+
+  if (uniqueVocabularyWordIds.length > 0) {
+    const { error } = await supabase
+      .from("vocabulary_review")
+      .delete()
+      .eq("user_id", userId)
+      .in("word_id", uniqueVocabularyWordIds);
+
+    if (error) {
+      console.error("Could not clear custom Vocabulary review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (uniqueSpellingWordIds.length > 0) {
+    const { error } = await supabase
+      .from("spelling_review")
+      .delete()
+      .eq("user_id", userId)
+      .in("word_id", uniqueSpellingWordIds);
+
+    if (error) {
+      console.error("Could not clear custom Spelling review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (uniqueEnglishQuestionIds.length > 0) {
+    const { error } = await supabase
+      .from("english_review")
+      .delete()
+      .eq("user_id", userId)
+      .in("question_id", uniqueEnglishQuestionIds);
+
+    if (error) {
+      console.error("Could not clear custom English review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (vocabularyRowsForReview.length > 0) {
+    const { error } = await supabase
+      .from("vocabulary_review")
+      .insert(vocabularyRowsForReview);
+
+    if (error) {
+      console.error("Could not save custom Vocabulary review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (spellingRowsForReview.length > 0) {
+    const { error } = await supabase
+      .from("spelling_review")
+      .insert(spellingRowsForReview);
+
+    if (error) {
+      console.error("Could not save custom Spelling review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+
+  if (englishRowsForReview.length > 0) {
+    const { error } = await supabase
+      .from("english_review")
+      .insert(englishRowsForReview);
+
+    if (error) {
+      console.error("Could not save custom English review items:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+    }
+  }
+}
+
+async function syncCustomTestProgressAndReview({
+  supabase,
+  userId,
+  attemptId,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  userId: string;
+  attemptId: string;
+}) {
+  await syncMathCustomTestProgressAndReview({ supabase, userId, attemptId });
+  await syncEnglishCustomTestProgressAndReview({ supabase, userId, attemptId });
 }
 
 function validateOnlineBody(
@@ -685,7 +1247,7 @@ async function submitOnlineCustomTest({
     );
   }
 
-  await syncMathCustomTestProgressAndReview({
+  await syncCustomTestProgressAndReview({
     supabase,
     userId,
     attemptId: attempt.id,
@@ -861,7 +1423,7 @@ async function submitPrintableCustomTestResults({
     );
   }
 
-  await syncMathCustomTestProgressAndReview({
+  await syncCustomTestProgressAndReview({
     supabase,
     userId,
     attemptId,

@@ -52,6 +52,30 @@ type EnglishSharedProgressRow = {
   created_at: string
 }
 
+type CustomEnglishAttemptRow = {
+  id: string
+  main_category: string | null
+  status: string | null
+  config: unknown
+  question_count: number | null
+  correct_answers: number | null
+  score_percent: number | null
+  completed_at: string | null
+  created_at: string
+}
+
+type CustomEnglishAttemptItemRow = {
+  attempt_id: string
+  question_index: number
+  main_category: string | null
+  topic_key: string | null
+  subtopic_key: string | null
+  selected_answer: string | null
+  correct_answer: string | null
+  is_correct: boolean | null
+  question_snapshot: unknown
+}
+
 type EnglishProgressCategory =
   | "vocabulary"
   | "spelling"
@@ -228,6 +252,210 @@ function mapSharedProgressCategory(
   }
 
   return null
+}
+
+function isOptionKey(value: unknown) {
+  return value === "A" || value === "B" || value === "C" || value === "D"
+}
+
+function getSnapshotString(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
+function getSnapshotNumber(snapshot: unknown, keys: string[]) {
+  if (!snapshot || typeof snapshot !== "object") return null
+
+  const raw = snapshot as Record<string, unknown>
+
+  for (const key of keys) {
+    const value = raw[key]
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value)
+
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+function extractAttemptDifficulty(config: unknown) {
+  if (!config || typeof config !== "object") return null
+
+  const raw = config as Record<string, unknown>
+  const value = raw.selectedDifficulty
+
+  if (value === 1 || value === 2 || value === 3) return value
+
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (parsed === 1 || parsed === 2 || parsed === 3) return parsed
+  }
+
+  return null
+}
+
+function normaliseCustomEnglishCategory(
+  value: string | null | undefined
+): EnglishProgressCategory | null {
+  if (!value) return null
+
+  const normalised = value
+    .trim()
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replaceAll("/", " ")
+    .replaceAll("-", "_")
+    .replaceAll("–", "_")
+    .replaceAll("—", "_")
+    .replace(/[^a-z0-9_ ]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  if (normalised === "vocabulary") return "vocabulary"
+  if (normalised === "spelling") return "spelling"
+  if (normalised === "comprehension") return "comprehension"
+
+  if (normalised === "primary_word_classes") return "primary_word_classes"
+  if (normalised === "word_classes") return "primary_word_classes"
+
+  if (normalised === "sentence_structure_syntax") {
+    return "sentence_structure_syntax"
+  }
+  if (normalised === "sentence_structure_and_syntax") {
+    return "sentence_structure_syntax"
+  }
+  if (normalised === "syntax") return "sentence_structure_syntax"
+
+  if (normalised === "advanced_punctuation") return "advanced_punctuation"
+  if (normalised === "apostrophes") return "apostrophes"
+  if (normalised === "apostrophe") return "apostrophes"
+  if (normalised === "comma") return "comma"
+  if (normalised === "commas") return "comma"
+
+  if (normalised === "direct_speech_punctuation") {
+    return "direct_speech_punctuation"
+  }
+  if (normalised === "direct_speech") return "direct_speech_punctuation"
+
+  if (normalised === "sentence_punctuation") return "sentence_punctuation"
+  if (normalised === "punctuation_sentence") return "sentence_punctuation"
+  if (normalised === "sentence") return "sentence_punctuation"
+
+  return null
+}
+
+function getCustomEnglishItemCategory(
+  item: CustomEnglishAttemptItemRow
+): EnglishProgressCategory | null {
+  return (
+    normaliseCustomEnglishCategory(item.subtopic_key) ??
+    normaliseCustomEnglishCategory(
+      getSnapshotString(item.question_snapshot, [
+        "subtopicKey",
+        "subtopic_key",
+        "subcategory",
+        "subCategory",
+      ])
+    ) ??
+    normaliseCustomEnglishCategory(item.topic_key) ??
+    normaliseCustomEnglishCategory(
+      getSnapshotString(item.question_snapshot, [
+        "topicKey",
+        "topic_key",
+        "category",
+        "mainCategory",
+        "main_category",
+      ])
+    )
+  )
+}
+
+function buildCustomEnglishProgressRows(
+  attempts: CustomEnglishAttemptRow[],
+  items: CustomEnglishAttemptItemRow[]
+): EnglishProgressRow[] {
+  const itemsByAttempt = items.reduce((acc, item) => {
+    if (!acc[item.attempt_id]) {
+      acc[item.attempt_id] = []
+    }
+
+    acc[item.attempt_id].push(item)
+    return acc
+  }, {} as Record<string, CustomEnglishAttemptItemRow[]>)
+
+  return attempts.flatMap((attempt) => {
+    const attemptItems = itemsByAttempt[attempt.id] ?? []
+    const hasAtLeastOneEnteredAnswer = attemptItems.some((item) =>
+      isOptionKey(item.selected_answer)
+    )
+
+    if (!hasAtLeastOneEnteredAnswer) return []
+
+    const attemptDifficulty = extractAttemptDifficulty(attempt.config)
+
+    const groups = attemptItems.reduce((acc, item) => {
+      const category = getCustomEnglishItemCategory(item)
+
+      if (!category) return acc
+
+      if (!acc[category]) {
+        acc[category] = []
+      }
+
+      acc[category].push(item)
+      return acc
+    }, {} as Partial<Record<EnglishProgressCategory, CustomEnglishAttemptItemRow[]>>)
+
+    return Object.entries(groups).flatMap(([category, groupedItems]) => {
+      if (!groupedItems || groupedItems.length === 0) return []
+
+      const totalQuestions = groupedItems.length
+      const correctAnswers = groupedItems.filter(
+        (item) => item.is_correct === true
+      ).length
+      const successRate = Number(
+        ((correctAnswers / totalQuestions) * 100).toFixed(2)
+      )
+      const firstItem = groupedItems[0]
+      const difficulty =
+        attemptDifficulty ??
+        getSnapshotNumber(firstItem.question_snapshot, ["difficulty"]) ??
+        null
+
+      return [
+        {
+          id: `english-custom-${attempt.id}-${category}`,
+          category: category as EnglishProgressCategory,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          success_rate: successRate,
+          difficulty,
+          created_at: attempt.completed_at ?? attempt.created_at,
+        },
+      ]
+    })
+  })
 }
 
 function StatCard({
@@ -426,25 +654,37 @@ export default function EnglishProgressPage() {
 
         setLoadingUser(false)
 
-        const [vocabularyResult, spellingResult, englishSharedProgressResult] =
-          await Promise.all([
-            supabase
-              .from("vocabulary_progress")
-              .select("*")
-              .eq("user_id", user.id)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("spelling_progress")
-              .select("*")
-              .eq("user_id", user.id)
-              .order("created_at", { ascending: false }),
-            supabase
-              .from("english_progress")
-              .select("*")
-              .eq("user_id", user.id)
-              .in("main_category", ["comprehension", "grammar", "punctuation"])
-              .order("created_at", { ascending: false }),
-          ])
+        const [
+          vocabularyResult,
+          spellingResult,
+          englishSharedProgressResult,
+          customAttemptsResult,
+        ] = await Promise.all([
+          supabase
+            .from("vocabulary_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("spelling_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("english_progress")
+            .select("*")
+            .eq("user_id", user.id)
+            .in("main_category", ["comprehension", "grammar", "punctuation"])
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("custom_test_attempts")
+            .select(
+              "id, main_category, status, config, question_count, correct_answers, score_percent, completed_at, created_at"
+            )
+            .eq("user_id", user.id)
+            .eq("main_category", "english")
+            .order("created_at", { ascending: false }),
+        ])
 
         if (vocabularyResult.error) {
           console.error("Error loading vocabulary progress:", vocabularyResult.error)
@@ -461,6 +701,13 @@ export default function EnglishProgressPage() {
           )
         }
 
+        if (customAttemptsResult.error) {
+          console.error(
+            "Error loading custom English attempts:",
+            customAttemptsResult.error
+          )
+        }
+
         const vocabularyRows =
           (vocabularyResult.data ?? []) as VocabularyProgressRow[]
 
@@ -469,6 +716,38 @@ export default function EnglishProgressPage() {
 
         const englishSharedRows =
           (englishSharedProgressResult.data ?? []) as EnglishSharedProgressRow[]
+
+        const customAttemptRows =
+          (customAttemptsResult.data ?? []) as CustomEnglishAttemptRow[]
+
+        const customAttemptIds = customAttemptRows.map((attempt) => attempt.id)
+
+        let customAttemptItemRows: CustomEnglishAttemptItemRow[] = []
+
+        if (customAttemptIds.length > 0) {
+          const { data: customItemData, error: customItemError } = await supabase
+            .from("custom_test_attempt_items")
+            .select(
+              "attempt_id, question_index, main_category, topic_key, subtopic_key, selected_answer, correct_answer, is_correct, question_snapshot"
+            )
+            .in("attempt_id", customAttemptIds)
+            .order("question_index", { ascending: true })
+
+          if (customItemError) {
+            console.error(
+              "Error loading custom English attempt items:",
+              customItemError
+            )
+          } else {
+            customAttemptItemRows =
+              (customItemData ?? []) as CustomEnglishAttemptItemRow[]
+          }
+        }
+
+        const customProgressRows = buildCustomEnglishProgressRows(
+          customAttemptRows,
+          customAttemptItemRows
+        )
 
         const mergedRows: EnglishProgressRow[] = [
           ...vocabularyRows.map((row) => ({
@@ -506,6 +785,7 @@ export default function EnglishProgressPage() {
               },
             ]
           }),
+          ...customProgressRows,
         ]
 
         if (!mounted) return
