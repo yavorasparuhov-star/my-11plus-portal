@@ -1245,35 +1245,49 @@ export default function MathProgressPage() {
           subtitle="Latest normal Maths and marked custom Maths results."
         >
           {recentAttempts.length ? (
-            <div style={{ overflowX: "auto" }}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Date</th>
-                    <th style={thStyle}>Type</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Difficulty</th>
-                    <th style={thStyle}>Score</th>
-                    <th style={thStyle}>Success</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentAttempts.map((row) => (
-                    <tr key={row.id}>
-                      <td style={tdStyle}>{formatDateTime(row.created_at)}</td>
-                      <td style={tdStyle}>{getChartSourceLabel(row)}</td>
-                      <td style={tdStyle}>{formatCategory(row.category)}</td>
-                      <td style={tdStyle}>{getLevelLabel(row.difficulty)}</td>
-                      <td style={tdStyle}>
-                        {row.correct_answers}/{row.total_questions}
-                      </td>
-                      <td style={tdStyle}>
-                        {Number(row.success_rate).toFixed(0)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={recentListStyle}>
+              {recentAttempts.map((row) => (
+                <div key={row.id} style={recentProgressCardStyle}>
+                  <div style={recentProgressMainStyle}>
+                    <div style={recentProgressTopLineStyle}>
+                      <span style={recentProgressDateStyle}>
+                        {formatDateTime(row.created_at)}
+                      </span>
+                      <span
+                        style={{
+                          ...recentProgressTypePillStyle,
+                          background:
+                            row.source === "custom" ? "#e0f2fe" : "#dcfce7",
+                          color: row.source === "custom" ? "#075985" : "#166534",
+                          borderColor:
+                            row.source === "custom" ? "#bae6fd" : "#bbf7d0",
+                        }}
+                      >
+                        {getChartSourceLabel(row)}
+                      </span>
+                    </div>
+
+                    <div style={recentProgressTitleStyle}>
+                      {formatCategory(row.category)}
+                    </div>
+
+                    <div style={recentProgressMetaStyle}>
+                      <span>{getLevelLabel(row.difficulty)}</span>
+                      <span>•</span>
+                      <span>
+                        {row.correct_answers}/{row.total_questions} correct
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={recentProgressScoreCircleStyle}>
+                    <span style={recentProgressScoreValueStyle}>
+                      {Number(row.success_rate).toFixed(0)}%
+                    </span>
+                    <span style={recentProgressScoreLabelStyle}>success</span>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div style={emptyStateStyle}>
@@ -1516,6 +1530,99 @@ const noticeStyle: React.CSSProperties = {
   padding: "14px 16px",
   lineHeight: 1.55,
   fontWeight: 600,
+};
+
+const recentListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const recentProgressCardStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "16px",
+  padding: "16px",
+  borderRadius: "20px",
+  border: "1px solid #dcfce7",
+  background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
+};
+
+const recentProgressMainStyle: React.CSSProperties = {
+  minWidth: 0,
+  display: "grid",
+  gap: "7px",
+};
+
+const recentProgressTopLineStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  flexWrap: "wrap",
+};
+
+const recentProgressDateStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+const recentProgressTypePillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "4px 9px",
+  fontSize: "12px",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
+const recentProgressTitleStyle: React.CSSProperties = {
+  color: "#0f172a",
+  fontSize: "16px",
+  fontWeight: 900,
+  lineHeight: 1.3,
+};
+
+const recentProgressMetaStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  flexWrap: "wrap",
+  color: "#475569",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+const recentProgressScoreCircleStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  width: "72px",
+  height: "72px",
+  borderRadius: "999px",
+  border: "4px solid #22c55e",
+  background: "#ecfdf5",
+  color: "#166534",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 10px 22px rgba(34, 197, 94, 0.18)",
+};
+
+const recentProgressScoreValueStyle: React.CSSProperties = {
+  fontSize: "18px",
+  fontWeight: 900,
+  lineHeight: 1,
+};
+
+const recentProgressScoreLabelStyle: React.CSSProperties = {
+  marginTop: "4px",
+  fontSize: "10px",
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
 };
 
 const tableStyle: React.CSSProperties = {
