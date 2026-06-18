@@ -35,6 +35,11 @@ type AttemptRow = {
   created_at?: string | null
 }
 
+type AttemptNumberRow = {
+  id: string
+  created_at: string | null
+}
+
 type QuestionSnapshotOption = {
   key: OptionKey
   text?: string | null
@@ -112,6 +117,23 @@ function formatMainCategory(value: string | null | undefined) {
   if (value === "vr") return "VR"
   if (value === "nvr") return "NVR"
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function formatCustomTestTitle(
+  mainCategory: string | null | undefined,
+  sequenceNumber: number | null
+) {
+  const categoryLabel = formatMainCategory(mainCategory)
+  const numberLabel =
+    typeof sequenceNumber === "number" && sequenceNumber > 0
+      ? ` ${sequenceNumber}`
+      : ""
+
+  if (categoryLabel === "—") {
+    return `Custom Test${numberLabel}`
+  }
+
+  return `${categoryLabel} Custom Test${numberLabel}`
 }
 
 function formatDifficulty(value: DifficultyFilter | undefined) {
@@ -280,6 +302,7 @@ export default function CustomTestAttemptDetailsPage() {
     : params?.attemptId
 
   const [attempt, setAttempt] = useState<AttemptRow | null>(null)
+  const [attemptSequenceNumber, setAttemptSequenceNumber] = useState<number | null>(null)
   const [items, setItems] = useState<AttemptItemRow[]>([])
   const [answerSelections, setAnswerSelections] = useState<
     Record<number, OptionKey | null>
@@ -302,6 +325,7 @@ export default function CustomTestAttemptDetailsPage() {
       try {
         setLoading(true)
         setErrorMessage("")
+        setAttemptSequenceNumber(null)
 
         const {
           data: { user },
@@ -341,6 +365,27 @@ export default function CustomTestAttemptDetailsPage() {
           return
         }
 
+        let calculatedAttemptSequenceNumber: number | null = null
+
+        if (attemptData.main_category) {
+          const { data: attemptNumberData } = await supabase
+            .from("custom_test_attempts")
+            .select("id, created_at")
+            .eq("user_id", user.id)
+            .eq("main_category", attemptData.main_category)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+
+          const attemptNumberRows =
+            (attemptNumberData ?? []) as AttemptNumberRow[]
+          const attemptIndex = attemptNumberRows.findIndex(
+            (row) => row.id === attemptData.id
+          )
+
+          calculatedAttemptSequenceNumber =
+            attemptIndex >= 0 ? attemptIndex + 1 : null
+        }
+
         const { data: itemData, error: itemError } = await supabase
           .from("custom_test_attempt_items")
           .select(
@@ -372,6 +417,7 @@ export default function CustomTestAttemptDetailsPage() {
         })
 
         setAttempt(attemptData as AttemptRow)
+        setAttemptSequenceNumber(calculatedAttemptSequenceNumber)
         setItems(loadedItems)
         setAnswerSelections(initialAnswers)
       } catch (error) {
@@ -389,6 +435,11 @@ export default function CustomTestAttemptDetailsPage() {
   }, [attemptId, reloadKey])
 
   const parsedConfig = useMemo(() => parseAttemptConfig(attempt?.config), [attempt])
+
+  const attemptDisplayName = formatCustomTestTitle(
+    attempt?.main_category,
+    attemptSequenceNumber
+  )
 
   const canEnterPrintableResults = attempt !== null && isDownloadedAttempt(attempt)
 
@@ -685,6 +736,15 @@ export default function CustomTestAttemptDetailsPage() {
               gap: 16,
             }}
           >
+            <div>
+              <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
+                {canEnterPrintableResults ? "Printable test" : "Test name"}
+              </div>
+              <div style={{ color: "#111827", fontWeight: 800 }}>
+                {attemptDisplayName}
+              </div>
+            </div>
+
             <div>
               <div style={{ color: "#6b7280", fontSize: "0.85rem", marginBottom: 4 }}>
                 Main category
