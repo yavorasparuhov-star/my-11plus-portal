@@ -36,7 +36,7 @@ export default function PublicCustomTestsPage() {
           .from("profiles")
           .select("plan")
           .eq("id", user.id)
-          .single()
+          .maybeSingle()
 
         if (profileError) {
           setPlan("free")
