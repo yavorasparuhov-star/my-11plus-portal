@@ -295,7 +295,7 @@ export default function CustomTestRunPage() {
 
     if (unansweredCount > 0) {
       const confirmed = window.confirm(
-        `You still have ${unansweredCount} unanswered question${unansweredCount === 1 ? "" : "s"}. Do you want to submit the test anyway?`,
+        `You still have ${unansweredCount} unanswered question${unansweredCount === 1 ? "" : "s"}. Do you want to finish the test anyway?`,
       );
 
       if (!confirmed) {
@@ -659,7 +659,22 @@ export default function CustomTestRunPage() {
                         Next
                       </button>
                     ) : (
-                      <div style={{ minWidth: 120 }} />
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        style={{
+                          padding: "12px 18px",
+                          borderRadius: 10,
+                          border: "1px solid #86efac",
+                          background: "#22c55e",
+                          color: "#ffffff",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          minWidth: 120,
+                        }}
+                      >
+                        Finish Test
+                      </button>
                     )}
                   </div>
 
@@ -691,23 +706,7 @@ export default function CustomTestRunPage() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      style={{
-                        padding: "12px 18px",
-                        borderRadius: 10,
-                        border: "1px solid #86efac",
-                        background: "#22c55e",
-                        color: "#ffffff",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        minWidth: 150,
-                        justifySelf: "center",
-                      }}
-                    >
-                      Submit Test
-                    </button>
+                    <div />
 
                     <div />
                   </div>
