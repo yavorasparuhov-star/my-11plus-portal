@@ -1,18 +1,19 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
-  Cell,
   XAxis,
   YAxis,
 } from "recharts"
+
 type VocabularyReviewRow = {
   id: string
   user_id: string
@@ -540,9 +541,61 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
 const chartWrapperStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100%",
-  height: 340,
-  minWidth: 0,
+  height: "clamp(260px, 38vw, 340px)",
+  minWidth: 1,
+  minHeight: 260,
   overflow: "hidden",
+  boxSizing: "border-box",
+}
+
+function SafeChartContainer({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    let animationFrameId = 0
+
+    const checkSize = () => {
+      const rect = element.getBoundingClientRect()
+      setIsReady(rect.width > 0 && rect.height > 0)
+    }
+
+    const scheduleCheck = () => {
+      window.cancelAnimationFrame(animationFrameId)
+      animationFrameId = window.requestAnimationFrame(checkSize)
+    }
+
+    scheduleCheck()
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleCheck)
+      return () => {
+        window.cancelAnimationFrame(animationFrameId)
+        window.removeEventListener("resize", scheduleCheck)
+      }
+    }
+
+    const observer = new ResizeObserver(scheduleCheck)
+    observer.observe(element)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId)
+      observer.disconnect()
+    }
+  }, [])
+
+  return (
+    <div ref={containerRef} style={chartWrapperStyle}>
+      {isReady ? (
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+          {children}
+        </ResponsiveContainer>
+      ) : null}
+    </div>
+  )
 }
 
 const selectStyle: React.CSSProperties = {
@@ -573,6 +626,7 @@ const actionButtonStyle: React.CSSProperties = {
   maxWidth: "260px",
   flex: "1 1 220px",
   boxSizing: "border-box",
+  cursor: "pointer",
 }
 
 const removeButtonStyle: React.CSSProperties = {
@@ -1179,74 +1233,100 @@ export default function EnglishReviewPage() {
     >
       <div
         style={{
-          maxWidth: "1320px",
           width: "100%",
+          maxWidth: "1180px",
           margin: "0 auto",
           minWidth: 0,
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: "16px",
-            marginBottom: "28px",
-            minWidth: 0,
+            flexWrap: "wrap",
+            marginBottom: "20px",
           }}
         >
           <div style={{ minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={() => router.push("/review")}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "#15803d",
+                fontSize: "14px",
+                fontWeight: 800,
+                cursor: "pointer",
+                padding: 0,
+                marginBottom: "10px",
+              }}
+            >
+              ← Back to Review
+            </button>
+
             <h1
               style={{
                 margin: 0,
-                fontSize: "clamp(30px, 8vw, 42px)",
-                fontWeight: 900,
                 color: "#0f172a",
-                letterSpacing: "-0.02em",
-                overflowWrap: "break-word",
+                fontSize: "clamp(30px, 5vw, 46px)",
+                lineHeight: 1.05,
+                letterSpacing: "-0.04em",
               }}
             >
-              📚 English Review
+              English Review
             </h1>
 
             <p
               style={{
-                margin: "10px 0 0 0",
+                margin: "10px 0 0",
                 color: "#475569",
-                fontSize: "17px",
-                maxWidth: "800px",
+                fontSize: "16px",
                 lineHeight: 1.6,
-                overflowWrap: "break-word",
+                maxWidth: "720px",
               }}
             >
-              Review English items that need more practice across grammar,
-              punctuation, comprehension, vocabulary and spelling. Items stay in
-              this active queue until they are answered correctly or removed.
+              Practise the English questions and words that need another look.
             </p>
           </div>
 
+          <button
+            type="button"
+            onClick={retryFilteredItems}
+            disabled={filteredItems.length === 0}
+            style={{
+              ...actionButtonStyle,
+              opacity: filteredItems.length === 0 ? 0.55 : 1,
+              cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
+            }}
+          >
+            Retry Filtered Items
+          </button>
+        </div>
+
+        <SectionCard
+          title="Review Filters"
+          subtitle="Focus the review bank by date, difficulty, or English area."
+        >
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
               gap: "12px",
+              flexWrap: "wrap",
               alignItems: "center",
-              width: "100%",
-              maxWidth: "1100px",
               minWidth: 0,
             }}
           >
             <select
-              id="english-review-category-filter"
-              name="englishReviewCategoryFilter"
-              value={categoryFilter}
-              onChange={(event) =>
-                setCategoryFilter(event.target.value as CategoryFilter)
-              }
+              value={timeFilter}
+              onChange={(event) => setTimeFilter(event.target.value as TimeFilter)}
               style={selectStyle}
+              aria-label="Filter by time"
             >
-              {categoryOptions.map((option) => (
+              {timeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -1254,13 +1334,12 @@ export default function EnglishReviewPage() {
             </select>
 
             <select
-              id="english-review-difficulty-filter"
-              name="englishReviewDifficultyFilter"
               value={difficultyFilter}
               onChange={(event) =>
                 setDifficultyFilter(event.target.value as DifficultyFilter)
               }
               style={selectStyle}
+              aria-label="Filter by difficulty"
             >
               {difficultyOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1270,46 +1349,33 @@ export default function EnglishReviewPage() {
             </select>
 
             <select
-              id="english-review-time-filter"
-              name="englishReviewTimeFilter"
-              value={timeFilter}
+              value={categoryFilter}
               onChange={(event) =>
-                setTimeFilter(event.target.value as TimeFilter)
+                setCategoryFilter(event.target.value as CategoryFilter)
               }
-              style={selectStyle}
+              style={{ ...selectStyle, maxWidth: "320px" }}
+              aria-label="Filter by category"
             >
-              {timeOptions.map((option) => (
+              {categoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-
-            <button
-              type="button"
-              onClick={retryFilteredItems}
-              disabled={filteredItems.length === 0}
-              style={{
-                ...actionButtonStyle,
-                opacity: filteredItems.length === 0 ? 0.5 : 1,
-                cursor: filteredItems.length === 0 ? "not-allowed" : "pointer",
-              }}
-            >
-              Retry filtered items
-            </button>
           </div>
-        </div>
+        </SectionCard>
 
         {errorMessage ? (
           <div
             style={{
-              background: "#fff1f2",
-              border: "1px solid #fecdd3",
-              color: "#9f1239",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
               borderRadius: "18px",
-              padding: "16px",
-              marginBottom: "20px",
-              fontWeight: 700,
+              color: "#991b1b",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {errorMessage}
@@ -1319,13 +1385,14 @@ export default function EnglishReviewPage() {
         {noticeMessage ? (
           <div
             style={{
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              color: "#1d4ed8",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
               borderRadius: "18px",
-              padding: "16px",
-              marginBottom: "20px",
-              fontWeight: 700,
+              color: "#166534",
+              padding: "14px 16px",
+              marginBottom: "18px",
+              lineHeight: 1.5,
+              overflowWrap: "break-word",
             }}
           >
             {noticeMessage}
@@ -1335,22 +1402,15 @@ export default function EnglishReviewPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
             gap: "18px",
             marginBottom: "24px",
             minWidth: 0,
           }}
         >
-          <StatCard
-            title="Items to Review"
-            value={String(reviewStats.totalItems)}
-          />
+          <StatCard title="Items to Review" value={String(reviewStats.totalItems)} />
 
-          <StatCard
-            title="Total Review Bank"
-            value={String(reviewStats.allUnique)}
-          />
+          <StatCard title="Total Review Bank" value={String(reviewStats.allUnique)} />
 
           <StatCard
             title="Most Common Category"
@@ -1387,9 +1447,7 @@ export default function EnglishReviewPage() {
                 ? "All Categories"
                 : getCategoryLabel(categoryFilter)
             }
-            subtitle={
-              timeOptions.find((option) => option.value === timeFilter)?.label
-            }
+            subtitle={timeOptions.find((option) => option.value === timeFilter)?.label}
           />
         </div>
 
@@ -1399,41 +1457,34 @@ export default function EnglishReviewPage() {
             subtitle="See which English areas currently need the most revision."
           >
             {reviewByCategoryData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={reviewByCategoryData}
-                    layout="vertical"
-                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis
-                      type="number"
-                      allowDecimals={false}
-                      tick={{ fontSize: 12, fill: "#64748b" }}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="category"
-                      width={150}
-                      tick={{ fontSize: 11, fill: "#64748b" }}
-                    />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[0, 10, 10, 0]}>
-                      {reviewByCategoryData.map((entry, index) => (
-                        <Cell
-                          key={`category-cell-${index}`}
-                          fill={entry.fill}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <SafeChartContainer>
+                <BarChart
+                  data={reviewByCategoryData}
+                  layout="vertical"
+                  margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fontSize: 12, fill: "#64748b" }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    width={150}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                    {reviewByCategoryData.map((entry, index) => (
+                      <Cell key={`category-cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </SafeChartContainer>
             ) : (
-              <div style={emptyStateStyle}>
-                No data available for this filter.
-              </div>
+              <div style={emptyStateStyle}>No data available for this filter.</div>
             )}
           </SectionCard>
 
@@ -1442,37 +1493,24 @@ export default function EnglishReviewPage() {
             subtitle="See which difficulty level currently needs the most revision."
           >
             {reviewByDifficultyData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={reviewByDifficultyData}
-                    margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 12, fill: "#64748b" }}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 12, fill: "#64748b" }}
-                    />
-                    <Tooltip />
-                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {reviewByDifficultyData.map((entry, index) => (
-                        <Cell
-                          key={`difficulty-cell-${index}`}
-                          fill={entry.fill}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <SafeChartContainer>
+                <BarChart
+                  data={reviewByDifficultyData}
+                  margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748b" }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
+                  <Tooltip />
+                  <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                    {reviewByDifficultyData.map((entry, index) => (
+                      <Cell key={`difficulty-cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </SafeChartContainer>
             ) : (
-              <div style={emptyStateStyle}>
-                No data available for this filter.
-              </div>
+              <div style={emptyStateStyle}>No data available for this filter.</div>
             )}
           </SectionCard>
         </div>
@@ -1485,8 +1523,7 @@ export default function EnglishReviewPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
                 gap: "18px",
                 minWidth: 0,
               }}
@@ -1519,8 +1556,7 @@ export default function EnglishReviewPage() {
                   <article
                     key={row.id}
                     style={{
-                      background:
-                        "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
+                      background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
                       border: "1px solid #dcfce7",
                       borderRadius: "24px",
                       padding: "20px",
@@ -1568,154 +1604,98 @@ export default function EnglishReviewPage() {
                       >
                         {getLevelLabel(row.difficulty)}
                       </span>
-
-                      {sourceLabel ? (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "6px 10px",
-                            borderRadius: "999px",
-                            background: "#fef3c7",
-                            color: "#92400e",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            maxWidth: "100%",
-                            overflowWrap: "break-word",
-                          }}
-                        >
-                          {sourceLabel}
-                        </span>
-                      ) : null}
                     </div>
 
-                    <div
-                      style={{
-                        color: "#64748b",
-                        fontSize: "13px",
-                        fontWeight: 800,
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Last attempted: {formatDateTime(getRelevantDate(row))}
-                    </div>
+                    {sourceLabel ? (
+                      <div
+                        style={{
+                          color: "#64748b",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          lineHeight: 1.45,
+                          marginBottom: "12px",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {sourceLabel}
+                      </div>
+                    ) : null}
 
                     <h3
                       style={{
-                        margin: "0 0 14px",
+                        margin: "0 0 12px",
                         color: "#0f172a",
                         fontSize: "18px",
                         lineHeight: 1.35,
                         overflowWrap: "break-word",
                       }}
                     >
-                      {row.item_text}
+                      {truncateText(row.item_text, 180)}
                     </h3>
 
                     <div
                       style={{
                         display: "grid",
-                        gap: "10px",
-                        marginBottom: "14px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: "12px",
-                          borderRadius: "16px",
-                          background: "#fff1f2",
-                          border: "1px solid #fecaca",
-                        }}
-                      >
-                        <div
-                          style={{
-                            color: "#be123c",
-                            fontWeight: 900,
-                            fontSize: "13px",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          Child's answer
-                        </div>
-                        <div style={{ color: "#7f1d1d", lineHeight: 1.5 }}>
-                          {row.user_answer
-                            ? `${row.user_answer}: ${
-                                row.user_answer_text || "—"
-                              }`
-                            : row.user_answer_text || "Not answered"}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          padding: "12px",
-                          borderRadius: "16px",
-                          background: "#f0fdf4",
-                          border: "1px solid #bbf7d0",
-                        }}
-                      >
-                        <div
-                          style={{
-                            color: "#166534",
-                            fontWeight: 900,
-                            fontSize: "13px",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          Correct answer
-                        </div>
-                        <div style={{ color: "#14532d", lineHeight: 1.5 }}>
-                          {row.correct_answer
-                            ? `${row.correct_answer}: ${
-                                row.correct_answer_text || "—"
-                              }`
-                            : row.correct_answer_text || "—"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: "12px",
-                        borderRadius: "16px",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
+                        gap: "8px",
                         color: "#334155",
-                        lineHeight: 1.6,
-                        marginBottom: "16px",
+                        fontSize: "14px",
+                        lineHeight: 1.5,
                       }}
                     >
-                      <strong>
-                        {row.category === "vocabulary" ||
-                        row.category === "spelling"
-                          ? "Definition: "
-                          : "Explanation: "}
-                      </strong>
-                      {row.explanation && row.explanation.trim()
-                        ? row.explanation
-                        : row.category === "vocabulary" ||
-                            row.category === "spelling"
-                          ? "No definition available yet."
-                          : "No explanation available yet."}
+                      <div>
+                        <strong>Your answer:</strong> {row.user_answer_text || row.user_answer || "—"}
+                      </div>
+                      <div>
+                        <strong>Correct answer:</strong>{" "}
+                        {row.correct_answer_text || row.correct_answer || "—"}
+                      </div>
+                      <div>
+                        <strong>Added:</strong> {formatDateTime(getRelevantDate(row))}
+                      </div>
                     </div>
+
+                    {row.explanation ? (
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          padding: "12px",
+                          borderRadius: "14px",
+                          background: "#f8fafc",
+                          color: "#475569",
+                          fontSize: "14px",
+                          lineHeight: 1.55,
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        <strong style={{ color: "#0f172a" }}>Explanation: </strong>
+                        {truncateText(row.explanation, 220)}
+                      </div>
+                    ) : null}
 
                     <div
                       style={{
                         display: "flex",
                         gap: "10px",
                         flexWrap: "wrap",
+                        marginTop: "16px",
                       }}
                     >
                       <button
                         type="button"
                         onClick={() => retryItem(row)}
-                        style={secondaryButtonStyle}
+                        disabled={row.item_id === null}
+                        style={{
+                          ...secondaryButtonStyle,
+                          opacity: row.item_id === null ? 0.55 : 1,
+                          cursor: row.item_id === null ? "not-allowed" : "pointer",
+                        }}
                       >
-                        Retry item
+                        Retry
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => removeItem(row)}
+                        onClick={() => void removeItem(row)}
                         style={removeButtonStyle}
                       >
                         Remove
@@ -1727,7 +1707,7 @@ export default function EnglishReviewPage() {
             </div>
           ) : (
             <div style={emptyStateStyle}>
-              No review items found for the selected filters.
+              No English review items match the selected filters.
             </div>
           )}
         </SectionCard>
