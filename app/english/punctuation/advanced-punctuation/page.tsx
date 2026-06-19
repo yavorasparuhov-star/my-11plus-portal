@@ -438,8 +438,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
               {mode === "review"
-                ? "🖋️ Advanced Punctuation Review"
-                : "🖋️ Advanced Punctuation Tests"}
+                ? "Advanced Punctuation Review"
+                : "Advanced Punctuation Tests"}
             </h1>
 
             <div style={styles.heroActions}>

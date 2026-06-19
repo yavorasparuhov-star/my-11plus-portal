@@ -338,7 +338,7 @@ function getScorePercentage(score: number, isCompleted: boolean) {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>𝑥 Algebra & Reasoning Tests</h1>
+            <h1 style={styles.title}>Algebra & Reasoning Tests</h1>
 
             <div style={styles.heroActions}>
               <Link href="/math" style={styles.backLink}>

@@ -438,8 +438,8 @@ function DirectSpeechPunctuationContent() {
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
               {mode === "review"
-                ? "💬 Direct Speech Punctuation Review"
-                : "💬 Direct Speech Punctuation Tests"}
+                ? "Direct Speech Punctuation Review"
+                : "Direct Speech Punctuation Tests"}
             </h1>
 
             <div style={styles.heroActions}>

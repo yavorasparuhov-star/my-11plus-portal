@@ -432,7 +432,7 @@ function CommaContent() {
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
-              {mode === "review" ? "🔹 Comma Review" : "🔹 Comma Tests"}
+              {mode === "review" ? "Comma Review" : "Comma Tests"}
             </h1>
 
             <div style={styles.heroActions}>

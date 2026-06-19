@@ -438,8 +438,8 @@ function SentencePunctuationContent() {
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
               {mode === "review"
-                ? "✏️ Sentence Punctuation Review"
-                : "✏️ Sentence Punctuation Tests"}
+                ? "Sentence Punctuation Review"
+                : "Sentence Punctuation Tests"}
             </h1>
 
             <div style={styles.heroActions}>

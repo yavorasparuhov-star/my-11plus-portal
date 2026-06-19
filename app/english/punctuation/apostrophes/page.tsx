@@ -437,7 +437,7 @@ function getScorePercentage(score: number, isCompleted: boolean) {
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>
-              {mode === "review" ? "📝 Apostrophes Review" : "📝 Apostrophes Tests"}
+              {mode === "review" ? "Apostrophes Review" : "Apostrophes Tests"}
             </h1>
             <div style={styles.heroActions}>
               <Link href="/english/punctuation" style={styles.backLink}>
