@@ -349,7 +349,7 @@ export default function NVRCodesSpatialLogicPage() {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>🧠 Codes & Spatial Logic</h1>
+            <h1 style={styles.title}>Codes & Spatial Logic</h1>
 
             <p style={styles.subtitle}>
               Choose a non-verbal reasoning test and practise codes, hidden shapes,

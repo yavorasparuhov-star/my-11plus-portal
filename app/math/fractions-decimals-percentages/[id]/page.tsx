@@ -867,7 +867,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>½ % Fractions, Decimals & Percentages Test Complete</h1>
+              <h1 style={styles.title}>Fractions, Decimals & Percentages Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -1056,7 +1056,7 @@ export default function FractionsDecimalsPercentagesTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>½ % {test.title}</h1>
+                <h1 style={styles.title}>{test.title}</h1>
               </div>
 
               <div

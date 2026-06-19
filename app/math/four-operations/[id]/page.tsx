@@ -830,7 +830,7 @@ export default function FourOperationsTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>+ − × ÷ Four Operations Test Complete</h1>
+              <h1 style={styles.title}>Four Operations Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
