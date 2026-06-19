@@ -473,20 +473,6 @@ function getScorePercentage(score: number, isCompleted: boolean) {
             <h1 style={styles.title}>
               {mode === "review" ? "📖 Comprehension Review" : "📖 Comprehension Tests"}
             </h1>
-
-            <p style={styles.subtitle}>
-              {mode === "review"
-                ? "Revise your saved comprehension mistakes and strengthen reading accuracy."
-                : "Choose a comprehension passage and answer 10 multiple-choice questions."}
-            </p>
-
-            <div style={styles.accessInfo}>
-              {plan === "guest"
-                ? "Guests can browse the tests. Sign in to start the free tests."
-                : plan === "free"
-                  ? "Free members can start tests marked as Free test."
-                  : "Your membership unlocks all comprehension tests."}
-            </div>
           </div>
 
           {tests.length === 0 ? (
@@ -662,18 +648,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
   },
 
-  accessInfo: {
-    marginTop: "18px",
-    display: "inline-block",
-    padding: "10px 14px",
-    borderRadius: "999px",
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-    color: "#374151",
-    fontWeight: 600,
-    fontSize: "14px",
-  },
-
   scoreIcon: {
     marginLeft: "6px",
     fontSize: "16px",
@@ -683,13 +657,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "36px",
     margin: "0 0 8px 0",
   },
-
-  subtitle: {
-    margin: 0,
-    color: "#555",
-    lineHeight: 1.6,
-  },
-
   summaryCard: {
     background: "white",
     borderRadius: "16px",

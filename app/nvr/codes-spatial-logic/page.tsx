@@ -351,19 +351,6 @@ export default function NVRCodesSpatialLogicPage() {
           <div style={styles.heroCard}>
             <h1 style={styles.title}>Codes & Spatial Logic</h1>
 
-            <p style={styles.subtitle}>
-              Choose a non-verbal reasoning test and practise codes, hidden shapes,
-              cubes, nets, and spatial logic.
-            </p>
-
-            <div style={styles.accessInfo}>
-              {plan === "guest"
-                ? "Guests can browse the tests. Sign in to start the free tests."
-                : plan === "free"
-                  ? "Free members can start tests marked as Free test."
-                  : "Your membership unlocks all Codes & Spatial Logic tests."}
-            </div>
-
             <div style={styles.heroActions}>
               <Link href="/nvr" style={styles.backLink}>
                 ← Back to Non-Verbal Reasoning
@@ -529,24 +516,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
-  },
-
-  subtitle: {
-    margin: 0,
-    color: "#555",
-    lineHeight: 1.6,
-  },
-
-  accessInfo: {
-    marginTop: "18px",
-    display: "inline-block",
-    padding: "10px 14px",
-    borderRadius: "999px",
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-    color: "#374151",
-    fontWeight: 600,
-    fontSize: "14px",
   },
 
   heroActions: {
