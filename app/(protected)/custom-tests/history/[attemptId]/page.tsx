@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "../../../../../lib/supabaseClient"
+import ReportQuestionButton from "../../../../../components/ReportQuestionButton"
 import { getTopicByKey } from "../../../../../lib/custom-tests/catalog"
 import type {
   DifficultyFilter,
@@ -55,10 +56,19 @@ type QuestionSnapshot = {
   explanation?: string | null
   topicKey?: string
   subtopicKey?: string | null
+  sourceId?: string | number | null
+  sourceType?: string | null
+  mainCategory?: MainCategory | string | null
+  meta?: {
+    test_id?: string | number | null
+    category?: string | null
+    subcategory?: string | null
+  } | null
 }
 
 type AttemptItemRow = {
   question_index: number
+  source_id: string | number | null
   topic_key: string | null
   subtopic_key: string | null
   question_snapshot: unknown
@@ -82,6 +92,63 @@ type SubmitPrintableResultsResponse =
     }
 
 const OPTION_KEYS: OptionKey[] = ["A", "B", "C", "D"]
+
+type ReportSubject = "english" | "math" | "vr" | "nvr"
+
+function getReportSubjectFromCategory(
+  mainCategory: MainCategory | string | null | undefined
+): ReportSubject {
+  if (mainCategory === "math") return "math"
+  if (mainCategory === "vr") return "vr"
+  if (mainCategory === "nvr") return "nvr"
+
+  return "english"
+}
+
+function normalizeReportNumber(value: string | number | null | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+
+    if (!trimmed) {
+      return null
+    }
+
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function getReportCategoryForItem(
+  item: AttemptItemRow,
+  snapshot: QuestionSnapshot
+) {
+  return (
+    item.subtopic_key ??
+    snapshot.subtopicKey ??
+    snapshot.meta?.subcategory ??
+    item.topic_key ??
+    snapshot.topicKey ??
+    snapshot.meta?.category ??
+    null
+  )
+}
+
+function getReportTestIdForSnapshot(snapshot: QuestionSnapshot) {
+  return normalizeReportNumber(snapshot.meta?.test_id)
+}
+
+function getReportQuestionIdForItem(
+  item: AttemptItemRow,
+  snapshot: QuestionSnapshot
+) {
+  return normalizeReportNumber(item.source_id ?? snapshot.sourceId)
+}
 
 function isOptionKey(value: unknown): value is OptionKey {
   return value === "A" || value === "B" || value === "C" || value === "D"
@@ -254,6 +321,11 @@ function parseQuestionSnapshot(value: unknown): QuestionSnapshot {
         .filter((item): item is QuestionSnapshotOption => item !== null)
     : []
 
+  const meta =
+    raw.meta && typeof raw.meta === "object"
+      ? (raw.meta as Record<string, unknown>)
+      : null
+
   return {
     prompt: typeof raw.prompt === "string" ? raw.prompt : null,
     questionText: typeof raw.questionText === "string" ? raw.questionText : null,
@@ -263,6 +335,24 @@ function parseQuestionSnapshot(value: unknown): QuestionSnapshot {
     explanation: typeof raw.explanation === "string" ? raw.explanation : null,
     topicKey: typeof raw.topicKey === "string" ? raw.topicKey : undefined,
     subtopicKey: typeof raw.subtopicKey === "string" ? raw.subtopicKey : null,
+    sourceId:
+      typeof raw.sourceId === "string" || typeof raw.sourceId === "number"
+        ? raw.sourceId
+        : null,
+    sourceType: typeof raw.sourceType === "string" ? raw.sourceType : null,
+    mainCategory:
+      typeof raw.mainCategory === "string" ? raw.mainCategory : null,
+    meta: meta
+      ? {
+          test_id:
+            typeof meta.test_id === "string" || typeof meta.test_id === "number"
+              ? meta.test_id
+              : null,
+          category: typeof meta.category === "string" ? meta.category : null,
+          subcategory:
+            typeof meta.subcategory === "string" ? meta.subcategory : null,
+        }
+      : null,
   }
 }
 
@@ -391,6 +481,7 @@ export default function CustomTestAttemptDetailsPage() {
           .select(
             `
             question_index,
+            source_id,
             topic_key,
             subtopic_key,
             question_snapshot,
@@ -964,6 +1055,18 @@ export default function CustomTestAttemptDetailsPage() {
                       ) : (
                         <div style={{ width: 1 }} />
                       )}
+
+                      <div style={{ gridColumn: "1 / -1", paddingTop: 2 }}>
+                        <ReportQuestionButton
+                          key={`printable-report-${item.question_index}-${displayIndex}`}
+                          subject={getReportSubjectFromCategory(
+                            parsedConfig.mainCategory ?? attempt.main_category
+                          )}
+                          category={getReportCategoryForItem(item, snapshot)}
+                          testId={getReportTestIdForSnapshot(snapshot)}
+                          questionId={getReportQuestionIdForItem(item, snapshot)}
+                        />
+                      </div>
                     </div>
                   )
                 })}
