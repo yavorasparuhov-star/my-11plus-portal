@@ -14,17 +14,27 @@ import type {
   TopicCatalogItem,
 } from "../../../../lib/custom-tests/types"
 
+type CustomDifficultySelection = DifficultyFilter | "adaptive"
+
+type CustomTestBuilderConfigWithAdaptive = Omit<
+  CustomTestBuilderConfig,
+  "selectedDifficulty"
+> & {
+  selectedDifficulty: CustomDifficultySelection
+}
+
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, 50, 60]
 const TIME_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50, 60]
 
 const DIFFICULTY_OPTIONS: Array<{
-  value: DifficultyFilter
+  value: CustomDifficultySelection
   label: string
 }> = [
   { value: "all", label: "All difficulties" },
   { value: 1, label: "Easy" },
   { value: 2, label: "Medium" },
   { value: 3, label: "Hard" },
+  { value: "adaptive", label: "Adaptive" },
 ]
 
 function isMainCategory(value: string): value is MainCategory {
@@ -47,8 +57,9 @@ function normalizeQuestionCount(value: unknown) {
   )
 }
 
-function renderDifficultyLabel(value: DifficultyFilter) {
+function renderDifficultyLabel(value: CustomDifficultySelection) {
   if (value === "all") return "All difficulties"
+  if (value === "adaptive") return "Adaptive"
   if (value === 1) return "Easy"
   if (value === 2) return "Medium"
   return "Hard"
@@ -998,7 +1009,7 @@ export default function CustomTestBuilderPage() {
   const [questionCount, setQuestionCount] = useState<number>(20)
   const [totalTimeMinutes, setTotalTimeMinutes] = useState<number>(15)
   const [selectedDifficulty, setSelectedDifficulty] =
-    useState<DifficultyFilter>("all")
+    useState<CustomDifficultySelection>("all")
   const [errorMessage, setErrorMessage] = useState<string>("")
   const [successMessage, setSuccessMessage] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
@@ -1011,7 +1022,7 @@ export default function CustomTestBuilderPage() {
       const raw = sessionStorage.getItem(buildBuilderStorageKey(mainCategoryParam))
       if (!raw) return
 
-      const parsed = JSON.parse(raw) as Partial<CustomTestBuilderConfig>
+      const parsed = JSON.parse(raw) as Partial<CustomTestBuilderConfigWithAdaptive>
 
       if (parsed.mainCategory !== mainCategoryParam) return
 
@@ -1025,7 +1036,8 @@ export default function CustomTestBuilderPage() {
         parsed.selectedDifficulty === 1 ||
           parsed.selectedDifficulty === 2 ||
           parsed.selectedDifficulty === 3 ||
-          parsed.selectedDifficulty === "all"
+          parsed.selectedDifficulty === "all" ||
+          parsed.selectedDifficulty === "adaptive"
           ? parsed.selectedDifficulty
           : "all"
       )
@@ -1072,7 +1084,7 @@ export default function CustomTestBuilderPage() {
     })
   }
 
-  function buildConfig(): CustomTestBuilderConfig | null {
+  function buildConfig(): CustomTestBuilderConfigWithAdaptive | null {
     if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) {
       setErrorMessage("Invalid main category.")
       return null
@@ -1104,6 +1116,17 @@ export default function CustomTestBuilderPage() {
 
     const config = buildConfig()
     if (!config) return
+
+    if (
+      config.selectedDifficulty === "adaptive" &&
+      config.mainCategory === "english" &&
+      config.topicKeys.includes("comprehension")
+    ) {
+      setErrorMessage(
+        "Adaptive custom tests do not include English comprehension yet. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice."
+      )
+      return
+    }
 
     try {
       setIsGenerating(true)
@@ -1180,6 +1203,13 @@ export default function CustomTestBuilderPage() {
 
     const config = buildConfig()
     if (!config || !catalog) return
+
+    if (config.selectedDifficulty === "adaptive") {
+      setErrorMessage(
+        "Adaptive tests are online only because the next question changes depending on each answer."
+      )
+      return
+    }
 
     try {
       setIsDownloading(true)
@@ -1623,6 +1653,8 @@ export default function CustomTestBuilderPage() {
                       const value = e.target.value
                       if (value === "all") {
                         setSelectedDifficulty("all")
+                      } else if (value === "adaptive") {
+                        setSelectedDifficulty("adaptive")
                       } else {
                         setSelectedDifficulty(Number(value) as 1 | 2 | 3)
                       }
@@ -1644,6 +1676,24 @@ export default function CustomTestBuilderPage() {
                   </select>
                 </div>
               </div>
+
+              {selectedDifficulty === "adaptive" ? (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "#eff6ff",
+                    border: "1px solid #bfdbfe",
+                    color: "#1e3a8a",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Adaptive tests start at Medium. Two correct answers in a row move the
+                  student up one level; two wrong answers in a row move the student down one
+                  level. Adaptive tests are online only.
+                </div>
+              ) : null}
             </div>
 
             {errorMessage ? (
@@ -1705,7 +1755,7 @@ export default function CustomTestBuilderPage() {
 
               <p style={{ margin: "0 0 16px 0", color: "#4b5563", lineHeight: 1.6 }}>
                 Start the test online for instant marking, or download a printable paper
-                for exam-style practice.
+                for exam-style practice. Adaptive tests are online only.
               </p>
 
               <div
@@ -1736,19 +1786,35 @@ export default function CustomTestBuilderPage() {
                 <button
                   onClick={handleDownloadPrintableTest}
                   type="button"
-                  disabled={isGenerating || isDownloading}
+                  disabled={isGenerating || isDownloading || selectedDifficulty === "adaptive"}
                   style={{
                     width: "100%",
                     padding: "14px 18px",
                     borderRadius: 12,
-                    border: "1px solid #bfdbfe",
-                    background: isDownloading ? "#e5e7eb" : "#dbeafe",
-                    color: isDownloading ? "#6b7280" : "#1e3a8a",
+                    border:
+                      selectedDifficulty === "adaptive"
+                        ? "1px solid #d1d5db"
+                        : "1px solid #bfdbfe",
+                    background:
+                      isDownloading || selectedDifficulty === "adaptive"
+                        ? "#e5e7eb"
+                        : "#dbeafe",
+                    color:
+                      isDownloading || selectedDifficulty === "adaptive"
+                        ? "#6b7280"
+                        : "#1e3a8a",
                     fontWeight: 800,
-                    cursor: isGenerating || isDownloading ? "not-allowed" : "pointer",
+                    cursor:
+                      isGenerating || isDownloading || selectedDifficulty === "adaptive"
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
-                  {isDownloading ? "Preparing Download..." : "Download Printable Test"}
+                  {selectedDifficulty === "adaptive"
+                    ? "Printable Not Available for Adaptive"
+                    : isDownloading
+                      ? "Preparing Download..."
+                      : "Download Printable Test"}
                 </button>
               </div>
             </div>

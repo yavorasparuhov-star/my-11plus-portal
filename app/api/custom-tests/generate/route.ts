@@ -19,6 +19,17 @@ const MAX_TIME_MINUTES = 120;
 const MIN_TIME_MINUTES = 1;
 
 type NonEnglishMainCategory = Exclude<MainCategory, "english">;
+type AdaptiveDifficultyFilter = DifficultyFilter | "adaptive";
+type AdaptiveDifficultyLevel = 1 | 2 | 3;
+type AdaptivePoolKey = "easy" | "medium" | "hard";
+type AdaptiveQuestionPools = Record<AdaptivePoolKey, NormalizedQuestion[]>;
+
+type AdaptiveGenerateCustomTestRequest = Omit<
+  GenerateCustomTestRequest,
+  "selectedDifficulty"
+> & {
+  selectedDifficulty: AdaptiveDifficultyFilter;
+};
 
 type WordRow = {
   id: number;
@@ -1681,13 +1692,13 @@ async function buildStandardTopicQuestions(
 function validateRequestBody(
   body: unknown,
 ):
-  | { ok: true; data: GenerateCustomTestRequest }
+  | { ok: true; data: AdaptiveGenerateCustomTestRequest }
   | { ok: false; error: string } {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "Invalid request body." };
   }
 
-  const request = body as Partial<GenerateCustomTestRequest>;
+  const request = body as Partial<AdaptiveGenerateCustomTestRequest>;
 
   if (!isMainCategory(request.mainCategory)) {
     return { ok: false, error: "Invalid main category." };
@@ -1723,12 +1734,14 @@ function validateRequestBody(
     request.selectedDifficulty as number | string | null | undefined,
   );
 
-  const selectedDifficulty: DifficultyFilter =
-    normalizedDifficulty === 1 ||
-    normalizedDifficulty === 2 ||
-    normalizedDifficulty === 3
-      ? normalizedDifficulty
-      : "all";
+  const selectedDifficulty: AdaptiveDifficultyFilter =
+    request.selectedDifficulty === "adaptive"
+      ? "adaptive"
+      : normalizedDifficulty === 1 ||
+          normalizedDifficulty === 2 ||
+          normalizedDifficulty === 3
+        ? normalizedDifficulty
+        : "all";
 
   return {
     ok: true,
@@ -1747,7 +1760,7 @@ function validateRequestBody(
 }
 
 function validateTopicSelection(
-  request: GenerateCustomTestRequest,
+  request: AdaptiveGenerateCustomTestRequest,
 ): { ok: true } | { ok: false; error: string } {
   const catalog = getMainCategoryCatalog(request.mainCategory);
 
@@ -1929,6 +1942,205 @@ function selectFinalEnglishQuestions(
   return combinedQuestions.slice(0, questionCount);
 }
 
+
+function getAdaptivePoolKey(difficulty: AdaptiveDifficultyLevel): AdaptivePoolKey {
+  if (difficulty === 1) return "easy";
+  if (difficulty === 2) return "medium";
+  return "hard";
+}
+
+function buildAdaptiveResponse(
+  config: AdaptiveGenerateCustomTestRequest,
+  pools: AdaptiveQuestionPools,
+): GenerateCustomTestResponse {
+  const firstQuestion = pools.medium[0] ?? pools.easy[0] ?? pools.hard[0] ?? null;
+
+  if (!firstQuestion) {
+    return {
+      ok: false,
+      error: "No medium questions were found for the selected adaptive custom test setup.",
+    } as GenerateCustomTestResponse;
+  }
+
+  return {
+    ok: true,
+    data: {
+      testSessionId: crypto.randomUUID(),
+      config,
+      questions: [firstQuestion],
+      createdAt: new Date().toISOString(),
+      adaptiveMode: {
+        enabled: true,
+        startingDifficulty: 2,
+        currentDifficulty: 2,
+        questionCount: config.questionCount,
+        pools,
+      },
+    },
+  } as unknown as GenerateCustomTestResponse;
+}
+
+async function buildEnglishAdaptiveTopicPoolsForDifficulty({
+  supabase,
+  config,
+  uniqueTopicKeys,
+  difficulty,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  config: AdaptiveGenerateCustomTestRequest;
+  uniqueTopicKeys: string[];
+  difficulty: AdaptiveDifficultyLevel;
+}) {
+  const topicPools: TopicPool[] = [];
+  const needsWords =
+    uniqueTopicKeys.includes("vocabulary") || uniqueTopicKeys.includes("spelling");
+
+  const words = needsWords
+    ? (await fetchWords(supabase)).filter((row) =>
+        matchesDifficulty(row.difficulty, difficulty),
+      )
+    : [];
+
+  for (const topicKey of uniqueTopicKeys) {
+    if (topicKey === "vocabulary") {
+      topicPools.push({
+        topicKey,
+        questions: normalizeVocabularyQuestions(words),
+      });
+      continue;
+    }
+
+    if (topicKey === "spelling") {
+      topicPools.push({
+        topicKey,
+        questions: normalizeSpellingQuestions(words),
+      });
+      continue;
+    }
+
+    if (topicKey === "grammar" || topicKey === "punctuation") {
+      const selectedSubtopics = Array.isArray(config.subtopicMap[topicKey])
+        ? config.subtopicMap[topicKey].filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [];
+
+      const rows = await fetchEnglishTopicQuestionRowsForDifficulty(
+        supabase,
+        topicKey,
+        selectedSubtopics,
+        difficulty,
+      );
+
+      topicPools.push({
+        topicKey,
+        questions: normalizeEnglishQuestions(
+          rows,
+          topicKey,
+          new Map<number, string>(),
+        ),
+      });
+      continue;
+    }
+
+    throw new Error(`Topic "${topicKey}" is not supported for adaptive English tests yet.`);
+  }
+
+  return topicPools;
+}
+
+async function buildStandardAdaptiveTopicPoolsForDifficulty({
+  supabase,
+  config,
+  uniqueTopicKeys,
+  difficulty,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  config: AdaptiveGenerateCustomTestRequest;
+  uniqueTopicKeys: string[];
+  difficulty: AdaptiveDifficultyLevel;
+}) {
+  const mainCategory = config.mainCategory as NonEnglishMainCategory;
+  const topicPools: TopicPool[] = [];
+
+  for (const topicKey of uniqueTopicKeys) {
+    const questions = await buildStandardTopicQuestions(
+      supabase,
+      mainCategory,
+      topicKey,
+      difficulty,
+    );
+
+    topicPools.push({ topicKey, questions });
+  }
+
+  return topicPools;
+}
+
+async function buildAdaptiveQuestionPools({
+  supabase,
+  config,
+  uniqueTopicKeys,
+  previouslyUsedGuardKeys,
+}: {
+  supabase: ReturnType<typeof getSupabaseClient>;
+  config: AdaptiveGenerateCustomTestRequest;
+  uniqueTopicKeys: string[];
+  previouslyUsedGuardKeys: Set<string>;
+}): Promise<AdaptiveQuestionPools> {
+  const pools: AdaptiveQuestionPools = {
+    easy: [],
+    medium: [],
+    hard: [],
+  };
+
+  for (const difficulty of [1, 2, 3] as AdaptiveDifficultyLevel[]) {
+    const topicPools =
+      config.mainCategory === "english"
+        ? await buildEnglishAdaptiveTopicPoolsForDifficulty({
+            supabase,
+            config,
+            uniqueTopicKeys,
+            difficulty,
+          })
+        : await buildStandardAdaptiveTopicPoolsForDifficulty({
+            supabase,
+            config,
+            uniqueTopicKeys,
+            difficulty,
+          });
+
+    const selectedQuestions =
+      config.mainCategory === "english"
+        ? selectFinalEnglishQuestions(
+            topicPools,
+            config.questionCount,
+            previouslyUsedGuardKeys,
+          )
+        : selectFinalQuestions(
+            topicPools,
+            config.questionCount,
+            previouslyUsedGuardKeys,
+          );
+
+    pools[getAdaptivePoolKey(difficulty)] = selectedQuestions;
+  }
+
+  return pools;
+}
+
+function countAdaptivePoolQuestions(pools: AdaptiveQuestionPools) {
+  const uniqueRunnerIds = new Set<string>();
+
+  for (const questions of Object.values(pools)) {
+    for (const question of questions) {
+      uniqueRunnerIds.add(question.runnerId);
+    }
+  }
+
+  return uniqueRunnerIds.size;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authenticatedClient = getAuthenticatedSupabaseClient(request);
@@ -1986,6 +2198,47 @@ export async function POST(request: NextRequest) {
       config.mainCategory,
     );
 
+    if (config.selectedDifficulty === "adaptive") {
+      if (
+        config.mainCategory === "english" &&
+        uniqueTopicKeys.includes("comprehension")
+      ) {
+        return jsonError(
+          "Adaptive custom tests do not include English comprehension yet. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice.",
+          400,
+        );
+      }
+
+      const adaptivePools = await buildAdaptiveQuestionPools({
+        supabase,
+        config,
+        uniqueTopicKeys,
+        previouslyUsedGuardKeys,
+      });
+
+      if (adaptivePools.medium.length === 0) {
+        return jsonError(
+          "No medium questions were found for the selected adaptive custom test setup.",
+          400,
+        );
+      }
+
+      if (countAdaptivePoolQuestions(adaptivePools) < config.questionCount) {
+        return jsonError(
+          `Only ${countAdaptivePoolQuestions(adaptivePools)} questions are currently available for this adaptive setup. Please reduce the question count or choose more topics.`,
+          400,
+        );
+      }
+
+      return NextResponse.json(buildAdaptiveResponse(config, adaptivePools));
+    }
+
+    const normalSelectedDifficulty = config.selectedDifficulty as DifficultyFilter;
+    const normalConfig = {
+      ...config,
+      selectedDifficulty: normalSelectedDifficulty,
+    } as GenerateCustomTestRequest;
+
     if (config.mainCategory === "english") {
       const isComprehensionOnly =
         uniqueTopicKeys.length === 1 && uniqueTopicKeys[0] === "comprehension";
@@ -2000,7 +2253,7 @@ export async function POST(request: NextRequest) {
 
         const rows = await fetchComprehensionQuestionRowsForDifficulty(
           supabase,
-          config.selectedDifficulty,
+          normalSelectedDifficulty,
         );
 
         const selectedRows = selectComprehensionRowsByFullPassage(
@@ -2037,7 +2290,7 @@ export async function POST(request: NextRequest) {
           ok: true,
           data: {
             testSessionId: crypto.randomUUID(),
-            config,
+            config: normalConfig,
             questions: finalQuestions,
             createdAt: new Date().toISOString(),
           },
@@ -2064,7 +2317,7 @@ export async function POST(request: NextRequest) {
 
       const words = needsWords
         ? (await fetchWords(supabase)).filter((row) =>
-            matchesDifficulty(row.difficulty, config.selectedDifficulty),
+            matchesDifficulty(row.difficulty, normalSelectedDifficulty),
           )
         : [];
 
@@ -2097,7 +2350,7 @@ export async function POST(request: NextRequest) {
           if (topicKey === "comprehension") {
             const rows = await fetchComprehensionQuestionRowsForDifficulty(
               supabase,
-              config.selectedDifficulty,
+              normalSelectedDifficulty,
             );
 
             const requestedForComprehension =
@@ -2137,7 +2390,7 @@ export async function POST(request: NextRequest) {
             supabase,
             topicKey,
             selectedSubtopics,
-            config.selectedDifficulty,
+            normalSelectedDifficulty,
           );
 
           const questions = normalizeEnglishQuestions(
@@ -2182,7 +2435,7 @@ export async function POST(request: NextRequest) {
         ok: true,
         data: {
           testSessionId: crypto.randomUUID(),
-          config,
+          config: normalConfig,
           questions: finalQuestions,
           createdAt: new Date().toISOString(),
         },
@@ -2200,7 +2453,7 @@ export async function POST(request: NextRequest) {
         supabase,
         nonEnglishMainCategory,
         topicKey,
-        config.selectedDifficulty,
+        normalSelectedDifficulty,
       );
 
       topicPools.push({ topicKey, questions });
@@ -2235,7 +2488,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       data: {
         testSessionId: crypto.randomUUID(),
-        config,
+        config: normalConfig,
         questions: finalQuestions,
         createdAt: new Date().toISOString(),
       },

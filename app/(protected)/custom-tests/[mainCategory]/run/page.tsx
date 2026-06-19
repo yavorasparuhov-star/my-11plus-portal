@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../../lib/supabaseClient";
 import ReportQuestionButton from "../../../../../components/ReportQuestionButton";
 import type {
+  DifficultyFilter,
   GeneratedCustomTest,
   MainCategory,
   OptionKey,
@@ -102,6 +103,156 @@ type SubmitCustomTestResponse =
       error: string;
     };
 
+type CustomTestQuestion = GeneratedCustomTest["questions"][number];
+
+type AdaptiveDifficultyLevel = 1 | 2 | 3;
+type AdaptivePoolKey = "easy" | "medium" | "hard";
+
+type RuntimeGeneratedCustomTest = Omit<GeneratedCustomTest, "config"> & {
+  config: Omit<GeneratedCustomTest["config"], "selectedDifficulty"> & {
+    selectedDifficulty: DifficultyFilter | "adaptive";
+  };
+  adaptiveMode?: {
+    enabled?: boolean;
+    startingDifficulty?: AdaptiveDifficultyLevel;
+    currentDifficulty?: AdaptiveDifficultyLevel;
+    questionCount?: number;
+    pools?: Partial<Record<AdaptivePoolKey, CustomTestQuestion[]>>;
+  };
+};
+
+type AdaptiveGeneratedCustomTest = RuntimeGeneratedCustomTest & {
+  adaptiveMode?: {
+    enabled?: boolean;
+    startingDifficulty?: AdaptiveDifficultyLevel;
+    currentDifficulty?: AdaptiveDifficultyLevel;
+    questionCount?: number;
+    pools?: Partial<Record<AdaptivePoolKey, CustomTestQuestion[]>>;
+  };
+};
+
+const ADAPTIVE_DIFFICULTY_LABELS: Record<AdaptiveDifficultyLevel, string> = {
+  1: "Easy",
+  2: "Medium",
+  3: "Hard",
+};
+
+function isAdaptiveTest(test: RuntimeGeneratedCustomTest | null): test is AdaptiveGeneratedCustomTest {
+  if (!test) return false;
+
+  const adaptiveTest = test as AdaptiveGeneratedCustomTest;
+
+  return (
+    adaptiveTest.adaptiveMode?.enabled === true ||
+    adaptiveTest.config.selectedDifficulty === "adaptive"
+  );
+}
+
+function getAdaptivePoolKey(difficulty: AdaptiveDifficultyLevel): AdaptivePoolKey {
+  if (difficulty === 1) return "easy";
+  if (difficulty === 2) return "medium";
+  return "hard";
+}
+
+function getAdaptiveDifficultyFromPoolKey(
+  poolKey: AdaptivePoolKey,
+): AdaptiveDifficultyLevel {
+  if (poolKey === "easy") return 1;
+  if (poolKey === "medium") return 2;
+  return 3;
+}
+
+function getAdaptiveSearchOrder(
+  desiredDifficulty: AdaptiveDifficultyLevel,
+): AdaptiveDifficultyLevel[] {
+  if (desiredDifficulty === 1) return [1, 2, 3];
+  if (desiredDifficulty === 2) return [2, 1, 3];
+  return [3, 2, 1];
+}
+
+function chooseNextAdaptiveQuestion({
+  test,
+  desiredDifficulty,
+  usedRunnerIds,
+}: {
+  test: AdaptiveGeneratedCustomTest;
+  desiredDifficulty: AdaptiveDifficultyLevel;
+  usedRunnerIds: Set<string>;
+}): { question: CustomTestQuestion; difficulty: AdaptiveDifficultyLevel } | null {
+  const pools = test.adaptiveMode?.pools ?? {};
+
+  for (const difficulty of getAdaptiveSearchOrder(desiredDifficulty)) {
+    const poolKey = getAdaptivePoolKey(difficulty);
+    const question = (pools[poolKey] ?? []).find(
+      (item) => !usedRunnerIds.has(item.runnerId),
+    );
+
+    if (question) {
+      return { question, difficulty };
+    }
+  }
+
+  return null;
+}
+
+function calculateNextAdaptiveState({
+  currentDifficulty,
+  correctStreak,
+  wrongStreak,
+  isCorrect,
+}: {
+  currentDifficulty: AdaptiveDifficultyLevel;
+  correctStreak: number;
+  wrongStreak: number;
+  isCorrect: boolean;
+}) {
+  let nextDifficulty = currentDifficulty;
+  let nextCorrectStreak = isCorrect ? correctStreak + 1 : 0;
+  let nextWrongStreak = isCorrect ? 0 : wrongStreak + 1;
+
+  if (isCorrect && nextCorrectStreak >= 2) {
+    nextDifficulty = Math.min(
+      3,
+      currentDifficulty + 1,
+    ) as AdaptiveDifficultyLevel;
+    nextCorrectStreak = 0;
+    nextWrongStreak = 0;
+  }
+
+  if (!isCorrect && nextWrongStreak >= 2) {
+    nextDifficulty = Math.max(
+      1,
+      currentDifficulty - 1,
+    ) as AdaptiveDifficultyLevel;
+    nextCorrectStreak = 0;
+    nextWrongStreak = 0;
+  }
+
+  return {
+    nextDifficulty,
+    nextCorrectStreak,
+    nextWrongStreak,
+  };
+}
+
+function getQuestionSnapshotDifficulty(question: CustomTestQuestion) {
+  const rawDifficulty = question.difficulty;
+
+  if (rawDifficulty === 1 || rawDifficulty === 2 || rawDifficulty === 3) {
+    return rawDifficulty;
+  }
+
+  if (typeof rawDifficulty === "string") {
+    const parsed = Number(rawDifficulty);
+    if (parsed === 1 || parsed === 2 || parsed === 3) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+
 function isMainCategory(value: string): value is MainCategory {
   return (
     value === "english" || value === "math" || value === "vr" || value === "nvr"
@@ -126,7 +277,7 @@ export default function CustomTestRunPage() {
     : params?.mainCategory;
 
   const [generatedTest, setGeneratedTest] =
-    useState<GeneratedCustomTest | null>(null);
+    useState<RuntimeGeneratedCustomTest | null>(null);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(0);
@@ -137,6 +288,13 @@ export default function CustomTestRunPage() {
   const [savedAttemptId, setSavedAttemptId] = useState<string>("");
   const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null);
   const [saveStarted, setSaveStarted] = useState<boolean>(false);
+  const [adaptiveDifficulty, setAdaptiveDifficulty] =
+    useState<AdaptiveDifficultyLevel>(2);
+  const [adaptiveCorrectStreak, setAdaptiveCorrectStreak] = useState<number>(0);
+  const [adaptiveWrongStreak, setAdaptiveWrongStreak] = useState<number>(0);
+  const [adaptiveMessage, setAdaptiveMessage] = useState<string>("");
+  const [adaptiveQuestionDifficulties, setAdaptiveQuestionDifficulties] =
+    useState<Record<string, AdaptiveDifficultyLevel>>({});
 
   useEffect(() => {
     if (!mainCategoryParam || !isMainCategory(mainCategoryParam)) {
@@ -156,14 +314,39 @@ export default function CustomTestRunPage() {
         return;
       }
 
-      const parsed = JSON.parse(raw) as GeneratedCustomTest;
+      const parsed = JSON.parse(raw) as RuntimeGeneratedCustomTest;
 
       if (!parsed?.config || parsed.config.mainCategory !== mainCategoryParam) {
         setLoadError("Generated test data does not match this category.");
         return;
       }
 
-      setGeneratedTest(parsed);
+      const loadedTest = parsed as AdaptiveGeneratedCustomTest;
+
+      if (isAdaptiveTest(loadedTest)) {
+        const firstQuestion = loadedTest.questions[0];
+
+        if (!firstQuestion) {
+          setLoadError("No adaptive question was found. Please build a new test first.");
+          return;
+        }
+
+        const startingDifficulty =
+          loadedTest.adaptiveMode?.startingDifficulty === 1 ||
+          loadedTest.adaptiveMode?.startingDifficulty === 2 ||
+          loadedTest.adaptiveMode?.startingDifficulty === 3
+            ? loadedTest.adaptiveMode.startingDifficulty
+            : 2;
+
+        setAdaptiveDifficulty(startingDifficulty);
+        setAdaptiveCorrectStreak(0);
+        setAdaptiveWrongStreak(0);
+        setAdaptiveQuestionDifficulties({
+          [firstQuestion.runnerId]: startingDifficulty,
+        });
+      }
+
+      setGeneratedTest(loadedTest);
       setTimeLeftSeconds(parsed.config.totalTimeMinutes * 60);
     } catch {
       setLoadError("Could not load the generated custom test.");
@@ -261,6 +444,12 @@ export default function CustomTestRunPage() {
 
   const questions = generatedTest?.questions ?? [];
   const currentQuestion = questions[currentIndex] ?? null;
+  const adaptiveTest = isAdaptiveTest(generatedTest) ? generatedTest : null;
+  const targetQuestionCount =
+    adaptiveTest?.adaptiveMode?.questionCount ?? generatedTest?.config.questionCount ?? questions.length;
+  const canMoveToNextQuestion = adaptiveTest
+    ? currentIndex < targetQuestionCount - 1
+    : currentIndex < questions.length - 1;
 
   const correctCount = useMemo(() => {
     if (!generatedTest) return 0;
@@ -284,13 +473,87 @@ export default function CustomTestRunPage() {
   function handleSelectAnswer(runnerId: string, optionKey: OptionKey) {
     if (hasSubmitted) return;
 
+    setAdaptiveMessage("");
+
     setAnswers((prev) => ({
       ...prev,
       [runnerId]: optionKey,
     }));
   }
 
+  function handleAdaptiveNextQuestion() {
+    if (!adaptiveTest || !currentQuestion) return;
+
+    const selectedAnswer = answers[currentQuestion.runnerId];
+
+    if (!selectedAnswer) {
+      setAdaptiveMessage("Please choose an answer before moving to the next adaptive question.");
+      return;
+    }
+
+    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    const nextState = calculateNextAdaptiveState({
+      currentDifficulty: adaptiveDifficulty,
+      correctStreak: adaptiveCorrectStreak,
+      wrongStreak: adaptiveWrongStreak,
+      isCorrect,
+    });
+
+    const usedRunnerIds = new Set(questions.map((question) => question.runnerId));
+    const nextQuestionResult = chooseNextAdaptiveQuestion({
+      test: adaptiveTest,
+      desiredDifficulty: nextState.nextDifficulty,
+      usedRunnerIds,
+    });
+
+    if (!nextQuestionResult) {
+      setHasSubmitted(true);
+      return;
+    }
+
+    setAdaptiveDifficulty(nextQuestionResult.difficulty);
+    setAdaptiveCorrectStreak(nextState.nextCorrectStreak);
+    setAdaptiveWrongStreak(nextState.nextWrongStreak);
+    setAdaptiveQuestionDifficulties((prev) => ({
+      ...prev,
+      [nextQuestionResult.question.runnerId]: nextQuestionResult.difficulty,
+    }));
+
+    setGeneratedTest((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...(prev as AdaptiveGeneratedCustomTest),
+        questions: [...prev.questions, nextQuestionResult.question],
+      };
+    });
+
+    setCurrentIndex((prev) => prev + 1);
+  }
+
   function handleSubmit() {
+    if (adaptiveTest && currentQuestion) {
+      const selectedAnswer = answers[currentQuestion.runnerId];
+
+      if (!selectedAnswer) {
+        setAdaptiveMessage("Please choose an answer before finishing the adaptive test.");
+        return;
+      }
+
+      const finalState = calculateNextAdaptiveState({
+        currentDifficulty: adaptiveDifficulty,
+        correctStreak: adaptiveCorrectStreak,
+        wrongStreak: adaptiveWrongStreak,
+        isCorrect: selectedAnswer === currentQuestion.correctAnswer,
+      });
+
+      setAdaptiveDifficulty(finalState.nextDifficulty);
+      setAdaptiveCorrectStreak(finalState.nextCorrectStreak);
+      setAdaptiveWrongStreak(finalState.nextWrongStreak);
+      setHasSubmitted(true);
+      return;
+    }
+
     const unansweredCount = questions.length - answeredCount;
 
     if (unansweredCount > 0) {
@@ -446,7 +709,7 @@ export default function CustomTestRunPage() {
                         fontSize: "0.95rem",
                       }}
                     >
-                      Question {currentIndex + 1} of {questions.length}
+                      Question {currentIndex + 1} of {targetQuestionCount}
                     </p>
                     <h1
                       style={{
@@ -455,27 +718,68 @@ export default function CustomTestRunPage() {
                         fontSize: "1.75rem",
                       }}
                     >
-                      Custom Test
+                      {adaptiveTest ? "Adaptive Custom Test" : "Custom Test"}
                     </h1>
                   </div>
 
                   <div
                     style={{
-                      background: timeLeftSeconds <= 60 ? "#fef2f2" : "#ecfccb",
-                      color: timeLeftSeconds <= 60 ? "#991b1b" : "#365314",
-                      border:
-                        timeLeftSeconds <= 60
-                          ? "1px solid #fecaca"
-                          : "1px solid #d9f99d",
-                      borderRadius: 999,
-                      padding: "10px 16px",
-                      fontWeight: 700,
-                      fontSize: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flexWrap: "wrap",
                     }}
                   >
-                    {formatSeconds(timeLeftSeconds)}
+                    {adaptiveTest ? (
+                      <div
+                        style={{
+                          background: "#eff6ff",
+                          color: "#1e3a8a",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: 999,
+                          padding: "10px 16px",
+                          fontWeight: 800,
+                          fontSize: "1rem",
+                        }}
+                      >
+                        Current level: {ADAPTIVE_DIFFICULTY_LABELS[adaptiveDifficulty]}
+                      </div>
+                    ) : null}
+
+                    <div
+                      style={{
+                        background: timeLeftSeconds <= 60 ? "#fef2f2" : "#ecfccb",
+                        color: timeLeftSeconds <= 60 ? "#991b1b" : "#365314",
+                        border:
+                          timeLeftSeconds <= 60
+                            ? "1px solid #fecaca"
+                            : "1px solid #d9f99d",
+                        borderRadius: 999,
+                        padding: "10px 16px",
+                        fontWeight: 700,
+                        fontSize: "1rem",
+                      }}
+                    >
+                      {formatSeconds(timeLeftSeconds)}
+                    </div>
                   </div>
                 </div>
+
+                {adaptiveMessage ? (
+                  <div
+                    style={{
+                      marginBottom: 16,
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      color: "#991b1b",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {adaptiveMessage}
+                  </div>
+                ) : null}
 
                 <div
                   style={{
@@ -622,29 +926,34 @@ export default function CustomTestRunPage() {
                       onClick={() =>
                         setCurrentIndex((prev) => Math.max(prev - 1, 0))
                       }
-                      disabled={currentIndex === 0}
+                      disabled={adaptiveTest !== null || currentIndex === 0}
                       style={{
                         padding: "12px 18px",
                         borderRadius: 10,
                         border: "1px solid #d1d5db",
-                        background: currentIndex === 0 ? "#f3f4f6" : "#ffffff",
-                        color: currentIndex === 0 ? "#9ca3af" : "#111827",
+                        background: adaptiveTest !== null || currentIndex === 0 ? "#f3f4f6" : "#ffffff",
+                        color: adaptiveTest !== null || currentIndex === 0 ? "#9ca3af" : "#111827",
                         fontWeight: 700,
-                        cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+                        cursor: adaptiveTest !== null || currentIndex === 0 ? "not-allowed" : "pointer",
                         minWidth: 120,
                       }}
                     >
                       Previous
                     </button>
 
-                    {currentIndex < questions.length - 1 ? (
+                    {canMoveToNextQuestion ? (
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          if (adaptiveTest) {
+                            handleAdaptiveNextQuestion();
+                            return;
+                          }
+
                           setCurrentIndex((prev) =>
                             Math.min(prev + 1, questions.length - 1),
-                          )
-                        }
+                          );
+                        }}
                         style={{
                           padding: "12px 18px",
                           borderRadius: 10,
@@ -815,6 +1124,36 @@ export default function CustomTestRunPage() {
                       {answeredCount} / {questions.length}
                     </div>
                   </div>
+
+                  {adaptiveTest ? (
+                    <div
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 14,
+                        padding: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#6b7280",
+                          fontSize: "0.9rem",
+                          marginBottom: 6,
+                        }}
+                      >
+                        Final adaptive level
+                      </div>
+                      <div
+                        style={{
+                          color: "#111827",
+                          fontSize: "1.6rem",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {ADAPTIVE_DIFFICULTY_LABELS[adaptiveDifficulty]}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 {isSavingResult ? (
@@ -936,6 +1275,24 @@ export default function CustomTestRunPage() {
                           }}
                         >
                           Question {index + 1}
+                          {adaptiveTest ? (
+                            <span
+                              style={{
+                                marginLeft: 10,
+                                padding: "4px 8px",
+                                borderRadius: 999,
+                                background: "#eff6ff",
+                                color: "#1e3a8a",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              {ADAPTIVE_DIFFICULTY_LABELS[
+                                adaptiveQuestionDifficulties[question.runnerId] ??
+                                  getQuestionSnapshotDifficulty(question) ??
+                                  2
+                              ]}
+                            </span>
+                          ) : null}
                         </div>
 
                         {question.questionText ? (
