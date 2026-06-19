@@ -665,11 +665,32 @@ export default function CustomTestRunPage() {
 
                   <div
                     style={{
-                      display: "flex",
-                      justifyContent: "flex-start",
+                      display: "grid",
+                      gridTemplateColumns: "minmax(220px, 1fr) auto minmax(220px, 1fr)",
+                      alignItems: "start",
+                      gap: 12,
                       marginTop: 18,
                     }}
                   >
+                    <div
+                      style={{
+                        justifySelf: "start",
+                        width: "100%",
+                        maxWidth: 560,
+                      }}
+                    >
+                      <ReportQuestionButton
+                        key={currentQuestion.runnerId}
+                        subject={getReportSubject(
+                          currentQuestion,
+                          test.config.mainCategory,
+                        )}
+                        category={getReportCategory(currentQuestion)}
+                        testId={getReportTestId(currentQuestion)}
+                        questionId={getReportQuestionId(currentQuestion)}
+                      />
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleSubmit}
@@ -682,10 +703,13 @@ export default function CustomTestRunPage() {
                         fontWeight: 700,
                         cursor: "pointer",
                         minWidth: 150,
+                        justifySelf: "center",
                       }}
                     >
                       Submit Test
                     </button>
+
+                    <div />
                   </div>
                 </div>
               </>
