@@ -1101,10 +1101,6 @@ export default function ShapeAndSpaceTestPage() {
                 Question {currentIndex + 1} / {questions.length}
               </span>
 
-              <span style={styles.progressText}>
-                Answered: {answeredCount} / {questions.length}
-              </span>
-
               <div style={styles.timerControls}>
                 <button
                   type="button"
