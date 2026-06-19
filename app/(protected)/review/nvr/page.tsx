@@ -12,7 +12,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts"
 
@@ -502,6 +501,76 @@ function AnswerBox({
       </div>
 
       <ImageBox src={imageUrl} alt={title} maxHeight={150} />
+    </div>
+  )
+}
+
+
+function MeasuredChartContainer({
+  children,
+}: {
+  children: (dimensions: { width: number; height: number }) => React.ReactNode
+}) {
+  const wrapperRef = React.useRef<HTMLDivElement | null>(null)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const element = wrapperRef.current
+
+    if (!element) return
+
+    let frameId = 0
+
+    const updateDimensions = () => {
+      window.cancelAnimationFrame(frameId)
+
+      frameId = window.requestAnimationFrame(() => {
+        const rect = element.getBoundingClientRect()
+        const width = Math.floor(rect.width)
+        const height = Math.floor(rect.height)
+
+        setDimensions((previous) => {
+          if (previous.width === width && previous.height === height) {
+            return previous
+          }
+
+          return { width, height }
+        })
+      })
+    }
+
+    updateDimensions()
+
+    const resizeObserver = new ResizeObserver(updateDimensions)
+    resizeObserver.observe(element)
+    window.addEventListener("resize", updateDimensions)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", updateDimensions)
+    }
+  }, [])
+
+  const isReady = dimensions.width > 0 && dimensions.height > 0
+
+  return (
+    <div ref={wrapperRef} style={chartWrapperStyle}>
+      {isReady ? (
+        children(dimensions)
+      ) : (
+        <div
+          style={{
+            ...emptyStateStyle,
+            minHeight: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          Loading chart...
+        </div>
+      )}
     </div>
   )
 }
@@ -1140,9 +1209,11 @@ export default function NVRReviewPage() {
             subtitle="See which NVR categories currently need the most revision."
           >
             {reviewByCategoryData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
+              <MeasuredChartContainer>
+                {({ width, height }) => (
                   <BarChart
+                    width={width}
+                    height={height}
                     data={reviewByCategoryData}
                     layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
@@ -1169,8 +1240,8 @@ export default function NVRReviewPage() {
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>
                 No data available for this filter.
@@ -1183,9 +1254,11 @@ export default function NVRReviewPage() {
             subtitle="See which difficulty level currently needs the most revision."
           >
             {reviewByDifficultyData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
+              <MeasuredChartContainer>
+                {({ width, height }) => (
                   <BarChart
+                    width={width}
+                    height={height}
                     data={reviewByDifficultyData}
                     margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
                   >
@@ -1208,8 +1281,8 @@ export default function NVRReviewPage() {
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>
                 No data available for this filter.
@@ -1500,8 +1573,9 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
 const chartWrapperStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100%",
-  height: 340,
-  minWidth: 0,
+  height: "clamp(260px, 38vw, 340px)",
+  minHeight: 260,
+  minWidth: 1,
   overflow: "hidden",
 }
 
