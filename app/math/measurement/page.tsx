@@ -325,7 +325,9 @@ function getScorePercentage(score: number, isCompleted: boolean) {
     return (
       <>
         <Header />
-        <p style={styles.message}>Loading Measurement tests...</p>
+        <div style={styles.page}>
+          <p style={styles.message}>Loading Measurement tests...</p>
+        </div>
       </>
     )
   }
@@ -337,18 +339,6 @@ function getScorePercentage(score: number, isCompleted: boolean) {
         <div style={styles.container}>
           <div style={styles.heroCard}>
             <h1 style={styles.title}>📏 Measurement Tests</h1>
-            <p style={styles.subtitle}>
-              Choose a Measurement test and answer 10 multiple-choice questions.
-            </p>
-
-            <div style={styles.accessInfo}>
-              {plan === "guest"
-                ? "Guests can browse the tests. Sign in to start the free tests."
-                : plan === "free"
-                  ? "Free members can start tests marked as Free test."
-                  : "Your membership unlocks all Measurement tests."}
-            </div>
-
             <div style={styles.heroActions}>
               <Link href="/math" style={styles.backLink}>
                 ← Back to Maths
@@ -499,22 +489,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   title: {
     fontSize: "36px",
     margin: "0 0 8px 0",
-  },
-  subtitle: {
-    margin: 0,
-    color: "#555",
-    lineHeight: 1.6,
-  },
-  accessInfo: {
-    marginTop: "18px",
-    display: "inline-block",
-    padding: "10px 14px",
-    borderRadius: "999px",
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-    color: "#374151",
-    fontWeight: 600,
-    fontSize: "14px",
   },
   heroActions: {
     marginTop: "16px",

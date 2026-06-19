@@ -338,18 +338,12 @@ function getScorePercentage(score: number, isCompleted: boolean) {
       <div style={styles.page}>
         <div style={styles.container}>
           <div style={styles.heroCard}>
-            <h1 style={styles.title}>➕ Four Operations Tests</h1>
-            <p style={styles.subtitle}>
-              Choose a Four Operations test and answer 10 multiple-choice questions.
-            </p>
-
-            <div style={styles.accessInfo}>
-              {plan === "guest"
-                ? "Guests can browse the tests. Sign in to start the free tests."
-                : plan === "free"
-                  ? "Free members can start tests marked as Free test."
-                  : "Your membership unlocks all Four Operations tests."}
-            </div>
+            <h1 style={styles.title}>
+              <span style={styles.titleIcon} aria-hidden="true">
+                + − × ÷
+              </span>
+              Four Operations Tests
+            </h1>
 
             <div style={styles.heroActions}>
               <Link href="/math" style={styles.backLink}>
@@ -499,27 +493,31 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
   },
   title: {
+    margin: "0",
+    color: "#111827",
     fontSize: "36px",
-    margin: "0 0 8px 0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+    flexWrap: "wrap",
   },
-  subtitle: {
-    margin: 0,
-    color: "#555",
-    lineHeight: 1.6,
-  },
-  accessInfo: {
-    marginTop: "18px",
-    display: "inline-block",
-    padding: "10px 14px",
-    borderRadius: "999px",
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-    color: "#374151",
-    fontWeight: 600,
-    fontSize: "14px",
+  titleIcon: {
+    width: "66px",
+    height: "66px",
+    borderRadius: "20px",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "20px",
+    fontWeight: 900,
+    letterSpacing: "0.5px",
+    boxShadow: "inset 0 -4px 0 rgba(0,0,0,0.08)",
   },
   heroActions: {
-    marginTop: "16px",
+    marginTop: "18px",
   },
   backLink: {
     display: "inline-block",

@@ -885,7 +885,7 @@ export default function AlgebraReasoningTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>🧠 Algebra & Reasoning Test Complete</h1>
+              <h1 style={styles.title}>𝑥 Algebra & Reasoning Test Complete</h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -1077,7 +1077,7 @@ export default function AlgebraReasoningTestPage() {
           <div style={styles.heroCard}>
             <div style={styles.heroTop}>
               <div>
-                <h1 style={styles.title}>🧠 {test.title}</h1>
+                <h1 style={styles.title}>𝑥 {test.title}</h1>
               </div>
 
               <div
