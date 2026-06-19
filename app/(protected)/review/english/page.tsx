@@ -8,7 +8,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -548,9 +547,18 @@ const chartWrapperStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-function SafeChartContainer({ children }: { children: React.ReactNode }) {
+type MeasuredChartSize = {
+  width: number
+  height: number
+}
+
+function MeasuredChartContainer({
+  children,
+}: {
+  children: (size: MeasuredChartSize) => React.ReactNode
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [isReady, setIsReady] = useState(false)
+  const [chartSize, setChartSize] = useState<MeasuredChartSize | null>(null)
 
   useEffect(() => {
     const element = containerRef.current
@@ -558,27 +566,38 @@ function SafeChartContainer({ children }: { children: React.ReactNode }) {
 
     let animationFrameId = 0
 
-    const checkSize = () => {
+    const measure = () => {
       const rect = element.getBoundingClientRect()
-      setIsReady(rect.width > 0 && rect.height > 0)
-    }
+      const width = Math.floor(rect.width)
+      const height = Math.floor(rect.height)
 
-    const scheduleCheck = () => {
-      window.cancelAnimationFrame(animationFrameId)
-      animationFrameId = window.requestAnimationFrame(checkSize)
-    }
+      if (width > 0 && height > 0) {
+        setChartSize((previous) => {
+          if (previous?.width === width && previous?.height === height) {
+            return previous
+          }
 
-    scheduleCheck()
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", scheduleCheck)
-      return () => {
-        window.cancelAnimationFrame(animationFrameId)
-        window.removeEventListener("resize", scheduleCheck)
+          return { width, height }
+        })
       }
     }
 
-    const observer = new ResizeObserver(scheduleCheck)
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(animationFrameId)
+      animationFrameId = window.requestAnimationFrame(measure)
+    }
+
+    scheduleMeasure()
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleMeasure)
+      return () => {
+        window.cancelAnimationFrame(animationFrameId)
+        window.removeEventListener("resize", scheduleMeasure)
+      }
+    }
+
+    const observer = new ResizeObserver(scheduleMeasure)
     observer.observe(element)
 
     return () => {
@@ -589,11 +608,7 @@ function SafeChartContainer({ children }: { children: React.ReactNode }) {
 
   return (
     <div ref={containerRef} style={chartWrapperStyle}>
-      {isReady ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-          {children}
-        </ResponsiveContainer>
-      ) : null}
+      {chartSize ? children(chartSize) : null}
     </div>
   )
 }
@@ -1457,32 +1472,43 @@ export default function EnglishReviewPage() {
             subtitle="See which English areas currently need the most revision."
           >
             {reviewByCategoryData.length ? (
-              <SafeChartContainer>
-                <BarChart
-                  data={reviewByCategoryData}
-                  layout="vertical"
-                  margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis
-                    type="number"
-                    allowDecimals={false}
-                    tick={{ fontSize: 12, fill: "#64748b" }}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="category"
-                    width={150}
-                    tick={{ fontSize: 11, fill: "#64748b" }}
-                  />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[0, 10, 10, 0]}>
-                    {reviewByCategoryData.map((entry, index) => (
-                      <Cell key={`category-cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </SafeChartContainer>
+              <MeasuredChartContainer>
+                {({ width, height }) => {
+                  const yAxisWidth = Math.min(
+                    150,
+                    Math.max(90, Math.floor(width * 0.38))
+                  )
+
+                  return (
+                    <BarChart
+                      width={width}
+                      height={height}
+                      data={reviewByCategoryData}
+                      layout="vertical"
+                      margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis
+                        type="number"
+                        allowDecimals={false}
+                        tick={{ fontSize: 12, fill: "#64748b" }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="category"
+                        width={yAxisWidth}
+                        tick={{ fontSize: 11, fill: "#64748b" }}
+                      />
+                      <Tooltip />
+                      <Bar dataKey="count" radius={[0, 10, 10, 0]}>
+                        {reviewByCategoryData.map((entry, index) => (
+                          <Cell key={`category-cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  )
+                }}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>No data available for this filter.</div>
             )}
@@ -1493,22 +1519,26 @@ export default function EnglishReviewPage() {
             subtitle="See which difficulty level currently needs the most revision."
           >
             {reviewByDifficultyData.length ? (
-              <SafeChartContainer>
-                <BarChart
-                  data={reviewByDifficultyData}
-                  margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748b" }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                    {reviewByDifficultyData.map((entry, index) => (
-                      <Cell key={`difficulty-cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </SafeChartContainer>
+              <MeasuredChartContainer>
+                {({ width, height }) => (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={reviewByDifficultyData}
+                    margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {reviewByDifficultyData.map((entry, index) => (
+                        <Cell key={`difficulty-cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>No data available for this filter.</div>
             )}
