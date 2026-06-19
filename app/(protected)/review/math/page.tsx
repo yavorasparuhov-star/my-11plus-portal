@@ -1,7 +1,7 @@
 // app/(protected)/review/math/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
@@ -11,7 +11,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts"
 
@@ -321,6 +320,83 @@ function QuestionPreviewImage({ item }: { item: ReviewItem }) {
         margin: "0 0 14px 0",
       }}
     />
+  )
+}
+
+type ChartSize = {
+  width: number
+  height: number
+}
+
+function MeasuredChartContainer({
+  children,
+}: {
+  children: (size: ChartSize) => React.ReactNode
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [size, setSize] = useState<ChartSize | null>(null)
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    let animationFrameId: number | null = null
+
+    const measure = () => {
+      const rect = element.getBoundingClientRect()
+      const width = Math.floor(rect.width)
+      const height = Math.floor(rect.height)
+
+      if (width > 0 && height > 0) {
+        setSize((previous) => {
+          if (previous?.width === width && previous?.height === height) {
+            return previous
+          }
+
+          return { width, height }
+        })
+      }
+    }
+
+    const scheduleMeasure = () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+
+      animationFrameId = window.requestAnimationFrame(measure)
+    }
+
+    scheduleMeasure()
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(scheduleMeasure)
+        : null
+
+    resizeObserver?.observe(element)
+    window.addEventListener("resize", scheduleMeasure)
+
+    return () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+
+      resizeObserver?.disconnect()
+      window.removeEventListener("resize", scheduleMeasure)
+    }
+  }, [])
+
+  return (
+    <div ref={containerRef} style={chartWrapperStyle}>
+      {size ? (
+        children(size)
+      ) : (
+        <div
+          aria-hidden="true"
+          style={{ width: "100%", height: "100%", minWidth: 1, minHeight: 1 }}
+        />
+      )}
+    </div>
   )
 }
 
@@ -1123,9 +1199,11 @@ export default function MathReviewPage() {
             subtitle="See which maths categories currently need the most revision."
           >
             {reviewByCategoryData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
+              <MeasuredChartContainer>
+                {({ width, height }) => (
                   <BarChart
+                    width={width}
+                    height={height}
                     data={reviewByCategoryData}
                     layout="vertical"
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
@@ -1152,8 +1230,8 @@ export default function MathReviewPage() {
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>
                 No data available for this filter.
@@ -1166,9 +1244,11 @@ export default function MathReviewPage() {
             subtitle="See which difficulty level currently needs the most revision."
           >
             {reviewByDifficultyData.length ? (
-              <div style={chartWrapperStyle}>
-                <ResponsiveContainer width="100%" height="100%">
+              <MeasuredChartContainer>
+                {({ width, height }) => (
                   <BarChart
+                    width={width}
+                    height={height}
                     data={reviewByDifficultyData}
                     margin={{ top: 20, right: 12, left: 0, bottom: 20 }}
                   >
@@ -1191,8 +1271,8 @@ export default function MathReviewPage() {
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </MeasuredChartContainer>
             ) : (
               <div style={emptyStateStyle}>
                 No data available for this filter.
@@ -1527,8 +1607,9 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
 const chartWrapperStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: "100%",
-  height: 340,
-  minWidth: 0,
+  height: "clamp(260px, 38vw, 340px)",
+  minWidth: 1,
+  minHeight: 1,
   overflow: "hidden",
 }
 
