@@ -1894,7 +1894,7 @@ function AvatarPreviewBody({
         )}
 
         {config.glasses !== "none" && (
-          <div className="absolute left-1/2 top-[5.7rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[6.1rem]">
+          <div className="absolute left-1/2 top-[4.75rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[5.15rem]">
             <PreviewLayerImage
               srcs={builderGlassesSources}
               alt={getSlotLabel("glasses", config.glasses)}
