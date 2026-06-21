@@ -37,74 +37,87 @@ export default function ReportQuestionButton({
     setSuccess(false)
 
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (userError || !user) {
+    if (sessionError || !session) {
       setError("Please log in to report a question.")
       return
     }
 
     setSubmitting(true)
 
-    const { error: insertError } = await supabase
-      .from("question_reports")
-      .insert({
-        user_id: user.id,
-        subject,
-        category,
-        test_id: testId,
-        question_id: questionId,
-        reason,
-        message: message.trim() || null,
-        page_url: typeof window !== "undefined" ? window.location.href : null,
-        status: "open",
+    try {
+      const response = await fetch("/api/question-reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subject,
+          category,
+          testId,
+          questionId,
+          reason,
+          message: message.trim() || null,
+          pageUrl: typeof window !== "undefined" ? window.location.href : null,
+        }),
       })
 
-    setSubmitting(false)
+      const result = await response.json().catch(() => null)
 
-    if (insertError) {
+      if (!response.ok || !result?.success) {
+        setError(
+          result?.error ||
+            "Sorry, the report could not be sent. Please try again."
+        )
+        return
+      }
+
+      setSuccess(true)
+      setMessage("")
+      setReason(reportReasons[0])
+    } catch (submitError) {
+      console.error("Question report submit error:", submitError)
       setError("Sorry, the report could not be sent. Please try again.")
-      return
+    } finally {
+      setSubmitting(false)
     }
-
-    setSuccess(true)
-    setMessage("")
-    setReason(reportReasons[0])
   }
 
-return (
-  <div
-    style={{
-      marginTop: open ? 12 : 0,
-      flexBasis: open ? "100%" : "auto",
-      maxWidth: open ? 560 : "none",
-      textAlign: "left",
-    }}
-  >
+  return (
+    <div
+      style={{
+        marginTop: open ? 12 : 0,
+        flexBasis: open ? "100%" : "auto",
+        maxWidth: open ? 560 : "none",
+        textAlign: "left",
+      }}
+    >
       {!open ? (
-<button
-  type="button"
-  onClick={() => {
-    setOpen(true)
-    setSuccess(false)
-    setError(null)
-  }}
-  style={{
-    border: "none",
-    background: "transparent",
-    color: "#6b7280",
-    padding: 0,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: 13,
-    textDecoration: "underline",
-    textUnderlineOffset: 3,
-  }}
->
-  Report question
-</button>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true)
+            setSuccess(false)
+            setError(null)
+          }}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "#6b7280",
+            padding: 0,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontSize: 13,
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Report question
+        </button>
       ) : (
         <div
           style={{
@@ -239,28 +252,29 @@ return (
                 fontSize: 14,
               }}
             >
-              Thank you. Your report has been sent.
+              Thank you for your feedback. The YanBo Learning support team will
+              review this question as soon as possible.
             </p>
           )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
-  type="button"
-  onClick={submitReport}
-  disabled={submitting}
-  style={{
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    borderRadius: 10,
-    padding: "10px 14px",
-    fontWeight: 900,
-    cursor: submitting ? "not-allowed" : "pointer",
-    opacity: submitting ? 0.7 : 1,
-  }}
->
-  {submitting ? "Sending..." : "Send report"}
-</button>
+              type="button"
+              onClick={submitReport}
+              disabled={submitting}
+              style={{
+                border: "none",
+                background: "#d4f5d0",
+                color: "#065f46",
+                borderRadius: 10,
+                padding: "10px 14px",
+                fontWeight: 900,
+                cursor: submitting ? "not-allowed" : "pointer",
+                opacity: submitting ? 0.7 : 1,
+              }}
+            >
+              {submitting ? "Sending..." : "Send report"}
+            </button>
           </div>
         </div>
       )}
