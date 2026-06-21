@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabaseClient"
 
 type ReportQuestionButtonProps = {
@@ -19,9 +19,6 @@ const reportReasons = [
   "Other issue",
 ]
 
-const THANK_YOU_MESSAGE =
-  "Thank you for your feedback. The YanBo Learning support team will review this question as soon as possible."
-
 export default function ReportQuestionButton({
   subject,
   category = null,
@@ -32,70 +29,21 @@ export default function ReportQuestionButton({
   const [reason, setReason] = useState(reportReasons[0])
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [alreadySent, setAlreadySent] = useState(false)
-  const [successMessage, setSuccessMessage] = useState(THANK_YOU_MESSAGE)
   const [error, setError] = useState<string | null>(null)
-
-  const closeTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     setOpen(false)
     setReason(reportReasons[0])
     setMessage("")
     setSubmitting(false)
-    setSuccess(false)
     setAlreadySent(false)
-    setSuccessMessage(THANK_YOU_MESSAGE)
     setError(null)
-
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
   }, [subject, category, testId, questionId])
 
-  useEffect(() => {
-    if (!success) {
-      return
-    }
-
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-    }
-
-    closeTimerRef.current = window.setTimeout(() => {
-      setOpen(false)
-      setSuccess(false)
-      setError(null)
-      closeTimerRef.current = null
-    }, 1500)
-
-    return () => {
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current)
-        closeTimerRef.current = null
-      }
-    }
-  }, [success])
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current)
-      }
-    }
-  }, [])
-
   function closeReportForm() {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
-
     setOpen(false)
     setError(null)
-    setSuccess(false)
   }
 
   async function submitReport() {
@@ -104,8 +52,6 @@ export default function ReportQuestionButton({
     }
 
     setError(null)
-    setSuccess(false)
-    setSuccessMessage(THANK_YOU_MESSAGE)
 
     const {
       data: { session },
@@ -148,10 +94,10 @@ export default function ReportQuestionButton({
       }
 
       setAlreadySent(true)
-      setSuccessMessage(result?.message || THANK_YOU_MESSAGE)
       setMessage("")
       setReason(reportReasons[0])
-      setSuccess(true)
+      setError(null)
+      setOpen(false)
     } catch (submitError) {
       console.error("Question report submit error:", submitError)
       setError("Sorry, the report could not be sent. Please try again.")
@@ -178,23 +124,22 @@ export default function ReportQuestionButton({
             }
 
             setOpen(true)
-            setSuccess(false)
             setError(null)
           }}
           disabled={alreadySent}
           style={{
             border: "none",
             background: "transparent",
-            color: alreadySent ? "#9ca3af" : "#6b7280",
+            color: alreadySent ? "#16a34a" : "#6b7280",
             padding: 0,
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: alreadySent ? "default" : "pointer",
             fontSize: 13,
             textDecoration: alreadySent ? "none" : "underline",
             textUnderlineOffset: 3,
           }}
         >
-          {alreadySent ? "Report sent" : "Report question"}
+          {alreadySent ? "Report sent ✓" : "Report question"}
         </button>
       ) : (
         <div
@@ -318,19 +263,6 @@ export default function ReportQuestionButton({
               }}
             >
               {error}
-            </p>
-          )}
-
-          {success && (
-            <p
-              style={{
-                color: "#166534",
-                fontWeight: 800,
-                margin: "0 0 10px",
-                fontSize: 14,
-              }}
-            >
-              {successMessage}
             </p>
           )}
 
