@@ -1,7 +1,5 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 type QuestionReportEmailInput = {
   id?: string | number | null
   subject?: string | null
@@ -25,11 +23,12 @@ function safeValue(value: unknown) {
 }
 
 export async function sendQuestionReportEmail(report: QuestionReportEmailInput) {
+  const resendApiKey = process.env.RESEND_API_KEY
   const adminEmail = process.env.REPORT_ADMIN_EMAIL
   const fromEmail =
     process.env.REPORT_FROM_EMAIL || "YanBo Learning <onboarding@resend.dev>"
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!resendApiKey) {
     throw new Error("Missing RESEND_API_KEY")
   }
 
@@ -37,8 +36,9 @@ export async function sendQuestionReportEmail(report: QuestionReportEmailInput) 
     throw new Error("Missing REPORT_ADMIN_EMAIL")
   }
 
-  const subjectLabel = report.subject || "Unknown subject"
+  const resend = new Resend(resendApiKey)
 
+  const subjectLabel = report.subject || "Unknown subject"
   const emailSubject = `New question report: ${subjectLabel}`
 
   const text = `
