@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "../lib/supabaseClient"
 
 type ReportQuestionButtonProps = {
@@ -19,6 +19,9 @@ const reportReasons = [
   "Other issue",
 ]
 
+const THANK_YOU_MESSAGE =
+  "Thank you for your feedback. The YanBo Learning support team will review this question as soon as possible."
+
 export default function ReportQuestionButton({
   subject,
   category = null,
@@ -30,11 +33,55 @@ export default function ReportQuestionButton({
   const [message, setMessage] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [alreadySent, setAlreadySent] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(THANK_YOU_MESSAGE)
   const [error, setError] = useState<string | null>(null)
 
-  async function submitReport() {
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setOpen(false)
+    setReason(reportReasons[0])
+    setMessage("")
+    setSubmitting(false)
+    setSuccess(false)
+    setAlreadySent(false)
+    setSuccessMessage(THANK_YOU_MESSAGE)
+    setError(null)
+
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [subject, category, testId, questionId])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current)
+      }
+    }
+  }, [])
+
+  function closeReportForm() {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+
+    setOpen(false)
     setError(null)
     setSuccess(false)
+  }
+
+  async function submitReport() {
+    if (submitting || alreadySent) {
+      return
+    }
+
+    setError(null)
+    setSuccess(false)
+    setSuccessMessage(THANK_YOU_MESSAGE)
 
     const {
       data: { session },
@@ -77,8 +124,16 @@ export default function ReportQuestionButton({
       }
 
       setSuccess(true)
+      setAlreadySent(true)
+      setSuccessMessage(result?.message || THANK_YOU_MESSAGE)
       setMessage("")
       setReason(reportReasons[0])
+
+      closeTimerRef.current = setTimeout(() => {
+        setOpen(false)
+        setSuccess(false)
+        closeTimerRef.current = null
+      }, 1500)
     } catch (submitError) {
       console.error("Question report submit error:", submitError)
       setError("Sorry, the report could not be sent. Please try again.")
@@ -100,23 +155,28 @@ export default function ReportQuestionButton({
         <button
           type="button"
           onClick={() => {
+            if (alreadySent) {
+              return
+            }
+
             setOpen(true)
             setSuccess(false)
             setError(null)
           }}
+          disabled={alreadySent}
           style={{
             border: "none",
             background: "transparent",
-            color: "#6b7280",
+            color: alreadySent ? "#9ca3af" : "#6b7280",
             padding: 0,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: alreadySent ? "default" : "pointer",
             fontSize: 13,
-            textDecoration: "underline",
+            textDecoration: alreadySent ? "none" : "underline",
             textUnderlineOffset: 3,
           }}
         >
-          Report question
+          {alreadySent ? "Report sent" : "Report question"}
         </button>
       ) : (
         <div
@@ -150,11 +210,7 @@ export default function ReportQuestionButton({
 
             <button
               type="button"
-              onClick={() => {
-                setOpen(false)
-                setError(null)
-                setSuccess(false)
-              }}
+              onClick={closeReportForm}
               style={{
                 border: "none",
                 background: "transparent",
@@ -183,6 +239,7 @@ export default function ReportQuestionButton({
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            disabled={submitting || alreadySent}
             style={{
               width: "100%",
               padding: "10px 12px",
@@ -193,6 +250,7 @@ export default function ReportQuestionButton({
               color: "#374151",
               fontWeight: 700,
               boxSizing: "border-box",
+              opacity: submitting || alreadySent ? 0.7 : 1,
             }}
           >
             {reportReasons.map((item) => (
@@ -216,6 +274,7 @@ export default function ReportQuestionButton({
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            disabled={submitting || alreadySent}
             placeholder="For example: option B and C both look correct, or the image is too small."
             rows={4}
             style={{
@@ -227,6 +286,7 @@ export default function ReportQuestionButton({
               marginBottom: 12,
               boxSizing: "border-box",
               fontFamily: "inherit",
+              opacity: submitting || alreadySent ? 0.7 : 1,
             }}
           />
 
@@ -252,8 +312,7 @@ export default function ReportQuestionButton({
                 fontSize: 14,
               }}
             >
-              Thank you for your feedback. The YanBo Learning support team will
-              review this question as soon as possible.
+              {successMessage}
             </p>
           )}
 
@@ -261,7 +320,7 @@ export default function ReportQuestionButton({
             <button
               type="button"
               onClick={submitReport}
-              disabled={submitting}
+              disabled={submitting || alreadySent}
               style={{
                 border: "none",
                 background: "#d4f5d0",
@@ -269,11 +328,15 @@ export default function ReportQuestionButton({
                 borderRadius: 10,
                 padding: "10px 14px",
                 fontWeight: 900,
-                cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
+                cursor: submitting || alreadySent ? "not-allowed" : "pointer",
+                opacity: submitting || alreadySent ? 0.7 : 1,
               }}
             >
-              {submitting ? "Sending..." : "Send report"}
+              {submitting
+                ? "Sending..."
+                : alreadySent
+                  ? "Report sent"
+                  : "Send report"}
             </button>
           </div>
         </div>

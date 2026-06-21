@@ -6,6 +6,8 @@ type ReportSubject = "english" | "math" | "vr" | "nvr"
 
 const validSubjects: ReportSubject[] = ["english", "math", "vr", "nvr"]
 
+const DUPLICATE_REPORT_WINDOW_HOURS = 24
+
 function getRequiredEnv(name: string) {
   const value = process.env[name]
 
@@ -24,6 +26,16 @@ function toNullableNumber(value: unknown) {
   const numberValue = Number(value)
 
   return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function toNullableString(value: unknown) {
+  if (typeof value !== "string") {
+    return null
+  }
+
+  const trimmed = value.trim()
+
+  return trimmed ? trimmed : null
 }
 
 export async function POST(request: Request) {
@@ -73,18 +85,22 @@ export async function POST(request: Request) {
       )
     }
 
+    const category = toNullableString(body.category)
+    const testId = toNullableNumber(body.testId)
+    const questionId = toNullableNumber(body.questionId)
+    const reason = toNullableString(body.reason) || "Other issue"
+    const message = toNullableString(body.message)
+    const pageUrl = toNullableString(body.pageUrl)
+
     const reportPayload = {
       user_id: user.id,
       subject,
-      category: body.category || null,
-      test_id: toNullableNumber(body.testId),
-      question_id: toNullableNumber(body.questionId),
-      reason: body.reason || "Other issue",
-      message:
-        typeof body.message === "string" && body.message.trim()
-          ? body.message.trim()
-          : null,
-      page_url: body.pageUrl || null,
+      category,
+      test_id: testId,
+      question_id: questionId,
+      reason,
+      message,
+      page_url: pageUrl,
       status: "open",
     }
 
@@ -94,6 +110,57 @@ export async function POST(request: Request) {
         autoRefreshToken: false,
       },
     })
+
+    const duplicateWindowStart = new Date(
+      Date.now() - DUPLICATE_REPORT_WINDOW_HOURS * 60 * 60 * 1000
+    ).toISOString()
+
+    let duplicateQuery = adminSupabase
+      .from("question_reports")
+      .select("id, created_at")
+      .eq("user_id", user.id)
+      .eq("subject", subject)
+      .gte("created_at", duplicateWindowStart)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (category === null) {
+      duplicateQuery = duplicateQuery.is("category", null)
+    } else {
+      duplicateQuery = duplicateQuery.eq("category", category)
+    }
+
+    if (testId === null) {
+      duplicateQuery = duplicateQuery.is("test_id", null)
+    } else {
+      duplicateQuery = duplicateQuery.eq("test_id", testId)
+    }
+
+    if (questionId === null) {
+      duplicateQuery = duplicateQuery.is("question_id", null)
+    } else {
+      duplicateQuery = duplicateQuery.eq("question_id", questionId)
+    }
+
+    const { data: existingReports, error: duplicateCheckError } =
+      await duplicateQuery
+
+    if (duplicateCheckError) {
+      console.error("Question report duplicate check error:", duplicateCheckError)
+    }
+
+    if (existingReports && existingReports.length > 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          duplicate: true,
+          adminEmailSent: false,
+          message:
+            "Thank you. You have already reported this question and the YanBo Learning support team will review it.",
+        },
+        { status: 200 }
+      )
+    }
 
     const { data: report, error: insertError } = await adminSupabase
       .from("question_reports")
@@ -128,17 +195,17 @@ export async function POST(request: Request) {
         })
         .eq("id", report.id)
     } catch (emailError) {
-      const message =
+      const emailErrorMessage =
         emailError instanceof Error
           ? emailError.message
           : "Unknown email notification error"
 
-      console.error("Question report email error:", message)
+      console.error("Question report email error:", emailErrorMessage)
 
       await adminSupabase
         .from("question_reports")
         .update({
-          admin_notification_error: message,
+          admin_notification_error: emailErrorMessage,
         })
         .eq("id", report.id)
     }
@@ -146,6 +213,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
+        duplicate: false,
         adminEmailSent,
         message:
           "Thank you for your feedback. The YanBo Learning support team will review this question as soon as possible.",
