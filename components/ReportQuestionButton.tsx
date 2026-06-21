@@ -37,7 +37,7 @@ export default function ReportQuestionButton({
   const [successMessage, setSuccessMessage] = useState(THANK_YOU_MESSAGE)
   const [error, setError] = useState<string | null>(null)
 
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     setOpen(false)
@@ -49,23 +49,47 @@ export default function ReportQuestionButton({
     setSuccessMessage(THANK_YOU_MESSAGE)
     setError(null)
 
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current)
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
       closeTimerRef.current = null
     }
   }, [subject, category, testId, questionId])
 
   useEffect(() => {
+    if (!success) {
+      return
+    }
+
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+    }
+
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false)
+      setSuccess(false)
+      setError(null)
+      closeTimerRef.current = null
+    }, 1500)
+
     return () => {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current)
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
+    }
+  }, [success])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current)
       }
     }
   }, [])
 
   function closeReportForm() {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current)
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
       closeTimerRef.current = null
     }
 
@@ -123,17 +147,11 @@ export default function ReportQuestionButton({
         return
       }
 
-      setSuccess(true)
       setAlreadySent(true)
       setSuccessMessage(result?.message || THANK_YOU_MESSAGE)
       setMessage("")
       setReason(reportReasons[0])
-
-      closeTimerRef.current = setTimeout(() => {
-        setOpen(false)
-        setSuccess(false)
-        closeTimerRef.current = null
-      }, 1500)
+      setSuccess(true)
     } catch (submitError) {
       console.error("Question report submit error:", submitError)
       setError("Sorry, the report could not be sent. Please try again.")
