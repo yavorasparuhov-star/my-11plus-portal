@@ -735,8 +735,14 @@ function getShopItemImageSources(item: ShopItem) {
   return uniqueImageSources([item.image_url, localImageFromItemKey])
 }
 
-function getBaseAvatarImageSources(base: AvatarConfig["base"]) {
+function getBaseAvatarImageSources(
+  base: AvatarConfig["base"],
+  skinTone: AvatarConfig["skinTone"],
+) {
+  const skinToneSuffix = skinTone === "light" ? "" : `-${skinTone}`
+
   return uniqueImageSources([
+    `/avatars/builder/base/${base}-base${skinToneSuffix}.png`,
     `/avatars/builder/base/${base}-base.png`,
     `/characters/${base}-main.png`,
   ])
@@ -1159,7 +1165,10 @@ export default function AvatarPage() {
 
   const previewImages = useMemo<PreviewImageSources>(
     () => ({
-      base: getBaseAvatarImageSources(avatarConfig.base),
+      base: getBaseAvatarImageSources(
+        avatarConfig.base,
+        avatarConfig.skinTone,
+      ),
       eyes: getEyeOverlayImageSources(avatarConfig.base, avatarConfig.eyeColor),
       top: getPreviewLayerImageSources(
         shopItems,
