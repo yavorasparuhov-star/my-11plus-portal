@@ -131,25 +131,40 @@ const slotOptions: Record<AvatarSlot, SlotOption[]> = {
     },
   ],
   background: [
-  { value: "plain", label: "Plain — free" },
-  { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
-  { value: "library", label: "Library", itemKey: "background_library" },
-  {
-    value: "science_lab",
-    label: "Science Lab",
-    itemKey: "background_science_lab",
-  },
-  {
-    value: "reading_corner",
-    label: "Reading Corner",
-    itemKey: "background_reading_corner",
-  },
-  {
-    value: "yanbo_stage",
-    label: "YanBo Stage",
-    itemKey: "background_yanbo_stage",
-  },
-],
+    { value: "plain", label: "Plain — free" },
+    { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
+    { value: "library", label: "Library", itemKey: "background_library" },
+    { value: "space", label: "Space", itemKey: "background_space" },
+    { value: "forest", label: "Forest", itemKey: "background_forest" },
+    { value: "beach", label: "Beach", itemKey: "background_beach" },
+    {
+      value: "football",
+      label: "Football Pitch",
+      itemKey: "background_football_pitch",
+    },
+    {
+      value: "science_lab",
+      label: "Science Lab",
+      itemKey: "background_science_lab",
+    },
+    { value: "art_room", label: "Art Room", itemKey: "background_art_room" },
+    {
+      value: "puzzle_wall",
+      label: "Puzzle Wall",
+      itemKey: "background_puzzle_wall",
+    },
+    {
+      value: "reading_corner",
+      label: "Reading Corner",
+      itemKey: "background_reading_corner",
+    },
+    { value: "castle", label: "Castle", itemKey: "background_castle" },
+    {
+      value: "yanbo_stage",
+      label: "YanBo Stage",
+      itemKey: "background_yanbo_stage",
+    },
+  ],
   hat: [
     { value: "none", label: "No hat — free" },
     { value: "yanbo_cap", label: "YanBo Cap", itemKey: "hat_yanbo_cap" },
@@ -573,6 +588,14 @@ function getPreviewLayerImageSources(
   const item = shopItems.find((currentItem) => currentItem.item_key === itemKey)
   const folder = avatarLayerFolders[slot]
   const fileName = itemKeyToAssetFileName(itemKey)
+
+  if (slot === "background") {
+    return uniqueImageSources([
+      `/avatars/builder/${folder}/${fileName}.png`,
+      item?.image_url,
+      `/avatars/items/${fileName}.png`,
+    ])
+  }
 
   return uniqueImageSources([
     `/avatars/builder/${folder}/${base}/${fileName}.png`,
@@ -1112,20 +1135,20 @@ export default function AvatarPage() {
                   avatarConfig.background,
                 )}`}
               >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-b ${previewBackgroundOverlay(
-                    avatarConfig.background,
-                  )}`}
-                />
-
-                {previewImages.background && (
+                {previewImages.background.length > 0 && (
                   <PreviewLayerImage
                     srcs={previewImages.background}
                     alt=""
-                    className="absolute right-4 top-10 h-24 w-24 object-contain opacity-20 drop-shadow-md"
+                    className="absolute inset-0 h-full w-full rounded-3xl object-cover"
                     fallback={null}
                   />
                 )}
+
+                <div
+                  className={`absolute inset-0 rounded-3xl bg-gradient-to-b ${previewBackgroundOverlay(
+                    avatarConfig.background,
+                  )}`}
+                />
 
                 <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
                   {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
