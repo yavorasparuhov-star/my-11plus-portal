@@ -800,6 +800,8 @@ export default function AvatarPage() {
   const [activeShopCategory, setActiveShopCategory] = useState<string>("all")
   const [activeShopStatus, setActiveShopStatus] =
     useState<ShopStatusFilter>("all")
+  const [activeWardrobeCategory, setActiveWardrobeCategory] =
+    useState<string>("all")
 
   useEffect(() => {
     loadAvatarPage()
@@ -1128,6 +1130,14 @@ export default function AvatarPage() {
     )
   }, [shopItems, unlockedItems])
 
+  const filteredWardrobeItems = useMemo(() => {
+    if (activeWardrobeCategory === "all") return wardrobeItems
+
+    return wardrobeItems.filter(
+      (item) => item.category === activeWardrobeCategory,
+    )
+  }, [activeWardrobeCategory, wardrobeItems])
+
   const previewImages = useMemo<PreviewImageSources>(
     () => ({
       base: getBaseAvatarImageSources(avatarConfig.base),
@@ -1199,8 +1209,7 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                <span className="text-pink-500">Y</span>an
-                <span className="text-yellow-400">B</span>o Avatar Studio
+                <span className="text-pink-500">Y</span>an<span className="text-yellow-400">B</span>o Avatar Studio
               </h1>
               <p className="mt-1 text-sm font-medium text-slate-500">
                 Create, equip and save your learning avatar.
@@ -1277,9 +1286,9 @@ export default function AvatarPage() {
               </button>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+            <div className="mt-4 grid gap-4 lg:grid-cols-[440px_minmax(0,1fr)] xl:grid-cols-[460px_minmax(0,1fr)]">
               <div
-                className={`relative min-h-[520px] overflow-hidden rounded-3xl p-2 shadow-inner ring-1 ${backgroundStyle(
+                className={`relative h-[455px] max-w-[430px] overflow-visible rounded-3xl p-0 shadow-inner ring-1 ${backgroundStyle(
                   avatarConfig.background,
                 )}`}
               >
@@ -1293,18 +1302,18 @@ export default function AvatarPage() {
                   <PreviewLayerImage
                     srcs={previewImages.background}
                     alt=""
-                    className="absolute right-5 top-12 h-32 w-32 object-contain opacity-20 drop-shadow-md"
+                    className="absolute right-4 top-10 h-24 w-24 object-contain opacity-20 drop-shadow-md"
                     fallback={null}
                   />
                 )}
 
-                <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+                <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
                   {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
                 </div>
 
-                <div className="absolute inset-x-12 bottom-16 h-16 rounded-[50%] bg-slate-900/10 blur-sm" />
+                <div className="absolute inset-x-10 bottom-10 h-14 rounded-[50%] bg-slate-900/10 blur-sm" />
 
-                <div className="relative z-10 flex min-h-[500px] items-center justify-center pt-2">
+                <div className="relative z-10 flex h-full items-center justify-center pt-6">
                   <AvatarPreviewBody
                     config={avatarConfig}
                     imageSources={previewImages}
@@ -1374,14 +1383,12 @@ export default function AvatarPage() {
                   <ChoiceButton
                     active={avatarConfig.base === "yan"}
                     title="Yan"
-                    subtitle="Girl avatar"
                     emoji="😊"
                     onClick={() => updateAvatar("base", "yan")}
                   />
                   <ChoiceButton
                     active={avatarConfig.base === "bo"}
                     title="Bo"
-                    subtitle="Boy avatar"
                     emoji="🙂"
                     onClick={() => updateAvatar("base", "bo")}
                   />
@@ -1490,20 +1497,42 @@ export default function AvatarPage() {
         </section>
 
         <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
-          <SectionHeader
-            title="My Wardrobe"
-            subtitle="Unlocked items. Equip favourites quickly from here."
-            icon="🎒"
-          />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <SectionHeader
+              title="My Wardrobe"
+              subtitle="Unlocked items. Equip favourites quickly from here."
+              icon="🎒"
+            />
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {wardrobeItems.length === 0 && (
-              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-6">
-                Your wardrobe is empty for now. Unlock items from the shop to see them here.
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <ShopFilterButton
+                active={activeWardrobeCategory === "all"}
+                label="All"
+                icon="✨"
+                onClick={() => setActiveWardrobeCategory("all")}
+              />
+              {shopCategoryOrder.map((category) => (
+                <ShopFilterButton
+                  key={category}
+                  active={activeWardrobeCategory === category}
+                  label={formatCategoryName(category)}
+                  icon={getShopIcon(category)}
+                  onClick={() => setActiveWardrobeCategory(category)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+            {filteredWardrobeItems.length === 0 && (
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-3 md:col-span-4 lg:col-span-6 xl:col-span-8">
+                {activeWardrobeCategory === "all"
+                  ? "Your wardrobe is empty for now. Unlock items from the shop to see them here."
+                  : `No ${formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.`}
               </div>
             )}
 
-            {wardrobeItems.map((item) => {
+            {filteredWardrobeItems.map((item) => {
               const equipped = isShopItemEquipped(item.item_key)
               const canEquip = Boolean(getSlotMatchFromItemKey(item.item_key))
 
@@ -1614,7 +1643,7 @@ export default function AvatarPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                     {items.map((item) => {
                       const unlocked = isShopItemUnlocked(item.item_key)
                       const canAfford = coins >= item.price
@@ -1773,10 +1802,6 @@ function AvatarPreviewBody({
           </div>
         )}
       </div>
-
-      <p className="mt-3 rounded-full bg-white/85 px-4 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
-        Builder-ready Yan/Bo base avatar
-      </p>
     </div>
   )
 }
@@ -2013,7 +2038,7 @@ function CompactItemCard({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 rounded-2xl border p-2 transition ${
+      className={`flex min-h-[42px] items-center gap-1.5 rounded-xl border p-1.5 transition ${
         equipped
           ? "border-blue-200 bg-blue-50"
           : unlocked
@@ -2024,19 +2049,14 @@ function CompactItemCard({
       <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-xs font-black leading-tight text-slate-900">
+        <h3 className="truncate text-[11px] font-black leading-tight text-slate-900">
           {item.name}
         </h3>
-        <div className="mt-1 flex items-center gap-1.5">
-          <span className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400">
-            {formatCategoryName(item.category)}
+        {priceLabel && (
+          <span className="mt-0.5 inline-block rounded-full bg-yellow-100 px-1.5 py-0.5 text-[9px] font-black text-yellow-800">
+            {priceLabel}
           </span>
-          {priceLabel && (
-            <span className="shrink-0 rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-black text-yellow-800">
-              {priceLabel}
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
       {primaryAction && (
@@ -2044,7 +2064,7 @@ function CompactItemCard({
           type="button"
           onClick={primaryAction.onClick}
           disabled={primaryAction.disabled}
-          className={`shrink-0 rounded-xl px-2.5 py-1.5 text-[11px] font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
+          className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
             primaryAction.variant,
           )}`}
         >
@@ -2086,29 +2106,29 @@ function ShopItemThumbnail({
   const currentSource = imageSources[imageIndex]
 
   return (
-    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-100">
+    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-100">
       {currentSource ? (
         <img
           src={currentSource}
           alt=""
-          className="h-8 w-8 object-contain drop-shadow-sm"
+          className="h-6 w-6 object-contain drop-shadow-sm"
           onError={() => setImageIndex((current) => current + 1)}
         />
       ) : (
-        <span className="text-2xl drop-shadow-sm" aria-hidden="true">
+        <span className="text-xl drop-shadow-sm" aria-hidden="true">
           {emoji}
         </span>
       )}
       <span className="sr-only">{item.name}</span>
 
       {equipped && (
-        <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-black text-white shadow-sm">
+        <span className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[8px] font-black text-white shadow-sm">
           ✓
         </span>
       )}
 
       {!equipped && unlocked && (
-        <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-black text-white shadow-sm">
+        <span className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-black text-white shadow-sm">
           ✓
         </span>
       )}
@@ -2125,7 +2145,7 @@ function ChoiceButton({
 }: {
   active: boolean
   title: string
-  subtitle: string
+  subtitle?: string
   emoji: string
   onClick: () => void
 }) {
@@ -2133,15 +2153,19 @@ function ChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border p-3 text-left transition ${
+      className={`flex items-center gap-2 rounded-2xl border p-3 text-left transition ${
         active
           ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
           : "border-slate-200 bg-white hover:bg-slate-50"
       }`}
     >
       <div className="text-2xl">{emoji}</div>
-      <p className="mt-1 font-black text-slate-900">{title}</p>
-      <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+      <div>
+        <p className="font-black text-slate-900">{title}</p>
+        {subtitle && (
+          <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+        )}
+      </div>
     </button>
   )
 }
