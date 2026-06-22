@@ -9,7 +9,7 @@ type AvatarConfig = {
   skinTone: "light" | "medium" | "dark"
   hairStyle: "short" | "medium" | "long"
   hairColor: "brown" | "black" | "blonde" | "ginger"
-  eyeColor: "brown" | "blue" | "green"
+  eyeColor: "brown" | "blue" | "black"
   glasses: string
   top: string
   background: string
@@ -277,6 +277,14 @@ const slotOptions: Record<AvatarSlot, SlotOption[]> = {
   ],
 }
 
+function normaliseEyeColor(value: unknown): AvatarConfig["eyeColor"] {
+  if (value === "brown" || value === "blue" || value === "black") {
+    return value
+  }
+
+  return defaultAvatar.eyeColor
+}
+
 function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   if (!savedConfig) return defaultAvatar
 
@@ -295,6 +303,7 @@ function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
     ...defaultAvatar,
     ...savedConfig,
     base,
+    eyeColor: normaliseEyeColor(savedConfig.eyeColor),
   } as AvatarConfig
 }
 
@@ -658,7 +667,7 @@ function hairStyleClass(hairStyle: string) {
 }
 
 function eyeColourClass(eyeColor: string) {
-  if (eyeColor === "green") return "bg-emerald-500"
+  if (eyeColor === "black") return "bg-slate-950"
   if (eyeColor === "blue") return "bg-sky-500"
   return "bg-amber-700"
 }
@@ -697,7 +706,7 @@ function getSlotMatchFromItemKey(itemKey: string) {
   return null
 }
 
-type PreviewImageSources = Record<AvatarSlot | "base", string[]>
+type PreviewImageSources = Record<AvatarSlot | "base" | "eyes", string[]>
 
 const avatarLayerFolders: Record<AvatarSlot, string> = {
   top: "tops",
@@ -730,6 +739,16 @@ function getBaseAvatarImageSources(base: AvatarConfig["base"]) {
   return uniqueImageSources([
     `/avatars/builder/base/${base}-base.png`,
     `/characters/${base}-main.png`,
+  ])
+}
+
+function getEyeOverlayImageSources(
+  base: AvatarConfig["base"],
+  eyeColor: AvatarConfig["eyeColor"],
+) {
+  return uniqueImageSources([
+    `/avatars/builder/eyes/${base}/eyes-${eyeColor}.png`,
+    `/avatars/builder/eyes/eyes-${eyeColor}.png`,
   ])
 }
 
@@ -1141,6 +1160,7 @@ export default function AvatarPage() {
   const previewImages = useMemo<PreviewImageSources>(
     () => ({
       base: getBaseAvatarImageSources(avatarConfig.base),
+      eyes: getEyeOverlayImageSources(avatarConfig.base, avatarConfig.eyeColor),
       top: getPreviewLayerImageSources(
         shopItems,
         "top",
@@ -1183,6 +1203,7 @@ export default function AvatarPage() {
       avatarConfig.background,
       avatarConfig.badge,
       avatarConfig.base,
+      avatarConfig.eyeColor,
       avatarConfig.glasses,
       avatarConfig.hat,
       avatarConfig.top,
@@ -1418,9 +1439,9 @@ export default function AvatarPage() {
                     updateAvatar("eyeColor", value as AvatarConfig["eyeColor"])
                   }
                   options={[
-                    { value: "brown", label: "Brown" },
                     { value: "blue", label: "Blue" },
-                    { value: "green", label: "Green" },
+                    { value: "brown", label: "Brown" },
+                    { value: "black", label: "Black" },
                   ]}
                 />
 
@@ -1723,6 +1744,7 @@ function AvatarPreviewBody({
   imageSources: PreviewImageSources
 }) {
   const builderTopSources = builderOnlySources(imageSources.top)
+  const builderEyeSources = builderOnlySources(imageSources.eyes)
   const builderGlassesSources = builderOnlySources(imageSources.glasses)
   const builderHatSources = builderOnlySources(imageSources.hat)
   const builderBadgeSources = builderOnlySources(imageSources.badge)
@@ -1735,6 +1757,13 @@ function AvatarPreviewBody({
           alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
           className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-2xl"
           fallback={<CssAvatarPreviewBody config={config} imageSources={imageSources} />}
+        />
+
+        <PreviewLayerImage
+          srcs={builderEyeSources}
+          alt={`${config.eyeColor} eyes`}
+          className="absolute inset-0 z-40 h-full w-full object-contain"
+          fallback={null}
         />
 
         <PreviewLayerImage
