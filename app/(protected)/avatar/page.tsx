@@ -372,7 +372,6 @@ function getShopIcon(category: string) {
   return "⭐"
 }
 
-
 function getShopItemEmoji(itemKey: string, category: string) {
   if (itemKey.includes("yellow")) return "💛"
   if (itemKey.includes("pink")) return "🌸"
@@ -413,90 +412,50 @@ function getShopItemEmoji(itemKey: string, category: string) {
 }
 
 function getShopItemTone(category: string, itemKey: string) {
-  if (itemKey.includes("pink")) {
-    return {
-      frame: "bg-gradient-to-br from-pink-100 via-white to-rose-100 ring-pink-200",
-      blob: "bg-pink-300",
-      sparkle: "bg-rose-300",
-    }
-  }
-
   if (itemKey.includes("yellow") || itemKey.includes("gold")) {
     return {
-      frame: "bg-gradient-to-br from-yellow-100 via-white to-amber-100 ring-yellow-200",
-      blob: "bg-yellow-300",
-      sparkle: "bg-amber-300",
+      frame: "bg-yellow-50 ring-yellow-100",
+      blob: "bg-yellow-100",
+      sparkle: "bg-white",
     }
   }
 
-  if (itemKey.includes("green") || itemKey.includes("forest")) {
+  if (itemKey.includes("pink")) {
     return {
-      frame: "bg-gradient-to-br from-emerald-100 via-white to-green-100 ring-emerald-200",
-      blob: "bg-emerald-300",
-      sparkle: "bg-green-300",
-    }
-  }
-
-  if (itemKey.includes("space") || itemKey.includes("vr")) {
-    return {
-      frame: "bg-gradient-to-br from-indigo-100 via-white to-violet-100 ring-indigo-200",
-      blob: "bg-indigo-300",
-      sparkle: "bg-violet-300",
-    }
-  }
-
-  if (itemKey.includes("blue") || itemKey.includes("nvr")) {
-    return {
-      frame: "bg-gradient-to-br from-sky-100 via-white to-blue-100 ring-sky-200",
-      blob: "bg-sky-300",
-      sparkle: "bg-blue-300",
-    }
-  }
-
-  if (category === "top") {
-    return {
-      frame: "bg-gradient-to-br from-blue-100 via-white to-pink-100 ring-blue-200",
-      blob: "bg-blue-300",
-      sparkle: "bg-pink-300",
-    }
-  }
-
-  if (category === "glasses") {
-    return {
-      frame: "bg-gradient-to-br from-cyan-100 via-white to-slate-100 ring-cyan-200",
-      blob: "bg-cyan-300",
-      sparkle: "bg-slate-300",
+      frame: "bg-pink-50 ring-pink-100",
+      blob: "bg-pink-100",
+      sparkle: "bg-white",
     }
   }
 
   if (category === "hat") {
     return {
-      frame: "bg-gradient-to-br from-purple-100 via-white to-pink-100 ring-purple-200",
-      blob: "bg-purple-300",
-      sparkle: "bg-pink-300",
+      frame: "bg-blue-50 ring-blue-100",
+      blob: "bg-blue-100",
+      sparkle: "bg-white",
     }
   }
 
   if (category === "accessory") {
     return {
-      frame: "bg-gradient-to-br from-orange-100 via-white to-yellow-100 ring-orange-200",
-      blob: "bg-orange-300",
-      sparkle: "bg-yellow-300",
+      frame: "bg-amber-50 ring-amber-100",
+      blob: "bg-amber-100",
+      sparkle: "bg-white",
     }
   }
 
   if (category === "background") {
     return {
-      frame: "bg-gradient-to-br from-teal-100 via-white to-emerald-100 ring-teal-200",
-      blob: "bg-teal-300",
-      sparkle: "bg-emerald-300",
+      frame: "bg-emerald-50 ring-emerald-100",
+      blob: "bg-emerald-100",
+      sparkle: "bg-white",
     }
   }
 
   return {
-    frame: "bg-gradient-to-br from-slate-100 via-white to-blue-100 ring-slate-200",
-    blob: "bg-slate-300",
-    sparkle: "bg-blue-300",
+    frame: "bg-slate-50 ring-slate-100",
+    blob: "bg-blue-50",
+    sparkle: "bg-white",
   }
 }
 
@@ -509,31 +468,31 @@ function formatCategoryName(category: string) {
 function backgroundStyle(background: string) {
   switch (background) {
     case "classroom":
-      return "bg-amber-100 ring-amber-200"
+      return "bg-amber-50 ring-amber-100"
     case "library":
-      return "bg-sky-100 ring-sky-200"
+      return "bg-sky-50 ring-sky-100"
     case "space":
-      return "bg-indigo-100 ring-indigo-200"
+      return "bg-indigo-50 ring-indigo-100"
     case "forest":
-      return "bg-emerald-100 ring-emerald-200"
+      return "bg-emerald-50 ring-emerald-100"
     case "beach":
-      return "bg-cyan-100 ring-cyan-200"
+      return "bg-cyan-50 ring-cyan-100"
     case "football":
-      return "bg-green-100 ring-green-200"
+      return "bg-green-50 ring-green-100"
     case "science_lab":
-      return "bg-violet-100 ring-violet-200"
+      return "bg-violet-50 ring-violet-100"
     case "art_room":
-      return "bg-pink-100 ring-pink-200"
+      return "bg-pink-50 ring-pink-100"
     case "puzzle_wall":
-      return "bg-blue-100 ring-blue-200"
+      return "bg-blue-50 ring-blue-100"
     case "reading_corner":
-      return "bg-orange-100 ring-orange-200"
+      return "bg-orange-50 ring-orange-100"
     case "castle":
-      return "bg-purple-100 ring-purple-200"
+      return "bg-purple-50 ring-purple-100"
     case "yanbo_stage":
-      return "bg-yellow-100 ring-yellow-200"
+      return "bg-yellow-50 ring-yellow-100"
     default:
-      return "bg-emerald-100 ring-emerald-200"
+      return "bg-white ring-blue-100"
   }
 }
 
@@ -795,32 +754,30 @@ function getPreviewLayerImageSources(
   ])
 }
 
-
 function builderOnlySources(sources: string[]) {
   return sources.filter((source) => source.startsWith("/avatars/builder/"))
 }
 
-
 function previewBackgroundOverlay(background: string) {
   switch (background) {
     case "space":
-      return "from-indigo-900/20 via-violet-400/10 to-sky-300/20"
+      return "from-indigo-200/40 via-white/30 to-sky-100/50"
     case "forest":
-      return "from-emerald-700/20 via-green-300/10 to-lime-300/20"
+      return "from-emerald-200/40 via-white/30 to-lime-100/50"
     case "beach":
-      return "from-cyan-500/20 via-sky-200/10 to-yellow-200/30"
+      return "from-cyan-200/40 via-white/30 to-yellow-100/50"
     case "football":
-      return "from-green-700/20 via-emerald-300/10 to-lime-200/20"
+      return "from-green-200/40 via-white/30 to-lime-100/50"
     case "science_lab":
-      return "from-violet-700/20 via-blue-300/10 to-cyan-200/20"
+      return "from-violet-200/40 via-white/30 to-cyan-100/50"
     case "art_room":
-      return "from-pink-600/20 via-rose-200/10 to-yellow-200/20"
+      return "from-pink-200/40 via-white/30 to-yellow-100/50"
     case "castle":
-      return "from-purple-700/20 via-violet-200/10 to-yellow-200/20"
+      return "from-purple-200/40 via-white/30 to-yellow-100/50"
     case "yanbo_stage":
-      return "from-yellow-500/25 via-pink-200/10 to-blue-300/20"
+      return "from-yellow-200/50 via-white/30 to-blue-100/50"
     default:
-      return "from-white/70 via-white/20 to-white/70"
+      return "from-white via-blue-50/40 to-white"
   }
 }
 
@@ -1225,249 +1182,213 @@ export default function AvatarPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 px-4 py-8">
-        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-8 shadow-sm ring-1 ring-blue-100">
-          <p className="text-slate-700">Loading your YanBo avatar...</p>
+      <main className="min-h-screen bg-slate-50 px-4 py-6">
+        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-blue-100">
+          <p className="text-sm font-semibold text-slate-700">
+            Loading your YanBo avatar...
+          </p>
         </div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 px-4 py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-blue-100">
-          <div className="relative px-6 py-8 sm:px-8">
-            <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-yellow-100 blur-3xl" />
-            <div className="absolute -left-20 top-20 h-56 w-56 rounded-full bg-pink-100 blur-3xl" />
-
-            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-blue-700">
-                  YanBo Learning rewards
-                </p>
-                <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-                  <span className="text-pink-500">Yan</span>
-                  <span className="text-yellow-400">Bo</span> Avatar Studio
-                </h1>
-                <p className="mt-3 max-w-2xl text-lg font-medium text-slate-600">
-                  Create your learning hero, unlock new styles, and spend YanBo
-                  Coins on avatar items.
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3 lg:w-[560px]">
-                <StatCard
-                  title="YanBo Coins"
-                  value={coins}
-                  icon="🪙"
-                  tone="yellow"
-                  subtitle="Current balance"
-                />
-                <StatCard
-                  title="Unlocked"
-                  value={unlockedCount}
-                  icon="🎒"
-                  tone="blue"
-                  subtitle="Items collected"
-                />
-                <StatCard
-                  title="Shop items"
-                  value={shopItemCount}
-                  icon="🛒"
-                  tone="pink"
-                  subtitle={`${affordableCount} affordable now`}
-                />
-              </div>
+    <main className="min-h-screen bg-slate-50 px-4 py-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                <span className="text-pink-500">Y</span>an
+                <span className="text-yellow-400">B</span>o Avatar Studio
+              </h1>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Create, equip and save your learning avatar.
+              </p>
             </div>
 
-            <div className="relative mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={claimDailyCoins}
                 disabled={claimingDailyCoins}
-                className="rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {claimingDailyCoins
-                  ? "Checking..."
-                  : "Daily check-in: collect 3 coins"}
+                {claimingDailyCoins ? "Checking..." : "Daily coins"}
               </button>
 
               <Link
                 href="/custom-tests"
-                className="rounded-2xl border border-blue-200 bg-white px-5 py-3 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+                className="rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
               >
-                Practise to earn coins
+                Practise
               </Link>
 
               <Link
                 href="/profile"
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
               >
-                Back to profile
+                Profile
               </Link>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <CompactStat icon="🪙" value={`${coins}`} label="YanBo Coins" />
+            <CompactStat icon="🎒" value={`${unlockedCount}`} label="Unlocked" />
+            <CompactStat icon="🛒" value={`${shopItemCount}`} label="Shop items" />
+            <CompactStat
+              icon="✅"
+              value={`${affordableCount}`}
+              label="Ready to buy"
+            />
           </div>
         </section>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
             {message}
           </div>
         )}
 
-        <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
-          <div className="space-y-6">
-            <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-blue-100">
-              <div className="flex flex-col gap-3 border-b border-blue-50 p-6 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Your avatar
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Preview your current YanBo Learning hero before saving.
-                  </p>
-                </div>
-
-                <button
-                  onClick={saveAvatar}
-                  disabled={saving}
-                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? "Saving..." : "Save Avatar"}
-                </button>
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
+          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+            <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">
+                  Your avatar
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Preview the current look before saving.
+                </p>
               </div>
 
-              <div className="grid gap-6 bg-gradient-to-br from-blue-50 via-white to-pink-50 p-6 lg:grid-cols-[1fr_260px]">
+              <button
+                onClick={saveAvatar}
+                disabled={saving}
+                className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save Avatar"}
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+              <div
+                className={`relative min-h-[390px] overflow-hidden rounded-3xl p-4 shadow-inner ring-1 ${backgroundStyle(
+                  avatarConfig.background,
+                )}`}
+              >
                 <div
-                  className={`relative min-h-[560px] overflow-hidden rounded-[2rem] p-6 shadow-inner ring-1 ${backgroundStyle(
+                  className={`absolute inset-0 bg-gradient-to-b ${previewBackgroundOverlay(
                     avatarConfig.background,
                   )}`}
-                >
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-b ${previewBackgroundOverlay(
-                      avatarConfig.background,
-                    )}`}
+                />
+
+                {previewImages.background && (
+                  <PreviewLayerImage
+                    srcs={previewImages.background}
+                    alt=""
+                    className="absolute right-5 top-12 h-28 w-28 object-contain opacity-20 drop-shadow-md"
+                    fallback={null}
                   />
+                )}
 
-                  {previewImages.background && (
-                    <PreviewLayerImage
-                      srcs={previewImages.background}
-                      alt=""
-                      className="absolute right-8 top-20 h-40 w-40 object-contain opacity-25 drop-shadow-md"
-                      fallback={null}
-                    />
-                  )}
-
-                  <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
-                  <div className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-white/40 blur-2xl" />
-                  <div className="absolute left-6 top-6 rounded-2xl bg-white/85 px-4 py-2 text-sm font-black text-slate-700 shadow-sm backdrop-blur">
-                    {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
-                  </div>
-                  <div className="absolute right-8 top-9 text-3xl">✨</div>
-                  <div className="absolute bottom-10 left-8 text-4xl opacity-80">📘</div>
-                  <div className="absolute bottom-12 right-10 text-4xl opacity-80">🏆</div>
-
-                  <div className="absolute inset-x-10 bottom-20 h-20 rounded-[50%] bg-slate-900/10 blur-sm" />
-
-                  <div className="relative z-10 flex min-h-[510px] items-center justify-center">
-                    <AvatarPreviewBody
-                      config={avatarConfig}
-                      imageSources={previewImages}
-                    />
-                  </div>
+                <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+                  {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
                 </div>
 
-                <div className="space-y-4">
-                  <div className="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-                    <p className="text-xs font-black uppercase tracking-wide text-blue-700">
-                      Current style
-                    </p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">
-                      {avatarConfig.base === "yan" ? "Yan" : "Bo"}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      {avatarConfig.eyeColor} eyes • {avatarConfig.hairColor} hair
-                    </p>
-                  </div>
+                <div className="absolute inset-x-16 bottom-14 h-14 rounded-[50%] bg-slate-900/10 blur-sm" />
 
-                  <EquippedMiniCard
+                <div className="relative z-10 flex min-h-[360px] items-center justify-center pt-6">
+                  <AvatarPreviewBody
+                    config={avatarConfig}
+                    imageSources={previewImages}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                  Current style
+                </p>
+                <p className="mt-2 text-2xl font-black text-slate-900">
+                  {avatarConfig.base === "yan" ? "Yan" : "Bo"}
+                </p>
+                <p className="mt-1 text-xs font-bold capitalize text-slate-500">
+                  {avatarConfig.eyeColor} eyes • {avatarConfig.hairColor} hair
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <StyleChip
                     icon="👕"
                     label="Top"
                     value={getSlotLabel("top", avatarConfig.top)}
                   />
-                  <EquippedMiniCard
+                  <StyleChip
                     icon="👓"
                     label="Glasses"
                     value={getSlotLabel("glasses", avatarConfig.glasses)}
                   />
-                  <EquippedMiniCard
+                  <StyleChip
                     icon="🧢"
                     label="Hat"
                     value={getSlotLabel("hat", avatarConfig.hat)}
                   />
-                  <EquippedMiniCard
+                  <StyleChip
                     icon="🎒"
                     label="Accessory"
                     value={getSlotLabel("accessory", avatarConfig.accessory)}
                   />
-                  <EquippedMiniCard
+                  <StyleChip
                     icon="🏅"
                     label="Badge"
                     value={getSlotLabel("badge", avatarConfig.badge)}
                   />
+                </div>
 
-                  <div className="rounded-[1.75rem] bg-yellow-50 p-4 text-sm font-bold text-yellow-900 ring-1 ring-yellow-200">
-                    Use <span className="font-black">Equip</span> in the shop to try items on, then press
-                    <span className="font-black"> Save Avatar</span> to keep the look.
-                  </div>
+                <div className="mt-4 rounded-2xl bg-yellow-50 px-3 py-3 text-xs font-bold leading-relaxed text-yellow-900 ring-1 ring-yellow-100">
+                  Equip items from the shop, then press Save Avatar to keep the look.
                 </div>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Customise
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Choose your avatar style.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-blue-100 px-3 py-2 text-xl">
-                  ✨
+          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100 xl:sticky xl:top-5 xl:self-start">
+            <SectionHeader
+              title="Customise"
+              subtitle="Quickly change the avatar settings."
+              icon="✨"
+            />
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-black text-slate-700">
+                  Base avatar
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <ChoiceButton
+                    active={avatarConfig.base === "yan"}
+                    title="Yan"
+                    subtitle="Girl avatar"
+                    emoji="😊"
+                    onClick={() => updateAvatar("base", "yan")}
+                  />
+                  <ChoiceButton
+                    active={avatarConfig.base === "bo"}
+                    title="Bo"
+                    subtitle="Boy avatar"
+                    emoji="🙂"
+                    onClick={() => updateAvatar("base", "bo")}
+                  />
                 </div>
               </div>
 
-              <div className="mt-5 space-y-5">
-                <div>
-                  <p className="mb-2 text-sm font-bold text-slate-700">
-                    Base avatar
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <ChoiceButton
-                      active={avatarConfig.base === "yan"}
-                      title="Yan"
-                      subtitle="Girl avatar"
-                      emoji="😊"
-                      onClick={() => updateAvatar("base", "yan")}
-                    />
-                    <ChoiceButton
-                      active={avatarConfig.base === "bo"}
-                      title="Bo"
-                      subtitle="Boy avatar"
-                      emoji="🙂"
-                      onClick={() => updateAvatar("base", "bo")}
-                    />
-                  </div>
-                </div>
-
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
                 <SelectBox
                   label="Skin tone"
                   value={avatarConfig.skinTone}
@@ -1481,41 +1402,6 @@ export default function AvatarPage() {
                   ]}
                 />
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                  <SelectBox
-                    label="Hair style"
-                    value={avatarConfig.hairStyle}
-                    onChange={(value) =>
-                      updateAvatar(
-                        "hairStyle",
-                        value as AvatarConfig["hairStyle"],
-                      )
-                    }
-                    options={[
-                      { value: "short", label: "Short" },
-                      { value: "medium", label: "Medium" },
-                      { value: "long", label: "Long" },
-                    ]}
-                  />
-
-                  <SelectBox
-                    label="Hair colour"
-                    value={avatarConfig.hairColor}
-                    onChange={(value) =>
-                      updateAvatar(
-                        "hairColor",
-                        value as AvatarConfig["hairColor"],
-                      )
-                    }
-                    options={[
-                      { value: "brown", label: "Brown" },
-                      { value: "black", label: "Black" },
-                      { value: "blonde", label: "Blonde" },
-                      { value: "ginger", label: "Ginger" },
-                    ]}
-                  />
-                </div>
-
                 <SelectBox
                   label="Eye colour"
                   value={avatarConfig.eyeColor}
@@ -1526,6 +1412,39 @@ export default function AvatarPage() {
                     { value: "brown", label: "Brown" },
                     { value: "blue", label: "Blue" },
                     { value: "green", label: "Green" },
+                  ]}
+                />
+
+                <SelectBox
+                  label="Hair style"
+                  value={avatarConfig.hairStyle}
+                  onChange={(value) =>
+                    updateAvatar(
+                      "hairStyle",
+                      value as AvatarConfig["hairStyle"],
+                    )
+                  }
+                  options={[
+                    { value: "short", label: "Short" },
+                    { value: "medium", label: "Medium" },
+                    { value: "long", label: "Long" },
+                  ]}
+                />
+
+                <SelectBox
+                  label="Hair colour"
+                  value={avatarConfig.hairColor}
+                  onChange={(value) =>
+                    updateAvatar(
+                      "hairColor",
+                      value as AvatarConfig["hairColor"],
+                    )
+                  }
+                  options={[
+                    { value: "brown", label: "Brown" },
+                    { value: "black", label: "Black" },
+                    { value: "blonde", label: "Blonde" },
+                    { value: "ginger", label: "Ginger" },
                   ]}
                 />
 
@@ -1566,288 +1485,204 @@ export default function AvatarPage() {
                   options={getSelectOptions("background", unlockedItems)}
                 />
               </div>
-            </section>
+            </div>
+          </section>
+        </section>
 
-            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    My Wardrobe
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Your unlocked avatar items. Equip favourites quickly from here.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-xl">
-                  🎒
-                </div>
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+          <SectionHeader
+            title="My Wardrobe"
+            subtitle="Unlocked items. Equip favourites quickly from here."
+            icon="🎒"
+          />
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {wardrobeItems.length === 0 && (
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
+                Your wardrobe is empty for now. Unlock items from the shop to see them here.
+              </div>
+            )}
+
+            {wardrobeItems.map((item) => {
+              const equipped = isShopItemEquipped(item.item_key)
+              const canEquip = Boolean(getSlotMatchFromItemKey(item.item_key))
+
+              return (
+                <CompactItemCard
+                  key={item.item_key}
+                  item={item}
+                  unlocked={true}
+                  equipped={equipped}
+                  primaryAction={
+                    canEquip
+                      ? {
+                          label: equipped ? "Equipped" : "Equip",
+                          disabled: equipped,
+                          onClick: () => equipShopItem(item.item_key),
+                          variant: equipped ? "success" : "dark",
+                        }
+                      : undefined
+                  }
+                />
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <SectionHeader
+              title="Avatar Shop"
+              subtitle="Use YanBo Coins to unlock outfits, hats and accessories."
+              icon="🛒"
+            />
+
+            <div className="flex flex-col gap-3 lg:items-end">
+              <div className="flex flex-wrap gap-2">
+                <ShopFilterButton
+                  active={activeShopCategory === "all"}
+                  label="All"
+                  icon="✨"
+                  onClick={() => setActiveShopCategory("all")}
+                />
+                {sortedShopCategories.map((category) => (
+                  <ShopFilterButton
+                    key={category}
+                    active={activeShopCategory === category}
+                    label={formatCategoryName(category)}
+                    icon={getShopIcon(category)}
+                    onClick={() => setActiveShopCategory(category)}
+                  />
+                ))}
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {wardrobeItems.length === 0 && (
-                  <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 lg:col-span-3">
-                    Your wardrobe is empty for now. Unlock items from the shop to see them here.
-                  </div>
-                )}
-
-                {wardrobeItems.map((item) => {
-                  const equipped = isShopItemEquipped(item.item_key)
-                  const canEquip = Boolean(getSlotMatchFromItemKey(item.item_key))
-
-                  return (
-                    <div
-                      key={item.item_key}
-                      className={`rounded-3xl border p-3 transition ${
-                        equipped
-                          ? "border-blue-200 bg-blue-50"
-                          : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
-                      }`}
-                    >
-                      <ShopItemThumbnail
-                        item={item}
-                        unlocked={true}
-                        equipped={equipped}
-                      />
-
-                      <h3 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
-                        {item.name}
-                      </h3>
-                      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                        {formatCategoryName(item.category)}
-                      </p>
-
-                      {canEquip ? (
-                        <button
-                          type="button"
-                          onClick={() => equipShopItem(item.item_key)}
-                          disabled={equipped}
-                          className={`mt-3 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed ${
-                            equipped
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-900 text-white hover:bg-blue-700"
-                          }`}
-                        >
-                          {equipped ? "Equipped" : "Equip"}
-                        </button>
-                      ) : (
-                        <div className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-center text-xs font-black text-slate-500">
-                          Collected
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+              <div className="flex flex-wrap gap-2">
+                <ShopStatusButton
+                  active={activeShopStatus === "all"}
+                  label="All"
+                  onClick={() => setActiveShopStatus("all")}
+                />
+                <ShopStatusButton
+                  active={activeShopStatus === "affordable"}
+                  label="Ready to buy"
+                  onClick={() => setActiveShopStatus("affordable")}
+                />
+                <ShopStatusButton
+                  active={activeShopStatus === "owned"}
+                  label="Unlocked"
+                  onClick={() => setActiveShopStatus("owned")}
+                />
+                <ShopStatusButton
+                  active={activeShopStatus === "locked"}
+                  label="Locked"
+                  onClick={() => setActiveShopStatus("locked")}
+                />
               </div>
-            </section>
+            </div>
           </div>
 
-          <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">
-                    Avatar Shop
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Pick bright outfits, accessories and backgrounds.
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-yellow-100 px-3 py-2 text-xl">
-                  🛒
-                </div>
+          {shopError && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+              {shopError}
+            </div>
+          )}
+
+          {shopMessage && (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+              {shopMessage}
+            </div>
+          )}
+
+          <div className="mt-5 space-y-6">
+            {filteredShopItems.length === 0 && (
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
+                No shop items match this filter yet.
               </div>
+            )}
 
-              {shopError && (
-                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
-                  {shopError}
-                </div>
-              )}
+            {sortedFilteredShopCategories.map((category) => {
+              const items = groupedFilteredShopItems[category] || []
 
-              {shopMessage && (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
-                  {shopMessage}
-                </div>
-              )}
-
-              <div className="mt-5 space-y-4">
-                <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
-                    Category
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <ShopFilterButton
-                      active={activeShopCategory === "all"}
-                      label="All"
-                      icon="✨"
-                      onClick={() => setActiveShopCategory("all")}
-                    />
-                    {sortedShopCategories.map((category) => (
-                      <ShopFilterButton
-                        key={category}
-                        active={activeShopCategory === category}
-                        label={formatCategoryName(category)}
-                        icon={getShopIcon(category)}
-                        onClick={() => setActiveShopCategory(category)}
-                      />
-                    ))}
+              return (
+                <div key={category}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-xs font-black uppercase tracking-wide text-slate-500">
+                      {getShopIcon(category)} {formatCategoryName(category)}
+                    </h3>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+                      {items.length} items
+                    </span>
                   </div>
-                </div>
 
-                <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
-                    Show
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <ShopStatusButton
-                      active={activeShopStatus === "all"}
-                      label="All items"
-                      onClick={() => setActiveShopStatus("all")}
-                    />
-                    <ShopStatusButton
-                      active={activeShopStatus === "affordable"}
-                      label="Ready to buy"
-                      onClick={() => setActiveShopStatus("affordable")}
-                    />
-                    <ShopStatusButton
-                      active={activeShopStatus === "owned"}
-                      label="Unlocked"
-                      onClick={() => setActiveShopStatus("owned")}
-                    />
-                    <ShopStatusButton
-                      active={activeShopStatus === "locked"}
-                      label="Locked"
-                      onClick={() => setActiveShopStatus("locked")}
-                    />
-                  </div>
-                </div>
-              </div>
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {items.map((item) => {
+                      const unlocked = isShopItemUnlocked(item.item_key)
+                      const canAfford = coins >= item.price
+                      const equipped = isShopItemEquipped(item.item_key)
 
-              <div className="mt-5 space-y-5 xl:max-h-[680px] xl:overflow-y-auto xl:pr-1">
-                {filteredShopItems.length === 0 && (
-                  <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
-                    No shop items match this filter yet.
-                  </div>
-                )}
-
-                {sortedFilteredShopCategories.map((category) => {
-                  const items = groupedFilteredShopItems[category] || []
-
-                  return (
-                    <div key={category}>
-                      <div className="mb-3 flex items-center justify-between">
-                        <h3 className="text-xs font-black uppercase tracking-wide text-slate-500">
-                          {formatCategoryName(category)}
-                        </h3>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
-                          {items.length} items
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        {items.map((item) => {
-                          const unlocked = isShopItemUnlocked(item.item_key)
-                          const canAfford = coins >= item.price
-                          const equipped = isShopItemEquipped(item.item_key)
-
-                          return (
-                            <div
-                              key={item.item_key}
-                              className={`rounded-3xl border p-3 transition ${
-                                unlocked
-                                  ? "border-emerald-200 bg-emerald-50"
-                                  : canAfford
-                                    ? "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-blue-50/40"
-                                    : "border-slate-200 bg-slate-50 opacity-80"
-                              }`}
-                            >
-                              <ShopItemThumbnail
-                                item={item}
-                                unlocked={unlocked}
-                                equipped={equipped}
-                              />
-
-                              <h4 className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-black text-slate-900">
-                                {item.name}
-                              </h4>
-
-                              <div className="mt-1 flex items-center justify-between gap-2">
-                                <p className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-black text-yellow-800">
-                                  {item.price} coins
-                                </p>
-                                {!unlocked && !canAfford && (
-                                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                                    Need more
-                                  </span>
-                                )}
-                              </div>
-
-                              {unlocked ? (
-                                <button
-                                  type="button"
-                                  onClick={() => equipShopItem(item.item_key)}
-                                  disabled={equipped}
-                                  className={`mt-2 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed ${
-                                    equipped
-                                      ? "bg-emerald-100 text-emerald-700"
-                                      : "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
-                                  }`}
-                                >
-                                  {equipped ? "Equipped" : "Equip"}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    purchaseAvatarItem(item.item_key)
-                                  }
-                                  disabled={
+                      return (
+                        <CompactItemCard
+                          key={item.item_key}
+                          item={item}
+                          unlocked={unlocked}
+                          equipped={equipped}
+                          priceLabel={`${item.price} coins`}
+                          primaryAction={
+                            unlocked
+                              ? {
+                                  label: equipped ? "Equipped" : "Equip",
+                                  disabled: equipped,
+                                  onClick: () => equipShopItem(item.item_key),
+                                  variant: equipped ? "success" : "light",
+                                }
+                              : {
+                                  label:
+                                    purchasingItemKey === item.item_key
+                                      ? "Buying..."
+                                      : canAfford
+                                        ? "Buy"
+                                        : "Not enough",
+                                  disabled:
                                     purchasingItemKey === item.item_key ||
-                                    !canAfford
-                                  }
-                                  className={`mt-2 w-full rounded-xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                                    canAfford
-                                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                                      : "bg-slate-200 text-slate-500"
-                                  }`}
-                                >
-                                  {purchasingItemKey === item.item_key
-                                    ? "Buying..."
-                                    : canAfford
-                                      ? "Buy"
-                                      : "Not enough"}
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
+                                    !canAfford,
+                                  onClick: () =>
+                                    purchaseAvatarItem(item.item_key),
+                                  variant: canAfford ? "blue" : "muted",
+                                }
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
 
-            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-blue-100">
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
               <h2 className="text-lg font-black text-slate-900">
                 Earn by learning
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                A simple guide for collecting YanBo Coins.
+                YanBo Coins are earned from daily check-ins and good test scores.
               </p>
+            </div>
 
-              <div className="mt-4 grid gap-3">
-                <RewardRule amount="3" label="Daily login reward" />
-                <RewardRule amount="1" label="50% to 74% in a test" />
-                <RewardRule amount="2" label="75% to 89% in a test" />
-                <RewardRule amount="3" label="90%+ in a test" />
-              </div>
-            </section>
-          </aside>
+            <div className="flex flex-wrap gap-2">
+              <RewardRule amount="3" label="Daily login" />
+              <RewardRule amount="1" label="50% to 74%" />
+              <RewardRule amount="2" label="75% to 89%" />
+              <RewardRule amount="3" label="90%+" />
+            </div>
+          </div>
         </section>
       </div>
     </main>
   )
 }
-
 
 function AvatarPreviewBody({
   config,
@@ -1863,29 +1698,29 @@ function AvatarPreviewBody({
 
   return (
     <div className="relative flex flex-col items-center">
-      <div className="relative h-[520px] w-[330px] sm:h-[560px] sm:w-[360px]">
+      <div className="relative h-[360px] w-[235px] sm:h-[390px] sm:w-[255px]">
         <PreviewLayerImage
           srcs={imageSources.base}
           alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
-          className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-2xl"
+          className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-xl"
           fallback={<CssAvatarPreviewBody config={config} imageSources={imageSources} />}
         />
 
         <PreviewLayerImage
           srcs={builderTopSources}
           alt={getSlotLabel("top", config.top)}
-          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-lg"
+          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-md"
           fallback={null}
         />
 
         {config.hat !== "none" && (
-          <div className="absolute left-1/2 top-3 z-50 flex -translate-x-1/2 items-center justify-center sm:top-4">
+          <div className="absolute left-1/2 top-2 z-50 flex -translate-x-1/2 items-center justify-center sm:top-3">
             <PreviewLayerImage
               srcs={builderHatSources}
               alt={getSlotLabel("hat", config.hat)}
-              className="h-20 w-28 object-contain drop-shadow-xl sm:h-24 sm:w-32"
+              className="h-16 w-24 object-contain drop-shadow-lg sm:h-20 sm:w-28"
               fallback={
-                <span className="text-6xl drop-shadow-md sm:text-7xl">
+                <span className="text-5xl drop-shadow-md sm:text-6xl">
                   {hatDisplay(config.hat)}
                 </span>
               }
@@ -1894,13 +1729,13 @@ function AvatarPreviewBody({
         )}
 
         {config.glasses !== "none" && (
-          <div className="absolute left-1/2 top-[4.35rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[4.75rem]">
+          <div className="absolute left-1/2 top-[3.25rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[3.55rem]">
             <PreviewLayerImage
               srcs={builderGlassesSources}
               alt={getSlotLabel("glasses", config.glasses)}
-              className="h-12 w-24 object-contain drop-shadow-md sm:h-14 sm:w-28"
+              className="h-10 w-20 object-contain drop-shadow-sm sm:h-11 sm:w-24"
               fallback={
-                <span className="text-4xl drop-shadow-sm sm:text-5xl">
+                <span className="text-3xl drop-shadow-sm sm:text-4xl">
                   {glassesDisplay(config.glasses)}
                 </span>
               }
@@ -1909,13 +1744,13 @@ function AvatarPreviewBody({
         )}
 
         {config.badge !== "none" && (
-          <div className="absolute right-[5.4rem] top-[15.2rem] z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[5.8rem] sm:top-[16.2rem] sm:h-14 sm:w-14">
+          <div className="absolute right-[3.7rem] top-[10.6rem] z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[4rem] sm:top-[11.5rem] sm:h-11 sm:w-11">
             <PreviewLayerImage
               srcs={builderBadgeSources}
               alt={getSlotLabel("badge", config.badge)}
-              className="h-10 w-10 object-contain drop-shadow-sm sm:h-11 sm:w-11"
+              className="h-8 w-8 object-contain drop-shadow-sm sm:h-9 sm:w-9"
               fallback={
-                <span className="text-[10px] font-black text-slate-900 sm:text-xs">
+                <span className="text-[9px] font-black text-slate-900 sm:text-[10px]">
                   {badgeDisplay(config.badge)}
                 </span>
               }
@@ -1924,13 +1759,13 @@ function AvatarPreviewBody({
         )}
 
         {config.accessory !== "none" && (
-          <div className="absolute -right-4 bottom-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white/95 p-3 shadow-xl ring-1 ring-slate-100 sm:-right-8 sm:bottom-24">
+          <div className="absolute -right-5 bottom-14 z-50 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-100 sm:-right-7 sm:bottom-16 sm:h-20 sm:w-20">
             <PreviewLayerImage
               srcs={imageSources.accessory}
               alt={getSlotLabel("accessory", config.accessory)}
-              className="h-20 w-20 object-contain drop-shadow-md"
+              className="h-14 w-14 object-contain drop-shadow-md sm:h-16 sm:w-16"
               fallback={
-                <span className="text-6xl">
+                <span className="text-4xl sm:text-5xl">
                   {accessoryDisplay(config.accessory)}
                 </span>
               }
@@ -1938,10 +1773,6 @@ function AvatarPreviewBody({
           </div>
         )}
       </div>
-
-      <p className="mt-3 rounded-full bg-white/85 px-4 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
-        Builder-ready Yan/Bo base avatar
-      </p>
     </div>
   )
 }
@@ -1954,7 +1785,7 @@ function CssAvatarPreviewBody({
   imageSources: PreviewImageSources
 }) {
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="relative flex flex-col items-center scale-75 sm:scale-80">
       {config.hat !== "none" && (
         <div className="z-40 -mb-4 flex h-24 items-end justify-center">
           <PreviewLayerImage
@@ -2100,6 +1931,141 @@ function PreviewLayerImage({
   )
 }
 
+function SectionHeader({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string
+  subtitle: string
+  icon: string
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-black text-slate-900">{title}</h2>
+        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      </div>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl ring-1 ring-blue-100">
+        {icon}
+      </div>
+    </div>
+  )
+}
+
+function CompactStat({
+  icon,
+  value,
+  label,
+}: {
+  icon: string
+  value: string
+  label: string
+}) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 ring-1 ring-slate-100">
+      <span>{icon}</span>
+      <span className="font-black text-slate-950">{value}</span>
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function StyleChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: string
+  label: string
+  value: string
+}) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
+      <span>{icon}</span>
+      <span className="text-slate-400">{label}:</span>
+      <span className="truncate font-black text-slate-800">{value}</span>
+    </span>
+  )
+}
+
+function CompactItemCard({
+  item,
+  unlocked,
+  equipped,
+  priceLabel,
+  primaryAction,
+}: {
+  item: ShopItem
+  unlocked: boolean
+  equipped: boolean
+  priceLabel?: string
+  primaryAction?: {
+    label: string
+    disabled?: boolean
+    onClick: () => void
+    variant: "blue" | "dark" | "light" | "success" | "muted"
+  }
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-3 transition ${
+        equipped
+          ? "border-blue-200 bg-blue-50"
+          : unlocked
+            ? "border-emerald-200 bg-emerald-50/70"
+            : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30"
+      }`}
+    >
+      <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
+
+      <div className="mt-2 min-h-[3.5rem]">
+        <h3 className="line-clamp-2 text-sm font-black leading-snug text-slate-900">
+          {item.name}
+        </h3>
+        <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-slate-400">
+          {formatCategoryName(item.category)}
+        </p>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        {priceLabel ? (
+          <span className="rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-black text-yellow-800">
+            {priceLabel}
+          </span>
+        ) : (
+          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-black text-emerald-700">
+            Unlocked
+          </span>
+        )}
+
+        {primaryAction && (
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            disabled={primaryAction.disabled}
+            className={`rounded-xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
+              primaryAction.variant,
+            )}`}
+          >
+            {primaryAction.label}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function buttonVariantClass(
+  variant: "blue" | "dark" | "light" | "success" | "muted",
+) {
+  if (variant === "blue") return "bg-blue-600 text-white hover:bg-blue-700"
+  if (variant === "dark") return "bg-slate-900 text-white hover:bg-blue-700"
+  if (variant === "light") return "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
+  if (variant === "success") return "bg-emerald-100 text-emerald-700"
+  return "bg-slate-200 text-slate-500"
+}
+
 function ShopItemThumbnail({
   item,
   unlocked,
@@ -2123,36 +2089,30 @@ function ShopItemThumbnail({
 
   return (
     <div
-      className={`relative flex h-24 items-center justify-center overflow-hidden rounded-2xl shadow-sm ring-1 ${tone.frame}`}
+      className={`relative flex h-20 items-center justify-center overflow-hidden rounded-2xl ring-1 ${tone.frame}`}
     >
       <div
-        className={`absolute -left-6 -top-6 h-20 w-20 rounded-full opacity-70 blur-sm ${tone.blob}`}
+        className={`absolute -left-8 -top-8 h-20 w-20 rounded-full opacity-70 ${tone.blob}`}
       />
       <div
-        className={`absolute -bottom-8 -right-8 h-24 w-24 rounded-full opacity-60 blur-sm ${tone.sparkle}`}
+        className={`absolute -bottom-10 -right-10 h-24 w-24 rounded-full opacity-80 ${tone.sparkle}`}
       />
-      <div className="absolute left-2 top-2 text-sm opacity-70">✦</div>
-      <div className="absolute bottom-2 right-3 text-sm opacity-70">✧</div>
 
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-white/80 backdrop-blur">
+      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 shadow-sm ring-1 ring-white/80">
         {currentSource ? (
           <img
             src={currentSource}
             alt=""
-            className="h-14 w-14 object-contain drop-shadow-sm"
+            className="h-12 w-12 object-contain drop-shadow-sm"
             onError={() => setImageIndex((current) => current + 1)}
           />
         ) : (
-          <span className="text-5xl drop-shadow-sm" aria-hidden="true">
+          <span className="text-4xl drop-shadow-sm" aria-hidden="true">
             {emoji}
           </span>
         )}
         <span className="sr-only">{item.name}</span>
       </div>
-
-      <span className="absolute left-2 bottom-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-sm">
-        {formatCategoryName(item.category)}
-      </span>
 
       {equipped && (
         <span className="absolute right-2 top-2 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
@@ -2165,72 +2125,6 @@ function ShopItemThumbnail({
           ✓
         </span>
       )}
-    </div>
-  )
-}
-
-function StatCard({
-  title,
-  value,
-  icon,
-  subtitle,
-  tone,
-}: {
-  title: string
-  value: number
-  icon: string
-  subtitle: string
-  tone: "yellow" | "blue" | "pink"
-}) {
-  const toneClass =
-    tone === "yellow"
-      ? "bg-yellow-50 ring-yellow-200 text-yellow-800"
-      : tone === "blue"
-        ? "bg-blue-50 ring-blue-100 text-blue-800"
-        : "bg-pink-50 ring-pink-100 text-pink-800"
-
-  return (
-    <div className={`rounded-3xl p-5 ring-1 ${toneClass}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-bold">{title}</p>
-        <span className="rounded-full bg-white px-3 py-1 text-xl shadow-sm">
-          {icon}
-        </span>
-      </div>
-      <p className="mt-1 text-4xl font-black text-slate-900">{value}</p>
-      <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
-    </div>
-  )
-}
-
-function AvatarStyleChip({ label }: { label: string }) {
-  return (
-    <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
-      {label}
-    </span>
-  )
-}
-
-function EquippedMiniCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: string
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-[1.4rem] bg-white p-3 shadow-sm ring-1 ring-slate-100">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-2xl">
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-          {label}
-        </p>
-        <p className="truncate text-sm font-black text-slate-800">{value}</p>
-      </div>
     </div>
   )
 }
@@ -2252,14 +2146,14 @@ function ChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border p-4 text-left transition ${
+      className={`rounded-2xl border p-3 text-left transition ${
         active
-          ? "border-blue-400 bg-blue-50 shadow-sm ring-4 ring-blue-100"
+          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
           : "border-slate-200 bg-white hover:bg-slate-50"
       }`}
     >
-      <div className="text-3xl">{emoji}</div>
-      <p className="mt-2 font-black text-slate-900">{title}</p>
+      <div className="text-2xl">{emoji}</div>
+      <p className="mt-1 font-black text-slate-900">{title}</p>
       <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
     </button>
   )
@@ -2305,7 +2199,7 @@ function ShopStatusButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl px-3 py-2 text-xs font-black transition ${
+      className={`rounded-full px-3 py-2 text-xs font-black transition ${
         active
           ? "bg-slate-900 text-white shadow-sm"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -2318,9 +2212,9 @@ function ShopStatusButton({
 
 function RewardRule({ amount, label }: { amount: string; label: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
-      <span className="text-sm font-bold text-slate-700">{label}</span>
-      <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-black text-yellow-800">
+    <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-100">
+      <span>{label}</span>
+      <span className="rounded-full bg-yellow-100 px-2 py-0.5 font-black text-yellow-800">
         +{amount}
       </span>
     </div>
@@ -2340,13 +2234,13 @@ function SelectBox({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-slate-700">
+      <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500">
         {label}
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       >
         {options.map((option) => (
           <option
