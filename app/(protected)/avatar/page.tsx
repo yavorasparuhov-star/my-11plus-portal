@@ -134,31 +134,16 @@ const slotOptions: Record<AvatarSlot, SlotOption[]> = {
     { value: "plain", label: "Plain — free" },
     { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
     { value: "library", label: "Library", itemKey: "background_library" },
-    { value: "space", label: "Space", itemKey: "background_space" },
-    { value: "forest", label: "Forest", itemKey: "background_forest" },
-    { value: "beach", label: "Beach", itemKey: "background_beach" },
-    {
-      value: "football",
-      label: "Football Pitch",
-      itemKey: "background_football_pitch",
-    },
     {
       value: "science_lab",
       label: "Science Lab",
       itemKey: "background_science_lab",
-    },
-    { value: "art_room", label: "Art Room", itemKey: "background_art_room" },
-    {
-      value: "puzzle_wall",
-      label: "Puzzle Wall",
-      itemKey: "background_puzzle_wall",
     },
     {
       value: "reading_corner",
       label: "Reading Corner",
       itemKey: "background_reading_corner",
     },
-    { value: "castle", label: "Castle", itemKey: "background_castle" },
     {
       value: "yanbo_stage",
       label: "YanBo Stage",
@@ -244,8 +229,12 @@ function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   }
 }
 
+function getSlotOption(slot: AvatarSlot, value: string) {
+  return slotOptions[slot].find((option) => option.value === value)
+}
+
 function getSlotItemKey(slot: AvatarSlot, value: string) {
-  return slotOptions[slot].find((option) => option.value === value)?.itemKey
+  return getSlotOption(slot, value)?.itemKey
 }
 
 function isItemKeyUnlocked(
@@ -261,7 +250,11 @@ function isSlotValueUnlocked(
   value: string,
   unlockedItemKeys: string[],
 ) {
-  return isItemKeyUnlocked(getSlotItemKey(slot, value), unlockedItemKeys)
+  const option = getSlotOption(slot, value)
+
+  if (!option) return false
+
+  return isItemKeyUnlocked(option.itemKey, unlockedItemKeys)
 }
 
 function makeAvatarConfigSafe(
