@@ -1207,17 +1207,18 @@ export default function AvatarPage() {
         avatarConfig.base,
       ),
     }),
-    [
-      avatarConfig.accessory,
-      avatarConfig.background,
-      avatarConfig.badge,
-      avatarConfig.base,
-      avatarConfig.eyeColor,
-      avatarConfig.glasses,
-      avatarConfig.hat,
-      avatarConfig.top,
-      shopItems,
-    ],
+  [
+  avatarConfig.accessory,
+  avatarConfig.background,
+  avatarConfig.badge,
+  avatarConfig.base,
+  avatarConfig.eyeColor,
+  avatarConfig.skinTone,
+  avatarConfig.glasses,
+  avatarConfig.hat,
+  avatarConfig.top,
+  shopItems,
+],
   )
 
   if (loading) {
