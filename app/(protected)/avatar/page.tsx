@@ -1279,7 +1279,7 @@ export default function AvatarPage() {
 
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
               <div
-                className={`relative min-h-[390px] overflow-hidden rounded-3xl p-4 shadow-inner ring-1 ${backgroundStyle(
+                className={`relative min-h-[520px] overflow-hidden rounded-3xl p-2 shadow-inner ring-1 ${backgroundStyle(
                   avatarConfig.background,
                 )}`}
               >
@@ -1293,7 +1293,7 @@ export default function AvatarPage() {
                   <PreviewLayerImage
                     srcs={previewImages.background}
                     alt=""
-                    className="absolute right-5 top-12 h-28 w-28 object-contain opacity-20 drop-shadow-md"
+                    className="absolute right-5 top-12 h-32 w-32 object-contain opacity-20 drop-shadow-md"
                     fallback={null}
                   />
                 )}
@@ -1302,9 +1302,9 @@ export default function AvatarPage() {
                   {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
                 </div>
 
-                <div className="absolute inset-x-16 bottom-14 h-14 rounded-[50%] bg-slate-900/10 blur-sm" />
+                <div className="absolute inset-x-12 bottom-16 h-16 rounded-[50%] bg-slate-900/10 blur-sm" />
 
-                <div className="relative z-10 flex min-h-[360px] items-center justify-center pt-6">
+                <div className="relative z-10 flex min-h-[500px] items-center justify-center pt-2">
                   <AvatarPreviewBody
                     config={avatarConfig}
                     imageSources={previewImages}
@@ -1496,9 +1496,9 @@ export default function AvatarPage() {
             icon="🎒"
           />
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {wardrobeItems.length === 0 && (
-              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-6">
                 Your wardrobe is empty for now. Unlock items from the shop to see them here.
               </div>
             )}
@@ -1614,7 +1614,7 @@ export default function AvatarPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                     {items.map((item) => {
                       const unlocked = isShopItemUnlocked(item.item_key)
                       const canAfford = coins >= item.price
@@ -1626,7 +1626,7 @@ export default function AvatarPage() {
                           item={item}
                           unlocked={unlocked}
                           equipped={equipped}
-                          priceLabel={`${item.price} coins`}
+                          priceLabel={unlocked ? undefined : `${item.price} coins`}
                           primaryAction={
                             unlocked
                               ? {
@@ -1698,29 +1698,29 @@ function AvatarPreviewBody({
 
   return (
     <div className="relative flex flex-col items-center">
-      <div className="relative h-[360px] w-[235px] sm:h-[390px] sm:w-[255px]">
+      <div className="relative h-[520px] w-[330px] sm:h-[560px] sm:w-[360px]">
         <PreviewLayerImage
           srcs={imageSources.base}
           alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
-          className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-xl"
+          className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-2xl"
           fallback={<CssAvatarPreviewBody config={config} imageSources={imageSources} />}
         />
 
         <PreviewLayerImage
           srcs={builderTopSources}
           alt={getSlotLabel("top", config.top)}
-          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-md"
+          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-lg"
           fallback={null}
         />
 
         {config.hat !== "none" && (
-          <div className="absolute left-1/2 top-2 z-50 flex -translate-x-1/2 items-center justify-center sm:top-3">
+          <div className="absolute left-1/2 top-3 z-50 flex -translate-x-1/2 items-center justify-center sm:top-4">
             <PreviewLayerImage
               srcs={builderHatSources}
               alt={getSlotLabel("hat", config.hat)}
-              className="h-16 w-24 object-contain drop-shadow-lg sm:h-20 sm:w-28"
+              className="h-20 w-28 object-contain drop-shadow-xl sm:h-24 sm:w-32"
               fallback={
-                <span className="text-5xl drop-shadow-md sm:text-6xl">
+                <span className="text-6xl drop-shadow-md sm:text-7xl">
                   {hatDisplay(config.hat)}
                 </span>
               }
@@ -1729,13 +1729,13 @@ function AvatarPreviewBody({
         )}
 
         {config.glasses !== "none" && (
-          <div className="absolute left-1/2 top-[3.25rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[3.55rem]">
+          <div className="absolute left-1/2 top-[4.35rem] z-50 flex -translate-x-1/2 items-center justify-center sm:top-[4.75rem]">
             <PreviewLayerImage
               srcs={builderGlassesSources}
               alt={getSlotLabel("glasses", config.glasses)}
-              className="h-10 w-20 object-contain drop-shadow-sm sm:h-11 sm:w-24"
+              className="h-12 w-24 object-contain drop-shadow-md sm:h-14 sm:w-28"
               fallback={
-                <span className="text-3xl drop-shadow-sm sm:text-4xl">
+                <span className="text-4xl drop-shadow-sm sm:text-5xl">
                   {glassesDisplay(config.glasses)}
                 </span>
               }
@@ -1744,13 +1744,13 @@ function AvatarPreviewBody({
         )}
 
         {config.badge !== "none" && (
-          <div className="absolute right-[3.7rem] top-[10.6rem] z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[4rem] sm:top-[11.5rem] sm:h-11 sm:w-11">
+          <div className="absolute right-[5.4rem] top-[15.2rem] z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[5.8rem] sm:top-[16.2rem] sm:h-14 sm:w-14">
             <PreviewLayerImage
               srcs={builderBadgeSources}
               alt={getSlotLabel("badge", config.badge)}
-              className="h-8 w-8 object-contain drop-shadow-sm sm:h-9 sm:w-9"
+              className="h-10 w-10 object-contain drop-shadow-sm sm:h-11 sm:w-11"
               fallback={
-                <span className="text-[9px] font-black text-slate-900 sm:text-[10px]">
+                <span className="text-[10px] font-black text-slate-900 sm:text-xs">
                   {badgeDisplay(config.badge)}
                 </span>
               }
@@ -1759,13 +1759,13 @@ function AvatarPreviewBody({
         )}
 
         {config.accessory !== "none" && (
-          <div className="absolute -right-5 bottom-14 z-50 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 p-2 shadow-lg ring-1 ring-slate-100 sm:-right-7 sm:bottom-16 sm:h-20 sm:w-20">
+          <div className="absolute -right-4 bottom-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white/95 p-3 shadow-xl ring-1 ring-slate-100 sm:-right-8 sm:bottom-24">
             <PreviewLayerImage
               srcs={imageSources.accessory}
               alt={getSlotLabel("accessory", config.accessory)}
-              className="h-14 w-14 object-contain drop-shadow-md sm:h-16 sm:w-16"
+              className="h-20 w-20 object-contain drop-shadow-md"
               fallback={
-                <span className="text-4xl sm:text-5xl">
+                <span className="text-6xl">
                   {accessoryDisplay(config.accessory)}
                 </span>
               }
@@ -1773,6 +1773,10 @@ function AvatarPreviewBody({
           </div>
         )}
       </div>
+
+      <p className="mt-3 rounded-full bg-white/85 px-4 py-2 text-xs font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+        Builder-ready Yan/Bo base avatar
+      </p>
     </div>
   )
 }
@@ -1785,7 +1789,7 @@ function CssAvatarPreviewBody({
   imageSources: PreviewImageSources
 }) {
   return (
-    <div className="relative flex flex-col items-center scale-75 sm:scale-80">
+    <div className="relative flex flex-col items-center">
       {config.hat !== "none" && (
         <div className="z-40 -mb-4 flex h-24 items-end justify-center">
           <PreviewLayerImage
@@ -2009,49 +2013,44 @@ function CompactItemCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-3 transition ${
+      className={`flex items-center gap-2 rounded-2xl border p-2 transition ${
         equipped
           ? "border-blue-200 bg-blue-50"
           : unlocked
-            ? "border-emerald-200 bg-emerald-50/70"
+            ? "border-emerald-200 bg-white"
             : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30"
       }`}
     >
       <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
 
-      <div className="mt-2 min-h-[3.5rem]">
-        <h3 className="line-clamp-2 text-sm font-black leading-snug text-slate-900">
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-xs font-black leading-tight text-slate-900">
           {item.name}
         </h3>
-        <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-slate-400">
-          {formatCategoryName(item.category)}
-        </p>
+        <div className="mt-1 flex items-center gap-1.5">
+          <span className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400">
+            {formatCategoryName(item.category)}
+          </span>
+          {priceLabel && (
+            <span className="shrink-0 rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-black text-yellow-800">
+              {priceLabel}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-2">
-        {priceLabel ? (
-          <span className="rounded-full bg-yellow-100 px-2 py-1 text-[11px] font-black text-yellow-800">
-            {priceLabel}
-          </span>
-        ) : (
-          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-black text-emerald-700">
-            Unlocked
-          </span>
-        )}
-
-        {primaryAction && (
-          <button
-            type="button"
-            onClick={primaryAction.onClick}
-            disabled={primaryAction.disabled}
-            className={`rounded-xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
-              primaryAction.variant,
-            )}`}
-          >
-            {primaryAction.label}
-          </button>
-        )}
-      </div>
+      {primaryAction && (
+        <button
+          type="button"
+          onClick={primaryAction.onClick}
+          disabled={primaryAction.disabled}
+          className={`shrink-0 rounded-xl px-2.5 py-1.5 text-[11px] font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
+            primaryAction.variant,
+          )}`}
+        >
+          {primaryAction.label}
+        </button>
+      )}
     </div>
   )
 }
@@ -2075,7 +2074,6 @@ function ShopItemThumbnail({
   unlocked: boolean
   equipped: boolean
 }) {
-  const tone = getShopItemTone(item.category, item.item_key)
   const emoji = getShopItemEmoji(item.item_key, item.category)
   const imageSources = getShopItemImageSources(item)
   const sourceKey = imageSources.join("|")
@@ -2088,40 +2086,29 @@ function ShopItemThumbnail({
   const currentSource = imageSources[imageIndex]
 
   return (
-    <div
-      className={`relative flex h-20 items-center justify-center overflow-hidden rounded-2xl ring-1 ${tone.frame}`}
-    >
-      <div
-        className={`absolute -left-8 -top-8 h-20 w-20 rounded-full opacity-70 ${tone.blob}`}
-      />
-      <div
-        className={`absolute -bottom-10 -right-10 h-24 w-24 rounded-full opacity-80 ${tone.sparkle}`}
-      />
-
-      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 shadow-sm ring-1 ring-white/80">
-        {currentSource ? (
-          <img
-            src={currentSource}
-            alt=""
-            className="h-12 w-12 object-contain drop-shadow-sm"
-            onError={() => setImageIndex((current) => current + 1)}
-          />
-        ) : (
-          <span className="text-4xl drop-shadow-sm" aria-hidden="true">
-            {emoji}
-          </span>
-        )}
-        <span className="sr-only">{item.name}</span>
-      </div>
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-100">
+      {currentSource ? (
+        <img
+          src={currentSource}
+          alt=""
+          className="h-8 w-8 object-contain drop-shadow-sm"
+          onError={() => setImageIndex((current) => current + 1)}
+        />
+      ) : (
+        <span className="text-2xl drop-shadow-sm" aria-hidden="true">
+          {emoji}
+        </span>
+      )}
+      <span className="sr-only">{item.name}</span>
 
       {equipped && (
-        <span className="absolute right-2 top-2 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
-          Equipped
+        <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] font-black text-white shadow-sm">
+          ✓
         </span>
       )}
 
       {!equipped && unlocked && (
-        <span className="absolute right-2 top-2 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700 shadow-sm">
+        <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-black text-white shadow-sm">
           ✓
         </span>
       )}
