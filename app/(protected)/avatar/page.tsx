@@ -1383,12 +1383,14 @@ export default function AvatarPage() {
                   <ChoiceButton
                     active={avatarConfig.base === "yan"}
                     title="Yan"
+                    imageSrc="/avatars/builder/base/yan-icon.png"
                     emoji="😊"
                     onClick={() => updateAvatar("base", "yan")}
                   />
                   <ChoiceButton
                     active={avatarConfig.base === "bo"}
                     title="Bo"
+                    imageSrc="/avatars/builder/base/bo-icon.png"
                     emoji="🙂"
                     onClick={() => updateAvatar("base", "bo")}
                   />
@@ -2141,25 +2143,37 @@ function ChoiceButton({
   title,
   subtitle,
   emoji,
+  imageSrc,
   onClick,
 }: {
   active: boolean
   title: string
   subtitle?: string
-  emoji: string
+  emoji?: string
+  imageSrc?: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-2xl border p-3 text-left transition ${
+      className={`flex items-center gap-3 rounded-2xl border p-2.5 text-left transition ${
         active
           ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
           : "border-slate-200 bg-white hover:bg-slate-50"
       }`}
     >
-      <div className="text-2xl">{emoji}</div>
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-2xl">{emoji}</span>
+        )}
+      </div>
       <div>
         <p className="font-black text-slate-900">{title}</p>
         {subtitle && (
