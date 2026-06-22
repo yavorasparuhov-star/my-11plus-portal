@@ -53,6 +53,35 @@ const freeStarterItemKeys = new Set<string>()
 
 const shopCategoryOrder = ["glasses", "hat", "background", "badge"]
 
+const PAGE_CLASS = "min-h-screen bg-slate-50 px-4 py-6"
+const PAGE_INNER_CLASS = "mx-auto max-w-7xl space-y-5"
+const CARD_CLASS = "rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100"
+const PANEL_CLASS = "rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"
+const SECTION_DIVIDER_CLASS =
+  "flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"
+const PRIMARY_BUTTON_CLASS =
+  "rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+const SMALL_PRIMARY_BUTTON_CLASS =
+  "rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+const LINK_BUTTON_BLUE_CLASS =
+  "rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+const LINK_BUTTON_SLATE_CLASS =
+  "rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+const ALERT_ERROR_CLASS =
+  "rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
+const ALERT_SUCCESS_CLASS =
+  "rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"
+const CHOICE_ACTIVE_CLASS = "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
+const CHOICE_IDLE_CLASS = "border-slate-200 bg-white hover:bg-slate-50"
+const FILTER_ACTIVE_CLASS = "bg-blue-600 text-white shadow-sm"
+const FILTER_IDLE_CLASS = "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+const STATUS_ACTIVE_CLASS = "bg-slate-900 text-white shadow-sm"
+const STATUS_IDLE_CLASS = "bg-slate-100 text-slate-600 hover:bg-slate-200"
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ")
+}
+
 function isSupportedShopCategory(category: string) {
   return shopCategoryOrder.includes(category)
 }
@@ -315,46 +344,6 @@ function getShopItemEmoji(itemKey: string, category: string) {
   if (itemKey.includes("sport")) return "🥽"
 
   return getShopIcon(category)
-}
-
-function getShopItemTone(category: string, itemKey: string) {
-  if (itemKey.includes("yellow") || itemKey.includes("gold")) {
-    return {
-      frame: "bg-yellow-50 ring-yellow-100",
-      blob: "bg-yellow-100",
-      sparkle: "bg-white",
-    }
-  }
-
-  if (itemKey.includes("pink")) {
-    return {
-      frame: "bg-pink-50 ring-pink-100",
-      blob: "bg-pink-100",
-      sparkle: "bg-white",
-    }
-  }
-
-  if (category === "hat") {
-    return {
-      frame: "bg-blue-50 ring-blue-100",
-      blob: "bg-blue-100",
-      sparkle: "bg-white",
-    }
-  }
-
-  if (category === "background") {
-    return {
-      frame: "bg-emerald-50 ring-emerald-100",
-      blob: "bg-emerald-100",
-      sparkle: "bg-white",
-    }
-  }
-
-  return {
-    frame: "bg-slate-50 ring-slate-100",
-    blob: "bg-blue-50",
-    sparkle: "bg-white",
-  }
 }
 
 function formatCategoryName(category: string) {
@@ -1038,7 +1027,7 @@ export default function AvatarPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 py-6">
+      <main className={PAGE_CLASS}>
         <div className="mx-auto max-w-6xl rounded-3xl bg-white p-6 shadow-sm ring-1 ring-blue-100">
           <p className="text-sm font-semibold text-slate-700">
             Loading your YanBo avatar...
@@ -1049,9 +1038,9 @@ export default function AvatarPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+    <main className={PAGE_CLASS}>
+      <div className={PAGE_INNER_CLASS}>
+        <section className={CARD_CLASS}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -1066,21 +1055,21 @@ export default function AvatarPage() {
               <button
                 onClick={claimDailyCoins}
                 disabled={claimingDailyCoins}
-                className="rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className={SMALL_PRIMARY_BUTTON_CLASS}
               >
                 {claimingDailyCoins ? "Checking..." : "Daily coins"}
               </button>
 
               <Link
                 href="/custom-tests"
-                className="rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+                className={LINK_BUTTON_BLUE_CLASS}
               >
                 Practise
               </Link>
 
               <Link
                 href="/profile"
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                className={LINK_BUTTON_SLATE_CLASS}
               >
                 Profile
               </Link>
@@ -1100,20 +1089,20 @@ export default function AvatarPage() {
         </section>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          <div className={ALERT_ERROR_CLASS}>
             {error}
           </div>
         )}
 
         {message && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+          <div className={ALERT_SUCCESS_CLASS}>
             {message}
           </div>
         )}
 
         <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
-          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
-            <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <section className={CARD_CLASS}>
+            <div className={SECTION_DIVIDER_CLASS}>
               <div>
                 <h2 className="text-xl font-black text-slate-900">
                   Your avatar
@@ -1126,7 +1115,7 @@ export default function AvatarPage() {
               <button
                 onClick={saveAvatar}
                 disabled={saving}
-                className="rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className={PRIMARY_BUTTON_CLASS}
               >
                 {saving ? "Saving..." : "Save Avatar"}
               </button>
@@ -1167,7 +1156,7 @@ export default function AvatarPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100">
+              <div className={PANEL_CLASS}>
                 <p className="text-xs font-black uppercase tracking-wide text-blue-700">
                   Current style
                 </p>
@@ -1218,7 +1207,7 @@ export default function AvatarPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100 xl:sticky xl:top-5 xl:self-start">
+          <section className={cn(CARD_CLASS, "xl:sticky xl:top-5 xl:self-start")}>
             <SectionHeader
               title="Customise"
               subtitle="Quickly change the avatar settings."
@@ -1330,7 +1319,7 @@ export default function AvatarPage() {
           </section>
         </section>
 
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+        <section className={CARD_CLASS}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="My Wardrobe"
@@ -1392,7 +1381,7 @@ export default function AvatarPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+        <section className={CARD_CLASS}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="Avatar Shop"
@@ -1523,7 +1512,7 @@ export default function AvatarPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100">
+        <section className={CARD_CLASS}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-black text-slate-900">
@@ -1828,13 +1817,13 @@ function CompactItemCard({
 }) {
   return (
     <div
-      className={`flex min-h-[42px] items-center gap-1.5 rounded-xl border p-1.5 transition ${
-        equipped
-          ? "border-blue-200 bg-blue-50"
-          : unlocked
-            ? "border-emerald-200 bg-white"
-            : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30"
-      }`}
+      className={cn(
+        "flex min-h-[42px] items-center gap-1.5 rounded-xl border p-1.5 transition",
+        equipped && "border-blue-200 bg-blue-50",
+        !equipped && unlocked && "border-emerald-200 bg-white",
+        !equipped && !unlocked &&
+          "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30",
+      )}
     >
       <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
 
@@ -1945,11 +1934,10 @@ function ChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-2xl border p-2.5 text-left transition ${
-        active
-          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
-          : "border-slate-200 bg-white hover:bg-slate-50"
-      }`}
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border p-2.5 text-left transition",
+        active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
+      )}
     >
       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-100">
         {imageSrc ? (
@@ -1994,11 +1982,10 @@ function SkinToneButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-2xl border p-2 text-left transition ${
-        active
-          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
-          : "border-slate-200 bg-white hover:bg-slate-50"
-      }`}
+      className={cn(
+        "flex items-center gap-2 rounded-2xl border p-2 text-left transition",
+        active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
+      )}
     >
       <span
         className={`h-8 w-8 shrink-0 rounded-full shadow-inner ring-2 ring-white ${toneClass}`}
@@ -2030,11 +2017,10 @@ function EyeColourButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-2xl border p-2 text-left transition ${
-        active
-          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
-          : "border-slate-200 bg-white hover:bg-slate-50"
-      }`}
+      className={cn(
+        "flex items-center gap-2 rounded-2xl border p-2 text-left transition",
+        active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
+      )}
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100">
         <span className={`h-4 w-4 rounded-full ${colourClass}`} />
@@ -2059,11 +2045,10 @@ function ShopFilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-2 text-xs font-black transition ${
-        active
-          ? "bg-blue-600 text-white shadow-sm"
-          : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
-      }`}
+      className={cn(
+        "rounded-full px-3 py-2 text-xs font-black transition",
+        active ? FILTER_ACTIVE_CLASS : FILTER_IDLE_CLASS,
+      )}
     >
       <span className="mr-1">{icon}</span>
       {label}
@@ -2084,11 +2069,10 @@ function ShopStatusButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-2 text-xs font-black transition ${
-        active
-          ? "bg-slate-900 text-white shadow-sm"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-      }`}
+      className={cn(
+        "rounded-full px-3 py-2 text-xs font-black transition",
+        active ? STATUS_ACTIVE_CLASS : STATUS_IDLE_CLASS,
+      )}
     >
       {label}
     </button>
