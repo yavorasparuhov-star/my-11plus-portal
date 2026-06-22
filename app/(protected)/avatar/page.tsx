@@ -7,24 +7,14 @@ import { supabase } from "../../../lib/supabaseClient"
 type AvatarConfig = {
   base: "yan" | "bo"
   skinTone: "light" | "medium" | "dark"
-  hairStyle: "short" | "medium" | "long"
-  hairColor: "brown" | "black" | "blonde" | "ginger"
   eyeColor: "brown" | "blue" | "black"
   glasses: string
-  top: string
   background: string
   hat: string
-  accessory: string
   badge: string
 }
 
-type AvatarSlot =
-  | "glasses"
-  | "top"
-  | "background"
-  | "hat"
-  | "accessory"
-  | "badge"
+type AvatarSlot = "glasses" | "background" | "hat" | "badge"
 
 type ShopStatusFilter = "all" | "affordable" | "owned" | "locked"
 
@@ -52,96 +42,22 @@ type SlotOption = {
 const defaultAvatar: AvatarConfig = {
   base: "bo",
   skinTone: "light",
-  hairStyle: "short",
-  hairColor: "brown",
   eyeColor: "blue",
   glasses: "none",
-  top: "yanbo_navy",
   background: "plain",
   hat: "none",
-  accessory: "none",
   badge: "none",
 }
 
-const freeStarterItemKeys = new Set(["yanbo_jumper_navy"])
+const freeStarterItemKeys = new Set<string>()
 
-const shopCategoryOrder = [
-  "top",
-  "glasses",
-  "hat",
-  "accessory",
-  "background",
-  "badge",
-]
+const shopCategoryOrder = ["glasses", "hat", "background", "badge"]
+
+function isSupportedShopCategory(category: string) {
+  return shopCategoryOrder.includes(category)
+}
 
 const slotOptions: Record<AvatarSlot, SlotOption[]> = {
-  top: [
-    {
-      value: "yanbo_navy",
-      label: "YanBo Navy Jumper — free",
-      itemKey: "yanbo_jumper_navy",
-    },
-    {
-      value: "yanbo_green",
-      label: "YanBo Green Hoodie",
-      itemKey: "yanbo_hoodie_green",
-    },
-    {
-      value: "yellow_hoodie",
-      label: "YanBo Yellow Hoodie",
-      itemKey: "top_yanbo_yellow_hoodie",
-    },
-    {
-      value: "pink_hoodie",
-      label: "Pink Learning Hoodie",
-      itemKey: "top_pink_learning_hoodie",
-    },
-    {
-      value: "blue_jacket",
-      label: "Blue Study Jacket",
-      itemKey: "top_blue_study_jacket",
-    },
-    {
-      value: "green_star_tshirt",
-      label: "Green Star T-Shirt",
-      itemKey: "top_green_star_tshirt",
-    },
-    {
-      value: "maths_champion",
-      label: "Maths Champion T-Shirt",
-      itemKey: "top_maths_champion_tshirt",
-    },
-    {
-      value: "english_reader",
-      label: "English Reader T-Shirt",
-      itemKey: "top_english_reader_tshirt",
-    },
-    {
-      value: "vr_puzzle",
-      label: "VR Puzzle T-Shirt",
-      itemKey: "top_vr_puzzle_tshirt",
-    },
-    {
-      value: "nvr_shapes",
-      label: "NVR Shapes T-Shirt",
-      itemKey: "top_nvr_shapes_tshirt",
-    },
-    {
-      value: "space_explorer",
-      label: "Space Explorer Jacket",
-      itemKey: "top_space_explorer_jacket",
-    },
-    {
-      value: "library_cardigan",
-      label: "Library Cardigan",
-      itemKey: "top_library_cardigan",
-    },
-    {
-      value: "gold_champion",
-      label: "Gold Champion Hoodie",
-      itemKey: "top_gold_champion_hoodie",
-    },
-  ],
   glasses: [
     { value: "none", label: "No glasses — free" },
     {
@@ -243,27 +159,6 @@ const slotOptions: Record<AvatarSlot, SlotOption[]> = {
     },
     { value: "blue_beanie", label: "Blue Beanie", itemKey: "hat_blue_beanie" },
   ],
-  accessory: [
-    { value: "none", label: "No accessory — free" },
-    { value: "book", label: "Favourite Book", itemKey: "accessory_book" },
-    { value: "pencil", label: "Super Pencil", itemKey: "accessory_pencil" },
-    {
-      value: "calculator",
-      label: "Calculator Buddy",
-      itemKey: "accessory_calculator",
-    },
-    { value: "trophy", label: "Winner Trophy", itemKey: "accessory_trophy" },
-    {
-      value: "backpack",
-      label: "Learning Backpack",
-      itemKey: "accessory_backpack",
-    },
-    {
-      value: "magnifier",
-      label: "Detective Magnifier",
-      itemKey: "accessory_magnifier",
-    },
-  ],
   badge: [
     { value: "none", label: "No badge — free" },
     {
@@ -300,11 +195,24 @@ function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   }
 
   return {
-    ...defaultAvatar,
-    ...savedConfig,
     base,
+    skinTone:
+      savedConfig.skinTone === "medium" || savedConfig.skinTone === "dark"
+        ? savedConfig.skinTone
+        : defaultAvatar.skinTone,
     eyeColor: normaliseEyeColor(savedConfig.eyeColor),
-  } as AvatarConfig
+    glasses:
+      typeof savedConfig.glasses === "string"
+        ? savedConfig.glasses
+        : defaultAvatar.glasses,
+    background:
+      typeof savedConfig.background === "string"
+        ? savedConfig.background
+        : defaultAvatar.background,
+    hat: typeof savedConfig.hat === "string" ? savedConfig.hat : defaultAvatar.hat,
+    badge:
+      typeof savedConfig.badge === "string" ? savedConfig.badge : defaultAvatar.badge,
+  }
 }
 
 function getSlotItemKey(slot: AvatarSlot, value: string) {
@@ -333,16 +241,7 @@ function makeAvatarConfigSafe(
 ): AvatarConfig {
   const safeConfig = { ...defaultAvatar, ...config }
 
-  ;(
-    [
-      "glasses",
-      "top",
-      "background",
-      "hat",
-      "accessory",
-      "badge",
-    ] as AvatarSlot[]
-  ).forEach((slot) => {
+  ;(["glasses", "background", "hat", "badge"] as AvatarSlot[]).forEach((slot) => {
     if (!isSlotValueUnlocked(slot, safeConfig[slot], unlockedItemKeys)) {
       safeConfig[slot] = defaultAvatar[slot]
     }
@@ -372,12 +271,10 @@ function getSelectOptions(
 }
 
 function getShopIcon(category: string) {
-  if (category === "top") return "👕"
   if (category === "glasses") return "👓"
   if (category === "background") return "🖼️"
   if (category === "badge") return "🏅"
   if (category === "hat") return "🧢"
-  if (category === "accessory") return "🎒"
   return "⭐"
 }
 
@@ -441,14 +338,6 @@ function getShopItemTone(category: string, itemKey: string) {
     return {
       frame: "bg-blue-50 ring-blue-100",
       blob: "bg-blue-100",
-      sparkle: "bg-white",
-    }
-  }
-
-  if (category === "accessory") {
-    return {
-      frame: "bg-amber-50 ring-amber-100",
-      blob: "bg-amber-100",
       sparkle: "bg-white",
     }
   }
@@ -536,37 +425,6 @@ function backgroundEmoji(background: string) {
   }
 }
 
-function topStyle(top: string) {
-  switch (top) {
-    case "yanbo_green":
-      return "bg-emerald-700 text-white"
-    case "yellow_hoodie":
-      return "bg-yellow-400 text-slate-900"
-    case "pink_hoodie":
-      return "bg-pink-500 text-white"
-    case "blue_jacket":
-      return "bg-blue-700 text-white"
-    case "green_star_tshirt":
-      return "bg-green-600 text-white"
-    case "maths_champion":
-      return "bg-red-600 text-white"
-    case "english_reader":
-      return "bg-purple-700 text-white"
-    case "vr_puzzle":
-      return "bg-pink-600 text-white"
-    case "nvr_shapes":
-      return "bg-cyan-700 text-white"
-    case "space_explorer":
-      return "bg-indigo-800 text-white"
-    case "library_cardigan":
-      return "bg-orange-700 text-white"
-    case "gold_champion":
-      return "bg-yellow-500 text-slate-950"
-    default:
-      return "bg-slate-800 text-white"
-  }
-}
-
 function glassesDisplay(glasses: string) {
   switch (glasses) {
     case "round":
@@ -613,25 +471,6 @@ function hatDisplay(hat: string) {
   }
 }
 
-function accessoryDisplay(accessory: string) {
-  switch (accessory) {
-    case "book":
-      return "📘"
-    case "pencil":
-      return "✏️"
-    case "calculator":
-      return "🧮"
-    case "trophy":
-      return "🏆"
-    case "backpack":
-      return "🎒"
-    case "magnifier":
-      return "🔎"
-    default:
-      return ""
-  }
-}
-
 function badgeDisplay(badge: string) {
   switch (badge) {
     case "english":
@@ -653,23 +492,22 @@ function skinToneClass(skinTone: string) {
   return "bg-orange-100"
 }
 
-function hairColourClass(hairColor: string) {
-  if (hairColor === "black") return "bg-slate-900"
-  if (hairColor === "blonde") return "bg-yellow-300"
-  if (hairColor === "ginger") return "bg-orange-500"
-  return "bg-amber-900"
-}
-
-function hairStyleClass(hairStyle: string) {
-  if (hairStyle === "long") return "h-20 w-36 rounded-b-[2rem]"
-  if (hairStyle === "medium") return "h-16 w-32 rounded-b-3xl"
-  return "h-14 w-28 rounded-b-2xl"
-}
-
 function eyeColourClass(eyeColor: string) {
   if (eyeColor === "black") return "bg-slate-950"
   if (eyeColor === "blue") return "bg-sky-500"
   return "bg-amber-700"
+}
+
+function formatSkinToneLabel(skinTone: AvatarConfig["skinTone"]) {
+  if (skinTone === "medium") return "Medium"
+  if (skinTone === "dark") return "Dark"
+  return "Light"
+}
+
+function formatEyeColourLabel(eyeColor: AvatarConfig["eyeColor"]) {
+  if (eyeColor === "black") return "Black"
+  if (eyeColor === "brown") return "Brown"
+  return "Blue"
 }
 
 function getSlotLabel(slot: AvatarSlot, value: string) {
@@ -681,14 +519,7 @@ function getSlotLabel(slot: AvatarSlot, value: string) {
 }
 
 function getSlotMatchFromItemKey(itemKey: string) {
-  const slots: AvatarSlot[] = [
-    "top",
-    "glasses",
-    "hat",
-    "accessory",
-    "background",
-    "badge",
-  ]
+  const slots: AvatarSlot[] = ["glasses", "hat", "background", "badge"]
 
   for (const slot of slots) {
     const option = slotOptions[slot].find(
@@ -709,11 +540,9 @@ function getSlotMatchFromItemKey(itemKey: string) {
 type PreviewImageSources = Record<AvatarSlot | "base" | "eyes", string[]>
 
 const avatarLayerFolders: Record<AvatarSlot, string> = {
-  top: "tops",
   glasses: "glasses",
   background: "backgrounds",
   hat: "hats",
-  accessory: "accessories",
   badge: "badges",
 }
 
@@ -884,7 +713,7 @@ export default function AvatarPage() {
       return
     }
 
-    setShopItems(itemsData || [])
+    setShopItems((itemsData || []).filter((item) => isSupportedShopCategory(item.category)))
 
     const { data: unlockedData } = await supabase
       .from("user_avatar_items")
@@ -1139,8 +968,8 @@ export default function AvatarPage() {
   }, [groupedFilteredShopItems])
 
   const unlockedCount = useMemo(() => {
-    return new Set([...Array.from(freeStarterItemKeys), ...unlockedItems]).size
-  }, [unlockedItems])
+    return shopItems.filter((item) => isShopItemUnlocked(item.item_key)).length
+  }, [shopItems, unlockedItems])
 
   const shopItemCount = shopItems.length
   const affordableCount = shopItems.filter(
@@ -1170,12 +999,6 @@ export default function AvatarPage() {
         avatarConfig.skinTone,
       ),
       eyes: getEyeOverlayImageSources(avatarConfig.base, avatarConfig.eyeColor),
-      top: getPreviewLayerImageSources(
-        shopItems,
-        "top",
-        avatarConfig.top,
-        avatarConfig.base,
-      ),
       glasses: getPreviewLayerImageSources(
         shopItems,
         "glasses",
@@ -1186,12 +1009,6 @@ export default function AvatarPage() {
         shopItems,
         "hat",
         avatarConfig.hat,
-        avatarConfig.base,
-      ),
-      accessory: getPreviewLayerImageSources(
-        shopItems,
-        "accessory",
-        avatarConfig.accessory,
         avatarConfig.base,
       ),
       badge: getPreviewLayerImageSources(
@@ -1207,18 +1024,16 @@ export default function AvatarPage() {
         avatarConfig.base,
       ),
     }),
-  [
-  avatarConfig.accessory,
-  avatarConfig.background,
-  avatarConfig.badge,
-  avatarConfig.base,
-  avatarConfig.eyeColor,
-  avatarConfig.skinTone,
-  avatarConfig.glasses,
-  avatarConfig.hat,
-  avatarConfig.top,
-  shopItems,
-],
+    [
+      avatarConfig.background,
+      avatarConfig.badge,
+      avatarConfig.base,
+      avatarConfig.eyeColor,
+      avatarConfig.skinTone,
+      avatarConfig.glasses,
+      avatarConfig.hat,
+      shopItems,
+    ],
   )
 
   if (loading) {
@@ -1360,14 +1175,19 @@ export default function AvatarPage() {
                   {avatarConfig.base === "yan" ? "Yan" : "Bo"}
                 </p>
                 <p className="mt-1 text-xs font-bold capitalize text-slate-500">
-                  {avatarConfig.eyeColor} eyes • {avatarConfig.hairColor} hair
+                  {avatarConfig.skinTone} skin • {avatarConfig.eyeColor} eyes
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <StyleChip
-                    icon="👕"
-                    label="Top"
-                    value={getSlotLabel("top", avatarConfig.top)}
+                    icon="🎨"
+                    label="Skin"
+                    value={formatSkinToneLabel(avatarConfig.skinTone)}
+                  />
+                  <StyleChip
+                    icon="👁️"
+                    label="Eyes"
+                    value={formatEyeColourLabel(avatarConfig.eyeColor)}
                   />
                   <StyleChip
                     icon="👓"
@@ -1380,9 +1200,9 @@ export default function AvatarPage() {
                     value={getSlotLabel("hat", avatarConfig.hat)}
                   />
                   <StyleChip
-                    icon="🎒"
-                    label="Accessory"
-                    value={getSlotLabel("accessory", avatarConfig.accessory)}
+                    icon="🖼️"
+                    label="Background"
+                    value={getSlotLabel("background", avatarConfig.background)}
                   />
                   <StyleChip
                     icon="🏅"
@@ -1428,72 +1248,59 @@ export default function AvatarPage() {
                 </div>
               </div>
 
+              <div>
+                <p className="mb-2 text-sm font-black text-slate-700">
+                  Skin tone
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <SkinToneButton
+                    active={avatarConfig.skinTone === "light"}
+                    tone="light"
+                    label="Light"
+                    onClick={() => updateAvatar("skinTone", "light")}
+                  />
+                  <SkinToneButton
+                    active={avatarConfig.skinTone === "medium"}
+                    tone="medium"
+                    label="Medium"
+                    onClick={() => updateAvatar("skinTone", "medium")}
+                  />
+                  <SkinToneButton
+                    active={avatarConfig.skinTone === "dark"}
+                    tone="dark"
+                    label="Dark"
+                    onClick={() => updateAvatar("skinTone", "dark")}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-black text-slate-700">
+                  Eye colour
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <EyeColourButton
+                    active={avatarConfig.eyeColor === "blue"}
+                    colour="blue"
+                    label="Blue"
+                    onClick={() => updateAvatar("eyeColor", "blue")}
+                  />
+                  <EyeColourButton
+                    active={avatarConfig.eyeColor === "brown"}
+                    colour="brown"
+                    label="Brown"
+                    onClick={() => updateAvatar("eyeColor", "brown")}
+                  />
+                  <EyeColourButton
+                    active={avatarConfig.eyeColor === "black"}
+                    colour="black"
+                    label="Black"
+                    onClick={() => updateAvatar("eyeColor", "black")}
+                  />
+                </div>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                <SelectBox
-                  label="Skin tone"
-                  value={avatarConfig.skinTone}
-                  onChange={(value) =>
-                    updateAvatar("skinTone", value as AvatarConfig["skinTone"])
-                  }
-                  options={[
-                    { value: "light", label: "Light" },
-                    { value: "medium", label: "Medium" },
-                    { value: "dark", label: "Dark" },
-                  ]}
-                />
-
-                <SelectBox
-                  label="Eye colour"
-                  value={avatarConfig.eyeColor}
-                  onChange={(value) =>
-                    updateAvatar("eyeColor", value as AvatarConfig["eyeColor"])
-                  }
-                  options={[
-                    { value: "blue", label: "Blue" },
-                    { value: "brown", label: "Brown" },
-                    { value: "black", label: "Black" },
-                  ]}
-                />
-
-                <SelectBox
-                  label="Hair style"
-                  value={avatarConfig.hairStyle}
-                  onChange={(value) =>
-                    updateAvatar(
-                      "hairStyle",
-                      value as AvatarConfig["hairStyle"],
-                    )
-                  }
-                  options={[
-                    { value: "short", label: "Short" },
-                    { value: "medium", label: "Medium" },
-                    { value: "long", label: "Long" },
-                  ]}
-                />
-
-                <SelectBox
-                  label="Hair colour"
-                  value={avatarConfig.hairColor}
-                  onChange={(value) =>
-                    updateAvatar(
-                      "hairColor",
-                      value as AvatarConfig["hairColor"],
-                    )
-                  }
-                  options={[
-                    { value: "brown", label: "Brown" },
-                    { value: "black", label: "Black" },
-                    { value: "blonde", label: "Blonde" },
-                    { value: "ginger", label: "Ginger" },
-                  ]}
-                />
-
-                <SelectBox
-                  label="Top"
-                  value={avatarConfig.top}
-                  onChange={(value) => updateAvatar("top", value)}
-                  options={getSelectOptions("top", unlockedItems)}
-                />
                 <SelectBox
                   label="Glasses"
                   value={avatarConfig.glasses}
@@ -1507,22 +1314,16 @@ export default function AvatarPage() {
                   options={getSelectOptions("hat", unlockedItems)}
                 />
                 <SelectBox
-                  label="Accessory"
-                  value={avatarConfig.accessory}
-                  onChange={(value) => updateAvatar("accessory", value)}
-                  options={getSelectOptions("accessory", unlockedItems)}
+                  label="Background"
+                  value={avatarConfig.background}
+                  onChange={(value) => updateAvatar("background", value)}
+                  options={getSelectOptions("background", unlockedItems)}
                 />
                 <SelectBox
                   label="Badge"
                   value={avatarConfig.badge}
                   onChange={(value) => updateAvatar("badge", value)}
                   options={getSelectOptions("badge", unlockedItems)}
-                />
-                <SelectBox
-                  label="Background"
-                  value={avatarConfig.background}
-                  onChange={(value) => updateAvatar("background", value)}
-                  options={getSelectOptions("background", unlockedItems)}
                 />
               </div>
             </div>
@@ -1595,7 +1396,7 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="Avatar Shop"
-              subtitle="Use YanBo Coins to unlock outfits, hats and accessories."
+              subtitle="Use YanBo Coins to unlock glasses, hats, backgrounds and badges."
               icon="🛒"
             />
 
@@ -1753,7 +1554,6 @@ function AvatarPreviewBody({
   config: AvatarConfig
   imageSources: PreviewImageSources
 }) {
-  const builderTopSources = builderOnlySources(imageSources.top)
   const builderEyeSources = builderOnlySources(imageSources.eyes)
   const builderGlassesSources = builderOnlySources(imageSources.glasses)
   const builderHatSources = builderOnlySources(imageSources.hat)
@@ -1773,13 +1573,6 @@ function AvatarPreviewBody({
           srcs={builderEyeSources}
           alt={`${config.eyeColor} eyes`}
           className="absolute inset-0 z-40 h-full w-full object-contain"
-          fallback={null}
-        />
-
-        <PreviewLayerImage
-          srcs={builderTopSources}
-          alt={getSlotLabel("top", config.top)}
-          className="absolute inset-0 z-30 h-full w-full object-contain drop-shadow-lg"
           fallback={null}
         />
 
@@ -1828,20 +1621,6 @@ function AvatarPreviewBody({
           </div>
         )}
 
-        {config.accessory !== "none" && (
-          <div className="absolute -right-4 bottom-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white/95 p-3 shadow-xl ring-1 ring-slate-100 sm:-right-8 sm:bottom-24">
-            <PreviewLayerImage
-              srcs={imageSources.accessory}
-              alt={getSlotLabel("accessory", config.accessory)}
-              className="h-20 w-20 object-contain drop-shadow-md"
-              fallback={
-                <span className="text-6xl">
-                  {accessoryDisplay(config.accessory)}
-                </span>
-              }
-            />
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1872,11 +1651,6 @@ function CssAvatarPreviewBody({
       )}
 
       <div className="relative z-30">
-        <div
-          className={`absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-t-full shadow-sm ${hairStyleClass(
-            config.hairStyle,
-          )} ${hairColourClass(config.hairColor)}`}
-        />
         <div
           className={`relative z-10 flex h-48 w-48 items-center justify-center rounded-full text-7xl shadow-xl ring-8 ring-white ${skinToneClass(
             config.skinTone,
@@ -1914,19 +1688,8 @@ function CssAvatarPreviewBody({
         )}
       </div>
 
-      <div
-        className={`relative -mt-4 flex h-40 w-64 items-center justify-center overflow-hidden rounded-t-[2.75rem] border-4 border-white text-3xl font-black shadow-xl ${topStyle(
-          config.top,
-        )}`}
-      >
+      <div className="relative -mt-4 flex h-40 w-64 items-center justify-center overflow-hidden rounded-t-[2.75rem] border-4 border-white bg-slate-800 text-3xl font-black text-white shadow-xl">
         <div className="absolute inset-x-0 top-0 h-14 bg-white/10" />
-
-        <PreviewLayerImage
-          srcs={imageSources.top}
-          alt={getSlotLabel("top", config.top)}
-          className="absolute left-5 top-5 h-24 w-24 object-contain opacity-95 drop-shadow-lg"
-          fallback={null}
-        />
 
         {config.badge !== "none" && (
           <div className="absolute right-5 top-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100">
@@ -1948,24 +1711,10 @@ function CssAvatarPreviewBody({
           <span className="text-yellow-300">B</span>o
         </span>
       </div>
-
-      {config.accessory !== "none" && (
-        <div className="absolute -bottom-2 -right-20 z-50 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white p-3 shadow-xl ring-1 ring-slate-100">
-          <PreviewLayerImage
-            srcs={imageSources.accessory}
-            alt={getSlotLabel("accessory", config.accessory)}
-            className="h-20 w-20 object-contain drop-shadow-md"
-            fallback={
-              <span className="text-6xl">
-                {accessoryDisplay(config.accessory)}
-              </span>
-            }
-          />
-        </div>
-      )}
     </div>
   )
 }
+
 
 function PreviewLayerImage({
   srcs,
@@ -2219,6 +1968,78 @@ function ChoiceButton({
           <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
         )}
       </div>
+    </button>
+  )
+}
+
+function SkinToneButton({
+  active,
+  tone,
+  label,
+  onClick,
+}: {
+  active: boolean
+  tone: AvatarConfig["skinTone"]
+  label: string
+  onClick: () => void
+}) {
+  const toneClass =
+    tone === "dark"
+      ? "bg-[#8b5a3c]"
+      : tone === "medium"
+        ? "bg-[#d6a06f]"
+        : "bg-[#f1c9a5]"
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-2xl border p-2 text-left transition ${
+        active
+          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
+          : "border-slate-200 bg-white hover:bg-slate-50"
+      }`}
+    >
+      <span
+        className={`h-8 w-8 shrink-0 rounded-full shadow-inner ring-2 ring-white ${toneClass}`}
+      />
+      <span className="text-xs font-black text-slate-800">{label}</span>
+    </button>
+  )
+}
+
+function EyeColourButton({
+  active,
+  colour,
+  label,
+  onClick,
+}: {
+  active: boolean
+  colour: AvatarConfig["eyeColor"]
+  label: string
+  onClick: () => void
+}) {
+  const colourClass =
+    colour === "black"
+      ? "bg-slate-950"
+      : colour === "brown"
+        ? "bg-amber-700"
+        : "bg-sky-500"
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-2xl border p-2 text-left transition ${
+        active
+          ? "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100"
+          : "border-slate-200 bg-white hover:bg-slate-50"
+      }`}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+        <span className={`h-4 w-4 rounded-full ${colourClass}`} />
+      </span>
+      <span className="text-xs font-black text-slate-800">{label}</span>
     </button>
   )
 }
