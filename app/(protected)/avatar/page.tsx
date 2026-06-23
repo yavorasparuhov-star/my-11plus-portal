@@ -1598,20 +1598,20 @@ function AvatarPreviewBody({
           </div>
         )}
 
-        {config.badge !== "none" && (
-          <div className="absolute right-[5.4rem] top-[15.2rem] z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 shadow-md ring-1 ring-slate-100 sm:right-[5.8rem] sm:top-[16.2rem] sm:h-14 sm:w-14">
-            <PreviewLayerImage
-              srcs={builderBadgeSources}
-              alt={getSlotLabel("badge", config.badge)}
-              className="h-10 w-10 object-contain drop-shadow-sm sm:h-11 sm:w-11"
-              fallback={
-                <span className="text-[10px] font-black text-slate-900 sm:text-xs">
-                  {badgeDisplay(config.badge)}
-                </span>
-              }
-            />
-          </div>
-        )}
+       {config.badge !== "none" && (
+  <div className="absolute right-[4.8rem] top-[12.4rem] z-50 flex h-[4.8rem] w-[4.8rem] items-center justify-center sm:right-[5.3rem] sm:top-[13.2rem] sm:h-20 sm:w-20">
+    <PreviewLayerImage
+      srcs={builderBadgeSources}
+      alt={getSlotLabel("badge", config.badge)}
+      className="h-full w-full object-contain drop-shadow-xl"
+      fallback={
+        <span className="text-sm font-black text-white drop-shadow">
+          {badgeDisplay(config.badge)}
+        </span>
+      }
+    />
+  </div>
+)}
 
       </div>
     </div>
