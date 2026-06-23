@@ -1597,9 +1597,8 @@ function AvatarPreviewBody({
             />
           </div>
         )}
-
-      {config.badge !== "none" && (
-  <div className="absolute right-[7.1rem] top-[10.7rem] z-50 flex h-[4.3rem] w-[4.3rem] items-center justify-center sm:right-[7.7rem] sm:top-[11.4rem] sm:h-[4.5rem] sm:w-[4.5rem]">
+     {config.badge !== "none" && (
+  <div className="absolute left-[6.1rem] top-[9.4rem] z-50 flex h-16 w-16 items-center justify-center sm:left-[6.6rem] sm:top-[10rem] sm:h-[4.25rem] sm:w-[4.25rem]">
     <PreviewLayerImage
       srcs={builderBadgeSources}
       alt={getSlotLabel("badge", config.badge)}
@@ -1682,15 +1681,14 @@ function CssAvatarPreviewBody({
 
       <div className="relative -mt-4 flex h-40 w-64 items-center justify-center overflow-hidden rounded-t-[2.75rem] border-4 border-white bg-slate-800 text-3xl font-black text-white shadow-xl">
         <div className="absolute inset-x-0 top-0 h-14 bg-white/10" />
-
         {config.badge !== "none" && (
-          <div className="absolute right-5 top-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100">
+          <div className="absolute right-6 top-4 flex h-[4.25rem] w-[4.25rem] items-center justify-center">
             <PreviewLayerImage
               srcs={imageSources.badge}
               alt={getSlotLabel("badge", config.badge)}
-              className="h-12 w-12 object-contain drop-shadow-sm"
+              className="h-full w-full object-contain drop-shadow-xl"
               fallback={
-                <span className="text-xs font-black text-slate-900">
+                <span className="text-sm font-black text-white drop-shadow">
                   {badgeDisplay(config.badge)}
                 </span>
               }
