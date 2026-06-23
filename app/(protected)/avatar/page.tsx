@@ -1597,6 +1597,92 @@ function AvatarPreviewBody({
             />
           </div>
         )}
+
+        {config.badge !== "none" && (
+          <div className="absolute left-[7.6rem] top-[9rem] z-50 flex h-10 w-10 items-center justify-center sm:left-[8.3rem] sm:top-[9.5rem] sm:h-11 sm:w-11">
+            <PreviewLayerImage
+              srcs={builderBadgeSources}
+              alt={getSlotLabel("badge", config.badge)}
+              className="h-full w-full object-contain drop-shadow-lg"
+              fallback={
+                <span className="text-xs font-black text-white drop-shadow">
+                  {badgeDisplay(config.badge)}
+                </span>
+              }
+            />
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+function CssAvatarPreviewBody({
+  config,
+  imageSources,
+}: {
+  config: AvatarConfig
+  imageSources: PreviewImageSources
+}) {
+  return (
+    <div className="relative flex flex-col items-center">
+      {config.hat !== "none" && (
+        <div className="z-40 -mb-4 flex h-24 items-end justify-center">
+          <PreviewLayerImage
+            srcs={imageSources.hat}
+            alt={getSlotLabel("hat", config.hat)}
+            className="h-24 w-28 object-contain drop-shadow-xl"
+            fallback={
+              <span className="text-7xl drop-shadow-md">
+                {hatDisplay(config.hat)}
+              </span>
+            }
+          />
+        </div>
+      )}
+
+      <div className="relative z-30">
+        <div
+          className={`relative z-10 flex h-48 w-48 items-center justify-center rounded-full text-7xl shadow-xl ring-8 ring-white ${skinToneClass(
+            config.skinTone,
+          )}`}
+        >
+          <span className="mt-4">{config.base === "yan" ? "😊" : "🙂"}</span>
+        </div>
+
+        <div className="absolute left-1/2 top-[6.2rem] z-30 flex -translate-x-1/2 gap-9">
+          <span
+            className={`h-3 w-3 rounded-full shadow-sm ${eyeColourClass(
+              config.eyeColor,
+            )}`}
+          />
+          <span
+            className={`h-3 w-3 rounded-full shadow-sm ${eyeColourClass(
+              config.eyeColor,
+            )}`}
+          />
+        </div>
+
+        {config.glasses !== "none" && (
+          <div className="absolute left-1/2 top-[5rem] z-40 flex -translate-x-1/2 items-center justify-center">
+            <PreviewLayerImage
+              srcs={imageSources.glasses}
+              alt={getSlotLabel("glasses", config.glasses)}
+              className="h-16 w-28 object-contain drop-shadow-md"
+              fallback={
+                <span className="text-5xl drop-shadow-sm">
+                  {glassesDisplay(config.glasses)}
+                </span>
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="relative -mt-4 flex h-40 w-64 items-center justify-center overflow-hidden rounded-t-[2.75rem] border-4 border-white bg-slate-800 text-3xl font-black text-white shadow-xl">
+        <div className="absolute inset-x-0 top-0 h-14 bg-white/10" />
+
         {config.badge !== "none" && (
           <div className="absolute left-7 top-5 flex h-10 w-10 items-center justify-center">
             <PreviewLayerImage
