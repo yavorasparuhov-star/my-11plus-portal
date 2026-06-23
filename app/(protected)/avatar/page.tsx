@@ -1684,7 +1684,7 @@ function CssAvatarPreviewBody({
         <div className="absolute inset-x-0 top-0 h-14 bg-white/10" />
 
         {config.badge !== "none" && (
-          <div className="absolute left-7 top-5 flex h-10 w-10 items-center justify-center">
+          <div className="absolute left-7 top-10 flex h-10 w-10 items-center justify-center">
             <PreviewLayerImage
               srcs={imageSources.badge}
               alt={getSlotLabel("badge", config.badge)}
