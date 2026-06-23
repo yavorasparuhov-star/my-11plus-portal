@@ -60,7 +60,7 @@ const PANEL_CLASS = "rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"
 const SECTION_DIVIDER_CLASS =
   "flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"
 const PRIMARY_BUTTON_CLASS =
-  "rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+  "rounded-2xl bg-yellow-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
 const SMALL_PRIMARY_BUTTON_CLASS =
   "rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
 const LINK_BUTTON_BLUE_CLASS =
@@ -1238,55 +1238,57 @@ export default function AvatarPage() {
                 </div>
               </div>
 
-              <div>
-                <p className="mb-2 text-sm font-black text-slate-700">
-                  Skin tone
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <SkinToneButton
-                    active={avatarConfig.skinTone === "light"}
-                    tone="light"
-                    label="Light"
-                    onClick={() => updateAvatar("skinTone", "light")}
-                  />
-                  <SkinToneButton
-                    active={avatarConfig.skinTone === "medium"}
-                    tone="medium"
-                    label="Medium"
-                    onClick={() => updateAvatar("skinTone", "medium")}
-                  />
-                  <SkinToneButton
-                    active={avatarConfig.skinTone === "dark"}
-                    tone="dark"
-                    label="Dark"
-                    onClick={() => updateAvatar("skinTone", "dark")}
-                  />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-sm font-black text-slate-700">
+                    Skin tone
+                  </p>
+                  <div className="flex gap-2">
+                    <SkinToneButton
+                      active={avatarConfig.skinTone === "light"}
+                      tone="light"
+                      label="Light"
+                      onClick={() => updateAvatar("skinTone", "light")}
+                    />
+                    <SkinToneButton
+                      active={avatarConfig.skinTone === "medium"}
+                      tone="medium"
+                      label="Medium"
+                      onClick={() => updateAvatar("skinTone", "medium")}
+                    />
+                    <SkinToneButton
+                      active={avatarConfig.skinTone === "dark"}
+                      tone="dark"
+                      label="Dark"
+                      onClick={() => updateAvatar("skinTone", "dark")}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <p className="mb-2 text-sm font-black text-slate-700">
-                  Eye colour
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <EyeColourButton
-                    active={avatarConfig.eyeColor === "blue"}
-                    colour="blue"
-                    label="Blue"
-                    onClick={() => updateAvatar("eyeColor", "blue")}
-                  />
-                  <EyeColourButton
-                    active={avatarConfig.eyeColor === "brown"}
-                    colour="brown"
-                    label="Brown"
-                    onClick={() => updateAvatar("eyeColor", "brown")}
-                  />
-                  <EyeColourButton
-                    active={avatarConfig.eyeColor === "black"}
-                    colour="black"
-                    label="Black"
-                    onClick={() => updateAvatar("eyeColor", "black")}
-                  />
+                <div>
+                  <p className="mb-2 text-sm font-black text-slate-700">
+                    Eye colour
+                  </p>
+                  <div className="flex gap-2">
+                    <EyeColourButton
+                      active={avatarConfig.eyeColor === "blue"}
+                      colour="blue"
+                      label="Blue"
+                      onClick={() => updateAvatar("eyeColor", "blue")}
+                    />
+                    <EyeColourButton
+                      active={avatarConfig.eyeColor === "brown"}
+                      colour="brown"
+                      label="Brown"
+                      onClick={() => updateAvatar("eyeColor", "brown")}
+                    />
+                    <EyeColourButton
+                      active={avatarConfig.eyeColor === "black"}
+                      colour="black"
+                      label="Black"
+                      onClick={() => updateAvatar("eyeColor", "black")}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1844,11 +1846,18 @@ function CompactItemCard({
           type="button"
           onClick={primaryAction.onClick}
           disabled={primaryAction.disabled}
-          className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
+          className={`flex min-w-[38px] shrink-0 flex-col items-end justify-center rounded-lg px-1.5 py-1 text-right text-[10px] font-black leading-none shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
             primaryAction.variant,
           )}`}
         >
-          {primaryAction.label}
+          {primaryAction.label === "Not enough" ? (
+            <>
+              <span>Not</span>
+              <span className="mt-0.5">enough</span>
+            </>
+          ) : (
+            primaryAction.label
+          )}
         </button>
       )}
     </div>
@@ -1983,15 +1992,16 @@ function SkinToneButton({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Skin tone: ${label}`}
+      title={label}
       className={cn(
-        "flex items-center gap-2 rounded-2xl border p-2 text-left transition",
+        "flex h-11 w-11 items-center justify-center rounded-2xl border transition",
         active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
       )}
     >
       <span
-        className={`h-8 w-8 shrink-0 rounded-full shadow-inner ring-2 ring-white ${toneClass}`}
+        className={`h-7 w-7 shrink-0 rounded-full shadow-inner ring-2 ring-white ${toneClass}`}
       />
-      <span className="text-xs font-black text-slate-800">{label}</span>
     </button>
   )
 }
@@ -2018,15 +2028,16 @@ function EyeColourButton({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Eye colour: ${label}`}
+      title={label}
       className={cn(
-        "flex items-center gap-2 rounded-2xl border p-2 text-left transition",
+        "flex h-11 w-11 items-center justify-center rounded-2xl border transition",
         active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
       )}
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100">
         <span className={`h-4 w-4 rounded-full ${colourClass}`} />
       </span>
-      <span className="text-xs font-black text-slate-800">{label}</span>
     </button>
   )
 }
