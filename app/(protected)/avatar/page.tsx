@@ -1599,7 +1599,7 @@ function AvatarPreviewBody({
         )}
 
         {config.badge !== "none" && (
-          <div className="absolute left-[7.6rem] top-[9rem] z-50 flex h-10 w-10 items-center justify-center sm:left-[8.3rem] sm:top-[9.5rem] sm:h-11 sm:w-11">
+          <div className="absolute left-[7.6rem] top-[10.25rem] z-50 flex h-10 w-10 items-center justify-center sm:left-[8.3rem] sm:top-[10.9rem] sm:h-11 sm:w-11">
             <PreviewLayerImage
               srcs={builderBadgeSources}
               alt={getSlotLabel("badge", config.badge)}
