@@ -492,41 +492,6 @@ export default function ProfilePage() {
     router.push("/forgot-password");
   }
 
-  function formatCoinReason(transaction: CoinTransaction) {
-    const reason = transaction.reason?.toLowerCase().trim() || "";
-    const sourceType = transaction.source_type?.toLowerCase().trim() || "";
-
-    if (reason === "daily_login" || sourceType === "daily_login") {
-      return "Daily login reward";
-    }
-
-    if (
-      reason === "normal_test_score_reward" ||
-      sourceType === "normal_test_reward" ||
-      sourceType === "normal_test"
-    ) {
-      return "Test reward";
-    }
-
-    if (
-      reason === "custom_test_score_reward" ||
-      sourceType === "custom_test_reward" ||
-      sourceType === "custom_test"
-    ) {
-      return "Custom test reward";
-    }
-
-    if (reason === "avatar_purchase" || sourceType === "avatar_purchase") {
-      return "Avatar shop purchase";
-    }
-
-    if (transaction.amount < 0) {
-      return "YanBo Coins spent";
-    }
-
-    return "YanBo Coins earned";
-  }
-
   function isTodayTransaction(value: string) {
     const transactionDate = new Date(value);
     const today = new Date();
@@ -536,18 +501,6 @@ export default function ProfilePage() {
       transactionDate.getMonth() === today.getMonth() &&
       transactionDate.getDate() === today.getDate()
     );
-  }
-
-  function formatTransactionDate(value: string) {
-    return new Date(value).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  function formatCoinAmount(amount: number) {
-    return amount > 0 ? `+${amount}` : `${amount}`;
   }
 
   const todayCoinSummary = coinTransactions.reduce(
@@ -574,8 +527,6 @@ export default function ProfilePage() {
     },
     { earned: 0, spent: 0 },
   );
-
-  const latestCoinTransaction = coinTransactions[0] || null;
 
   const planLabel =
     plan === "admin"
@@ -619,13 +570,14 @@ export default function ProfilePage() {
 
                     {avatarName ? (
                       <div style={styles.avatarSpeechBubble}>
-                        <span style={styles.avatarSpeechTail} />
+                        <span style={styles.avatarSpeechTailOuter} />
+                        <span style={styles.avatarSpeechTailInner} />
                         <p style={styles.avatarGreeting}>
                           Hi, my name is{" "}
                           <span style={styles.avatarGreetingName}>
                             {avatarName}
                           </span>
-                          .
+                          !
                         </p>
                       </div>
                     ) : (
@@ -666,32 +618,6 @@ export default function ProfilePage() {
                 <span style={styles.todayCoinSummaryLabel}>Spent</span>
               </div>
 
-              {latestCoinTransaction && (
-                <div style={styles.compactActivityWrap}>
-                  <span style={styles.compactActivityTitle}>Latest:</span>
-
-                  <span
-                    style={{
-                      ...styles.compactActivityAmount,
-                      color:
-                        latestCoinTransaction.amount >= 0
-                          ? "#047857"
-                          : "#b91c1c",
-                    }}
-                  >
-                    {formatCoinAmount(latestCoinTransaction.amount)}
-                  </span>
-
-                  <span style={styles.compactActivityReason}>
-                    {formatCoinReason(latestCoinTransaction)}
-                  </span>
-
-                  <span style={styles.compactActivityDate}>
-                    {formatTransactionDate(latestCoinTransaction.created_at)}
-                  </span>
-                </div>
-              )}
-
               {coinTransactions.length === 0 && (
                 <p style={styles.emptyActivityText}>
                   No YanBo Coin activity yet.
@@ -711,17 +637,19 @@ export default function ProfilePage() {
                 reset link to your email address.
               </p>
 
-              <button
-                type="button"
-                onClick={handleChangePassword}
-                style={styles.passwordButton}
-              >
-                Change password
-              </button>
+              <div style={styles.securityActionRow}>
+                <button
+                  type="button"
+                  onClick={handleChangePassword}
+                  style={styles.passwordButton}
+                >
+                  Change password
+                </button>
 
-              <p style={styles.securityNote}>
-                You will be taken to the password reset page.
-              </p>
+                <p style={styles.securityNote}>
+                  You will be taken to the password reset page.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1455,40 +1383,59 @@ const styles: Record<string, React.CSSProperties> = {
 
   avatarSpeechBubble: {
     position: "relative",
-    borderRadius: 22,
+    minHeight: 96,
+    maxWidth: 245,
+    borderRadius: "52% 48% 50% 50% / 58% 60% 42% 40%",
     background: "#ffffff",
-    border: "1px solid #bbf7d0",
-    padding: "12px 14px",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
-    maxWidth: 225,
+    border: "3px solid #111827",
+    padding: "18px 20px 16px",
+    boxShadow: "0 10px 0 rgba(14, 165, 233, 0.18), 0 16px 26px rgba(15, 23, 42, 0.12)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  avatarSpeechTail: {
+  avatarSpeechTailOuter: {
     position: "absolute",
-    left: -7,
-    top: 28,
-    width: 14,
-    height: 14,
-    transform: "rotate(45deg)",
+    left: -28,
+    bottom: 7,
+    width: 54,
+    height: 42,
+    background: "#111827",
+    clipPath: "polygon(100% 8%, 0 100%, 34% 36%)",
+    transform: "rotate(-7deg)",
+  },
+
+  avatarSpeechTailInner: {
+    position: "absolute",
+    left: -20,
+    bottom: 13,
+    width: 42,
+    height: 31,
     background: "#ffffff",
-    borderLeft: "1px solid #bbf7d0",
-    borderBottom: "1px solid #bbf7d0",
+    clipPath: "polygon(100% 8%, 0 100%, 35% 36%)",
+    transform: "rotate(-7deg)",
   },
 
   avatarGreeting: {
     position: "relative",
     zIndex: 1,
     margin: 0,
-    color: "#374151",
-    fontWeight: 800,
-    fontSize: "1rem",
-    lineHeight: 1.42,
+    color: "#2563eb",
+    fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive',
+    fontWeight: 900,
+    fontSize: "1.03rem",
+    lineHeight: 1.25,
+    letterSpacing: "0.01em",
+    textAlign: "center",
+    textShadow: "1px 1px 0 #fef08a",
   },
 
   avatarGreetingName: {
-    color: "#111827",
+    color: "#db2777",
     fontWeight: 950,
     wordBreak: "break-word",
+    textShadow: "1px 1px 0 #fde68a",
   },
 
   avatarPrompt: {
@@ -1723,15 +1670,23 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
 
+  securityActionRow: {
+    marginTop: 16,
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+
   securityNote: {
-    margin: "12px 0 0",
+    margin: 0,
     color: "#6b7280",
     fontSize: "0.85rem",
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
 
   passwordButton: {
-    marginTop: 18,
+    marginTop: 0,
     border: "none",
     borderRadius: 999,
     padding: "11px 18px",
