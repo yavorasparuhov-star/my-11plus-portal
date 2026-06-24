@@ -34,6 +34,12 @@ type SlotOption = {
   itemKey?: string
 }
 
+type DailyLoginResult = {
+  error?: string
+  awarded?: boolean
+  amount?: number
+}
+
 const defaultAvatar: AvatarConfig = {
   base: "bo",
   skinTone: "light",
@@ -293,6 +299,10 @@ export default function HomePage() {
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
   const [avatarName, setAvatarName] = useState("")
   const [avatarLoading, setAvatarLoading] = useState(true)
+  const [claimingDailyCoins, setClaimingDailyCoins] = useState(false)
+  const [dailyCoinsClaimed, setDailyCoinsClaimed] = useState(false)
+  const [dailyCoinMessage, setDailyCoinMessage] = useState<string | null>(null)
+  const [dailyCoinError, setDailyCoinError] = useState<string | null>(null)
 
   useEffect(() => {
     loadHomeAvatar()
@@ -400,6 +410,57 @@ export default function HomePage() {
       : "0 10px 25px rgba(0,0,0,0.08)"
   }
 
+  async function claimDailyCoins() {
+    setClaimingDailyCoins(true)
+    setDailyCoinMessage(null)
+    setDailyCoinError(null)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        setDailyCoinError("You need to be logged in to claim YanBo Coins.")
+        setClaimingDailyCoins(false)
+        return
+      }
+
+      const response = await fetch("/api/tokens/daily-login", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      const result = (await response.json().catch(() => ({}))) as DailyLoginResult
+
+      if (!response.ok) {
+        setDailyCoinError(result.error || "Could not claim today’s YanBo Coins.")
+        setClaimingDailyCoins(false)
+        return
+      }
+
+      if (result.awarded) {
+        const amount = result.amount ?? 3
+        setDailyCoinsClaimed(true)
+        setDailyCoinMessage(`Great job! You collected ${amount} YanBo Coins.`)
+      } else {
+        setDailyCoinsClaimed(true)
+        setDailyCoinMessage("Daily YanBo Coins already collected today.")
+      }
+    } catch (error) {
+      setDailyCoinError(
+        error instanceof Error
+          ? error.message
+          : "Could not claim today’s YanBo Coins.",
+      )
+    }
+
+    setClaimingDailyCoins(false)
+  }
+
   return (
     <div style={styles.page}>
       {/* HERO */}
@@ -410,27 +471,70 @@ export default function HomePage() {
               config={avatarConfig}
               imageSources={avatarImages}
             />
+
+            <p style={styles.avatarBuddyName}>
+              {avatarName || "My YanBo buddy"}
+            </p>
           </div>
 
           <div style={styles.heroContent}>
             <div style={styles.heroBadge}>Member dashboard</div>
 
-            <h1 style={styles.title}>
-              {avatarName ? `Welcome back, ${avatarName}!` : "Welcome back!"}
-            </h1>
+            <h1 style={styles.title}>Welcome back!</h1>
 
-            <p style={styles.subtitle}>
-              {avatarName
-                ? "Ready for today’s learning adventure?"
-                : "Name your avatar and make your learning adventure more fun."}
-            </p>
+            <p style={styles.subtitle}>Ready for today’s learning adventure?</p>
 
-            <div style={styles.funFactCard}>
-              <span style={styles.funFactIcon}>💡</span>
-              <div>
-                <p style={styles.funFactLabel}>YanBo fun fact</p>
-                <p style={styles.funFactText}>{dailyFunFact}</p>
+            <div style={styles.buddySpeechBubble}>
+              <span style={styles.buddySpeechTail} />
+
+              <div style={styles.didYouKnowBlock}>
+                <p style={styles.didYouKnowLabel}>Did you know?</p>
+                <p style={styles.didYouKnowText}>{dailyFunFact}</p>
               </div>
+
+              <div style={styles.dailyCoinsBubbleBlock}>
+                <p style={styles.dailyCoinsBubbleText}>
+                  {dailyCoinsClaimed
+                    ? "You have collected today’s YanBo Coins. Come back tomorrow for more."
+                    : "Collect your daily YanBo Coins before you start."}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={claimDailyCoins}
+                  disabled={claimingDailyCoins || dailyCoinsClaimed}
+                  style={{
+                    ...styles.dailyCoinsButton,
+                    ...(dailyCoinsClaimed ? styles.dailyCoinsButtonDone : {}),
+                  }}
+                >
+                  {claimingDailyCoins
+                    ? "Checking..."
+                    : dailyCoinsClaimed
+                      ? "Collected today ✓"
+                      : "Collect daily coins"}
+                </button>
+
+                {dailyCoinMessage && (
+                  <p style={styles.dailyCoinMessage}>{dailyCoinMessage}</p>
+                )}
+
+                {dailyCoinError && (
+                  <p style={styles.dailyCoinError}>{dailyCoinError}</p>
+                )}
+              </div>
+
+              {!avatarLoading && !avatarName && (
+                <div style={styles.nameAvatarBubbleBlock}>
+                  <p style={styles.nameAvatarBubbleText}>
+                    Name your avatar and make your learning adventure more fun.
+                  </p>
+
+                  <Link href="/avatar" style={styles.nameAvatarBubbleButton}>
+                    Name my avatar
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div style={styles.heroActions}>
@@ -447,12 +551,6 @@ export default function HomePage() {
               >
                 View progress
               </button>
-
-              {!avatarLoading && !avatarName && (
-                <Link href="/avatar" style={styles.nameAvatarButton}>
-                  Name my avatar
-                </Link>
-              )}
             </div>
           </div>
         </div>
@@ -720,7 +818,20 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   heroAvatarWrap: {
     display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
     justifyContent: "center",
+    gap: "12px",
+  },
+
+  avatarBuddyName: {
+    margin: 0,
+    color: "#064e3b",
+    fontSize: "1.05rem",
+    fontWeight: 900,
+    textAlign: "center",
+    maxWidth: 220,
+    wordBreak: "break-word",
   },
 
   heroContent: {
@@ -755,39 +866,136 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 650,
   },
 
-  funFactCard: {
-    marginTop: "18px",
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "12px",
-    maxWidth: "620px",
-    borderRadius: "20px",
+  buddySpeechBubble: {
+    position: "relative",
+    marginTop: "20px",
+    maxWidth: "650px",
+    borderRadius: "24px",
     background: "#ffffff",
-    border: "1px solid #bbf7d0",
-    padding: "14px 16px",
-    boxShadow: "0 10px 24px rgba(22,163,74,0.10)",
+    border: "2px solid #16a34a",
+    padding: "18px 18px 16px",
+    boxShadow: "0 12px 28px rgba(22,163,74,0.12)",
   },
 
-  funFactIcon: {
-    fontSize: "26px",
-    lineHeight: 1,
+  buddySpeechTail: {
+    position: "absolute",
+    left: -9,
+    top: 42,
+    width: 16,
+    height: 16,
+    transform: "rotate(45deg)",
+    background: "#ffffff",
+    borderLeft: "2px solid #16a34a",
+    borderBottom: "2px solid #16a34a",
   },
 
-  funFactLabel: {
-    margin: "0 0 3px",
+  didYouKnowBlock: {
+    paddingBottom: "14px",
+    borderBottom: "1px solid #dcfce7",
+  },
+
+  didYouKnowLabel: {
+    margin: "0 0 6px",
     color: "#16a34a",
-    fontSize: "0.82rem",
-    fontWeight: 900,
+    fontSize: "0.88rem",
+    fontWeight: 950,
     textTransform: "uppercase",
     letterSpacing: "0.04em",
   },
 
-  funFactText: {
+  didYouKnowText: {
     margin: 0,
     color: "#374151",
-    fontSize: "1rem",
-    fontWeight: 700,
+    fontSize: "1.05rem",
+    fontWeight: 750,
     lineHeight: 1.45,
+  },
+
+  dailyCoinsBubbleBlock: {
+    marginTop: "14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  dailyCoinsBubbleText: {
+    margin: 0,
+    color: "#065f46",
+    fontSize: "0.95rem",
+    fontWeight: 800,
+    lineHeight: 1.4,
+    flex: "1 1 250px",
+  },
+
+  dailyCoinsButton: {
+    border: "none",
+    borderRadius: "999px",
+    padding: "11px 18px",
+    background: "#16a34a",
+    color: "#ffffff",
+    fontWeight: 900,
+    fontSize: "0.92rem",
+    cursor: "pointer",
+    boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
+    whiteSpace: "nowrap",
+  },
+
+  dailyCoinsButtonDone: {
+    background: "#bbf7d0",
+    color: "#166534",
+    cursor: "default",
+    boxShadow: "none",
+  },
+
+  dailyCoinMessage: {
+    margin: "2px 0 0",
+    color: "#047857",
+    fontSize: "0.88rem",
+    fontWeight: 800,
+    width: "100%",
+  },
+
+  dailyCoinError: {
+    margin: "2px 0 0",
+    color: "#b91c1c",
+    fontSize: "0.88rem",
+    fontWeight: 800,
+    width: "100%",
+  },
+
+  nameAvatarBubbleBlock: {
+    marginTop: "14px",
+    paddingTop: "14px",
+    borderTop: "1px solid #dcfce7",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  nameAvatarBubbleText: {
+    margin: 0,
+    color: "#065f46",
+    fontSize: "0.95rem",
+    fontWeight: 800,
+    lineHeight: 1.4,
+    flex: "1 1 250px",
+  },
+
+  nameAvatarBubbleButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "10px 16px",
+    borderRadius: "999px",
+    background: "#16a34a",
+    color: "#ffffff",
+    textDecoration: "none",
+    fontWeight: 900,
+    fontSize: "0.9rem",
+    boxShadow: "0 10px 22px rgba(22, 163, 74, 0.22)",
+    whiteSpace: "nowrap",
   },
 
   heroActions: {
@@ -819,20 +1027,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: "pointer",
     fontWeight: 900,
     fontSize: "16px",
-  },
-
-  nameAvatarButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "13px 22px",
-    borderRadius: "999px",
-    background: "#16a34a",
-    color: "#ffffff",
-    textDecoration: "none",
-    fontWeight: 900,
-    fontSize: "16px",
-    boxShadow: "0 10px 24px rgba(22,163,74,0.25)",
   },
 
   homeAvatarStage: {
