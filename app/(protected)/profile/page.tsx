@@ -570,8 +570,7 @@ export default function ProfilePage() {
 
                     {avatarName ? (
                       <div style={styles.avatarSpeechBubble}>
-                        <span style={styles.avatarSpeechTailOuter} />
-                        <span style={styles.avatarSpeechTailInner} />
+                        <span style={styles.avatarSpeechTail} />
                         <p style={styles.avatarGreeting}>
                           Hi, my name is{" "}
                           <span style={styles.avatarGreetingName}>
@@ -1383,59 +1382,40 @@ const styles: Record<string, React.CSSProperties> = {
 
   avatarSpeechBubble: {
     position: "relative",
-    minHeight: 96,
-    maxWidth: 245,
-    borderRadius: "52% 48% 50% 50% / 58% 60% 42% 40%",
+    borderRadius: 22,
     background: "#ffffff",
-    border: "3px solid #111827",
-    padding: "18px 20px 16px",
-    boxShadow: "0 10px 0 rgba(14, 165, 233, 0.18), 0 16px 26px rgba(15, 23, 42, 0.12)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    border: "2px solid #16a34a",
+    padding: "12px 14px",
+    boxShadow: "0 10px 24px rgba(22, 163, 74, 0.12)",
+    maxWidth: 225,
   },
 
-  avatarSpeechTailOuter: {
+  avatarSpeechTail: {
     position: "absolute",
-    left: -28,
-    bottom: 7,
-    width: 54,
-    height: 42,
-    background: "#111827",
-    clipPath: "polygon(100% 8%, 0 100%, 34% 36%)",
-    transform: "rotate(-7deg)",
-  },
-
-  avatarSpeechTailInner: {
-    position: "absolute",
-    left: -20,
-    bottom: 13,
-    width: 42,
-    height: 31,
+    left: -8,
+    top: 28,
+    width: 15,
+    height: 15,
+    transform: "rotate(45deg)",
     background: "#ffffff",
-    clipPath: "polygon(100% 8%, 0 100%, 35% 36%)",
-    transform: "rotate(-7deg)",
+    borderLeft: "2px solid #16a34a",
+    borderBottom: "2px solid #16a34a",
   },
 
   avatarGreeting: {
     position: "relative",
     zIndex: 1,
     margin: 0,
-    color: "#2563eb",
-    fontFamily: '"Comic Sans MS", "Comic Sans", "Trebuchet MS", cursive',
+    color: "#16a34a",
     fontWeight: 900,
-    fontSize: "1.03rem",
-    lineHeight: 1.25,
-    letterSpacing: "0.01em",
-    textAlign: "center",
-    textShadow: "1px 1px 0 #fef08a",
+    fontSize: "1rem",
+    lineHeight: 1.42,
   },
 
   avatarGreetingName: {
-    color: "#db2777",
+    color: "#16a34a",
     fontWeight: 950,
     wordBreak: "break-word",
-    textShadow: "1px 1px 0 #fde68a",
   },
 
   avatarPrompt: {
@@ -1690,12 +1670,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     borderRadius: 999,
     padding: "11px 18px",
-    background: "#eef2ff",
-    color: "#3730a3",
-    fontWeight: 800,
-    fontSize: "0.95rem",
+    background: "#16a34a",
+    color: "#ffffff",
+    fontWeight: 900,
+    fontSize: "0.92rem",
     cursor: "pointer",
-    boxShadow: "0 8px 18px rgba(79, 70, 229, 0.16)",
+    boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
   },
 
   formCard: {
