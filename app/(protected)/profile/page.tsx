@@ -365,7 +365,6 @@ export default function ProfilePage() {
           setFormData({
             first_name: "",
             last_name: "",
-            nickname: "",
             phone: "",
             email: user.email || "",
           });
