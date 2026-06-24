@@ -51,6 +51,11 @@ const defaultAvatar: AvatarConfig = {
 
 const freeStarterItemKeys = new Set<string>()
 
+const hiddenAvatarItemKeys = new Set<string>([
+  "hat_headphones",
+  "hat_star_headband",
+])
+
 const shopCategoryOrder = ["glasses", "hat", "background", "badge"]
 
 const PAGE_CLASS = "min-h-screen bg-slate-50 px-4 py-6"
@@ -161,16 +166,6 @@ const slotOptions: Record<AvatarSlot, SlotOption[]> = {
     { value: "wizard", label: "Wizard Hat", itemKey: "hat_wizard_hat" },
     { value: "crown", label: "Champion Crown", itemKey: "hat_crown" },
     { value: "explorer", label: "Explorer Hat", itemKey: "hat_explorer_hat" },
-    {
-      value: "headphones",
-      label: "Study Headphones",
-      itemKey: "hat_headphones",
-    },
-    {
-      value: "star_headband",
-      label: "Star Headband",
-      itemKey: "hat_star_headband",
-    },
     { value: "blue_beanie", label: "Blue Beanie", itemKey: "hat_blue_beanie" },
   ],
   badge: [
@@ -703,7 +698,13 @@ export default function AvatarPage() {
       return
     }
 
-    setShopItems((itemsData || []).filter((item) => isSupportedShopCategory(item.category)))
+    setShopItems(
+      (itemsData || []).filter(
+        (item) =>
+          isSupportedShopCategory(item.category) &&
+          !hiddenAvatarItemKeys.has(item.item_key),
+      ),
+    )
 
     const { data: unlockedData } = await supabase
       .from("user_avatar_items")
