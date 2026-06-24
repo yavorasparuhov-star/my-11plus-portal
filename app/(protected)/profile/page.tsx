@@ -614,21 +614,26 @@ export default function ProfilePage() {
                 />
 
                 <div style={styles.avatarTextWrap}>
-                  <h2 style={styles.cardTitle}>My Avatar</h2>
+                  <div style={styles.avatarTextTop}>
+                    {!avatarName && <h2 style={styles.cardTitle}>My Avatar</h2>}
 
-                  {avatarName ? (
-                    <p style={styles.avatarGreeting}>
-                      Hi, my name is{" "}
-                      <span style={styles.avatarGreetingName}>
-                        {avatarName}
-                      </span>
-                      .
-                    </p>
-                  ) : (
-                    <p style={styles.avatarPrompt}>
-                      Please choose my nickname.
-                    </p>
-                  )}
+                    {avatarName ? (
+                      <div style={styles.avatarSpeechBubble}>
+                        <span style={styles.avatarSpeechTail} />
+                        <p style={styles.avatarGreeting}>
+                          Hi, my name is{" "}
+                          <span style={styles.avatarGreetingName}>
+                            {avatarName}
+                          </span>
+                          .
+                        </p>
+                      </div>
+                    ) : (
+                      <p style={styles.avatarPrompt}>
+                        Please choose my nickname.
+                      </p>
+                    )}
+                  </div>
 
                   <Link href="/avatar" style={styles.avatarButton}>
                     {avatarName ? "Edit my avatar" : "Name my avatar"}
@@ -1435,18 +1440,49 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
-    justifyContent: "flex-start",
-    gap: 22,
+    justifyContent: "space-between",
+    gap: 14,
     paddingTop: 8,
+    paddingBottom: 6,
+  },
+
+  avatarTextTop: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 18,
+  },
+
+  avatarSpeechBubble: {
+    position: "relative",
+    borderRadius: 22,
+    background: "#ffffff",
+    border: "1px solid #bbf7d0",
+    padding: "12px 14px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+    maxWidth: 225,
+  },
+
+  avatarSpeechTail: {
+    position: "absolute",
+    left: -7,
+    top: 28,
+    width: 14,
+    height: 14,
+    transform: "rotate(45deg)",
+    background: "#ffffff",
+    borderLeft: "1px solid #bbf7d0",
+    borderBottom: "1px solid #bbf7d0",
   },
 
   avatarGreeting: {
+    position: "relative",
+    zIndex: 1,
     margin: 0,
     color: "#374151",
     fontWeight: 800,
     fontSize: "1rem",
-    lineHeight: 1.45,
-    maxWidth: 210,
+    lineHeight: 1.42,
   },
 
   avatarGreetingName: {
@@ -1472,7 +1508,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   avatarButton: {
-    marginTop: 0,
+    marginTop: "auto",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
