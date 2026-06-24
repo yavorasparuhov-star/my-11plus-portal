@@ -604,17 +604,6 @@ export default function ProfilePage() {
         <section style={styles.contentGrid}>
           <div style={styles.leftColumn}>
             <div style={styles.avatarCard}>
-              <div style={styles.avatarHeader}>
-                <div>
-                  <h2 style={styles.cardTitle}>My Avatar</h2>
-                </div>
-
-                <div style={styles.coinBadge}>
-                  <span style={styles.coinIcon}>🪙</span>
-                  <span>{coins} coins</span>
-                </div>
-              </div>
-
               <div style={styles.avatarBody}>
                 <ProfileAvatarPreview
                   config={avatarConfig}
@@ -622,6 +611,8 @@ export default function ProfilePage() {
                 />
 
                 <div style={styles.avatarTextWrap}>
+                  <h2 style={styles.cardTitle}>My Avatar</h2>
+
                   <Link href="/avatar" style={styles.avatarButton}>
                     Edit my avatar
                   </Link>
@@ -631,23 +622,26 @@ export default function ProfilePage() {
 
             <div style={styles.coinActivityCard}>
               <div style={styles.coinActivityHeader}>
-                <h2 style={styles.cardTitle}>YanBo Coins today</h2>
+                <h2 style={styles.cardTitle}>YanBo Coins</h2>
+
+                <div style={styles.coinBadge}>
+                  <span style={styles.coinIcon}>🪙</span>
+                  <span>{coins} coins</span>
+                </div>
               </div>
 
-              <div style={styles.todayCoinSummaryGrid}>
-                <div style={styles.todayCoinSummaryBox}>
-                  <span style={styles.todayCoinSummaryEarned}>
-                    +{todayCoinSummary.earned}
-                  </span>
-                  <span style={styles.todayCoinSummaryLabel}>Collected</span>
-                </div>
+              <div style={styles.todayInlineRow}>
+                <span style={styles.todayInlineTitle}>Today:</span>
 
-                <div style={styles.todayCoinSummaryBox}>
-                  <span style={styles.todayCoinSummarySpent}>
-                    -{todayCoinSummary.spent}
-                  </span>
-                  <span style={styles.todayCoinSummaryLabel}>Spent</span>
-                </div>
+                <span style={styles.todayCoinSummaryEarned}>
+                  +{todayCoinSummary.earned}
+                </span>
+                <span style={styles.todayCoinSummaryLabel}>Collected</span>
+
+                <span style={styles.todayCoinSummarySpent}>
+                  -{todayCoinSummary.spent}
+                </span>
+                <span style={styles.todayCoinSummaryLabel}>Spent</span>
               </div>
 
               {latestCoinTransaction && (
@@ -684,9 +678,11 @@ export default function ProfilePage() {
             </div>
 
             <div style={styles.securityCard}>
-              <div style={styles.securityIcon}>🔐</div>
+              <div style={styles.securityHeader}>
+                <div style={styles.securityIcon}>🔐</div>
 
-              <h2 style={styles.cardTitle}>Account security</h2>
+                <h2 style={styles.cardTitle}>Account security</h2>
+              </div>
 
               <p style={styles.cardText}>
                 Need to change your password? We will send a secure password
@@ -1152,9 +1148,9 @@ const styles: Record<string, React.CSSProperties> = {
 
   avatarCard: {
     background: "#ffffff",
-    borderRadius: 24,
-    padding: 24,
-    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
+    borderRadius: 22,
+    padding: "14px 16px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
     border: "1px solid rgba(16, 185, 129, 0.18)",
   },
 
@@ -1194,7 +1190,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   avatarBody: {
     display: "flex",
-    gap: 18,
+    gap: 16,
     alignItems: "center",
   },
 
@@ -1429,7 +1425,10 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     minWidth: 0,
     display: "flex",
-    alignItems: "center",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 12,
   },
 
   avatarName: {
@@ -1457,13 +1456,14 @@ const styles: Record<string, React.CSSProperties> = {
   coinActivityCard: {
     background: "#ffffff",
     borderRadius: 20,
-    padding: "14px 16px",
+    padding: "12px 16px",
     boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
     border: "1px solid rgba(245, 158, 11, 0.2)",
   },
 
   coinActivityHeader: {
     display: "flex",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
     marginBottom: 8,
@@ -1474,6 +1474,23 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 8,
     marginTop: 8,
+  },
+
+  todayInlineRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    flexWrap: "wrap",
+    borderRadius: 12,
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    padding: "7px 9px",
+  },
+
+  todayInlineTitle: {
+    color: "#374151",
+    fontSize: "0.78rem",
+    fontWeight: 900,
   },
 
   todayCoinSummaryBox: {
@@ -1512,7 +1529,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   compactActivityWrap: {
-    marginTop: 8,
+    marginTop: 7,
     borderRadius: 12,
     padding: "7px 9px",
     background: "#fffbeb",
@@ -1617,17 +1634,24 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(226, 232, 240, 0.9)",
   },
 
+  securityHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+
   securityIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 15,
     background: "#eef2ff",
     color: "#3730a3",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "24px",
-    marginBottom: 14,
+    fontSize: "22px",
+    flexShrink: 0,
   },
 
   securityNote: {
