@@ -568,22 +568,22 @@ export default function ProfilePage() {
                   <div style={styles.avatarTextTop}>
                     {!avatarName && <h2 style={styles.cardTitle}>My Avatar</h2>}
 
-                    {avatarName ? (
-                      <div style={styles.avatarSpeechBubble}>
-                        <span style={styles.avatarSpeechTail} />
-                        <p style={styles.avatarGreeting}>
-                          Hi, my name is{" "}
-                          <span style={styles.avatarGreetingName}>
-                            {avatarName}
-                          </span>
-                          !
-                        </p>
-                      </div>
-                    ) : (
-                      <p style={styles.avatarPrompt}>
-                        Please choose my nickname.
+                    <div style={styles.avatarSpeechBubble}>
+                      <span style={styles.avatarSpeechTail} />
+                      <p style={styles.avatarGreeting}>
+                        {avatarName ? (
+                          <>
+                            Hi, my name is{" "}
+                            <span style={styles.avatarGreetingName}>
+                              {avatarName}
+                            </span>
+                            !
+                          </>
+                        ) : (
+                          "Please choose my nickname."
+                        )}
                       </p>
-                    )}
+                    </div>
                   </div>
 
                   <Link href="/avatar" style={styles.avatarButton}>
@@ -1416,15 +1416,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#16a34a",
     fontWeight: 950,
     wordBreak: "break-word",
-  },
-
-  avatarPrompt: {
-    margin: 0,
-    color: "#374151",
-    fontWeight: 750,
-    fontSize: "1rem",
-    lineHeight: 1.45,
-    maxWidth: 190,
   },
 
   avatarName: {
