@@ -87,9 +87,9 @@ const PANEL_CLASS = "rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"
 const SECTION_DIVIDER_CLASS =
   "flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"
 const PRIMARY_BUTTON_CLASS =
-  "rounded-2xl bg-yellow-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+  "rounded-full bg-green-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
 const SMALL_PRIMARY_BUTTON_CLASS =
-  "rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-slate-900 shadow-sm transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-60"
+  "rounded-full bg-green-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
 const LINK_BUTTON_BLUE_CLASS =
   "rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
 const LINK_BUTTON_SLATE_CLASS =
@@ -1104,13 +1104,6 @@ export default function AvatarPage() {
               >
                 {claimingDailyCoins ? "Checking..." : "Daily coins"}
               </button>
-
-              <Link
-                href="/custom-tests"
-                className={LINK_BUTTON_BLUE_CLASS}
-              >
-                Practise
-              </Link>
 
               <Link
                 href="/profile"
