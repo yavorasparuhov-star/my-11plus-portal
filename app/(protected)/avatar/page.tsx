@@ -49,6 +49,28 @@ const defaultAvatar: AvatarConfig = {
   badge: "none",
 }
 
+const AVATAR_NAME_MAX_LENGTH = 20
+
+function normaliseAvatarName(value: unknown) {
+  if (typeof value !== "string") return ""
+
+  return value.replace(/\s+/g, " ").trim().slice(0, AVATAR_NAME_MAX_LENGTH)
+}
+
+function isAvatarNameValid(value: string) {
+  if (!value) return true
+
+  if (value.length < 2 || value.length > AVATAR_NAME_MAX_LENGTH) {
+    return false
+  }
+
+  if (/@|https?:\/\//i.test(value) || /www\./i.test(value)) {
+    return false
+  }
+
+  return /^[A-Za-z0-9][A-Za-z0-9 '\-]{0,18}[A-Za-z0-9]$/.test(value)
+}
+
 const freeStarterItemKeys = new Set<string>()
 
 const hiddenAvatarItemKeys = new Set<string>([
@@ -631,6 +653,7 @@ function previewBackgroundOverlay(background: string) {
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("")
   const [coins, setCoins] = useState(0)
   const [shopItems, setShopItems] = useState<ShopItem[]>([])
   const [unlockedItems, setUnlockedItems] = useState<string[]>([])
@@ -673,7 +696,7 @@ export default function AvatarPage() {
 
     const { data: avatarData, error: avatarError } = await supabase
       .from("student_avatars")
-      .select("avatar_config")
+      .select("avatar_config, avatar_name")
       .eq("user_id", user.id)
       .maybeSingle()
 
@@ -728,6 +751,7 @@ export default function AvatarPage() {
         )
       : defaultAvatar
 
+    setAvatarName(normaliseAvatarName(avatarData?.avatar_name))
     setAvatarConfig(makeAvatarConfigSafe(loadedAvatar, unlockedKeys))
     setLoading(false)
   }
@@ -742,11 +766,21 @@ export default function AvatarPage() {
     setShopError(null)
 
     const safeAvatarConfig = makeAvatarConfigSafe(avatarConfig, unlockedItems)
+    const safeAvatarName = normaliseAvatarName(avatarName)
+
+    if (!isAvatarNameValid(safeAvatarName)) {
+      setError(
+        "Avatar nickname must be 2–20 characters and cannot include email or website links.",
+      )
+      setSaving(false)
+      return
+    }
 
     const { error: saveError } = await supabase.from("student_avatars").upsert(
       {
         user_id: userId,
         avatar_config: safeAvatarConfig,
+        avatar_name: safeAvatarName || null,
         selected_base: safeAvatarConfig.base,
         updated_at: new Date().toISOString(),
       },
@@ -762,6 +796,7 @@ export default function AvatarPage() {
     }
 
     setAvatarConfig(safeAvatarConfig)
+    setAvatarName(safeAvatarName)
     setMessage("Avatar saved successfully.")
     setSaving(false)
   }
@@ -1177,6 +1212,10 @@ export default function AvatarPage() {
                   {avatarConfig.skinTone} skin • {avatarConfig.eyeColor} eyes
                 </p>
 
+                <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-extrabold text-slate-800 shadow-sm ring-1 ring-slate-100">
+                  {avatarName || "Avatar nickname not chosen yet"}
+                </p>
+
                 <div className="mt-4 flex flex-wrap gap-2">
                   <StyleChip
                     icon="🎨"
@@ -1225,6 +1264,23 @@ export default function AvatarPage() {
             />
 
             <div className="mt-4 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500">
+                  Avatar nickname
+                </span>
+                <input
+                  type="text"
+                  value={avatarName}
+                  maxLength={AVATAR_NAME_MAX_LENGTH}
+                  onChange={(event) => setAvatarName(event.target.value)}
+                  placeholder="e.g. Puzzle Hero"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                />
+                <span className="mt-1 block text-xs font-semibold text-slate-500">
+                  Use a fun nickname, not a full real name. 2–20 characters.
+                </span>
+              </label>
+
               <div>
                 <p className="mb-2 text-sm font-black text-slate-700">
                   Base avatar

@@ -10,7 +10,6 @@ type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin";
 type ProfileFormData = {
   first_name: string;
   last_name: string;
-  nickname: string;
   phone: string;
   email: string;
 };
@@ -18,7 +17,6 @@ type ProfileFormData = {
 type ProfileRow = {
   first_name: string | null;
   last_name: string | null;
-  nickname: string | null;
   phone: string | null;
   email: string | null;
   plan: string | null;
@@ -252,6 +250,12 @@ function builderOnlySources(sources: string[]) {
   return sources.filter((source) => source.startsWith("/avatars/builder/"));
 }
 
+function normaliseAvatarName(value: unknown) {
+  if (typeof value !== "string") return "";
+
+  return value.replace(/\s+/g, " ").trim().slice(0, 20);
+}
+
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -261,6 +265,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [plan, setPlan] = useState<UserPlan>("free");
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar);
+  const [avatarName, setAvatarName] = useState("");
   const [coins, setCoins] = useState(0);
   const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>(
     [],
@@ -269,7 +274,6 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: "",
     last_name: "",
-    nickname: "",
     phone: "",
     email: "",
   });
@@ -310,7 +314,7 @@ export default function ProfilePage() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("first_name, last_name, nickname, phone, email, plan")
+        .select("first_name, last_name, phone, email, plan")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -323,7 +327,6 @@ export default function ProfilePage() {
         setFormData({
           first_name: "",
           last_name: "",
-          nickname: "",
           phone: "",
           email: user.email || "",
         });
@@ -345,11 +348,10 @@ export default function ProfilePage() {
               plan: "free",
               first_name: "",
               last_name: "",
-              nickname: "",
               phone: "",
               updated_at: new Date().toISOString(),
             })
-            .select("first_name, last_name, nickname, phone, email, plan")
+            .select("first_name, last_name, phone, email, plan")
             .single();
 
         if (!mounted) return;
@@ -379,7 +381,6 @@ export default function ProfilePage() {
       setFormData({
         first_name: safeProfile?.first_name || "",
         last_name: safeProfile?.last_name || "",
-        nickname: safeProfile?.nickname || "",
         phone: safeProfile?.phone || "",
         email: safeProfile?.email || user.email || "",
       });
@@ -388,20 +389,24 @@ export default function ProfilePage() {
 
       const { data: avatarData, error: avatarError } = await supabase
         .from("student_avatars")
-        .select("avatar_config")
+        .select("avatar_config, avatar_name")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (avatarError) {
         console.error("Error loading YanBo avatar:", avatarError);
-      } else if (avatarData?.avatar_config) {
-        setAvatarConfig(
-          normaliseAvatarConfig(
-            avatarData.avatar_config as Record<string, unknown>,
-          ),
-        );
       } else {
-        setAvatarConfig(defaultAvatar);
+        setAvatarName(normaliseAvatarName(avatarData?.avatar_name));
+
+        if (avatarData?.avatar_config) {
+          setAvatarConfig(
+            normaliseAvatarConfig(
+              avatarData.avatar_config as Record<string, unknown>,
+            ),
+          );
+        } else {
+          setAvatarConfig(defaultAvatar);
+        }
       }
 
       const { data: walletData, error: walletError } = await supabase
@@ -467,7 +472,6 @@ export default function ProfilePage() {
       id: user.id,
       first_name: formData.first_name.trim(),
       last_name: formData.last_name.trim(),
-      nickname: formData.nickname.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim() || user.email || "",
       updated_at: new Date().toISOString(),
@@ -613,8 +617,16 @@ export default function ProfilePage() {
                 <div style={styles.avatarTextWrap}>
                   <h2 style={styles.cardTitle}>My Avatar</h2>
 
+                  {avatarName ? (
+                    <p style={styles.avatarNickname}>{avatarName}</p>
+                  ) : (
+                    <p style={styles.avatarPrompt}>
+                      Please choose my avatar nickname.
+                    </p>
+                  )}
+
                   <Link href="/avatar" style={styles.avatarButton}>
-                    Edit my avatar
+                    {avatarName ? "Edit my avatar" : "Name my avatar"}
                   </Link>
                 </div>
               </div>
@@ -733,17 +745,6 @@ export default function ProfilePage() {
                   onChange={handleChange}
                   style={styles.input}
                   placeholder="Last name"
-                />
-              </label>
-
-              <label style={styles.label}>
-                Nickname
-                <input
-                  name="nickname"
-                  value={formData.nickname}
-                  onChange={handleChange}
-                  style={styles.input}
-                  placeholder="Nickname"
                 />
               </label>
 
@@ -1429,6 +1430,24 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "flex-start",
     justifyContent: "center",
     gap: 12,
+  },
+
+  avatarNickname: {
+    margin: 0,
+    color: "#111827",
+    fontWeight: 900,
+    fontSize: "1.28rem",
+    lineHeight: 1.15,
+    wordBreak: "break-word",
+  },
+
+  avatarPrompt: {
+    margin: 0,
+    color: "#374151",
+    fontWeight: 750,
+    fontSize: "0.98rem",
+    lineHeight: 1.38,
+    maxWidth: 190,
   },
 
   avatarName: {
