@@ -572,7 +572,7 @@ export default function ProfilePage() {
     { earned: 0, spent: 0 },
   );
 
-  const recentCoinTransactions = coinTransactions.slice(0, 3);
+  const latestCoinTransaction = coinTransactions[0] || null;
 
   const planLabel =
     plan === "admin"
@@ -582,8 +582,6 @@ export default function ProfilePage() {
         : plan === "annual"
           ? "Annual"
           : "Free";
-
-  const avatarDisplayName = avatarConfig.base === "yan" ? "Yan" : "Bo";
 
   const avatarPreviewImages = useMemo(
     () => getProfileAvatarImageSources(avatarConfig),
@@ -624,12 +622,6 @@ export default function ProfilePage() {
                 />
 
                 <div style={styles.avatarTextWrap}>
-                  <p style={styles.avatarName}>{avatarDisplayName} avatar</p>
-                  <p style={styles.cardText}>
-                    This is your saved YanBo avatar portrait. The same avatar can
-                    now be reused on your home page and other portal pages later.
-                  </p>
-
                   <Link href="/avatar" style={styles.avatarButton}>
                     Edit my avatar
                   </Link>
@@ -639,60 +631,48 @@ export default function ProfilePage() {
 
             <div style={styles.coinActivityCard}>
               <div style={styles.coinActivityHeader}>
-                <div>
-                  <h2 style={styles.cardTitle}>YanBo Coins today</h2>
-                  <p style={styles.cardText}>
-                    A small summary of coins collected and spent today.
-                  </p>
-                </div>
+                <h2 style={styles.cardTitle}>YanBo Coins today</h2>
               </div>
 
               <div style={styles.todayCoinSummaryGrid}>
                 <div style={styles.todayCoinSummaryBox}>
-                  <p style={styles.todayCoinSummaryLabel}>Collected today</p>
-                  <p style={styles.todayCoinSummaryEarned}>
+                  <span style={styles.todayCoinSummaryEarned}>
                     +{todayCoinSummary.earned}
-                  </p>
+                  </span>
+                  <span style={styles.todayCoinSummaryLabel}>Collected</span>
                 </div>
 
                 <div style={styles.todayCoinSummaryBox}>
-                  <p style={styles.todayCoinSummaryLabel}>Spent today</p>
-                  <p style={styles.todayCoinSummarySpent}>
+                  <span style={styles.todayCoinSummarySpent}>
                     -{todayCoinSummary.spent}
-                  </p>
+                  </span>
+                  <span style={styles.todayCoinSummaryLabel}>Spent</span>
                 </div>
               </div>
 
-              {recentCoinTransactions.length > 0 && (
+              {latestCoinTransaction && (
                 <div style={styles.compactActivityWrap}>
-                  <p style={styles.compactActivityTitle}>Last 3 activities</p>
+                  <span style={styles.compactActivityTitle}>Latest:</span>
 
-                  <div style={styles.activityList}>
-                    {recentCoinTransactions.map((transaction) => {
-                      const isPositive = transaction.amount >= 0;
+                  <span
+                    style={{
+                      ...styles.compactActivityAmount,
+                      color:
+                        latestCoinTransaction.amount >= 0
+                          ? "#047857"
+                          : "#b91c1c",
+                    }}
+                  >
+                    {formatCoinAmount(latestCoinTransaction.amount)}
+                  </span>
 
-                      return (
-                        <div key={transaction.id} style={styles.compactActivityRow}>
-                          <span
-                            style={{
-                              ...styles.compactActivityAmount,
-                              color: isPositive ? "#047857" : "#b91c1c",
-                            }}
-                          >
-                            {formatCoinAmount(transaction.amount)}
-                          </span>
+                  <span style={styles.compactActivityReason}>
+                    {formatCoinReason(latestCoinTransaction)}
+                  </span>
 
-                          <span style={styles.compactActivityReason}>
-                            {formatCoinReason(transaction)}
-                          </span>
-
-                          <span style={styles.compactActivityDate}>
-                            {formatTransactionDate(transaction.created_at)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <span style={styles.compactActivityDate}>
+                    {formatTransactionDate(latestCoinTransaction.created_at)}
+                  </span>
                 </div>
               )}
 
@@ -1448,6 +1428,8 @@ const styles: Record<string, React.CSSProperties> = {
   avatarTextWrap: {
     flex: 1,
     minWidth: 0,
+    display: "flex",
+    alignItems: "center",
   },
 
   avatarName: {
@@ -1458,7 +1440,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   avatarButton: {
-    marginTop: 14,
+    marginTop: 0,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1474,64 +1456,76 @@ const styles: Record<string, React.CSSProperties> = {
 
   coinActivityCard: {
     background: "#ffffff",
-    borderRadius: 24,
-    padding: 24,
-    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
-    border: "1px solid rgba(245, 158, 11, 0.22)",
+    borderRadius: 20,
+    padding: "14px 16px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
+    border: "1px solid rgba(245, 158, 11, 0.2)",
   },
 
   coinActivityHeader: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 16,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 8,
   },
 
   todayCoinSummaryGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 8,
   },
 
   todayCoinSummaryBox: {
     border: "1px solid #e5e7eb",
-    borderRadius: 18,
-    padding: "14px 16px",
+    borderRadius: 14,
+    padding: "7px 10px",
     background: "#f9fafb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
 
   todayCoinSummaryLabel: {
     margin: 0,
     color: "#6b7280",
-    fontSize: "0.82rem",
+    fontSize: "0.76rem",
     fontWeight: 800,
+    whiteSpace: "nowrap",
   },
 
   todayCoinSummaryEarned: {
-    margin: "8px 0 0",
+    margin: 0,
     color: "#047857",
-    fontSize: "1.4rem",
+    fontSize: "1.05rem",
     fontWeight: 900,
+    lineHeight: 1,
   },
 
   todayCoinSummarySpent: {
-    margin: "8px 0 0",
+    margin: 0,
     color: "#b91c1c",
-    fontSize: "1.4rem",
+    fontSize: "1.05rem",
     fontWeight: 900,
+    lineHeight: 1,
   },
 
   compactActivityWrap: {
-    marginTop: 18,
-    borderTop: "1px solid #e5e7eb",
-    paddingTop: 14,
+    marginTop: 8,
+    borderRadius: 12,
+    padding: "7px 9px",
+    background: "#fffbeb",
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    flexWrap: "wrap",
   },
 
   compactActivityTitle: {
-    margin: "0 0 10px",
-    color: "#374151",
-    fontSize: "0.86rem",
+    margin: 0,
+    color: "#92400e",
+    fontSize: "0.76rem",
     fontWeight: 900,
   },
 
@@ -1546,28 +1540,28 @@ const styles: Record<string, React.CSSProperties> = {
 
   compactActivityAmount: {
     fontWeight: 900,
-    fontSize: "0.92rem",
+    fontSize: "0.8rem",
   },
 
   compactActivityReason: {
     color: "#111827",
     fontWeight: 750,
-    fontSize: "0.9rem",
+    fontSize: "0.78rem",
     minWidth: 0,
   },
 
   compactActivityDate: {
     color: "#6b7280",
-    fontSize: "0.8rem",
+    fontSize: "0.72rem",
     fontWeight: 650,
     whiteSpace: "nowrap",
   },
 
   emptyActivityText: {
-    margin: "16px 0 0",
+    margin: "8px 0 0",
     color: "#6b7280",
-    lineHeight: 1.6,
-    fontSize: "0.95rem",
+    lineHeight: 1.4,
+    fontSize: "0.82rem",
   },
 
   activityList: {
