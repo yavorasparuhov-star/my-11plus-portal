@@ -617,10 +617,16 @@ export default function ProfilePage() {
                   <h2 style={styles.cardTitle}>My Avatar</h2>
 
                   {avatarName ? (
-                    <p style={styles.avatarNickname}>{avatarName}</p>
+                    <p style={styles.avatarGreeting}>
+                      Hi, my name is{" "}
+                      <span style={styles.avatarGreetingName}>
+                        {avatarName}
+                      </span>
+                      .
+                    </p>
                   ) : (
                     <p style={styles.avatarPrompt}>
-                      Please choose my avatar nickname.
+                      Please choose my nickname.
                     </p>
                   )}
 
@@ -758,7 +764,7 @@ export default function ProfilePage() {
                 />
               </label>
 
-              <label style={{ ...styles.label, ...styles.fullWidth }}>
+              <label style={styles.label}>
                 Email
                 <input
                   name="email"
@@ -770,7 +776,7 @@ export default function ProfilePage() {
                 />
               </label>
 
-              <label style={{ ...styles.label, ...styles.fullWidth }}>
+              <label style={styles.label}>
                 Membership plan
                 <input
                   value={planLabel}
@@ -1136,8 +1142,9 @@ const styles: Record<string, React.CSSProperties> = {
 
   contentGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: 24,
+    gridTemplateColumns: "minmax(0, 1.35fr) minmax(260px, 320px)",
+    gap: 22,
+    alignItems: "start",
   },
 
   leftColumn: {
@@ -1424,19 +1431,27 @@ const styles: Record<string, React.CSSProperties> = {
   avatarTextWrap: {
     flex: 1,
     minWidth: 0,
+    alignSelf: "stretch",
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
-    justifyContent: "center",
-    gap: 12,
+    justifyContent: "flex-start",
+    gap: 22,
+    paddingTop: 8,
   },
 
-  avatarNickname: {
+  avatarGreeting: {
     margin: 0,
+    color: "#374151",
+    fontWeight: 800,
+    fontSize: "1rem",
+    lineHeight: 1.45,
+    maxWidth: 210,
+  },
+
+  avatarGreetingName: {
     color: "#111827",
-    fontWeight: 900,
-    fontSize: "1.28rem",
-    lineHeight: 1.15,
+    fontWeight: 950,
     wordBreak: "break-word",
   },
 
@@ -1444,8 +1459,8 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     color: "#374151",
     fontWeight: 750,
-    fontSize: "0.98rem",
-    lineHeight: 1.38,
+    fontSize: "1rem",
+    lineHeight: 1.45,
     maxWidth: 190,
   },
 
@@ -1695,45 +1710,49 @@ const styles: Record<string, React.CSSProperties> = {
   formCard: {
     background: "#ffffff",
     borderRadius: 24,
-    padding: 24,
+    padding: "18px 18px 20px",
     boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
     border: "1px solid rgba(226, 232, 240, 0.9)",
+    width: "100%",
+    maxWidth: 320,
+    justifySelf: "end",
+    alignSelf: "start",
   },
 
   formHeader: {
     display: "flex",
     justifyContent: "space-between",
-    gap: 16,
-    marginBottom: 22,
+    gap: 12,
+    marginBottom: 18,
   },
 
   cardTitle: {
     margin: 0,
     fontSize: "1.35rem",
-    fontWeight: 800,
+    fontWeight: 900,
     color: "#111827",
   },
 
   cardText: {
     margin: "8px 0 0",
     color: "#6b7280",
-    lineHeight: 1.6,
-    fontSize: "0.95rem",
+    lineHeight: 1.45,
+    fontSize: "0.88rem",
   },
 
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 18,
+    gridTemplateColumns: "1fr",
+    gap: 12,
   },
 
   label: {
     display: "flex",
     flexDirection: "column",
-    gap: 8,
-    fontWeight: 700,
-    color: "#374151",
-    fontSize: "0.95rem",
+    gap: 6,
+    fontWeight: 800,
+    color: "#111827",
+    fontSize: "0.84rem",
   },
 
   fullWidth: {
@@ -1743,9 +1762,10 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     width: "100%",
     border: "1px solid #d1d5db",
-    borderRadius: 14,
-    padding: "12px 14px",
-    fontSize: "1rem",
+    borderRadius: 16,
+    padding: "10px 13px",
+    fontSize: "0.92rem",
+    fontWeight: 750,
     color: "#111827",
     background: "#ffffff",
     outline: "none",
@@ -1753,27 +1773,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   message: {
-    margin: "20px 0 0",
+    margin: "14px 0 0",
     border: "1px solid",
     borderRadius: 14,
-    padding: "12px 14px",
+    padding: "10px 12px",
     fontWeight: 700,
+    fontSize: "0.86rem",
   },
 
   actions: {
-    marginTop: 22,
+    marginTop: 16,
     display: "flex",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
   },
 
   saveButton: {
     border: "none",
     borderRadius: 999,
-    padding: "12px 22px",
+    padding: "11px 22px",
     background: "#16a34a",
     color: "#ffffff",
-    fontWeight: 800,
-    fontSize: "0.98rem",
+    fontWeight: 900,
+    fontSize: "0.92rem",
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
   },
