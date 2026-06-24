@@ -1258,7 +1258,7 @@ const styles: Record<string, React.CSSProperties> = {
   profileAvatarScaledBody: {
     position: "absolute",
     left: "50%",
-    top: -36,
+    top: -26,
     width: 330,
     height: 520,
     transform: "translateX(-50%) scale(1.06)",
