@@ -626,8 +626,8 @@ export default function ProfilePage() {
                 <div style={styles.avatarTextWrap}>
                   <p style={styles.avatarName}>{avatarDisplayName} avatar</p>
                   <p style={styles.cardText}>
-                    This is your saved YanBo avatar. The same avatar can now be
-                    reused on your home page and other portal pages later.
+                    This is your saved YanBo avatar portrait. The same avatar can
+                    now be reused on your home page and other portal pages later.
                   </p>
 
                   <Link href="/avatar" style={styles.avatarButton}>
@@ -1220,11 +1220,11 @@ const styles: Record<string, React.CSSProperties> = {
 
   profileAvatarStage: {
     position: "relative",
-    width: 178,
-    height: 222,
-    minWidth: 178,
+    width: 214,
+    height: 214,
+    minWidth: 214,
     overflow: "hidden",
-    borderRadius: 28,
+    borderRadius: "9999px",
     background: "linear-gradient(180deg, #ffffff, #eff6ff)",
     border: "6px solid #ffffff",
     outline: "4px solid #d1fae5",
@@ -1246,8 +1246,8 @@ const styles: Record<string, React.CSSProperties> = {
 
   profileAvatarGroundShadow: {
     position: "absolute",
-    left: 38,
-    right: 38,
+    left: 46,
+    right: 46,
     bottom: 18,
     height: 22,
     borderRadius: "50%",
@@ -1258,10 +1258,10 @@ const styles: Record<string, React.CSSProperties> = {
   profileAvatarScaledBody: {
     position: "absolute",
     left: "50%",
-    top: 12,
+    top: -4,
     width: 330,
     height: 520,
-    transform: "translateX(-50%) scale(0.38)",
+    transform: "translateX(-50%) scale(0.52)",
     transformOrigin: "top center",
   },
 
