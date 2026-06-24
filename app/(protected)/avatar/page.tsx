@@ -585,6 +585,14 @@ function getPreviewLayerImageSources(
     ])
   }
 
+  if (slot === "badge") {
+    return uniqueImageSources([
+      `/avatars/builder/${folder}/${fileName}.png`,
+      item?.image_url,
+      `/avatars/items/${fileName}.png`,
+    ])
+  }
+
   return uniqueImageSources([
     `/avatars/builder/${folder}/${base}/${fileName}.png`,
     `/avatars/builder/${folder}/${fileName}.png`,
