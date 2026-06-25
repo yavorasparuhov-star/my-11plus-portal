@@ -39,6 +39,8 @@ type HeaderProfile = {
   email: string
 }
 
+const HEADER_YELLOW = "#facc15"
+
 function NavText({
   icon,
   label,
@@ -285,7 +287,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     borderBottom: isActivePath(path)
       ? "2px solid #facc15"
       : "2px solid transparent",
-    color: "#ffffff",
+    color: HEADER_YELLOW,
     fontWeight: isActivePath(path) ? 800 : 700,
     backgroundColor: "transparent",
     padding: "8px 6px",
@@ -387,7 +389,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             <span
               style={{
                 fontSize: "12px",
-                color: "rgba(255,255,255,0.86)",
+                color: HEADER_YELLOW,
                 fontWeight: 800,
               }}
             >
