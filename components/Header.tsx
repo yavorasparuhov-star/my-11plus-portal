@@ -17,6 +17,13 @@ import {
   VRIcon,
 } from "./icons/PortalIcons"
 import { supabase } from "../lib/supabaseClient"
+import {
+  StudentAvatarPortrait,
+  defaultAvatar,
+  normaliseAvatarConfig,
+  normaliseAvatarName,
+  type AvatarConfig,
+} from "./avatar/StudentAvatarPortrait"
 
 type HeaderProps = {
   user?: any
@@ -70,6 +77,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     first_name: "",
     email: "",
   })
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("")
 
   useEffect(() => {
     setMenuOpen(false)
@@ -110,14 +119,26 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     }
 
     async function loadProfile(userToLoad: any) {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("plan, nickname, first_name, email")
-        .eq("id", userToLoad.id)
-        .maybeSingle()
+      const [{ data, error }, { data: avatarData, error: avatarError }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("plan, nickname, first_name, email")
+            .eq("id", userToLoad.id)
+            .maybeSingle(),
+          supabase
+            .from("student_avatars")
+            .select("avatar_config, avatar_name")
+            .eq("user_id", userToLoad.id)
+            .maybeSingle(),
+        ])
 
       if (error) {
         console.error("Error loading header profile:", error)
+      }
+
+      if (avatarError) {
+        console.error("Error loading header avatar:", avatarError)
       }
 
       if (!mounted) return
@@ -132,6 +153,15 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         first_name: data?.first_name || "",
         email: data?.email || userToLoad.email || "",
       })
+
+      setAvatarConfig(
+        avatarData?.avatar_config
+          ? normaliseAvatarConfig(
+              avatarData.avatar_config as Record<string, unknown>,
+            )
+          : defaultAvatar,
+      )
+      setAvatarName(normaliseAvatarName(avatarData?.avatar_name))
     }
 
     async function loadUserAndProfile(sessionUser?: any) {
@@ -171,6 +201,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             first_name: "",
             email: "",
           })
+          setAvatarConfig(defaultAvatar)
+          setAvatarName("")
           setLoadingUser(false)
           return
         }
@@ -192,6 +224,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           first_name: "",
           email: "",
         })
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("")
         setLoadingUser(false)
       }
     }
@@ -240,6 +274,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
       first_name: "",
       email: "",
     })
+    setAvatarConfig(defaultAvatar)
+    setAvatarName("")
 
     router.replace("/login")
     router.refresh()
@@ -272,13 +308,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     activeUser?.email ||
     "Profile"
 
-  const initial = (
-    profile.nickname?.[0] ||
-    profile.first_name?.[0] ||
-    profile.email?.[0] ||
-    activeUser?.email?.[0] ||
-    "U"
-  ).toUpperCase()
+  const avatarDisplayName = avatarName || displayName
 
   const planBadgeText =
     plan === "admin"
@@ -495,22 +525,29 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   aria-label="Open profile menu"
                   title={displayName}
                   style={{
-                    width: "38px",
-                    height: "38px",
+                    width: "48px",
+                    height: "48px",
                     borderRadius: "50%",
-                    border: "2px solid rgba(6,95,70,0.18)",
-                    background: "white",
-                    color: "#065f46",
+                    border: "none",
+                    background: "transparent",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontWeight: 900,
-                    fontSize: "16px",
+                    padding: 0,
                     cursor: "pointer",
-                    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
                   }}
                 >
-                  {initial}
+                  <StudentAvatarPortrait
+                    config={avatarConfig}
+                    name={avatarDisplayName}
+                    size={42}
+                    borderWidth={2}
+                    ariaLabel={`${avatarDisplayName} avatar`}
+                    style={{
+                      outline: "2px solid rgba(6,95,70,0.18)",
+                      boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+                    }}
+                  />
                 </button>
 
                 {profileMenuOpen && (
@@ -832,24 +869,18 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     gap: "10px",
                   }}
                 >
-                  <div
+                  <StudentAvatarPortrait
+                    config={avatarConfig}
+                    name={avatarDisplayName}
+                    size={38}
+                    borderWidth={2}
+                    ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
-                      width: "34px",
-                      height: "34px",
-                      borderRadius: "50%",
-                      background: "white",
-                      color: "#065f46",
-                      border: "2px solid rgba(6,95,70,0.18)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 900,
-                      fontSize: "14px",
                       flexShrink: 0,
+                      outline: "2px solid rgba(6,95,70,0.18)",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                     }}
-                  >
-                    {initial}
-                  </div>
+                  />
 
                   <span
                     title={displayName}
