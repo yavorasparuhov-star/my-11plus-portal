@@ -501,19 +501,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           {loadingUser ? null : activeUser ? (
             <>
               <div
-                style={{
-                  ...planBadgeStyle,
-                  padding: "7px 12px",
-                  borderRadius: "999px",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {planBadgeText}
-              </div>
-
-              <div
                 ref={dropdownRef}
                 style={{
                   position: "relative",
@@ -522,31 +509,39 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  aria-label="Open profile menu"
+                  aria-label="Open YanBo Portal menu"
                   title={displayName}
                   style={{
-                    width: "48px",
-                    height: "48px",
-                    borderRadius: "50%",
-                    border: "none",
-                    background: "transparent",
-                    display: "flex",
+                    minHeight: "42px",
+                    borderRadius: "999px",
+                    border: "2px solid #eab308",
+                    background: "#facc15",
+                    color: "#111827",
+                    display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: 0,
+                    gap: "10px",
+                    padding: "4px 5px 4px 16px",
                     cursor: "pointer",
+                    boxShadow: "0 8px 18px rgba(234,179,8,0.22)",
+                    fontWeight: 900,
+                    fontSize: "14px",
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
                   }}
                 >
+                  <span>YanBo Portal</span>
+
                   <StudentAvatarPortrait
                     config={avatarConfig}
                     name={avatarDisplayName}
-                    size={42}
+                    size={34}
                     borderWidth={2}
                     displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
-                      outline: "2px solid rgba(6,95,70,0.18)",
-                      boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+                      outline: "2px solid rgba(255,255,255,0.92)",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.16)",
                     }}
                   />
                 </button>
@@ -556,11 +551,11 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     style={{
                       position: "absolute",
                       right: 0,
-                      top: "48px",
-                      width: "230px",
+                      top: "50px",
+                      width: "270px",
                       background: "white",
                       border: "1px solid #e5e7eb",
-                      borderRadius: "16px",
+                      borderRadius: "18px",
                       boxShadow: "0 18px 38px rgba(0,0,0,0.14)",
                       padding: "10px",
                       zIndex: 2000,
@@ -604,16 +599,42 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
+                        gap: "10px",
                         textDecoration: "none",
                         color: "#1f2937",
-                        fontWeight: 700,
-                        padding: "10px 12px",
-                        borderRadius: "12px",
+                        fontWeight: 800,
+                        padding: "11px 12px",
+                        borderRadius: "14px",
+                        background: "#f9fafb",
+                        border: "1px solid #e5e7eb",
+                        marginBottom: "8px",
                       }}
                     >
                       <ProfileIcon />
-                      <span>Profile</span>
+
+                      <span
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                          minWidth: 0,
+                        }}
+                      >
+                        <span>Profile & membership</span>
+
+                        <span
+                          style={{
+                            ...planBadgeStyle,
+                            width: "fit-content",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
+                            fontSize: "11px",
+                            fontWeight: 900,
+                          }}
+                        >
+                          {planBadgeText}
+                        </span>
+                      </span>
                     </Link>
 
                     <Link
@@ -653,11 +674,34 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       }}
                     >
                       <LogoutIcon />
-                      <span>Logout</span>
+                      <span>Log out</span>
                     </button>
                   </div>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={handleLogoutClick}
+                style={{
+                  border: "1px solid #fecaca",
+                  background: "#fff7f7",
+                  color: "#b91c1c",
+                  borderRadius: "999px",
+                  padding: "10px 14px",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 6px 14px rgba(185,28,28,0.08)",
+                }}
+              >
+                <LogoutIcon />
+                <span>Log out</span>
+              </button>
             </>
           ) : (
             <>
@@ -850,24 +894,21 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   gap: "12px",
                 }}
               >
-                <div
-                  style={{
-                    ...planBadgeStyle,
-                    padding: "7px 12px",
-                    borderRadius: "999px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    width: "fit-content",
-                  }}
-                >
-                  {planBadgeText}
-                </div>
-
-                <div
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
+                    textDecoration: "none",
+                    color: "#1f2937",
+                    background: "#facc15",
+                    border: "2px solid #eab308",
+                    borderRadius: "999px",
+                    padding: "5px 12px 5px 5px",
+                    width: "fit-content",
+                    maxWidth: "100%",
                   }}
                 >
                   <StudentAvatarPortrait
@@ -879,25 +920,46 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
                       flexShrink: 0,
-                      outline: "2px solid rgba(6,95,70,0.18)",
-                      boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                      outline: "2px solid rgba(255,255,255,0.92)",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
                     }}
                   />
 
                   <span
-                    title={displayName}
                     style={{
-                      fontSize: "14px",
-                      color: "#1f2937",
-                      fontWeight: 700,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "2px",
+                      minWidth: 0,
                     }}
                   >
-                    {displayName}
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: 900,
+                        color: "#111827",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      YanBo Portal
+                    </span>
+
+                    <span
+                      title={displayName}
+                      style={{
+                        fontSize: "12px",
+                        color: "#374151",
+                        fontWeight: 800,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "190px",
+                      }}
+                    >
+                      {displayName} · {planBadgeText}
+                    </span>
                   </span>
-                </div>
+                </Link>
 
                 <button
                   onClick={handleLogoutClick}
@@ -916,7 +978,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   }}
                 >
                   <LogoutIcon />
-                  <span>Logout</span>
+                  <span>Log out</span>
                 </button>
               </div>
             )}
