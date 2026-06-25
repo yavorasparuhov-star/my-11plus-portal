@@ -301,8 +301,8 @@ export default function HomePage() {
   const [avatarLoading, setAvatarLoading] = useState(true)
   const [claimingDailyCoins, setClaimingDailyCoins] = useState(false)
   const [dailyCoinsClaimed, setDailyCoinsClaimed] = useState(false)
-  const [dailyCoinMessage, setDailyCoinMessage] = useState<string | null>(null)
-  const [dailyCoinError, setDailyCoinError] = useState<string | null>(null)
+  const [dailyCoinMessage, setDailyCoinMessage] = useState<React.ReactNode | null>(null)
+  const [dailyCoinError, setDailyCoinError] = useState<React.ReactNode | null>(null)
 
   useEffect(() => {
     loadHomeAvatar()
@@ -379,7 +379,6 @@ export default function HomePage() {
   const learningTools = [
     {
       title: "Custom Tests",
-      badge: "Premium Practice",
       icon: <CustomTestsIcon size={42} />,
       text: "Create focused tests by subject, topic, difficulty and time limit to match your child’s current goals.",
       button: "Build test",
@@ -387,7 +386,6 @@ export default function HomePage() {
     },
     {
       title: "Track Progress",
-      badge: "Premium Insights",
       icon: <ProgressIcon size={42} />,
       text: "Monitor recent scores, success rates and improvement trends so practice stays targeted.",
       button: "View progress",
@@ -395,7 +393,6 @@ export default function HomePage() {
     },
     {
       title: "Review Mistakes",
-      badge: "Premium Review",
       icon: <ReviewIcon size={42} />,
       text: "Revisit previous mistakes and strengthen weaker topics until they are fully mastered.",
       button: "Open review",
@@ -422,7 +419,11 @@ export default function HomePage() {
       } = await supabase.auth.getSession()
 
       if (sessionError || !session?.access_token) {
-        setDailyCoinError("You need to be logged in to claim YanBo Coins.")
+        setDailyCoinError(
+          <>
+            You need to be logged in to claim <YanBoWord /> Coins.
+          </>,
+        )
         setClaimingDailyCoins(false)
         return
       }
@@ -437,7 +438,13 @@ export default function HomePage() {
       const result = (await response.json().catch(() => ({}))) as DailyLoginResult
 
       if (!response.ok) {
-        setDailyCoinError(result.error || "Could not claim today’s YanBo Coins.")
+        setDailyCoinError(
+          result.error || (
+            <>
+              Could not claim today’s <YanBoWord /> Coins.
+            </>
+          ),
+        )
         setClaimingDailyCoins(false)
         return
       }
@@ -445,16 +452,28 @@ export default function HomePage() {
       if (result.awarded) {
         const amount = result.amount ?? 3
         setDailyCoinsClaimed(true)
-        setDailyCoinMessage(`Great job! You collected ${amount} YanBo Coins.`)
+        setDailyCoinMessage(
+          <>
+            Great job! You collected {amount} <YanBoWord /> Coins.
+          </>,
+        )
       } else {
         setDailyCoinsClaimed(true)
-        setDailyCoinMessage("Daily YanBo Coins already collected today.")
+        setDailyCoinMessage(
+          <>
+            Daily <YanBoWord /> Coins already collected today.
+          </>,
+        )
       }
     } catch (error) {
       setDailyCoinError(
         error instanceof Error
           ? error.message
-          : "Could not claim today’s YanBo Coins.",
+          : (
+              <>
+                Could not claim today’s <YanBoWord /> Coins.
+              </>
+            ),
       )
     }
 
@@ -470,7 +489,7 @@ export default function HomePage() {
             <HomeAvatarPreview
               config={avatarConfig}
               imageSources={avatarImages}
-              buddyName={avatarName || "My YanBo buddy"}
+              buddyName={avatarName || "My learning buddy"}
             />
           </div>
 
@@ -489,9 +508,16 @@ export default function HomePage() {
 
               <div style={styles.dailyCoinsBubbleBlock}>
                 <p style={styles.dailyCoinsBubbleText}>
-                  {dailyCoinsClaimed
-                    ? "You have collected today’s YanBo Coins. Come back tomorrow for more."
-                    : "Collect your daily YanBo Coins before you start."}
+                  {dailyCoinsClaimed ? (
+                    <>
+                      You have collected today’s <YanBoWord /> Coins. Come back
+                      tomorrow for more.
+                    </>
+                  ) : (
+                    <>
+                      Collect your daily <YanBoWord /> Coins before you start.
+                    </>
+                  )}
                 </p>
 
                 <button
@@ -573,9 +599,10 @@ export default function HomePage() {
               onMouseEnter={(e) => handleCardHover(e, true)}
               onMouseLeave={(e) => handleCardHover(e, false)}
             >
-              <div style={styles.icon}>{card.icon}</div>
-
-              <h2 style={styles.cardTitle}>{card.title}</h2>
+              <div style={styles.cardTitleRow}>
+                <div style={styles.icon}>{card.icon}</div>
+                <h2 style={styles.cardTitle}>{card.title}</h2>
+              </div>
 
               <p style={styles.cardText}>{card.text}</p>
 
@@ -612,12 +639,10 @@ export default function HomePage() {
               onMouseEnter={(e) => handleCardHover(e, true)}
               onMouseLeave={(e) => handleCardHover(e, false)}
             >
-              <div style={styles.toolTopRow}>
-                <span style={styles.toolBadge}>{tool.badge}</span>
+              <div style={styles.toolTitleRow}>
                 <span style={styles.toolIcon}>{tool.icon}</span>
+                <h3 style={styles.toolTitle}>{tool.title}</h3>
               </div>
-
-              <h3 style={styles.toolTitle}>{tool.title}</h3>
 
               <p style={styles.toolText}>{tool.text}</p>
 
@@ -635,7 +660,71 @@ export default function HomePage() {
         </div>
       </section>
 
+      <footer style={styles.footer}>
+        <div style={styles.footerGrid}>
+          <div style={styles.footerBrandColumn}>
+            <h2 style={styles.footerBrand}>
+              <YanBoWord /> Learning
+            </h2>
+            <p style={styles.footerDescription}>
+              11+ practice for English, Maths, Verbal Reasoning and Non-Verbal
+              Reasoning.
+            </p>
+          </div>
+
+          <div style={styles.footerColumn}>
+            <h3 style={styles.footerColumnTitle}>Practice</h3>
+            <Link href="/english" style={styles.footerLink}>
+              English
+            </Link>
+            <Link href="/math" style={styles.footerLink}>
+              Maths
+            </Link>
+            <Link href="/vr" style={styles.footerLink}>
+              Verbal Reasoning
+            </Link>
+            <Link href="/nvr" style={styles.footerLink}>
+              Non-Verbal Reasoning
+            </Link>
+            <Link href="/custom-tests" style={styles.footerLink}>
+              Custom Tests
+            </Link>
+          </div>
+
+          <div style={styles.footerColumn}>
+            <h3 style={styles.footerColumnTitle}>Support</h3>
+            <Link href="/pricing" style={styles.footerLink}>
+              Pricing
+            </Link>
+            <Link href="/about" style={styles.footerLink}>
+              About
+            </Link>
+            <Link href="/contact" style={styles.footerLink}>
+              Contact
+            </Link>
+            <Link href="/privacy-policy" style={styles.footerLink}>
+              Privacy Policy
+            </Link>
+            <Link href="/terms" style={styles.footerLink}>
+              Terms
+            </Link>
+          </div>
+        </div>
+
+        <div style={styles.footerBottom}>
+          © 2026 <YanBoWord /> Learning. All rights reserved.
+        </div>
+      </footer>
     </div>
+  )
+}
+
+function YanBoWord() {
+  return (
+    <span style={styles.yanboWord}>
+      <span style={styles.yanboY}>Y</span>an
+      <span style={styles.yanboB}>B</span>o
+    </span>
   )
 }
 
@@ -1334,6 +1423,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#fde047",
   },
 
+  yanboWord: {
+    whiteSpace: "nowrap",
+    fontWeight: 950,
+  },
+
   section: {
     marginBottom: "56px",
   },
@@ -1372,25 +1466,33 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
+    alignItems: "stretch",
     border: "1px solid #e5e7eb",
   },
 
+  cardTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+    marginBottom: "14px",
+  },
+
   icon: {
-    width: "70px",
-    height: "70px",
-    borderRadius: "22px",
+    width: "54px",
+    height: "54px",
+    borderRadius: "18px",
     background: "#f8fafc",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: "16px",
+    flexShrink: 0,
     boxShadow: "inset 0 0 0 1px #e5e7eb",
   },
 
   cardTitle: {
     fontSize: "24px",
-    marginBottom: "10px",
+    margin: 0,
     color: "#111827",
   },
 
@@ -1430,37 +1532,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
   },
 
-  toolTopRow: {
+  toolTitleRow: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "18px",
-  },
-
-  toolBadge: {
-    display: "inline-block",
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "7px 12px",
-    borderRadius: "999px",
-    fontSize: "13px",
-    fontWeight: 800,
+    gap: "12px",
+    marginBottom: "16px",
   },
 
   toolIcon: {
-    width: "60px",
-    height: "60px",
-    borderRadius: "20px",
+    width: "56px",
+    height: "56px",
+    borderRadius: "18px",
     background: "#f8fafc",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
     boxShadow: "inset 0 0 0 1px #e5e7eb",
   },
 
   toolTitle: {
     fontSize: "24px",
-    margin: "0 0 10px",
+    margin: 0,
     color: "#111827",
     fontWeight: 800,
   },
@@ -1483,6 +1576,71 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 800,
     fontSize: "16px",
     width: "100%",
+  },
+
+  footer: {
+    marginTop: "16px",
+    padding: "34px 28px 24px",
+    borderRadius: "28px",
+    background: "#064e3b",
+    color: "#ffffff",
+    boxShadow: "0 14px 34px rgba(6, 78, 59, 0.18)",
+  },
+
+  footerGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: "28px",
+    alignItems: "start",
+  },
+
+  footerBrandColumn: {
+    maxWidth: 390,
+  },
+
+  footerBrand: {
+    margin: "0 0 10px",
+    fontSize: "1.45rem",
+    fontWeight: 950,
+    lineHeight: 1.1,
+  },
+
+  footerDescription: {
+    margin: 0,
+    color: "#d1fae5",
+    fontSize: "0.98rem",
+    lineHeight: 1.65,
+    fontWeight: 650,
+  },
+
+  footerColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+
+  footerColumnTitle: {
+    margin: "0 0 4px",
+    color: "#ffffff",
+    fontSize: "0.95rem",
+    fontWeight: 950,
+  },
+
+  footerLink: {
+    color: "#d1fae5",
+    textDecoration: "none",
+    fontSize: "0.94rem",
+    fontWeight: 750,
+    lineHeight: 1.35,
+  },
+
+  footerBottom: {
+    marginTop: "26px",
+    paddingTop: "18px",
+    borderTop: "1px solid rgba(209, 250, 229, 0.24)",
+    color: "#bbf7d0",
+    fontSize: "0.88rem",
+    fontWeight: 750,
   },
 
 }
