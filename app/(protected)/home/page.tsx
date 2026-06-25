@@ -457,7 +457,7 @@ export default function HomePage() {
 
           <div style={styles.footerColumn}>
             <h3 style={styles.footerColumnTitle}>Support</h3>
-            <Link href="/pricing" style={styles.footerLink}>
+            <Link href="/#pricing" style={styles.footerLink}>
               Pricing
             </Link>
             <Link href="/about" style={styles.footerLink}>
