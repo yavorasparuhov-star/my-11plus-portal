@@ -70,7 +70,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
   const [loadingUser, setLoadingUser] = useState(!propUser)
-  const [plan, setPlan] = useState<UserPlan>("guest")
   const [profile, setProfile] = useState<HeaderProfile>({
     plan: "guest",
     nickname: "",
@@ -145,8 +144,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
       const safePlan = normalisePlan(data?.plan)
 
-      setPlan(safePlan)
-
       setProfile({
         plan: safePlan,
         nickname: data?.nickname || "",
@@ -194,7 +191,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         setCurrentUser(sessionUserFromClient)
 
         if (!sessionUserFromClient) {
-          setPlan("guest")
           setProfile({
             plan: "guest",
             nickname: "",
@@ -217,7 +213,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         if (!mounted) return
 
         setCurrentUser(null)
-        setPlan("guest")
         setProfile({
           plan: "guest",
           nickname: "",
@@ -267,7 +262,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     await supabase.auth.signOut()
 
     setCurrentUser(null)
-    setPlan("guest")
     setProfile({
       plan: "guest",
       nickname: "",
@@ -289,10 +283,10 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
     borderBottom: isActivePath(path)
-      ? "2px solid #065f46"
+      ? "2px solid #facc15"
       : "2px solid transparent",
-    color: isActivePath(path) ? "#065f46" : "#1f2937",
-    fontWeight: isActivePath(path) ? 700 : 500,
+    color: "#ffffff",
+    fontWeight: isActivePath(path) ? 800 : 700,
     backgroundColor: "transparent",
     padding: "8px 6px",
     borderRadius: "0",
@@ -310,52 +304,16 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
 
   const avatarDisplayName = avatarName || displayName
 
-  const planBadgeText =
-    plan === "admin"
-      ? "Admin"
-      : plan === "monthly"
-        ? "Monthly"
-        : plan === "annual"
-          ? "Annual"
-          : plan === "free"
-            ? "Free"
-            : "Guest"
-
-  const planBadgeStyle: React.CSSProperties =
-    plan === "admin"
-      ? {
-          background: "#fef3c7",
-          color: "#92400e",
-          border: "1px solid #fcd34d",
-        }
-      : plan === "monthly" || plan === "annual"
-        ? {
-            background: "#dcfce7",
-            color: "#166534",
-            border: "1px solid #86efac",
-          }
-        : plan === "free"
-          ? {
-              background: "#eef2ff",
-              color: "#3730a3",
-              border: "1px solid #c7d2fe",
-            }
-          : {
-              background: "#f3f4f6",
-              color: "#374151",
-              border: "1px solid #d1d5db",
-            }
-
   return (
     <div
       style={{
         position: "sticky",
         top: 0,
         zIndex: 1000,
-        background: "rgba(212, 245, 208, 0.92)",
+        background: "#064e3b",
         backdropFilter: "blur(10px)",
-        borderBottom: "1px solid rgba(6, 95, 70, 0.12)",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.16)",
+        boxShadow: "0 8px 22px rgba(6, 78, 59, 0.28)",
       }}
     >
       <div
@@ -416,20 +374,20 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               style={{
                 fontSize: "18px",
                 fontWeight: 900,
-                color: "#111827",
+                color: "#ffffff",
                 letterSpacing: "-0.02em",
               }}
             >
               <span style={{ color: "#ec4899" }}>Y</span>
               an
-              <span style={{ color: "#eab308" }}>B</span>
+              <span style={{ color: "#facc15" }}>B</span>
               o Learning
             </span>
 
             <span
               style={{
                 fontSize: "12px",
-                color: "#111827",
+                color: "rgba(255,255,255,0.82)",
                 fontWeight: 700,
               }}
             >
@@ -530,7 +488,12 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  <span>YanBo Portal</span>
+                  <span>
+                    <span style={{ color: "#ec4899" }}>Y</span>
+                    <span style={{ color: "#064e3b" }}>an</span>
+                    <span style={{ color: "#ffffff" }}>B</span>
+                    <span style={{ color: "#064e3b" }}>o Portal</span>
+                  </span>
 
                   <StudentAvatarPortrait
                     config={avatarConfig}
@@ -599,42 +562,16 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        gap: "8px",
                         textDecoration: "none",
                         color: "#1f2937",
-                        fontWeight: 800,
-                        padding: "11px 12px",
-                        borderRadius: "14px",
-                        background: "#f9fafb",
-                        border: "1px solid #e5e7eb",
-                        marginBottom: "8px",
+                        fontWeight: 700,
+                        padding: "10px 12px",
+                        borderRadius: "12px",
                       }}
                     >
                       <ProfileIcon />
-
-                      <span
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "4px",
-                          minWidth: 0,
-                        }}
-                      >
-                        <span>Profile & membership</span>
-
-                        <span
-                          style={{
-                            ...planBadgeStyle,
-                            width: "fit-content",
-                            padding: "4px 8px",
-                            borderRadius: "999px",
-                            fontSize: "11px",
-                            fontWeight: 900,
-                          }}
-                        >
-                          {planBadgeText}
-                        </span>
-                      </span>
+                      <span>Membership & profile</span>
                     </Link>
 
                     <Link
@@ -679,29 +616,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   </div>
                 )}
               </div>
-
-              <button
-                type="button"
-                onClick={handleLogoutClick}
-                style={{
-                  border: "1px solid #fecaca",
-                  background: "#fff7f7",
-                  color: "#b91c1c",
-                  borderRadius: "999px",
-                  padding: "10px 14px",
-                  cursor: "pointer",
-                  fontWeight: 900,
-                  fontSize: "14px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "7px",
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 6px 14px rgba(185,28,28,0.08)",
-                }}
-              >
-                <LogoutIcon />
-                <span>Log out</span>
-              </button>
             </>
           ) : (
             <>
@@ -937,11 +851,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       style={{
                         fontSize: "14px",
                         fontWeight: 900,
-                        color: "#111827",
                         whiteSpace: "nowrap",
                       }}
                     >
-                      YanBo Portal
+                      <span style={{ color: "#ec4899" }}>Y</span>
+                      <span style={{ color: "#064e3b" }}>an</span>
+                      <span style={{ color: "#ffffff" }}>B</span>
+                      <span style={{ color: "#064e3b" }}>o Portal</span>
                     </span>
 
                     <span
@@ -956,7 +872,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                         maxWidth: "190px",
                       }}
                     >
-                      {displayName} · {planBadgeText}
+                      {displayName}
                     </span>
                   </span>
                 </Link>
