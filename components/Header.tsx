@@ -351,8 +351,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             }}
           >
             <Image
-              src="/logo.png"
-              alt="YanBo Learning logo"
+              src="/yanbo-shield-logo.png"
+              alt="YanBo Practice Portal logo"
               width={58}
               height={58}
               priority
@@ -489,6 +489,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   }}
                 >
                   <span>
+                    <span style={{ color: "#064e3b" }}>my</span>
                     <span style={{ color: "#ec4899" }}>Y</span>
                     <span style={{ color: "#064e3b" }}>an</span>
                     <span style={{ color: "#ffffff" }}>B</span>
@@ -855,6 +856,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                         whiteSpace: "nowrap",
                       }}
                     >
+                      <span style={{ color: "#064e3b" }}>my</span>
                       <span style={{ color: "#ec4899" }}>Y</span>
                       <span style={{ color: "#064e3b" }}>an</span>
                       <span style={{ color: "#ffffff" }}>B</span>
