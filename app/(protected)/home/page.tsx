@@ -470,11 +470,8 @@ export default function HomePage() {
             <HomeAvatarPreview
               config={avatarConfig}
               imageSources={avatarImages}
+              buddyName={avatarName || "My YanBo buddy"}
             />
-
-            <p style={styles.avatarBuddyName}>
-              {avatarName || "My YanBo buddy"}
-            </p>
           </div>
 
           <div style={styles.heroContent}>
@@ -508,11 +505,21 @@ export default function HomePage() {
                     ...(dailyCoinsClaimed ? styles.dailyCoinsButtonDone : {}),
                   }}
                 >
-                  {claimingDailyCoins
-                    ? "Checking..."
-                    : dailyCoinsClaimed
-                      ? "Collected today ✓"
-                      : "Collect daily coins"}
+                  <span style={styles.coinBagIcon}>
+                    {dailyCoinsClaimed ? "✅" : "💰"}
+                  </span>
+
+                  <span style={styles.dailyCoinsButtonText}>
+                    {claimingDailyCoins
+                      ? "Checking..."
+                      : dailyCoinsClaimed
+                        ? "Collected today"
+                        : "Collect daily coins"}
+                  </span>
+
+                  {!dailyCoinsClaimed && (
+                    <span style={styles.coinSparkle}>+3</span>
+                  )}
                 </button>
 
                 {dailyCoinMessage && (
@@ -659,9 +666,11 @@ export default function HomePage() {
 function HomeAvatarPreview({
   config,
   imageSources,
+  buddyName,
 }: {
   config: AvatarConfig
   imageSources: AvatarImageSources
+  buddyName: string
 }) {
   const builderEyeSources = builderOnlySources(imageSources.eyes)
   const builderGlassesSources = builderOnlySources(imageSources.glasses)
@@ -738,6 +747,29 @@ function HomeAvatarPreview({
           )}
         </div>
       </div>
+
+      <svg
+        viewBox="0 0 222 222"
+        aria-hidden="true"
+        style={styles.avatarNameArcSvg}
+      >
+        <defs>
+          <path
+            id="homeAvatarNameArc"
+            d="M 38 166 Q 111 210 184 166"
+          />
+        </defs>
+
+        <text style={styles.avatarNameArcText}>
+          <textPath
+            href="#homeAvatarNameArc"
+            startOffset="50%"
+            textAnchor="middle"
+          >
+            {buddyName}
+          </textPath>
+        </text>
+      </svg>
     </div>
   )
 }
@@ -821,17 +853,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: "12px",
-  },
-
-  avatarBuddyName: {
-    margin: 0,
-    color: "#064e3b",
-    fontSize: "1.05rem",
-    fontWeight: 900,
-    textAlign: "center",
-    maxWidth: 220,
-    wordBreak: "break-word",
   },
 
   heroContent: {
@@ -929,23 +950,65 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   dailyCoinsButton: {
-    border: "none",
-    borderRadius: "999px",
-    padding: "11px 18px",
-    background: "#16a34a",
-    color: "#ffffff",
-    fontWeight: 900,
+    position: "relative",
+    border: "2px solid #b45309",
+    borderRadius: "22px",
+    padding: "9px 14px 9px 10px",
+    background:
+      "linear-gradient(135deg, #fef3c7 0%, #fbbf24 42%, #d97706 100%)",
+    color: "#78350f",
+    fontWeight: 950,
     fontSize: "0.92rem",
     cursor: "pointer",
-    boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
+    boxShadow:
+      "0 8px 0 #92400e, 0 14px 24px rgba(146, 64, 14, 0.22)",
     whiteSpace: "nowrap",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
   },
 
   dailyCoinsButtonDone: {
-    background: "#bbf7d0",
+    background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
+    border: "2px solid #16a34a",
     color: "#166534",
     cursor: "default",
-    boxShadow: "none",
+    boxShadow: "0 8px 0 #15803d, 0 14px 24px rgba(22, 163, 74, 0.16)",
+  },
+
+  coinBagIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: "50%",
+    background: "rgba(255, 255, 255, 0.68)",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "1.35rem",
+    boxShadow: "inset 0 0 0 1px rgba(120, 53, 15, 0.14)",
+  },
+
+  dailyCoinsButtonText: {
+    display: "inline-block",
+    transform: "translateY(-1px)",
+  },
+
+  coinSparkle: {
+    position: "absolute",
+    right: -9,
+    top: -11,
+    minWidth: 30,
+    height: 30,
+    borderRadius: "50%",
+    background: "#fde047",
+    color: "#854d0e",
+    border: "2px solid #ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "0.76rem",
+    fontWeight: 950,
+    boxShadow: "0 7px 14px rgba(146, 64, 14, 0.22)",
   },
 
   dailyCoinMessage: {
@@ -1040,6 +1103,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "7px solid #ffffff",
     outline: "4px solid #d1fae5",
     boxShadow: "0 18px 34px rgba(15, 23, 42, 0.15)",
+  },
+
+  avatarNameArcSvg: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 80,
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none",
+  },
+
+  avatarNameArcText: {
+    fill: "#064e3b",
+    fontSize: "15px",
+    fontWeight: 950,
+    letterSpacing: "0.04em",
+    paintOrder: "stroke",
+    stroke: "#ffffff",
+    strokeWidth: 4,
+    strokeLinejoin: "round",
   },
 
   homeAvatarBackgroundImage: {
