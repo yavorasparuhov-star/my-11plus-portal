@@ -475,8 +475,6 @@ export default function HomePage() {
           </div>
 
           <div style={styles.heroContent}>
-            <div style={styles.heroBadge}>Member dashboard</div>
-
             <h1 style={styles.title}>Welcome back!</h1>
 
             <p style={styles.subtitle}>Ready for today’s learning adventure?</p>
@@ -500,26 +498,34 @@ export default function HomePage() {
                   type="button"
                   onClick={claimDailyCoins}
                   disabled={claimingDailyCoins || dailyCoinsClaimed}
+                  aria-label={
+                    dailyCoinsClaimed
+                      ? "Daily YanBo Coins collected today"
+                      : "Collect daily YanBo Coins"
+                  }
+                  title={
+                    dailyCoinsClaimed
+                      ? "Daily YanBo Coins collected today"
+                      : "Collect daily YanBo Coins"
+                  }
                   style={{
                     ...styles.dailyCoinsButton,
                     ...(dailyCoinsClaimed ? styles.dailyCoinsButtonDone : {}),
                   }}
                 >
-                  <span style={styles.coinBagIcon}>
-                    {dailyCoinsClaimed ? "✅" : "💰"}
-                  </span>
+                  <CoinBagClaimImage collected={dailyCoinsClaimed} />
 
-                  <span style={styles.dailyCoinsButtonText}>
+                  {!dailyCoinsClaimed && (
+                    <span style={styles.coinSparkle}>+3</span>
+                  )}
+
+                  <span style={styles.dailyCoinsButtonCaption}>
                     {claimingDailyCoins
                       ? "Checking..."
                       : dailyCoinsClaimed
                         ? "Collected today"
                         : "Collect daily coins"}
                   </span>
-
-                  {!dailyCoinsClaimed && (
-                    <span style={styles.coinSparkle}>+3</span>
-                  )}
                 </button>
 
                 {dailyCoinMessage && (
@@ -544,21 +550,6 @@ export default function HomePage() {
               )}
             </div>
 
-            <div style={styles.heroActions}>
-              <button
-                style={styles.primaryButton}
-                onClick={() => router.push("/custom-tests")}
-              >
-                Build a custom test
-              </button>
-
-              <button
-                style={styles.secondaryButton}
-                onClick={() => router.push("/progress")}
-              >
-                View progress
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -644,21 +635,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* STUDY TIP */}
-      <section style={styles.tipSection}>
-        <div style={styles.tipCard}>
-          <div style={styles.tipIcon}>💡</div>
-
-          <div>
-            <h2 style={styles.tipTitle}>Today’s study idea</h2>
-            <p style={styles.tipText}>
-              Try one short practice session, then spend a few minutes reviewing
-              mistakes. Small regular sessions are better than rushing through
-              lots of questions at once.
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
@@ -756,7 +732,7 @@ function HomeAvatarPreview({
         <defs>
           <path
             id="homeAvatarNameArc"
-            d="M 38 166 Q 111 210 184 166"
+            d="M 28 190 Q 111 225 194 190"
           />
         </defs>
 
@@ -771,6 +747,112 @@ function HomeAvatarPreview({
         </text>
       </svg>
     </div>
+  )
+}
+
+function CoinBagClaimImage({ collected }: { collected: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 150 145"
+      role="img"
+      aria-hidden="true"
+      style={styles.coinBagSvg}
+    >
+      <defs>
+        <linearGradient id="coinBagBody" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#c47a2c" />
+          <stop offset="48%" stopColor="#9a5a22" />
+          <stop offset="100%" stopColor="#6f3d17" />
+        </linearGradient>
+
+        <linearGradient id="coinGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fff7ad" />
+          <stop offset="45%" stopColor="#facc15" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+
+        <filter id="coinBagShadow" x="-20%" y="-20%" width="140%" height="150%">
+          <feDropShadow
+            dx="0"
+            dy="7"
+            stdDeviation="5"
+            floodColor="#92400e"
+            floodOpacity="0.32"
+          />
+        </filter>
+      </defs>
+
+      <ellipse cx="75" cy="132" rx="47" ry="9" fill="rgba(146, 64, 14, 0.18)" />
+
+      <g filter="url(#coinBagShadow)">
+        <circle cx="51" cy="34" r="21" fill="url(#coinGold)" stroke="#b45309" strokeWidth="4" />
+        <circle cx="77" cy="27" r="24" fill="url(#coinGold)" stroke="#b45309" strokeWidth="4" />
+        <circle cx="100" cy="39" r="21" fill="url(#coinGold)" stroke="#b45309" strokeWidth="4" />
+
+        <text x="77" y="36" textAnchor="middle" fontSize="22" fontWeight="900" fill="#fff8c7" stroke="#b45309" strokeWidth="1">
+          Y
+        </text>
+
+        <path
+          d="M 40 45 C 29 56 25 76 24 96 C 22 122 42 134 75 134 C 108 134 128 122 126 96 C 125 76 121 56 110 45 C 97 53 53 53 40 45 Z"
+          fill="url(#coinBagBody)"
+          stroke="#6f3d17"
+          strokeWidth="5"
+          strokeLinejoin="round"
+        />
+
+        <path
+          d="M 39 55 C 57 63 93 63 111 55"
+          fill="none"
+          stroke="#f3c178"
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M 39 61 C 61 70 89 70 111 61"
+          fill="none"
+          stroke="#5b3214"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M 113 61 C 132 68 132 95 120 108"
+          fill="none"
+          stroke="#5b3214"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+
+        <path
+          d="M 103 61 C 122 70 123 91 113 104"
+          fill="none"
+          stroke="#c47a2c"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+
+        <circle cx="65" cy="91" r="16" fill="rgba(255, 255, 255, 0.08)" />
+        <text x="75" y="104" textAnchor="middle" fontSize="39" fontWeight="900" fill="#fef3c7" opacity="0.95">
+          $
+        </text>
+      </g>
+
+      {collected && (
+        <g>
+          <circle cx="116" cy="31" r="20" fill="#16a34a" stroke="#ffffff" strokeWidth="5" />
+          <path
+            d="M 106 31 L 113 38 L 127 23"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
+    </svg>
   )
 }
 
@@ -859,17 +941,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: 0,
   },
 
-  heroBadge: {
-    display: "inline-block",
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "8px 14px",
-    borderRadius: "999px",
-    fontSize: "14px",
-    fontWeight: 800,
-    marginBottom: "16px",
-  },
-
   title: {
     fontSize: "42px",
     margin: "0 0 12px",
@@ -936,7 +1007,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "14px",
     display: "flex",
     alignItems: "center",
-    gap: "12px",
+    gap: "16px",
     flexWrap: "wrap",
   },
 
@@ -951,52 +1022,46 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   dailyCoinsButton: {
     position: "relative",
-    border: "2px solid #b45309",
-    borderRadius: "22px",
-    padding: "9px 14px 9px 10px",
-    background:
-      "linear-gradient(135deg, #fef3c7 0%, #fbbf24 42%, #d97706 100%)",
+    border: "none",
+    padding: 0,
+    background: "transparent",
     color: "#78350f",
     fontWeight: 950,
-    fontSize: "0.92rem",
+    fontSize: "0.88rem",
     cursor: "pointer",
-    boxShadow:
-      "0 8px 0 #92400e, 0 14px 24px rgba(146, 64, 14, 0.22)",
-    whiteSpace: "nowrap",
     display: "inline-flex",
+    flexDirection: "column",
     alignItems: "center",
-    gap: "8px",
+    justifyContent: "center",
+    gap: "4px",
   },
 
   dailyCoinsButtonDone: {
-    background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
-    border: "2px solid #16a34a",
     color: "#166534",
     cursor: "default",
-    boxShadow: "0 8px 0 #15803d, 0 14px 24px rgba(22, 163, 74, 0.16)",
   },
 
-  coinBagIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: "50%",
-    background: "rgba(255, 255, 255, 0.68)",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1.35rem",
-    boxShadow: "inset 0 0 0 1px rgba(120, 53, 15, 0.14)",
+  coinBagSvg: {
+    width: 92,
+    height: 90,
+    display: "block",
+    transition: "transform 0.18s ease, filter 0.18s ease",
+    filter: "drop-shadow(0 9px 12px rgba(146, 64, 14, 0.22))",
   },
 
-  dailyCoinsButtonText: {
+  dailyCoinsButtonCaption: {
     display: "inline-block",
-    transform: "translateY(-1px)",
+    color: "#92400e",
+    fontSize: "0.78rem",
+    fontWeight: 950,
+    lineHeight: 1.1,
+    textAlign: "center",
   },
 
   coinSparkle: {
     position: "absolute",
-    right: -9,
-    top: -11,
+    right: 6,
+    top: 2,
     minWidth: 30,
     height: 30,
     borderRadius: "50%",
@@ -1061,37 +1126,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     whiteSpace: "nowrap",
   },
 
-  heroActions: {
-    display: "flex",
-    justifyContent: "flex-start",
-    gap: "14px",
-    flexWrap: "wrap",
-    marginTop: "22px",
-  },
-
-  primaryButton: {
-    padding: "13px 22px",
-    borderRadius: "999px",
-    border: "none",
-    background: "#16a34a",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: 900,
-    fontSize: "16px",
-    boxShadow: "0 10px 24px rgba(22,163,74,0.25)",
-  },
-
-  secondaryButton: {
-    padding: "13px 22px",
-    borderRadius: "999px",
-    border: "1px solid #bbf7d0",
-    background: "white",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 900,
-    fontSize: "16px",
-  },
-
   homeAvatarStage: {
     position: "relative",
     width: 222,
@@ -1116,7 +1150,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   avatarNameArcText: {
     fill: "#064e3b",
-    fontSize: "15px",
+    fontSize: "13px",
     fontWeight: 950,
     letterSpacing: "0.04em",
     paintOrder: "stroke",
@@ -1451,36 +1485,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
   },
 
-  tipSection: {
-    marginBottom: "20px",
-  },
-
-  tipCard: {
-    background: "#064e3b",
-    color: "white",
-    borderRadius: "26px",
-    padding: "28px",
-    boxShadow: "0 14px 34px rgba(6,78,59,0.22)",
-    display: "flex",
-    gap: "20px",
-    alignItems: "flex-start",
-  },
-
-  tipIcon: {
-    fontSize: "38px",
-    lineHeight: 1,
-  },
-
-  tipTitle: {
-    margin: "0 0 8px",
-    fontSize: "26px",
-    fontWeight: 800,
-  },
-
-  tipText: {
-    margin: 0,
-    color: "#d1fae5",
-    fontSize: "16px",
-    lineHeight: 1.7,
-  },
 }
