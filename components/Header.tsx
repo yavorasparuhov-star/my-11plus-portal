@@ -542,6 +542,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     name={avatarDisplayName}
                     size={42}
                     borderWidth={2}
+                    displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
                       outline: "2px solid rgba(6,95,70,0.18)",
@@ -874,6 +875,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     name={avatarDisplayName}
                     size={38}
                     borderWidth={2}
+                    displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
                       flexShrink: 0,

@@ -30,6 +30,7 @@ type StudentAvatarPortraitProps = {
   borderWidth?: number
   ariaLabel?: string
   style?: React.CSSProperties
+  displayMode?: "portrait" | "icon"
 }
 
 export const defaultAvatar: AvatarConfig = {
@@ -321,6 +322,7 @@ export default function StudentAvatarPortrait({
   borderWidth = 6,
   ariaLabel,
   style,
+  displayMode = "portrait",
 }: StudentAvatarPortraitProps) {
   const safeConfig = useMemo(() => normaliseAvatarConfig(config), [config])
   const imageSources = useMemo(
@@ -337,6 +339,9 @@ export default function StudentAvatarPortrait({
   const safeName = normaliseAvatarName(name)
   const label =
     ariaLabel || `${safeName || (safeConfig.base === "yan" ? "Yan" : "Bo")} avatar`
+  const iconScale = Math.max(0.12, size / 260)
+  const bodyTop = displayMode === "icon" ? -2 : -20
+  const bodyScale = displayMode === "icon" ? iconScale : 1.06
 
   return (
     <div
@@ -369,7 +374,13 @@ export default function StudentAvatarPortrait({
 
       <div style={styles.groundShadow} />
 
-      <div style={styles.scaledBody}>
+      <div
+        style={{
+          ...styles.scaledBody,
+          top: bodyTop,
+          transform: `translateX(-50%) scale(${bodyScale})`,
+        }}
+      >
         <div style={styles.inner}>
           <LayerImage
             srcs={imageSources.base}
