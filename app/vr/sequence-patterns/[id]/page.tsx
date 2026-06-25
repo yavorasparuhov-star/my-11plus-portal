@@ -3,11 +3,36 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+  top?: string
+  accessory?: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+  top: "none",
+  accessory: "none",
+}
 
 const SUBJECT = "vr"
 const DB_CATEGORY = "sequence-pattern"
@@ -78,6 +103,38 @@ function canUserAccessTest(plan: UserPlan, test: VRTest | null) {
   return false
 }
 
+function normaliseAvatarConfig(
+  selectedBase: string | null | undefined,
+  savedConfig: Partial<AvatarConfig> | null | undefined
+): AvatarConfig {
+  const safeBase =
+    savedConfig?.base === "yan" || savedConfig?.base === "bo"
+      ? savedConfig.base
+      : selectedBase === "yan" || selectedBase === "girl"
+        ? "yan"
+        : "bo"
+
+  return {
+    ...defaultAvatar,
+    ...savedConfig,
+    base: safeBase,
+    skinTone:
+      savedConfig?.skinTone === "medium" || savedConfig?.skinTone === "dark"
+        ? savedConfig.skinTone
+        : "light",
+    eyeColor:
+      savedConfig?.eyeColor === "brown" || savedConfig?.eyeColor === "black"
+        ? savedConfig.eyeColor
+        : "blue",
+    glasses: savedConfig?.glasses || "none",
+    background: savedConfig?.background || "plain",
+    hat: savedConfig?.hat || "none",
+    badge: savedConfig?.badge || "none",
+    top: savedConfig?.top || "none",
+    accessory: savedConfig?.accessory || "none",
+  }
+}
+
 export default function VRSequencePatternsTestPage() {
   const params = useParams()
   const router = useRouter()
@@ -90,6 +147,8 @@ export default function VRSequencePatternsTestPage() {
   const [questions, setQuestions] = useState<VRQuestion[]>([])
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [userPlan, setUserPlan] = useState<UserPlan>("guest")
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -134,6 +193,8 @@ export default function VRSequencePatternsTestPage() {
       setScore(0)
       setErrorMessage("")
       setRewardMessage("")
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
       setQuestions([])
       setSavingResults(false)
       setTimeLeft(QUESTION_TIME)
@@ -187,12 +248,39 @@ export default function VRSequencePatternsTestPage() {
 
       if (!user) {
         setUserId(null)
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
         setUserPlan("guest")
         setLoading(false)
         return
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig =
+          savedAvatar.avatar_config && typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : null
+
+        setAvatarConfig(
+          normaliseAvatarConfig(savedAvatar.selected_base, savedConfig)
+        )
+        setAvatarName(savedAvatar.avatar_name || "Bo")
+      } else {
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -421,9 +509,18 @@ export default function VRSequencePatternsTestPage() {
   }
 
   function getYanBoCoinRewardMessage(coins: number) {
-    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
-    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
-    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    if (coins === 1) {
+      return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+    }
+
+    if (coins === 2) {
+      return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+    }
+
+    if (coins === 3) {
+      return "Brilliant work — you earned 3 YanBo Coins!"
+    }
+
     return "Score 50% or more next time to earn YanBo Coins."
   }
 
@@ -943,7 +1040,24 @@ export default function VRSequencePatternsTestPage() {
 
                 {savingResults && <p style={styles.resultText}>Saving results...</p>}
 
-                {rewardMessage && <p style={styles.inlineSuccess}>{rewardMessage}</p>}
+                {rewardMessage && (
+                  <div style={styles.coinRewardBox}>
+                    <div style={styles.coinRewardContent}>
+                      <div style={styles.coinRewardAvatar}>
+                        <StudentAvatarPortrait
+                          config={avatarConfig}
+                          name={avatarName}
+                          size={92}
+                        />
+                      </div>
+
+                      <div style={styles.coinRewardTextWrap}>
+                        <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                        <p style={styles.resultText}>{rewardMessage}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
               </div>
@@ -1452,6 +1566,37 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "18px",
     color: "#111827",
     margin: "10px 0",
+  },
+
+  coinRewardBox: {
+    margin: "16px 0",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardAvatar: {
+    flex: "0 0 auto",
+  },
+
+  coinRewardTextWrap: {
+    flex: "1 1 220px",
+    minWidth: 0,
+  },
+
+  coinRewardTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "16px",
+    fontWeight: 800,
+    color: "#92400e",
   },
 
   finishButtons: {

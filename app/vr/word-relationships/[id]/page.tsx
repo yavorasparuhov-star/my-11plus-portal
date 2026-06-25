@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../../../lib/supabaseClient"
 import Header from "../../../../components/Header"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import { useParams, useRouter } from "next/navigation"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
@@ -40,6 +41,26 @@ type VRQuestion = {
 
 type UserAnswerMap = {
   [questionId: number]: AnswerOption
+}
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
 }
 
 type CompletedQuestionReview = {
@@ -99,6 +120,8 @@ export default function VRWordRelationshipsTestPage() {
   const [finished, setFinished] = useState(false)
   const [savingResults, setSavingResults] = useState(false)
   const [rewardMessage, setRewardMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [errorMessage, setErrorMessage] = useState("")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
@@ -134,6 +157,8 @@ export default function VRWordRelationshipsTestPage() {
       setQuestions([])
       setSavingResults(false)
       setRewardMessage("")
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
       setTimeLeft(QUESTION_TIME)
       setTimeUp(false)
 
@@ -182,11 +207,48 @@ export default function VRWordRelationshipsTestPage() {
       if (!user) {
         setUserId(null)
         setUserPlan("guest")
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
         setLoading(false)
         return
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: savedAvatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (savedAvatarError) {
+        console.error("Error loading saved avatar:", savedAvatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig =
+          savedAvatar.avatar_config && typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : {}
+
+        const savedBase =
+          savedAvatar.selected_base === "yan" || savedAvatar.selected_base === "bo"
+            ? savedAvatar.selected_base
+            : savedConfig.base === "yan" || savedConfig.base === "bo"
+              ? savedConfig.base
+              : defaultAvatar.base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedConfig,
+          base: savedBase,
+        })
+
+        setAvatarName(
+          savedAvatar.avatar_name ||
+            (savedBase === "yan" ? "Yan" : "Bo")
+        )
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -425,8 +487,8 @@ export default function VRWordRelationshipsTestPage() {
   }
 
   function getYanBoCoinRewardMessage(coins: number) {
-    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
-    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
+    if (coins === 1) return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+    if (coins === 2) return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
     if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
     return "Score 50% or more next time to earn YanBo Coins."
   }
@@ -920,7 +982,17 @@ export default function VRWordRelationshipsTestPage() {
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
 
                 {rewardMessage && (
-                  <p style={styles.resultText}>🪙 {rewardMessage}</p>
+                  <div style={styles.rewardRow}>
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarName}
+                      size={92}
+                    />
+
+                    <div style={styles.rewardTextWrap}>
+                      <p style={styles.resultText}>🪙 {rewardMessage}</p>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1454,6 +1526,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "18px",
     color: "#111827",
     margin: "10px 0",
+  },
+
+  rewardRow: {
+    marginTop: "16px",
+    padding: "14px",
+    borderRadius: "16px",
+    background: "#ecfdf5",
+    border: "1px solid #bbf7d0",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+
+  rewardTextWrap: {
+    flex: 1,
+    minWidth: "220px",
   },
 
   finishButtons: {
