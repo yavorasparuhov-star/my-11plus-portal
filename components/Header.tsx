@@ -351,7 +351,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             }}
           >
             <Image
-              src="/yanbo-shield-logo.png"
+              src="/logo.png"
               alt="YanBo Practice Portal logo"
               width={58}
               height={58}
