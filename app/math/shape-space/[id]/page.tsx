@@ -4,10 +4,67 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Header from "../../../../components/Header"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+  top?: string
+  accessory?: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+  top: "none",
+  accessory: "none",
+}
+
+function normaliseAvatarConfig(
+  selectedBase: string | null | undefined,
+  savedConfig: Partial<AvatarConfig> | null | undefined
+): AvatarConfig {
+  const safeBase =
+    savedConfig?.base === "yan" || savedConfig?.base === "bo"
+      ? savedConfig.base
+      : selectedBase === "yan" || selectedBase === "girl"
+        ? "yan"
+        : "bo"
+
+  return {
+    ...defaultAvatar,
+    ...savedConfig,
+    base: safeBase,
+    skinTone:
+      savedConfig?.skinTone === "medium" || savedConfig?.skinTone === "dark"
+        ? savedConfig.skinTone
+        : "light",
+    eyeColor:
+      savedConfig?.eyeColor === "brown" || savedConfig?.eyeColor === "black"
+        ? savedConfig.eyeColor
+        : "blue",
+    glasses: savedConfig?.glasses || "none",
+    background: savedConfig?.background || "plain",
+    hat: savedConfig?.hat || "none",
+    badge: savedConfig?.badge || "none",
+    top: savedConfig?.top || "none",
+    accessory: savedConfig?.accessory || "none",
+  }
+}
 
 const QUESTION_TIME = 60
 const TIMER_STORAGE_KEY = "math_shape_space_timer_enabled"
@@ -79,6 +136,8 @@ export default function ShapeAndSpaceTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<MathTest | null>(null)
   const [questions, setQuestions] = useState<MathQuestion[]>([])
@@ -188,6 +247,31 @@ export default function ShapeAndSpaceTestPage() {
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig =
+          savedAvatar.avatar_config && typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : null
+
+        setAvatarConfig(
+          normaliseAvatarConfig(savedAvatar.selected_base, savedConfig)
+        )
+        setAvatarName(savedAvatar.avatar_name || "Bo")
+      } else {
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -686,10 +770,22 @@ export default function ShapeAndSpaceTestPage() {
       }
 
       if (result.awarded) {
+        if (earnedCoins === 1) {
+          setCoinRewardMessage(
+            "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+          )
+          return
+        }
+
+        if (earnedCoins === 2) {
+          setCoinRewardMessage(
+            "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+          )
+          return
+        }
+
         setCoinRewardMessage(
-          `Brilliant work — you earned ${earnedCoins} YanBo ${
-            earnedCoins === 1 ? "Coin" : "Coins"
-          }!`
+          `Brilliant work — you earned ${earnedCoins} YanBo Coins!`
         )
         return
       }
@@ -914,8 +1010,20 @@ export default function ShapeAndSpaceTestPage() {
 
                 {coinRewardMessage && (
                   <div style={styles.coinRewardBox}>
-                    <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
-                    <p style={styles.resultText}>{coinRewardMessage}</p>
+                    <div style={styles.coinRewardContent}>
+                      <div style={styles.coinRewardAvatar}>
+                        <StudentAvatarPortrait
+                          config={avatarConfig}
+                          name={avatarName}
+                          size={92}
+                        />
+                      </div>
+
+                      <div style={styles.coinRewardTextWrap}>
+                        <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                        <p style={styles.resultText}>{coinRewardMessage}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1429,6 +1537,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "16px",
     background: "#fffbeb",
     border: "1px solid #fde68a",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardAvatar: {
+    flex: "0 0 auto",
+  },
+
+  coinRewardTextWrap: {
+    flex: "1 1 220px",
+    minWidth: 0,
   },
 
   coinRewardTitle: {

@@ -4,10 +4,35 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Header from "../../../../components/Header"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../../lib/supabaseClient"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+  top?: string
+  accessory?: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+  top: "none",
+  accessory: "none",
+}
 
 type MathTest = {
   id: number
@@ -60,6 +85,38 @@ type CompletedQuestionReview = {
   difficulty: number | null
 }
 
+function normaliseAvatarConfig(
+  selectedBase: string | null | undefined,
+  savedConfig: Partial<AvatarConfig> | null | undefined
+): AvatarConfig {
+  const safeBase =
+    savedConfig?.base === "yan" || savedConfig?.base === "bo"
+      ? savedConfig.base
+      : selectedBase === "yan" || selectedBase === "girl"
+        ? "yan"
+        : "bo"
+
+  return {
+    ...defaultAvatar,
+    ...savedConfig,
+    base: safeBase,
+    skinTone:
+      savedConfig?.skinTone === "medium" || savedConfig?.skinTone === "dark"
+        ? savedConfig.skinTone
+        : "light",
+    eyeColor:
+      savedConfig?.eyeColor === "brown" || savedConfig?.eyeColor === "black"
+        ? savedConfig.eyeColor
+        : "blue",
+    glasses: savedConfig?.glasses || "none",
+    background: savedConfig?.background || "plain",
+    hat: savedConfig?.hat || "none",
+    badge: savedConfig?.badge || "none",
+    top: savedConfig?.top || "none",
+    accessory: savedConfig?.accessory || "none",
+  }
+}
+
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
@@ -79,6 +136,8 @@ export default function FourOperationsTestPage() {
   const testId = Number(rawId)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [plan, setPlan] = useState<UserPlan>("guest")
   const [test, setTest] = useState<MathTest | null>(null)
   const [questions, setQuestions] = useState<MathQuestion[]>([])
@@ -133,6 +192,8 @@ export default function FourOperationsTestPage() {
       setFinished(false)
       setScore(0)
       setCoinRewardMessage("")
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
       setSubmitting(false)
 
       if (!rawId || Number.isNaN(testId)) {
@@ -179,11 +240,38 @@ export default function FourOperationsTestPage() {
       if (!user) {
         setUserId(null)
         setPlan("guest")
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
         setLoading(false)
         return
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig =
+          savedAvatar.avatar_config && typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : null
+
+        setAvatarConfig(
+          normaliseAvatarConfig(savedAvatar.selected_base, savedConfig)
+        )
+        setAvatarName(savedAvatar.avatar_name || "Bo")
+      } else {
+        setAvatarConfig(defaultAvatar)
+        setAvatarName("Bo")
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -432,22 +520,37 @@ export default function FourOperationsTestPage() {
         return
       }
 
-      if (result.coinsAwarded <= 0) {
+      const earnedCoins =
+        typeof result.coinsAwarded === "number" ? result.coinsAwarded : 0
+
+      if (earnedCoins <= 0) {
         setCoinRewardMessage("Score 50% or more to earn YanBo Coins.")
         return
       }
 
       if (result.awarded) {
+        if (earnedCoins === 1) {
+          setCoinRewardMessage(
+            "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+          )
+          return
+        }
+
+        if (earnedCoins === 2) {
+          setCoinRewardMessage(
+            "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+          )
+          return
+        }
+
         setCoinRewardMessage(
-          `Brilliant work — you earned ${result.coinsAwarded} YanBo ${
-            result.coinsAwarded === 1 ? "Coin" : "Coins"
-          }!`
+          `Brilliant work — you earned ${earnedCoins} YanBo Coins!`
         )
         return
       }
 
       setCoinRewardMessage(
-        "You have already earned today’s YanBo Coins for this test."
+        "YanBo Coins for this test have already been awarded today."
       )
     } catch (error) {
       console.error("Unexpected YanBo Coins reward error:", error)
@@ -865,7 +968,22 @@ export default function FourOperationsTestPage() {
                 {submitting && <p style={styles.resultText}>Saving results...</p>}
 
                 {coinRewardMessage && (
-                  <div style={styles.coinRewardBox}>{coinRewardMessage}</div>
+                  <div style={styles.coinRewardBox}>
+                    <div style={styles.coinRewardContent}>
+                      <div style={styles.coinRewardAvatar}>
+                        <StudentAvatarPortrait
+                          config={avatarConfig}
+                          name={avatarName}
+                          size={92}
+                        />
+                      </div>
+
+                      <div style={styles.coinRewardTextWrap}>
+                        <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                        <p style={styles.resultText}>{coinRewardMessage}</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
@@ -1396,14 +1514,34 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   coinRewardBox: {
-    marginTop: "14px",
-    borderRadius: "14px",
-    padding: "14px 16px",
-    background: "#fef3c7",
-    border: "1px solid #facc15",
-    color: "#78350f",
+    margin: "16px 0",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardAvatar: {
+    flex: "0 0 auto",
+  },
+
+  coinRewardTextWrap: {
+    flex: "1 1 220px",
+    minWidth: 0,
+  },
+
+  coinRewardTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "16px",
     fontWeight: 800,
-    lineHeight: 1.5,
+    color: "#92400e",
   },
 
   inlineError: {
