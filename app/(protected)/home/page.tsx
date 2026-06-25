@@ -821,7 +821,7 @@ function HomeAvatarPreview({
         <defs>
           <path
             id="homeAvatarNameArc"
-            d="M 28 184 Q 111 240 194 184"
+            d="M 28 184 Q 111 248 194 184"
           />
         </defs>
 
