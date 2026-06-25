@@ -117,13 +117,13 @@ export default function PublicCustomTestsPage() {
                   marginBottom: 16,
                 }}
               >
-                {loadingPlan
-                  ? "Checking membership..."
-                  : canUseCustomTests
-                    ? "Custom tests unlocked"
-                    : isGuest
-                      ? "Sign up or log in to unlock custom tests"
-                      : "Custom tests are a member feature"}
+{loadingPlan
+  ? "Checking membership..."
+  : canUseCustomTests
+    ? "Build a Test unlocked"
+    : isGuest
+      ? "Sign up or log in to build your own tests"
+      : "Build a Test is a member feature"}
               </div>
 
               <h1
@@ -135,7 +135,7 @@ export default function PublicCustomTestsPage() {
                   margin: "0 0 14px",
                 }}
               >
-                Custom 11+ Tests
+                Build Your Own 11+ Test
               </h1>
 
               <p
@@ -147,10 +147,10 @@ export default function PublicCustomTestsPage() {
                   margin: 0,
                 }}
               >
-                Create focused practice tests across English, Maths, Verbal
-                Reasoning and Non-Verbal Reasoning. Choose the topics,
-                difficulty, number of questions and time limit, then review the
-                results to guide the next step.
+Build focused practice tests across English, Maths, Verbal
+Reasoning and Non-Verbal Reasoning. Choose the topics,
+difficulty, number of questions and time limit, then review the
+results to guide the next step.
               </p>
 
               {!canUseCustomTests && (
@@ -171,7 +171,7 @@ export default function PublicCustomTestsPage() {
                       fontWeight: 800,
                     }}
                   >
-                    Custom tests are available for monthly and annual members
+                    Build a Test is available for monthly and annual members
                   </h2>
 
                   <p
@@ -183,8 +183,8 @@ export default function PublicCustomTestsPage() {
                     }}
                   >
                     {isGuest
-                      ? "Create a free account to explore the portal, or log in if you already have an account. Monthly and annual members can generate and run custom tests."
-                      : "You are currently on the Free plan. Free members can explore selected practice tests. Monthly and annual members can generate and run custom tests by choosing topics, difficulty, question count and time limit."}
+? "Create a free account to explore the portal, or log in if you already have an account. Monthly and annual members can build and run their own tests."
+: "You are currently on the Free plan. Free members can explore selected practice tests. Monthly and annual members can build and run their own tests by choosing topics, difficulty, question count and time limit."}
                   </p>
                 </div>
               )}
@@ -291,7 +291,7 @@ export default function PublicCustomTestsPage() {
                   margin: "0 0 10px",
                 }}
               >
-                Why custom tests help
+Why building a test helps
               </h2>
 
               <p
@@ -303,9 +303,9 @@ export default function PublicCustomTestsPage() {
                   margin: "0 auto",
                 }}
               >
-                Custom tests help children practise with more control,
-                especially when they need to revisit weaker topics before the
-                real exam.
+Building a test helps children practise with more control,
+especially when they need to revisit weaker topics before the
+real exam.
               </p>
             </div>
 
@@ -358,9 +358,9 @@ export default function PublicCustomTestsPage() {
                   margin: "0 auto",
                 }}
               >
-                {canUseCustomTests
-                  ? "Choose a subject below to start building your custom test."
-                  : "You can see what is available below. Generating and running custom tests is unlocked for monthly and annual members."}
+             {canUseCustomTests
+  ? "Choose a subject below to start building your test."
+  : "You can see what is available below. Building and running your own tests is unlocked for monthly and annual members."}
               </p>
             </div>
 
@@ -440,7 +440,7 @@ export default function PublicCustomTestsPage() {
                           margin: "0 0 10px",
                         }}
                       >
-                        {category.label} Custom Test
+Build a {category.label} Test
                       </h3>
 
                       <p
@@ -480,7 +480,7 @@ export default function PublicCustomTestsPage() {
                           border: "1px solid #16a34a",
                         }}
                       >
-                        Build Test
+Build a Test
                       </Link>
                     ) : isGuest ? (
                       <Link

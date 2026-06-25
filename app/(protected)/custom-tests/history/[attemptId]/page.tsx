@@ -291,10 +291,10 @@ function formatCustomTestTitle(
       : "";
 
   if (categoryLabel === "—") {
-    return `Custom Test${numberLabel}`;
+    return `Test${numberLabel}`;
   }
 
-  return `${categoryLabel} Custom Test${numberLabel}`;
+  return `${categoryLabel} Test${numberLabel}`;
 }
 
 function formatDifficulty(value: DifficultyFilter | undefined) {
@@ -567,7 +567,7 @@ export default function CustomTestAttemptDetailsPage() {
 
         if (attemptError || !attemptData) {
           setErrorMessage(
-            attemptError?.message || "Could not load custom test attempt.",
+            attemptError?.message || "Could not load test attempt.",
           );
           return;
         }
@@ -612,7 +612,7 @@ export default function CustomTestAttemptDetailsPage() {
 
         if (itemError) {
           setErrorMessage(
-            itemError.message || "Could not load custom test items.",
+            itemError.message || "Could not load test questions.",
           );
           return;
         }
@@ -876,14 +876,14 @@ export default function CustomTestAttemptDetailsPage() {
                 href="/custom-tests"
                 style={{ color: "#6b7280", textDecoration: "none" }}
               >
-                Custom Tests
+                Build a Test
               </Link>{" "}
               /{" "}
               <Link
                 href="/custom-tests/history"
                 style={{ color: "#6b7280", textDecoration: "none" }}
               >
-                History
+                Test History
               </Link>{" "}
               / {canEnterPrintableResults ? "Enter Results" : "Attempt Details"}
             </p>
@@ -891,7 +891,7 @@ export default function CustomTestAttemptDetailsPage() {
             <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
               {canEnterPrintableResults
                 ? "Enter Printable Test Results"
-                : "Custom Test Attempt Details"}
+                : "Test Attempt Details"}
             </h1>
           </div>
 
@@ -909,7 +909,7 @@ export default function CustomTestAttemptDetailsPage() {
                 fontWeight: 600,
               }}
             >
-              Back to History
+              Back to Test History
             </Link>
 
             <Link
@@ -925,7 +925,7 @@ export default function CustomTestAttemptDetailsPage() {
                 fontWeight: 600,
               }}
             >
-              Back to Custom Tests
+              Back to Build a Test
             </Link>
           </div>
         </div>

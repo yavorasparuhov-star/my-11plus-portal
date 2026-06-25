@@ -468,7 +468,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           </Link>
 
           <Link href={customTestsHref} style={linkStyle(customTestsHref)}>
-            <NavText icon={<CustomTestsIcon />} label="Custom Tests" />
+            <NavText icon={<CustomTestsIcon />} label="Build a Test" />
           </Link>
 
           {!isGuest && (
@@ -788,7 +788,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(customTestsHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                <NavText icon={<CustomTestsIcon />} label="Custom Tests" />
+                <NavText icon={<CustomTestsIcon />} label="Build a Test" />
               </Link>
 
               {!isGuest && (

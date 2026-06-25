@@ -223,7 +223,7 @@ function buildPrintableHtml(
     downloadData.metadata?.title ??
       (testNumber
         ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
-        : "YanBo Learning Printable Custom Test")
+        : "YanBo Learning Printable Test")
   )
   const footerTestLabel = escapeCssContent(
     testNumber ? `YanBo ${categoryLabel} Test ${testNumber}` : "YanBo Printable Test"
@@ -978,10 +978,10 @@ function downloadPrintableHtml(
     downloadData.metadata?.fileBaseName ??
     (downloadData.metadata?.testNumber
       ? `YanBo-${categoryLabel}-Test-${downloadData.metadata.testNumber}`
-      : `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}`)
+      : `yanbo-${downloadData.config.mainCategory}-test-${datePart}`)
   const safeFileBaseName =
     sanitizeFileBaseName(fileBaseName) ||
-    `yanbo-${downloadData.config.mainCategory}-custom-test-${datePart}`
+    `yanbo-${downloadData.config.mainCategory}-test-${datePart}`
 
   anchor.href = url
   anchor.download = `${safeFileBaseName}.html`
@@ -1091,7 +1091,7 @@ export default function CustomTestBuilderPage() {
     }
 
     if (!catalog || !catalog.enabled) {
-      setErrorMessage("This custom test category is not available yet.")
+      setErrorMessage("This test-building category is not available yet.")
       return null
     }
 
@@ -1123,7 +1123,7 @@ export default function CustomTestBuilderPage() {
       config.topicKeys.includes("comprehension")
     ) {
       setErrorMessage(
-        "Adaptive custom tests do not include English comprehension yet. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice."
+        "Adaptive tests do not include English comprehension yet. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice."
       )
       return
     }
@@ -1137,7 +1137,7 @@ export default function CustomTestBuilderPage() {
       } = await supabase.auth.getSession()
 
       if (sessionError || !session) {
-        setErrorMessage("Please sign in to use custom tests.")
+        setErrorMessage("Please sign in to build tests.")
         return
       }
 
@@ -1176,7 +1176,7 @@ export default function CustomTestBuilderPage() {
       }
 
       if (!response.ok || !result.ok) {
-        setErrorMessage(result.ok ? "Could not generate custom test." : result.error)
+        setErrorMessage(result.ok ? "Could not build the test." : result.error)
         return
       }
 
@@ -1190,7 +1190,7 @@ export default function CustomTestBuilderPage() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unexpected error while generating the custom test."
+          : "Unexpected error while building the test."
       )
     } finally {
       setIsGenerating(false)
@@ -1220,7 +1220,7 @@ export default function CustomTestBuilderPage() {
       } = await supabase.auth.getSession()
 
       if (sessionError || !session) {
-        setErrorMessage("Please sign in to download printable custom tests.")
+        setErrorMessage("Please sign in to download printable tests.")
         return
       }
 
@@ -1299,7 +1299,7 @@ export default function CustomTestBuilderPage() {
             }}
           >
             <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>
-              Custom Test Builder
+              Build a Test
             </h1>
 
             <p style={{ margin: "0 0 20px 0", color: "#4b5563", lineHeight: 1.6 }}>
@@ -1318,7 +1318,7 @@ export default function CustomTestBuilderPage() {
                 fontWeight: 600,
               }}
             >
-              Back to Custom Tests
+              Back to Build a Test
             </Link>
           </div>
         </div>
@@ -1340,7 +1340,7 @@ export default function CustomTestBuilderPage() {
             }}
           >
             <h1 style={{ margin: "0 0 12px 0", color: "#111827" }}>
-              {catalog.label} Custom Tests
+              Build a {catalog.label} Test
             </h1>
 
             <p style={{ margin: "0 0 20px 0", color: "#4b5563", lineHeight: 1.6 }}>
@@ -1359,7 +1359,7 @@ export default function CustomTestBuilderPage() {
                 fontWeight: 600,
               }}
             >
-              Back to Custom Tests
+              Back to Build a Test
             </Link>
           </div>
         </div>
@@ -1382,7 +1382,7 @@ export default function CustomTestBuilderPage() {
         >
           <div>
             <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-              {catalog.label} Custom Test Builder
+              Build Your Own {catalog.label} Test
             </h1>
 
             <p style={{ margin: "8px 0 0 0", color: "#4b5563", lineHeight: 1.6 }}>
@@ -1406,7 +1406,7 @@ export default function CustomTestBuilderPage() {
               marginLeft: "auto",
             }}
           >
-            View History
+            View Test History
           </Link>
         </div>
 
@@ -1735,7 +1735,7 @@ export default function CustomTestBuilderPage() {
                     textDecoration: "underline",
                   }}
                 >
-                  View this in Custom Test History
+                  View this in Test History
                 </Link>
               </div>
             ) : null}

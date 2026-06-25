@@ -62,7 +62,7 @@ function formatSeconds(totalSeconds: number | null | undefined) {
 }
 
 function formatMainCategory(value: string | null | undefined) {
-  if (!value) return "Custom"
+  if (!value) return "Test"
 
   if (value === "english") return "English"
   if (value === "math") return "Maths"
@@ -263,7 +263,7 @@ function matchesCategoryFilter(
 function buildAttemptTitle(attempt: CustomTestAttemptRow, attemptNumber: number | undefined) {
   const categoryLabel = formatMainCategory(getAttemptMainCategory(attempt))
 
-  return `${categoryLabel} Custom Test${attemptNumber ? ` ${attemptNumber}` : ""}`
+  return `${categoryLabel} Test${attemptNumber ? ` ${attemptNumber}` : ""}`
 }
 
 function matchesTimeFilter(
@@ -360,7 +360,7 @@ export default function CustomTestHistoryPage() {
           .limit(100)
 
         if (error) {
-          setErrorMessage(error.message || "Could not load custom test history.")
+          setErrorMessage(error.message || "Could not load test history.")
           return
         }
 
@@ -369,7 +369,7 @@ export default function CustomTestHistoryPage() {
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Unexpected error while loading custom test history."
+            : "Unexpected error while loading test history."
         )
       } finally {
         setLoading(false)
@@ -479,13 +479,13 @@ export default function CustomTestHistoryPage() {
                 href="/custom-tests"
                 style={{ color: "#6b7280", textDecoration: "none" }}
               >
-                Custom Tests
+                Build a Test
               </Link>{" "}
-              / History
+              / Test History
             </p>
 
             <h1 style={{ margin: 0, color: "#111827", fontSize: "2rem" }}>
-              Custom Test History
+              Test History
             </h1>
           </div>
 
@@ -502,7 +502,7 @@ export default function CustomTestHistoryPage() {
               fontWeight: 600,
             }}
           >
-            Back to Custom Tests
+            Back to Build a Test
           </Link>
         </div>
 
@@ -544,7 +544,7 @@ export default function CustomTestHistoryPage() {
                   lineHeight: 1.5,
                 }}
               >
-                Filter your custom test history by time, category, difficulty and test type.
+                Filter your test history by time, category, difficulty and test type.
               </p>
             </div>
 
@@ -790,7 +790,7 @@ export default function CustomTestHistoryPage() {
           </h2>
 
           {loading ? (
-            <div style={{ color: "#4b5563" }}>Loading custom test history...</div>
+            <div style={{ color: "#4b5563" }}>Loading test history...</div>
           ) : errorMessage ? (
             <div
               style={{
@@ -814,7 +814,7 @@ export default function CustomTestHistoryPage() {
                 lineHeight: 1.6,
               }}
             >
-              No custom test history found yet.
+              No test history found yet.
             </div>
           ) : filteredAttempts.length === 0 ? (
             <div
@@ -827,7 +827,7 @@ export default function CustomTestHistoryPage() {
                 lineHeight: 1.6,
               }}
             >
-              No custom tests match the selected filters.
+              No tests match the selected filters.
             </div>
           ) : (
             <div style={{ display: "grid", gap: 14 }}>
