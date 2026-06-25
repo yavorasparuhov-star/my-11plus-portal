@@ -353,8 +353,8 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             <Image
               src="/logo.png"
               alt="YanBo Practice Portal logo"
-              width={58}
-              height={58}
+              width={48}
+              height={48}
               priority
               style={{
                 objectFit: "contain",
