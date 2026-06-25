@@ -1,156 +1,219 @@
-"use client"
+"use client";
 
-import React, { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
-import Header from "../../../../components/Header"
-import ReportQuestionButton from "../../../../components/ReportQuestionButton"
-import { supabase } from "../../../../lib/supabaseClient"
-import { useParams, useRouter } from "next/navigation"
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import Header from "../../../../components/Header";
+import ReportQuestionButton from "../../../../components/ReportQuestionButton";
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait";
+import { supabase } from "../../../../lib/supabaseClient";
+import { useParams, useRouter } from "next/navigation";
 
-const RESULT_CATEGORY = "codes-spatial-logic"
-const NVR_CATEGORY = "codes-spatial-logic"
-const QUESTION_TIME = 60
-const TIMER_STORAGE_KEY = "nvr_codes_spatial_logic_timer_enabled"
+const RESULT_CATEGORY = "codes-spatial-logic";
+const NVR_CATEGORY = "codes-spatial-logic";
+const QUESTION_TIME = 60;
+const TIMER_STORAGE_KEY = "nvr_codes_spatial_logic_timer_enabled";
 
-type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
-type AnswerOption = "A" | "B" | "C" | "D"
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin";
+type AnswerOption = "A" | "B" | "C" | "D";
+
+type AvatarConfig = {
+  base: "yan" | "bo";
+  skinTone: "light" | "medium" | "dark";
+  eyeColor: "brown" | "blue" | "black";
+  glasses: string;
+  background: string;
+  hat: string;
+  badge: string;
+  top?: string;
+  accessory?: string;
+};
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+  top: "none",
+  accessory: "none",
+};
 
 type NVRTest = {
-  id: number
-  title: string
-  category: string | null
-  difficulty: number | null
-  access_level: string | null
-  is_free: boolean | null
-  created_at: string
-}
+  id: number;
+  title: string;
+  category: string | null;
+  difficulty: number | null;
+  access_level: string | null;
+  is_free: boolean | null;
+  created_at: string;
+};
 
 type NVRQuestion = {
-  id: number
-  test_id: number
-  question_text: string
-  image_url: string | null
-  option_a: string | null
-  option_b: string | null
-  option_c: string | null
-  option_d: string | null
-  option_a_image_url: string | null
-  option_b_image_url: string | null
-  option_c_image_url: string | null
-  option_d_image_url: string | null
-  correct_answer: AnswerOption
-  explanation: string | null
-  difficulty: number | null
-  question_order: number
-  created_at: string
-}
+  id: number;
+  test_id: number;
+  question_text: string;
+  image_url: string | null;
+  option_a: string | null;
+  option_b: string | null;
+  option_c: string | null;
+  option_d: string | null;
+  option_a_image_url: string | null;
+  option_b_image_url: string | null;
+  option_c_image_url: string | null;
+  option_d_image_url: string | null;
+  correct_answer: AnswerOption;
+  explanation: string | null;
+  difficulty: number | null;
+  question_order: number;
+  created_at: string;
+};
 
 type SavedQuestionReview = {
-  question_id: number
-  question_order: number
-  question_text: string
-  question_image_url?: string | null
-  options: Record<AnswerOption, string | null>
-  option_images?: Partial<Record<AnswerOption, string | null>>
-  user_answer: AnswerOption | null
-  correct_answer: AnswerOption
-  user_answer_text: string | null
-  correct_answer_text: string | null
-  user_answer_image_url?: string | null
-  correct_answer_image_url?: string | null
-  is_correct: boolean
-  explanation: string | null
-  explanation_image_url?: string | null
-  difficulty: number | null
-}
+  question_id: number;
+  question_order: number;
+  question_text: string;
+  question_image_url?: string | null;
+  options: Record<AnswerOption, string | null>;
+  option_images?: Partial<Record<AnswerOption, string | null>>;
+  user_answer: AnswerOption | null;
+  correct_answer: AnswerOption;
+  user_answer_text: string | null;
+  correct_answer_text: string | null;
+  user_answer_image_url?: string | null;
+  correct_answer_image_url?: string | null;
+  is_correct: boolean;
+  explanation: string | null;
+  explanation_image_url?: string | null;
+  difficulty: number | null;
+};
 
 type UserAnswerMap = {
-  [questionId: number]: AnswerOption
-}
+  [questionId: number]: AnswerOption;
+};
 
 function hasFullAccess(plan: UserPlan) {
-  return plan === "monthly" || plan === "annual" || plan === "admin"
+  return plan === "monthly" || plan === "annual" || plan === "admin";
 }
 
 function isFreeTest(test: NVRTest) {
-  return test.is_free === true || test.access_level === "free"
+  return test.is_free === true || test.access_level === "free";
+}
+
+function normaliseAvatarConfig(
+  selectedBase: string | null | undefined,
+  savedConfig: Partial<AvatarConfig> | null | undefined,
+): AvatarConfig {
+  const safeBase =
+    savedConfig?.base === "yan" || savedConfig?.base === "bo"
+      ? savedConfig.base
+      : selectedBase === "yan" || selectedBase === "girl"
+        ? "yan"
+        : "bo";
+
+  return {
+    ...defaultAvatar,
+    ...savedConfig,
+    base: safeBase,
+    skinTone:
+      savedConfig?.skinTone === "medium" || savedConfig?.skinTone === "dark"
+        ? savedConfig.skinTone
+        : "light",
+    eyeColor:
+      savedConfig?.eyeColor === "brown" || savedConfig?.eyeColor === "black"
+        ? savedConfig.eyeColor
+        : "blue",
+    glasses: savedConfig?.glasses || "none",
+    background: savedConfig?.background || "plain",
+    hat: savedConfig?.hat || "none",
+    badge: savedConfig?.badge || "none",
+    top: savedConfig?.top || "none",
+    accessory: savedConfig?.accessory || "none",
+  };
 }
 
 export default function NVRRotationsReflectionsTestPage() {
-  const params = useParams()
-  const router = useRouter()
+  const params = useParams();
+  const router = useRouter();
 
-  const rawId = Array.isArray(params.id) ? params.id[0] : params.id
-  const testId = Number(rawId)
+  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const testId = Number(rawId);
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [plan, setPlan] = useState<UserPlan>("guest")
-  const [test, setTest] = useState<NVRTest | null>(null)
-  const [questions, setQuestions] = useState<NVRQuestion[]>([])
+  const [userId, setUserId] = useState<string | null>(null);
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar);
+  const [avatarName, setAvatarName] = useState("Bo");
+  const [plan, setPlan] = useState<UserPlan>("guest");
+  const [test, setTest] = useState<NVRTest | null>(null);
+  const [questions, setQuestions] = useState<NVRQuestion[]>([]);
 
-  const [answers, setAnswers] = useState<UserAnswerMap>({})
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null)
-  const [showFeedback, setShowFeedback] = useState(false)
+  const [answers, setAnswers] = useState<UserAnswerMap>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(
+    null,
+  );
+  const [showFeedback, setShowFeedback] = useState(false);
 
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [finished, setFinished] = useState(false)
-  const [score, setScore] = useState(0)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [rewardMessage, setRewardMessage] = useState("")
-  const [timerEnabled, setTimerEnabled] = useState(false)
-  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
-  const [timeUpMessage, setTimeUpMessage] = useState("")
-  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false)
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [rewardMessage, setRewardMessage] = useState("");
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
+  const [timeUpMessage, setTimeUpMessage] = useState("");
+  const [timeExpiredProcessing, setTimeExpiredProcessing] = useState(false);
 
-  const currentQuestion = questions[currentIndex]
+  const currentQuestion = questions[currentIndex];
 
-  const resultHref = `/results/nvr/${RESULT_CATEGORY}/${testId}`
+  const resultHref = `/results/nvr/${RESULT_CATEGORY}/${testId}`;
 
   const canAccessTest = useMemo(() => {
-    if (!test) return false
-    return hasFullAccess(plan) || (plan === "free" && isFreeTest(test))
-  }, [plan, test])
+    if (!test) return false;
+    return hasFullAccess(plan) || (plan === "free" && isFreeTest(test));
+  }, [plan, test]);
 
-  const answeredCount = useMemo(() => Object.keys(answers).length, [answers])
+  const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
 
-  const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting
+  const shouldWarnBeforeLeaving = answeredCount > 0 && !finished && !submitting;
 
   const selectedAnswerText = useMemo(() => {
-    if (!currentQuestion || !selectedAnswer) return ""
-    return getOptionText(currentQuestion, selectedAnswer) || ""
-  }, [currentQuestion, selectedAnswer])
+    if (!currentQuestion || !selectedAnswer) return "";
+    return getOptionText(currentQuestion, selectedAnswer) || "";
+  }, [currentQuestion, selectedAnswer]);
 
   useEffect(() => {
     async function loadPage() {
-      setLoading(true)
-      setErrorMessage("")
-      setQuestions([])
-      setAnswers({})
-      setCurrentIndex(0)
-      setSelectedAnswer(null)
-      setShowFeedback(false)
-      setFinished(false)
-      setScore(0)
-      setSubmitting(false)
-      setTimeLeft(QUESTION_TIME)
-      setTimeUpMessage("")
-      setTimeExpiredProcessing(false)
+      setLoading(true);
+      setErrorMessage("");
+      setQuestions([]);
+      setAnswers({});
+      setCurrentIndex(0);
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+      setFinished(false);
+      setScore(0);
+      setSubmitting(false);
+      setTimeLeft(QUESTION_TIME);
+      setTimeUpMessage("");
+      setTimeExpiredProcessing(false);
 
       if (!rawId || Number.isNaN(testId)) {
-        setErrorMessage("Invalid NVR test ID.")
-        setLoading(false)
-        return
+        setErrorMessage("Invalid NVR test ID.");
+        setLoading(false);
+        return;
       }
 
       const { data: testData, error: testError } = await supabase
         .from("nvr_tests")
-        .select("id, title, category, difficulty, access_level, is_free, created_at")
+        .select(
+          "id, title, category, difficulty, access_level, is_free, created_at",
+        )
         .eq("id", testId)
         .eq("category", NVR_CATEGORY)
-        .single()
+        .single();
 
       if (testError || !testData) {
         console.error("Error loading NVR test:", {
@@ -159,47 +222,75 @@ export default function NVRRotationsReflectionsTestPage() {
           hint: testError?.hint,
           code: testError?.code,
           full: testError,
-        })
+        });
 
-        setErrorMessage("Could not load this Codes & Spatial Logic test.")
-        setLoading(false)
-        return
+        setErrorMessage("Could not load this Codes & Spatial Logic test.");
+        setLoading(false);
+        return;
       }
 
-      const loadedTest = testData as NVRTest
-      setTest(loadedTest)
+      const loadedTest = testData as NVRTest;
+      setTest(loadedTest);
 
       const {
         data: { session },
         error: sessionError,
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getSession();
 
       if (sessionError) {
-        console.error("Error getting auth session:", sessionError)
+        console.error("Error getting auth session:", sessionError);
       }
 
-      const user = session?.user ?? null
+      const user = session?.user ?? null;
 
       if (!user) {
-        setUserId(null)
-        setPlan("guest")
-        setLoading(false)
-        return
+        setUserId(null);
+        setAvatarConfig(defaultAvatar);
+        setAvatarName("Bo");
+        setPlan("guest");
+        setLoading(false);
+        return;
       }
 
-      setUserId(user.id)
+      setUserId(user.id);
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError);
+      }
+
+      if (savedAvatar) {
+        const savedConfig =
+          savedAvatar.avatar_config &&
+          typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : null;
+
+        setAvatarConfig(
+          normaliseAvatarConfig(savedAvatar.selected_base, savedConfig),
+        );
+        setAvatarName(savedAvatar.avatar_name || "Bo");
+      } else {
+        setAvatarConfig(defaultAvatar);
+        setAvatarName("Bo");
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("plan")
         .eq("id", user.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (profileError) {
-        console.error("Error loading profile plan:", profileError)
+        console.error("Error loading profile plan:", profileError);
       }
 
-      const dbPlan = profile?.plan
+      const dbPlan = profile?.plan;
 
       const safePlan: UserPlan =
         dbPlan === "monthly" ||
@@ -207,23 +298,24 @@ export default function NVRRotationsReflectionsTestPage() {
         dbPlan === "admin" ||
         dbPlan === "free"
           ? dbPlan
-          : "free"
+          : "free";
 
-      setPlan(safePlan)
+      setPlan(safePlan);
 
       const canOpenTest =
-        hasFullAccess(safePlan) || (safePlan === "free" && isFreeTest(loadedTest))
+        hasFullAccess(safePlan) ||
+        (safePlan === "free" && isFreeTest(loadedTest));
 
       if (!canOpenTest) {
-        setLoading(false)
-        return
+        setLoading(false);
+        return;
       }
 
       const { data: questionData, error: questionError } = await supabase
         .from("nvr_questions")
         .select("*")
         .eq("test_id", testId)
-        .order("question_order", { ascending: true })
+        .order("question_order", { ascending: true });
 
       if (questionError) {
         console.error("Error loading NVR questions:", {
@@ -232,59 +324,59 @@ export default function NVRRotationsReflectionsTestPage() {
           hint: questionError.hint,
           code: questionError.code,
           full: questionError,
-        })
+        });
 
-        setErrorMessage("Could not load the questions for this test.")
-        setLoading(false)
-        return
+        setErrorMessage("Could not load the questions for this test.");
+        setLoading(false);
+        return;
       }
 
-      setQuestions((questionData || []) as NVRQuestion[])
-      setLoading(false)
+      setQuestions((questionData || []) as NVRQuestion[]);
+      setLoading(false);
     }
 
-    loadPage()
-  }, [rawId, testId])
+    loadPage();
+  }, [rawId, testId]);
 
   useEffect(() => {
-    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY)
+    const savedTimerSetting = window.localStorage.getItem(TIMER_STORAGE_KEY);
 
     if (savedTimerSetting !== null) {
-      setTimerEnabled(savedTimerSetting === "true")
+      setTimerEnabled(savedTimerSetting === "true");
     }
 
-    setTimerPreferenceLoaded(true)
-  }, [])
+    setTimerPreferenceLoaded(true);
+  }, []);
 
   useEffect(() => {
-    if (!timerPreferenceLoaded) return
+    if (!timerPreferenceLoaded) return;
 
-    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled))
-  }, [timerEnabled, timerPreferenceLoaded])
-
-  useEffect(() => {
-    setTimeLeft(QUESTION_TIME)
-    setTimeUpMessage("")
-    setTimeExpiredProcessing(false)
-  }, [currentIndex, timerEnabled])
+    window.localStorage.setItem(TIMER_STORAGE_KEY, String(timerEnabled));
+  }, [timerEnabled, timerPreferenceLoaded]);
 
   useEffect(() => {
-    if (!timerEnabled) return
-    if (!currentQuestion) return
-    if (finished || submitting || showFeedback || timeExpiredProcessing) return
+    setTimeLeft(QUESTION_TIME);
+    setTimeUpMessage("");
+    setTimeExpiredProcessing(false);
+  }, [currentIndex, timerEnabled]);
+
+  useEffect(() => {
+    if (!timerEnabled) return;
+    if (!currentQuestion) return;
+    if (finished || submitting || showFeedback || timeExpiredProcessing) return;
 
     if (timeLeft <= 0) {
-      void handleTimeUp()
-      return
+      void handleTimeUp();
+      return;
     }
 
     const timeoutId = window.setTimeout(() => {
-      setTimeLeft((prev) => Math.max(prev - 1, 0))
-    }, 1000)
+      setTimeLeft((prev) => Math.max(prev - 1, 0));
+    }, 1000);
 
     return () => {
-      window.clearTimeout(timeoutId)
-    }
+      window.clearTimeout(timeoutId);
+    };
   }, [
     timerEnabled,
     currentQuestion,
@@ -293,41 +385,41 @@ export default function NVRRotationsReflectionsTestPage() {
     showFeedback,
     timeExpiredProcessing,
     timeLeft,
-  ])
+  ]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!shouldWarnBeforeLeaving) return
+      if (!shouldWarnBeforeLeaving) return;
 
-      e.preventDefault()
-      e.returnValue = ""
-    }
+      e.preventDefault();
+      e.returnValue = "";
+    };
 
-    window.addEventListener("beforeunload", handleBeforeUnload)
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-    }
-  }, [shouldWarnBeforeLeaving])
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [shouldWarnBeforeLeaving]);
 
   function confirmLeaveIfNeeded() {
-    if (!shouldWarnBeforeLeaving) return true
+    if (!shouldWarnBeforeLeaving) return true;
 
     return window.confirm(
-      "Not all questions have been finished. Are you sure you want to leave this test?"
-    )
+      "Not all questions have been finished. Are you sure you want to leave this test?",
+    );
   }
 
   function goBackSafely() {
-    const confirmed = confirmLeaveIfNeeded()
-    if (!confirmed) return
+    const confirmed = confirmLeaveIfNeeded();
+    if (!confirmed) return;
 
-    router.push("/nvr/codes-spatial-logic")
+    router.push("/nvr/codes-spatial-logic");
   }
 
   function handleSelectAnswer(option: AnswerOption) {
-    if (showFeedback || finished || submitting || timeExpiredProcessing) return
-    setSelectedAnswer(option)
+    if (showFeedback || finished || submitting || timeExpiredProcessing) return;
+    setSelectedAnswer(option);
   }
 
   function handleCheckAnswer() {
@@ -338,15 +430,15 @@ export default function NVRRotationsReflectionsTestPage() {
       finished ||
       timeExpiredProcessing
     ) {
-      return
+      return;
     }
 
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: selectedAnswer,
-    }))
+    }));
 
-    setShowFeedback(true)
+    setShowFeedback(true);
   }
 
   async function handleNext() {
@@ -357,68 +449,71 @@ export default function NVRRotationsReflectionsTestPage() {
       submitting ||
       timeExpiredProcessing
     ) {
-      return
+      return;
     }
 
-    const isLastQuestion = currentIndex === questions.length - 1
+    const isLastQuestion = currentIndex === questions.length - 1;
 
     const finalAnswers = {
       ...answers,
       [currentQuestion.id]: selectedAnswer,
-    }
+    };
 
     if (isLastQuestion) {
-      await submitResults(finalAnswers)
-      return
+      await submitResults(finalAnswers);
+      return;
     }
 
-    setCurrentIndex((prev) => prev + 1)
-    setSelectedAnswer(null)
-    setShowFeedback(false)
-    setTimeLeft(QUESTION_TIME)
-    setTimeUpMessage("")
-    setTimeExpiredProcessing(false)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    setCurrentIndex((prev) => prev + 1);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setTimeLeft(QUESTION_TIME);
+    setTimeUpMessage("");
+    setTimeExpiredProcessing(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleTimeUp() {
-    if (!currentQuestion || submitting || finished || timeExpiredProcessing) return
+    if (!currentQuestion || submitting || finished || timeExpiredProcessing)
+      return;
 
-    setTimeExpiredProcessing(true)
-    setSelectedAnswer(null)
-    setShowFeedback(false)
-    setTimeUpMessage("Time’s up!")
+    setTimeExpiredProcessing(true);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setTimeUpMessage("Time’s up!");
 
-    const isLastQuestion = currentIndex === questions.length - 1
-    const finalAnswers = { ...answers }
+    const isLastQuestion = currentIndex === questions.length - 1;
+    const finalAnswers = { ...answers };
 
-    await new Promise((resolve) => window.setTimeout(resolve, 900))
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
 
     if (isLastQuestion) {
-      await submitResults(finalAnswers)
-      return
+      await submitResults(finalAnswers);
+      return;
     }
 
-    setCurrentIndex((prev) => prev + 1)
-    setSelectedAnswer(null)
-    setShowFeedback(false)
-    setTimeLeft(QUESTION_TIME)
-    setTimeUpMessage("")
-    setTimeExpiredProcessing(false)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    setCurrentIndex((prev) => prev + 1);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setTimeLeft(QUESTION_TIME);
+    setTimeUpMessage("");
+    setTimeExpiredProcessing(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function formatTime(totalSeconds: number) {
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
 
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }
 
-  function buildSavedAnswers(finalAnswers: UserAnswerMap): SavedQuestionReview[] {
+  function buildSavedAnswers(
+    finalAnswers: UserAnswerMap,
+  ): SavedQuestionReview[] {
     return questions.map((question, index) => {
-      const userAnswer = finalAnswers[question.id] ?? null
-      const correctAnswer = question.correct_answer
+      const userAnswer = finalAnswers[question.id] ?? null;
+      const correctAnswer = question.correct_answer;
 
       return {
         question_id: question.id,
@@ -439,7 +534,9 @@ export default function NVRRotationsReflectionsTestPage() {
         },
         user_answer: userAnswer,
         correct_answer: correctAnswer,
-        user_answer_text: userAnswer ? getOptionText(question, userAnswer) : null,
+        user_answer_text: userAnswer
+          ? getOptionText(question, userAnswer)
+          : null,
         correct_answer_text: getOptionText(question, correctAnswer),
         user_answer_image_url: userAnswer
           ? getOptionImage(question, userAnswer)
@@ -449,19 +546,19 @@ export default function NVRRotationsReflectionsTestPage() {
         explanation: question.explanation,
         explanation_image_url: null,
         difficulty: question.difficulty ?? test?.difficulty ?? null,
-      }
-    })
+      };
+    });
   }
 
   async function saveLatestTestResult(
     finalAnswers: UserAnswerMap,
     correctAnswers: number,
     totalQuestions: number,
-    successRate: number
+    successRate: number,
   ) {
-    if (!userId || !test) return
+    if (!userId || !test) return;
 
-    const completedAt = new Date().toISOString()
+    const completedAt = new Date().toISOString();
 
     const payload = {
       user_id: userId,
@@ -479,16 +576,16 @@ export default function NVRRotationsReflectionsTestPage() {
       answers: buildSavedAnswers(finalAnswers),
       completed_at: completedAt,
       updated_at: completedAt,
-    }
+    };
 
     const { error: upsertError } = await supabase
       .from("latest_test_results")
       .upsert([payload], {
         onConflict:
           "user_id,subject,category,subcategory,subcategory_two,subcategory_three,test_id",
-      })
+      });
 
-    if (!upsertError) return
+    if (!upsertError) return;
 
     console.error("Error upserting latest NVR result:", {
       message: upsertError.message,
@@ -496,7 +593,7 @@ export default function NVRRotationsReflectionsTestPage() {
       hint: upsertError.hint,
       code: upsertError.code,
       payload,
-    })
+    });
 
     const { error: deleteError } = await supabase
       .from("latest_test_results")
@@ -507,7 +604,7 @@ export default function NVRRotationsReflectionsTestPage() {
       .eq("subcategory", "")
       .eq("subcategory_two", "")
       .eq("subcategory_three", "")
-      .eq("test_id", test.id)
+      .eq("test_id", test.id);
 
     if (deleteError) {
       console.error("Error deleting old NVR result:", {
@@ -515,12 +612,12 @@ export default function NVRRotationsReflectionsTestPage() {
         details: deleteError.details,
         hint: deleteError.hint,
         code: deleteError.code,
-      })
+      });
     }
 
     const { error: insertError } = await supabase
       .from("latest_test_results")
-      .insert([payload])
+      .insert([payload]);
 
     if (insertError) {
       console.error("Error saving latest NVR result:", {
@@ -529,42 +626,50 @@ export default function NVRRotationsReflectionsTestPage() {
         hint: insertError.hint,
         code: insertError.code,
         payload,
-      })
+      });
 
-      setErrorMessage("Progress was saved, but the full test result could not be saved.")
+      setErrorMessage(
+        "Progress was saved, but the full test result could not be saved.",
+      );
     }
   }
 
   function getYanBoCoinRewardAmount(scorePercent: number) {
-    if (scorePercent >= 90) return 3
-    if (scorePercent >= 75) return 2
-    if (scorePercent >= 50) return 1
-    return 0
+    if (scorePercent >= 90) return 3;
+    if (scorePercent >= 75) return 2;
+    if (scorePercent >= 50) return 1;
+    return 0;
   }
 
   function getYanBoCoinRewardMessage(coins: number) {
-    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
-    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
-    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
-    return "Score 50% or more next time to earn YanBo Coins."
+    if (coins === 1) {
+      return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!";
+    }
+
+    if (coins === 2) {
+      return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!";
+    }
+
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!";
+    return "Score 50% or more next time to earn YanBo Coins.";
   }
 
   async function awardNormalTestCoins(successRate: number) {
-    if (!test) return
+    if (!test) return;
 
-    const expectedCoins = getYanBoCoinRewardAmount(successRate)
+    const expectedCoins = getYanBoCoinRewardAmount(successRate);
 
     try {
       const {
         data: { session },
         error: sessionError,
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getSession();
 
       if (sessionError || !session?.access_token) {
         setRewardMessage(
-          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified."
-        )
-        return
+          "Your result was saved, but YanBo Coins could not be awarded because the login session could not be verified.",
+        );
+        return;
       }
 
       const response = await fetch("/api/tokens/normal-test-reward", {
@@ -578,81 +683,85 @@ export default function NVRRotationsReflectionsTestPage() {
           category: RESULT_CATEGORY,
           testId: test.id,
         }),
-      })
+      });
 
-      const data = await response.json().catch(() => null)
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        console.error("Error awarding YanBo Coins:", data)
+        console.error("Error awarding YanBo Coins:", data);
 
         if (typeof data?.message === "string" && data.message.trim() !== "") {
-          setRewardMessage(data.message)
-          return
+          setRewardMessage(data.message);
+          return;
         }
 
         setRewardMessage(
-          "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
-        )
-        return
+          "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+        );
+        return;
       }
 
       const awardedCoins =
-        typeof data?.coinsAwarded === "number" ? data.coinsAwarded : expectedCoins
+        typeof data?.coinsAwarded === "number"
+          ? data.coinsAwarded
+          : expectedCoins;
 
       if (awardedCoins > 0) {
-        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins))
-        return
+        setRewardMessage(getYanBoCoinRewardMessage(awardedCoins));
+        return;
       }
 
       if (expectedCoins > 0) {
-        setRewardMessage("YanBo Coins for this test have already been awarded today.")
-        return
+        setRewardMessage(
+          "YanBo Coins for this test have already been awarded today.",
+        );
+        return;
       }
 
-      setRewardMessage("Score 50% or more next time to earn YanBo Coins.")
+      setRewardMessage("Score 50% or more next time to earn YanBo Coins.");
     } catch (error) {
-      console.error("Error awarding YanBo Coins:", error)
+      console.error("Error awarding YanBo Coins:", error);
       setRewardMessage(
-        "Your result was saved, but YanBo Coins could not be awarded. Please try again later."
-      )
+        "Your result was saved, but YanBo Coins could not be awarded. Please try again later.",
+      );
     }
   }
 
   async function submitResults(finalAnswers: UserAnswerMap) {
-    if (submitting) return
-    if (!userId || !test) return
-    if (questions.length === 0) return
+    if (submitting) return;
+    if (!userId || !test) return;
+    if (questions.length === 0) return;
 
-    setSubmitting(true)
-    setErrorMessage("")
-    setRewardMessage("")
+    setSubmitting(true);
+    setErrorMessage("");
+    setRewardMessage("");
 
     try {
-      let correctAnswers = 0
+      let correctAnswers = 0;
 
-      const attemptedAt = new Date().toISOString()
+      const attemptedAt = new Date().toISOString();
 
       const wrongAnswersForReview: {
-        user_id: string
-        test_id: number
-        question_id: number
-        category: string | null
-        question_text: string
-        user_answer: string | null
-        correct_answer: string
-        difficulty: number | null
-        updated_at: string
-        last_attempted_at: string
-      }[] = []
+        user_id: string;
+        test_id: number;
+        question_id: number;
+        category: string | null;
+        question_text: string;
+        user_answer: string | null;
+        correct_answer: string;
+        difficulty: number | null;
+        updated_at: string;
+        last_attempted_at: string;
+      }[] = [];
 
-      const correctedReviewQuestionIds: number[] = []
+      const correctedReviewQuestionIds: number[] = [];
 
       for (const question of questions) {
-        const selected = finalAnswers[question.id]
+        const selected = finalAnswers[question.id];
 
         if (selected === question.correct_answer) {
-          correctAnswers += 1
-          correctedReviewQuestionIds.push(question.id)
+          correctAnswers += 1;
+          correctedReviewQuestionIds.push(question.id);
         } else {
           wrongAnswersForReview.push({
             user_id: userId,
@@ -665,13 +774,15 @@ export default function NVRRotationsReflectionsTestPage() {
             difficulty: question.difficulty ?? test.difficulty ?? null,
             updated_at: attemptedAt,
             last_attempted_at: attemptedAt,
-          })
+          });
         }
       }
 
-      const totalQuestions = questions.length
+      const totalQuestions = questions.length;
       const successRate =
-        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0;
 
       const progressPayload = {
         user_id: userId,
@@ -681,11 +792,11 @@ export default function NVRRotationsReflectionsTestPage() {
         correct_answers: correctAnswers,
         success_rate: successRate,
         difficulty: test.difficulty ?? null,
-      }
+      };
 
       const { error: progressError } = await supabase
         .from("nvr_progress")
-        .insert([progressPayload])
+        .insert([progressPayload]);
 
       if (progressError) {
         console.error("Error saving NVR progress:", {
@@ -695,30 +806,31 @@ export default function NVRRotationsReflectionsTestPage() {
           code: progressError.code,
           full: progressError,
           payload: progressPayload,
-        })
+        });
 
         setErrorMessage(
-          progressError.message || "Could not save your progress. Please try again."
-        )
-        setSubmitting(false)
-        return
+          progressError.message ||
+            "Could not save your progress. Please try again.",
+        );
+        setSubmitting(false);
+        return;
       }
 
       await saveLatestTestResult(
         finalAnswers,
         correctAnswers,
         totalQuestions,
-        successRate
-      )
+        successRate,
+      );
 
-      await awardNormalTestCoins(successRate)
+      await awardNormalTestCoins(successRate);
 
       if (wrongAnswersForReview.length > 0) {
         const { error: reviewError } = await supabase
           .from("nvr_review")
           .upsert(wrongAnswersForReview, {
             onConflict: "user_id,question_id",
-          })
+          });
 
         if (reviewError) {
           console.error("Error saving NVR review:", {
@@ -727,7 +839,7 @@ export default function NVRRotationsReflectionsTestPage() {
             hint: reviewError.hint,
             code: reviewError.code,
             full: reviewError,
-          })
+          });
         }
       }
 
@@ -736,7 +848,7 @@ export default function NVRRotationsReflectionsTestPage() {
           .from("nvr_review")
           .delete()
           .eq("user_id", userId)
-          .in("question_id", correctedReviewQuestionIds)
+          .in("question_id", correctedReviewQuestionIds);
 
         if (deleteReviewError) {
           console.error("Error removing corrected NVR review items:", {
@@ -745,73 +857,75 @@ export default function NVRRotationsReflectionsTestPage() {
             hint: deleteReviewError.hint,
             code: deleteReviewError.code,
             full: deleteReviewError,
-          })
+          });
         }
       }
 
-      setScore(correctAnswers)
-      setFinished(true)
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      setScore(correctAnswers);
+      setFinished(true);
+      setSubmitting(false);
+      setTimeExpiredProcessing(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Unexpected NVR submit error:", error)
-      setErrorMessage("Something went wrong while submitting. Please try again.")
-      setSubmitting(false)
-      setTimeExpiredProcessing(false)
+      console.error("Unexpected NVR submit error:", error);
+      setErrorMessage(
+        "Something went wrong while submitting. Please try again.",
+      );
+      setSubmitting(false);
+      setTimeExpiredProcessing(false);
     }
   }
 
   function getOptionText(question: NVRQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a
-    if (option === "B") return question.option_b
-    if (option === "C") return question.option_c
-    return question.option_d
+    if (option === "A") return question.option_a;
+    if (option === "B") return question.option_b;
+    if (option === "C") return question.option_c;
+    return question.option_d;
   }
 
   function getOptionImage(question: NVRQuestion, option: AnswerOption) {
-    if (option === "A") return question.option_a_image_url
-    if (option === "B") return question.option_b_image_url
-    if (option === "C") return question.option_c_image_url
-    return question.option_d_image_url
+    if (option === "A") return question.option_a_image_url;
+    if (option === "B") return question.option_b_image_url;
+    if (option === "C") return question.option_c_image_url;
+    return question.option_d_image_url;
   }
 
   function restartSameTest() {
-    setAnswers({})
-    setCurrentIndex(0)
-    setSelectedAnswer(null)
-    setShowFeedback(false)
-    setFinished(false)
-    setScore(0)
-    setErrorMessage("")
-    setRewardMessage("")
-    setTimeLeft(QUESTION_TIME)
-    setTimeUpMessage("")
-    setTimeExpiredProcessing(false)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    setAnswers({});
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setFinished(false);
+    setScore(0);
+    setErrorMessage("");
+    setRewardMessage("");
+    setTimeLeft(QUESTION_TIME);
+    setTimeUpMessage("");
+    setTimeExpiredProcessing(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function getDifficultyLabel(difficulty: number | null) {
-    if (difficulty === 1) return "Easy"
-    if (difficulty === 2) return "Medium"
-    if (difficulty === 3) return "Hard"
-    return "Not set"
+    if (difficulty === 1) return "Easy";
+    if (difficulty === 2) return "Medium";
+    if (difficulty === 3) return "Hard";
+    return "Not set";
   }
 
   function getDifficultyColors(difficulty: number | null) {
     if (difficulty === 1) {
-      return { background: "#ecfdf5", color: "#065f46" }
+      return { background: "#ecfdf5", color: "#065f46" };
     }
 
     if (difficulty === 2) {
-      return { background: "#eff6ff", color: "#1d4ed8" }
+      return { background: "#eff6ff", color: "#1d4ed8" };
     }
 
     if (difficulty === 3) {
-      return { background: "#fef2f2", color: "#b91c1c" }
+      return { background: "#fef2f2", color: "#b91c1c" };
     }
 
-    return { background: "#f3f4f6", color: "#374151" }
+    return { background: "#f3f4f6", color: "#374151" };
   }
 
   if (loading) {
@@ -820,7 +934,7 @@ export default function NVRRotationsReflectionsTestPage() {
         <Header />
         <p style={styles.message}>Loading Codes & Spatial Logic test...</p>
       </>
-    )
+    );
   }
 
   if (errorMessage && !test) {
@@ -832,13 +946,17 @@ export default function NVRRotationsReflectionsTestPage() {
             <h1 style={styles.title}>Could not open test</h1>
             <p>{errorMessage}</p>
 
-            <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
+            <button
+              type="button"
+              onClick={goBackSafely}
+              style={styles.primaryButton}
+            >
               Back to Topic
             </button>
           </div>
         </div>
       </>
-    )
+    );
   }
 
   if (!test) {
@@ -849,13 +967,17 @@ export default function NVRRotationsReflectionsTestPage() {
           <div style={styles.centerCard}>
             <h1 style={styles.title}>NVR test not found</h1>
 
-            <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
+            <button
+              type="button"
+              onClick={goBackSafely}
+              style={styles.primaryButton}
+            >
               Back to Topic
             </button>
           </div>
         </div>
       </>
-    )
+    );
   }
 
   if (plan === "guest") {
@@ -880,14 +1002,18 @@ export default function NVRRotationsReflectionsTestPage() {
                 Sign In
               </button>
 
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
+              <button
+                type="button"
+                onClick={goBackSafely}
+                style={styles.secondaryButton}
+              >
                 Back to Topic
               </button>
             </div>
           </div>
         </div>
       </>
-    )
+    );
   }
 
   if (!canAccessTest) {
@@ -899,8 +1025,8 @@ export default function NVRRotationsReflectionsTestPage() {
             <h1 style={styles.title}>This test is for paid members</h1>
 
             <p style={styles.subtitle}>
-              Free members can access free tests only. Monthly and annual members
-              can access all YanBo Learning NVR tests.
+              Free members can access free tests only. Monthly and annual
+              members can access all YanBo Learning NVR tests.
             </p>
 
             <div style={styles.accessButtonRow}>
@@ -912,14 +1038,18 @@ export default function NVRRotationsReflectionsTestPage() {
                 View Membership Options
               </button>
 
-              <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
+              <button
+                type="button"
+                onClick={goBackSafely}
+                style={styles.secondaryButton}
+              >
                 Back to Topic
               </button>
             </div>
           </div>
         </div>
       </>
-    )
+    );
   }
 
   if (questions.length === 0) {
@@ -932,20 +1062,24 @@ export default function NVRRotationsReflectionsTestPage() {
               <h2>No questions found</h2>
               <p>Add questions in Supabase for this test.</p>
 
-              <button type="button" onClick={goBackSafely} style={styles.primaryButton}>
+              <button
+                type="button"
+                onClick={goBackSafely}
+                style={styles.primaryButton}
+              >
                 Back to Topic
               </button>
             </div>
           </div>
         </div>
       </>
-    )
+    );
   }
 
   const percentage =
-    questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
+    questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
 
-  const badgeColors = getDifficultyColors(test.difficulty)
+  const badgeColors = getDifficultyColors(test.difficulty);
 
   if (finished) {
     return (
@@ -955,7 +1089,9 @@ export default function NVRRotationsReflectionsTestPage() {
         <div style={styles.page}>
           <div style={styles.container}>
             <div style={styles.heroCard}>
-              <h1 style={styles.title}>🧩 Codes & Spatial Logic Test Complete</h1>
+              <h1 style={styles.title}>
+                🧩 Codes & Spatial Logic Test Complete
+              </h1>
               <p style={styles.subtitle}>{test.title}</p>
             </div>
 
@@ -987,20 +1123,31 @@ export default function NVRRotationsReflectionsTestPage() {
                   <strong>Category:</strong> Codes & Spatial Logic
                 </p>
 
-                {submitting && <p style={styles.resultText}>Saving results...</p>}
+                {submitting && (
+                  <p style={styles.resultText}>Saving results...</p>
+                )}
 
-                {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
+                {errorMessage && (
+                  <p style={styles.inlineError}>{errorMessage}</p>
+                )}
 
                 {rewardMessage && (
-                  <p
-                    style={{
-                      ...styles.resultText,
-                      color: rewardMessage.includes("earned") ? "#047857" : "#92400e",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {rewardMessage}
-                  </p>
+                  <div style={styles.coinRewardBox}>
+                    <div style={styles.coinRewardContent}>
+                      <div style={styles.coinRewardAvatar}>
+                        <StudentAvatarPortrait
+                          config={avatarConfig}
+                          name={avatarName}
+                          size={92}
+                        />
+                      </div>
+
+                      <div style={styles.coinRewardTextWrap}>
+                        <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                        <p style={styles.resultText}>{rewardMessage}</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1009,11 +1156,19 @@ export default function NVRRotationsReflectionsTestPage() {
                   View Full Result
                 </Link>
 
-                <button type="button" onClick={restartSameTest} style={styles.secondaryButton}>
+                <button
+                  type="button"
+                  onClick={restartSameTest}
+                  style={styles.secondaryButton}
+                >
                   Retry This Test
                 </button>
 
-                <button type="button" onClick={goBackSafely} style={styles.secondaryButton}>
+                <button
+                  type="button"
+                  onClick={goBackSafely}
+                  style={styles.secondaryButton}
+                >
                   Back to Topic
                 </button>
               </div>
@@ -1021,10 +1176,10 @@ export default function NVRRotationsReflectionsTestPage() {
           </div>
         </div>
       </>
-    )
+    );
   }
 
-  const isCorrect = selectedAnswer === currentQuestion.correct_answer
+  const isCorrect = selectedAnswer === currentQuestion.correct_answer;
 
   return (
     <>
@@ -1049,8 +1204,6 @@ export default function NVRRotationsReflectionsTestPage() {
               </div>
             </div>
 
-
-
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
           </div>
 
@@ -1064,17 +1217,19 @@ export default function NVRRotationsReflectionsTestPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setTimerEnabled((prev) => !prev)
-                    setTimeLeft(QUESTION_TIME)
-                    setTimeUpMessage("")
-                    setTimeExpiredProcessing(false)
+                    setTimerEnabled((prev) => !prev);
+                    setTimeLeft(QUESTION_TIME);
+                    setTimeUpMessage("");
+                    setTimeExpiredProcessing(false);
                   }}
                   disabled={submitting || timeExpiredProcessing}
                   style={{
                     ...styles.timerButton,
                     opacity: submitting || timeExpiredProcessing ? 0.6 : 1,
                     cursor:
-                      submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                      submitting || timeExpiredProcessing
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   Timer: {timerEnabled ? "ON" : "OFF"}
@@ -1095,7 +1250,9 @@ export default function NVRRotationsReflectionsTestPage() {
 
             {timeUpMessage && <p style={styles.timeUpText}>{timeUpMessage}</p>}
 
-            <h2 style={styles.questionTitle}>{currentQuestion.question_text}</h2>
+            <h2 style={styles.questionTitle}>
+              {currentQuestion.question_text}
+            </h2>
 
             {currentQuestion.image_url && (
               <div style={styles.questionImageWrap}>
@@ -1109,27 +1266,27 @@ export default function NVRRotationsReflectionsTestPage() {
 
             <div style={styles.optionsGrid}>
               {(["A", "B", "C", "D"] as const).map((option) => {
-                const optionText = getOptionText(currentQuestion, option)
-                const optionImage = getOptionImage(currentQuestion, option)
+                const optionText = getOptionText(currentQuestion, option);
+                const optionImage = getOptionImage(currentQuestion, option);
 
-                let backgroundColor = "#f3f4f6"
-                let borderColor = "transparent"
+                let backgroundColor = "#f3f4f6";
+                let borderColor = "transparent";
 
                 if (selectedAnswer === option) {
-                  backgroundColor = "#e0e7ff"
-                  borderColor = "#4f46e5"
+                  backgroundColor = "#e0e7ff";
+                  borderColor = "#4f46e5";
                 }
 
                 if (showFeedback) {
                   if (option === currentQuestion.correct_answer) {
-                    backgroundColor = "#dcfce7"
-                    borderColor = "#16a34a"
+                    backgroundColor = "#dcfce7";
+                    borderColor = "#16a34a";
                   } else if (
                     selectedAnswer === option &&
                     option !== currentQuestion.correct_answer
                   ) {
-                    backgroundColor = "#fee2e2"
-                    borderColor = "#dc2626"
+                    backgroundColor = "#fee2e2";
+                    borderColor = "#dc2626";
                   }
                 }
 
@@ -1138,7 +1295,9 @@ export default function NVRRotationsReflectionsTestPage() {
                     key={option}
                     type="button"
                     onClick={() => handleSelectAnswer(option)}
-                    disabled={showFeedback || submitting || timeExpiredProcessing}
+                    disabled={
+                      showFeedback || submitting || timeExpiredProcessing
+                    }
                     style={{
                       ...styles.optionButton,
                       backgroundColor,
@@ -1163,7 +1322,7 @@ export default function NVRRotationsReflectionsTestPage() {
                       )}
                     </div>
                   </button>
-                )
+                );
               })}
             </div>
 
@@ -1179,11 +1338,15 @@ export default function NVRRotationsReflectionsTestPage() {
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  disabled={!selectedAnswer || submitting || timeExpiredProcessing}
+                  disabled={
+                    !selectedAnswer || submitting || timeExpiredProcessing
+                  }
                   style={{
                     ...styles.primaryButton,
                     opacity:
-                      selectedAnswer && !submitting && !timeExpiredProcessing ? 1 : 0.6,
+                      selectedAnswer && !submitting && !timeExpiredProcessing
+                        ? 1
+                        : 0.6,
                     cursor:
                       selectedAnswer && !submitting && !timeExpiredProcessing
                         ? "pointer"
@@ -1238,7 +1401,9 @@ export default function NVRRotationsReflectionsTestPage() {
                       ...styles.primaryButton,
                       opacity: submitting || timeExpiredProcessing ? 0.7 : 1,
                       cursor:
-                        submitting || timeExpiredProcessing ? "not-allowed" : "pointer",
+                        submitting || timeExpiredProcessing
+                          ? "not-allowed"
+                          : "pointer",
                     }}
                   >
                     {submitting
@@ -1254,7 +1419,7 @@ export default function NVRRotationsReflectionsTestPage() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
@@ -1381,6 +1546,37 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  coinRewardBox: {
+    margin: "16px 0",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardAvatar: {
+    flex: "0 0 auto",
+  },
+
+  coinRewardTextWrap: {
+    flex: "1 1 220px",
+    minWidth: 0,
+  },
+
+  coinRewardTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "16px",
+    fontWeight: 800,
+    color: "#92400e",
   },
 
   resultButtons: {
@@ -1575,4 +1771,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: "40px",
     fontSize: "18px",
   },
-}
+};

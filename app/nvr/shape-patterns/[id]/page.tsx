@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Header from "../../../../components/Header"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter } from "next/navigation"
 
@@ -68,6 +69,26 @@ type UserAnswerMap = {
   [questionId: number]: AnswerOption
 }
 
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+}
+
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
 }
@@ -99,6 +120,8 @@ export default function NVRShapePatternsTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [rewardMessage, setRewardMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME)
@@ -139,6 +162,8 @@ export default function NVRShapePatternsTestPage() {
       setTimeLeft(QUESTION_TIME)
       setTimeUpMessage("")
       setTimeExpiredProcessing(false)
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
 
       if (!rawId || Number.isNaN(testId)) {
         setErrorMessage("Invalid NVR test ID.")
@@ -189,6 +214,34 @@ export default function NVRShapePatternsTestPage() {
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedAvatarConfig = (savedAvatar.avatar_config || {}) as Partial<AvatarConfig>
+        const selectedBase =
+          savedAvatar.selected_base === "yan" || savedAvatar.selected_base === "bo"
+            ? savedAvatar.selected_base
+            : savedAvatarConfig.base || defaultAvatar.base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedAvatarConfig,
+          base: selectedBase,
+        })
+
+        setAvatarName(
+          savedAvatar.avatar_name || (selectedBase === "yan" ? "Yan" : "Bo")
+        )
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -544,8 +597,17 @@ export default function NVRShapePatternsTestPage() {
   }
 
   function getYanBoCoinRewardMessage(coins: number) {
-    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
-    return `Brilliant work — you earned ${coins} YanBo Coins!`
+    if (coins === 1) {
+      return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+    }
+
+    if (coins === 2) {
+      return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+    }
+
+    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+
+    return "Score 50% or more next time to earn YanBo Coins."
   }
 
   async function awardNormalTestCoins(successRate: number) {
@@ -991,7 +1053,20 @@ export default function NVRShapePatternsTestPage() {
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
 
-                {rewardMessage && <p style={styles.resultText}>{rewardMessage}</p>}
+                {rewardMessage && (
+                  <div style={styles.rewardRow}>
+                    <StudentAvatarPortrait config={avatarConfig} name={avatarName} size={92} />
+
+                    <p
+                      style={{
+                        ...styles.rewardText,
+                        color: rewardMessage.includes("earned") ? "#047857" : "#92400e",
+                      }}
+                    >
+                      {rewardMessage}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div style={styles.resultButtons}>
@@ -1371,6 +1446,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
     fontSize: "18px",
     color: "#111827",
+  },
+
+  rewardRow: {
+    marginTop: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+
+  rewardText: {
+    margin: 0,
+    fontSize: "18px",
+    lineHeight: 1.5,
+    fontWeight: 800,
   },
 
   resultButtons: {
