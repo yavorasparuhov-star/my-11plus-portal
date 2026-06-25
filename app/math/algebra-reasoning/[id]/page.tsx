@@ -793,10 +793,22 @@ export default function AlgebraReasoningTestPage() {
       }
 
       if (result.awarded) {
+        if (earnedCoins === 1) {
+          setCoinRewardMessage(
+            "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+          )
+          return
+        }
+
+        if (earnedCoins === 2) {
+          setCoinRewardMessage(
+            "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+          )
+          return
+        }
+
         setCoinRewardMessage(
-          `Brilliant work — you earned ${earnedCoins} YanBo ${
-            earnedCoins === 1 ? "Coin" : "Coins"
-          }!`
+          `Brilliant work — you earned ${earnedCoins} YanBo Coins!`
         )
         return
       }

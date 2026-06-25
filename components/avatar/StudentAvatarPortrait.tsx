@@ -340,8 +340,11 @@ export default function StudentAvatarPortrait({
   const label =
     ariaLabel || `${safeName || (safeConfig.base === "yan" ? "Yan" : "Bo")} avatar`
   const iconScale = Math.max(0.12, size / 260)
-  const bodyTop = displayMode === "icon" ? -2 : -20
-  const bodyScale = displayMode === "icon" ? iconScale : 1.06
+  const isSmallPortrait = displayMode === "portrait" && size < 160
+  const smallPortraitScale = Math.max(0.3, size / 214)
+  const bodyTop = displayMode === "icon" ? -2 : isSmallPortrait ? -8 : -20
+  const bodyScale =
+    displayMode === "icon" ? iconScale : isSmallPortrait ? smallPortraitScale : 1.06
 
   return (
     <div
