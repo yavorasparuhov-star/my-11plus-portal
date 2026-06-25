@@ -39,6 +39,7 @@ type HeaderProfile = {
   email: string
 }
 
+const HEADER_GREEN = "#064e3b"
 const HEADER_YELLOW = "#facc15"
 
 function NavText({
@@ -312,7 +313,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         position: "sticky",
         top: 0,
         zIndex: 1000,
-        background: "#064e3b",
+        background: HEADER_GREEN,
         backdropFilter: "blur(10px)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.16)",
         boxShadow: "0 8px 22px rgba(6, 78, 59, 0.28)",
@@ -683,18 +684,20 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           style={{
             display: "none",
             flexDirection: "column",
-            padding: "0 22px 18px",
+            padding: "12px 22px 18px",
             maxWidth: "1200px",
             margin: "0 auto",
+            background: HEADER_GREEN,
+            borderTop: "1px solid rgba(255,255,255,0.16)",
           }}
         >
           <div
             style={{
-              background: "rgba(255,255,255,0.75)",
-              border: "1px solid rgba(0,0,0,0.05)",
+              background: HEADER_GREEN,
+              border: "1px solid rgba(255,255,255,0.22)",
               borderRadius: "18px",
               padding: "14px",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
             }}
           >
             <div
@@ -805,7 +808,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             {activeUser && (
               <div
                 style={{
-                  borderTop: "1px solid rgba(0,0,0,0.07)",
+                  borderTop: "1px solid rgba(255,255,255,0.18)",
                   paddingTop: "14px",
                   display: "flex",
                   flexDirection: "column",
