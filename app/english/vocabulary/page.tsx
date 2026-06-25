@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import ReportQuestionButton from "../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -61,6 +62,42 @@ const RESULT_LINK = `/results/english/vocabulary/${RESULT_TEST_ID}`
 
 const OPTION_KEYS: AnswerOption[] = ["A", "B", "C", "D"]
 
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+}
+
+function getYanBoCoinRewardMessage(earnedCoins: number) {
+  if (earnedCoins === 1) {
+    return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+  }
+
+  if (earnedCoins === 2) {
+    return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+  }
+
+  if (earnedCoins >= 3) {
+    return "Brilliant work — you earned 3 YanBo Coins!"
+  }
+
+  return "Score 50% or more next time to earn YanBo Coins."
+}
+
 export default function VocabularyPage() {
   return (
     <Suspense
@@ -100,6 +137,8 @@ function VocabularyContent() {
   const [resultSaved, setResultSaved] = useState(false)
   const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
   const [coinRewardMessage, setCoinRewardMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
 
   const [isAnswerLocked, setIsAnswerLocked] = useState(false)
   const [options, setOptions] = useState<WordRow[]>([])
@@ -132,6 +171,35 @@ function VocabularyContent() {
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig = (savedAvatar.avatar_config || {}) as Partial<AvatarConfig>
+        const savedBase =
+          savedAvatar.selected_base === "yan" || savedAvatar.selected_base === "bo"
+            ? savedAvatar.selected_base
+            : savedConfig.base === "yan" || savedConfig.base === "bo"
+              ? savedConfig.base
+              : defaultAvatar.base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedConfig,
+          base: savedBase,
+        })
+
+        setAvatarName(savedAvatar.avatar_name || (savedBase === "yan" ? "Yan" : "Bo"))
+      }
+
       setAuthChecked(true)
     }
 
@@ -654,16 +722,12 @@ function VocabularyContent() {
       setCoinsAwarded(earnedCoins)
 
       if (earnedCoins <= 0 || successRate < 50) {
-        setCoinRewardMessage("Score 50% or more to earn YanBo Coins.")
+        setCoinRewardMessage("Score 50% or more next time to earn YanBo Coins.")
         return
       }
 
       if (result.awarded) {
-        setCoinRewardMessage(
-          `Brilliant work — you earned ${earnedCoins} YanBo ${
-            earnedCoins === 1 ? "Coin" : "Coins"
-          }!`
-        )
+        setCoinRewardMessage(getYanBoCoinRewardMessage(earnedCoins))
         return
       }
 
@@ -1191,8 +1255,18 @@ function VocabularyContent() {
 
               {coinRewardMessage && (
                 <div style={styles.coinRewardBox}>
-                  <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
-                  <p style={styles.resultText}>{coinRewardMessage}</p>
+                  <div style={styles.coinRewardContent}>
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarName}
+                      size={92}
+                    />
+
+                    <div style={styles.coinRewardTextBlock}>
+                      <p style={styles.coinRewardTitle}>🪙 YanBo Coins</p>
+                      <p style={styles.resultText}>{coinRewardMessage}</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1527,6 +1601,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "16px",
     background: "#fffbeb",
     border: "1px solid #fde68a",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardTextBlock: {
+    flex: 1,
+    minWidth: "220px",
   },
 
   coinRewardTitle: {

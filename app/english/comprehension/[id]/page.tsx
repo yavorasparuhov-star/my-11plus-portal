@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Header from "../../../../components/Header"
+import StudentAvatarPortrait from "../../../../components/avatar/StudentAvatarPortrait"
 import ReportQuestionButton from "../../../../components/ReportQuestionButton"
 import { supabase } from "../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -57,6 +58,16 @@ type CompletedQuestionReview = {
   difficulty: number | null
 }
 
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
 type NormalTestRewardResponse =
   | {
       awarded: boolean
@@ -72,6 +83,16 @@ const SUBCATEGORY = "comprehension"
 const REVIEW_STORAGE_KEY = "comprehension_review_ids"
 const TEST_TIME = 10 * 60
 const TIMER_STORAGE_KEY = "english_comprehension_timer_enabled"
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+}
 
 function hasFullAccess(plan: UserPlan) {
   return plan === "monthly" || plan === "annual" || plan === "admin"
@@ -100,6 +121,8 @@ export default function ComprehensionTestPage() {
   const [score, setScore] = useState(0)
   const [coinsAwarded, setCoinsAwarded] = useState(0)
   const [coinMessage, setCoinMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [errorMessage, setErrorMessage] = useState("")
   const [showIncompleteModal, setShowIncompleteModal] = useState(false)
   const [timerEnabled, setTimerEnabled] = useState(false)
@@ -216,8 +239,10 @@ export default function ComprehensionTestPage() {
       setAnswers({})
       setSubmitted(false)
       setScore(0)
-    setCoinsAwarded(0)
-    setCoinMessage("")
+      setCoinsAwarded(0)
+      setCoinMessage("")
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
       setShowIncompleteModal(false)
       setSubmitting(false)
       setTimeLeft(TEST_TIME)
@@ -249,6 +274,38 @@ export default function ComprehensionTestPage() {
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      } else if (savedAvatar) {
+        const savedAvatarConfig =
+          savedAvatar.avatar_config && typeof savedAvatar.avatar_config === "object"
+            ? (savedAvatar.avatar_config as Partial<AvatarConfig>)
+            : {}
+
+        const selectedBase =
+          savedAvatar.selected_base === "yan" || savedAvatar.selected_base === "bo"
+            ? savedAvatar.selected_base
+            : savedAvatarConfig.base === "yan" || savedAvatarConfig.base === "bo"
+              ? savedAvatarConfig.base
+              : defaultAvatar.base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedAvatarConfig,
+          base: selectedBase,
+        })
+
+        setAvatarName(
+          savedAvatar.avatar_name || (selectedBase === "yan" ? "Yan" : "Bo")
+        )
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -449,6 +506,22 @@ export default function ComprehensionTestPage() {
     }))
   }
 
+  function getCoinRewardMessage(earnedCoins: number) {
+    if (earnedCoins === 1) {
+      return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+    }
+
+    if (earnedCoins === 2) {
+      return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+    }
+
+    if (earnedCoins >= 3) {
+      return `Brilliant work — you earned ${earnedCoins} YanBo Coins!`
+    }
+
+    return "Score 50% or more next time to earn YanBo Coins."
+  }
+
   async function awardNormalTestCoins(scorePercent: number) {
     if (!test || mode === "review") {
       setCoinsAwarded(0)
@@ -497,11 +570,7 @@ export default function ComprehensionTestPage() {
 
       if (scorePercent >= 50) {
         if (result.awarded) {
-          setCoinMessage(
-            `Brilliant work — you earned ${result.coinsAwarded} YanBo ${
-              result.coinsAwarded === 1 ? "Coin" : "Coins"
-            }!`
-          )
+          setCoinMessage(getCoinRewardMessage(result.coinsAwarded))
         } else {
           setCoinMessage("You have already earned YanBo Coins for this test today.")
         }
@@ -969,7 +1038,15 @@ export default function ComprehensionTestPage() {
                       color: coinsAwarded > 0 ? "#166534" : "#92400e",
                     }}
                   >
-                    {coinMessage}
+                    <div style={styles.coinRewardContent}>
+                      <StudentAvatarPortrait
+                        config={avatarConfig}
+                        name={avatarName}
+                        size={92}
+                      />
+
+                      <div style={styles.coinRewardText}>{coinMessage}</div>
+                    </div>
                   </div>
                 )}
 
@@ -1350,7 +1427,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid",
     fontWeight: 700,
     lineHeight: 1.5,
-    maxWidth: "520px",
+    maxWidth: "560px",
+  },
+
+  coinRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+
+  coinRewardText: {
+    flex: "1 1 240px",
+    minWidth: "220px",
   },
 
   resultButtons: {

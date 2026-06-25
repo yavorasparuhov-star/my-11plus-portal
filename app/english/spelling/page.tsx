@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import ReportQuestionButton from "../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -47,6 +48,26 @@ type SpellingResult = {
   userAnswerText: string | null
   correctAnswerText: string
   options: Record<AnswerOption, string>
+}
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
 }
 
 const REVIEW_STORAGE_KEY = "spelling_review_ids"
@@ -99,6 +120,8 @@ function SpellingContent() {
   const [errorMessage, setErrorMessage] = useState("")
   const [coinsAwarded, setCoinsAwarded] = useState<number | null>(null)
   const [coinsMessage, setCoinsMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
 
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
@@ -153,6 +176,36 @@ function SpellingContent() {
           : "free"
 
       setPlan(safePlan)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig = (savedAvatar.avatar_config || {}) as Partial<AvatarConfig>
+        const selectedBase =
+          savedAvatar.selected_base === "yan" || savedAvatar.selected_base === "bo"
+            ? savedAvatar.selected_base
+            : savedConfig.base || defaultAvatar.base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedConfig,
+          base: selectedBase,
+        })
+
+        setAvatarName(
+          savedAvatar.avatar_name ||
+            (selectedBase === "yan" ? "Yan" : "Bo")
+        )
+      }
+
       setAuthChecked(true)
     }
 
@@ -649,11 +702,21 @@ function SpellingContent() {
       setCoinsAwarded(earned)
 
       if (earned > 0 && result.awarded) {
-        setCoinsMessage(
-          `Brilliant work — you earned ${earned} YanBo ${
-            earned === 1 ? "Coin" : "Coins"
-          }!`
-        )
+        if (earned === 1) {
+          setCoinsMessage(
+            "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+          )
+          return
+        }
+
+        if (earned === 2) {
+          setCoinsMessage(
+            "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+          )
+          return
+        }
+
+        setCoinsMessage("Brilliant work — you earned 3 YanBo Coins!")
         return
       }
 
@@ -1077,8 +1140,18 @@ function SpellingContent() {
                       coinsAwarded && coinsAwarded > 0 ? "#fefce8" : "#f9fafb",
                   }}
                 >
-                  {coinsAwarded && coinsAwarded > 0 ? "🪙 " : ""}
-                  {coinsMessage}
+                  <div style={styles.coinsRewardContent}>
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarName}
+                      size={92}
+                    />
+
+                    <p style={styles.coinsRewardText}>
+                      {coinsAwarded && coinsAwarded > 0 ? "🪙 " : ""}
+                      {coinsMessage}
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -1703,6 +1776,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "18px",
     fontWeight: 800,
     textAlign: "center",
+  },
+  coinsRewardContent: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+  coinsRewardText: {
+    margin: 0,
+    maxWidth: "520px",
+    lineHeight: 1.5,
   },
   inlineError: {
     marginTop: "12px",

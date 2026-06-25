@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Header from "../../../../../components/Header"
 import ReportQuestionButton from "../../../../../components/ReportQuestionButton"
+import StudentAvatarPortrait from "../../../../../components/avatar/StudentAvatarPortrait"
 import { supabase } from "../../../../../lib/supabaseClient"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
@@ -16,6 +17,26 @@ const TIMER_STORAGE_KEY = "sentence_punctuation_timer_enabled"
 
 type AnswerOption = "A" | "B" | "C" | "D"
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+
+type AvatarConfig = {
+  base: "yan" | "bo"
+  skinTone: "light" | "medium" | "dark"
+  eyeColor: "brown" | "blue" | "black"
+  glasses: string
+  background: string
+  hat: string
+  badge: string
+}
+
+const defaultAvatar: AvatarConfig = {
+  base: "bo",
+  skinTone: "light",
+  eyeColor: "blue",
+  glasses: "none",
+  background: "plain",
+  hat: "none",
+  badge: "none",
+}
 
 type SentencePunctuationTest = {
   id: number
@@ -93,6 +114,8 @@ export default function SentencePunctuationTestPage() {
   const [score, setScore] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const [rewardMessage, setRewardMessage] = useState("")
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
+  const [avatarName, setAvatarName] = useState("Bo")
   const [reviewIds, setReviewIds] = useState<number[]>([])
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [timerPreferenceLoaded, setTimerPreferenceLoaded] = useState(false)
@@ -147,6 +170,8 @@ export default function SentencePunctuationTestPage() {
       setLoading(true)
       setErrorMessage("")
       setRewardMessage("")
+      setAvatarConfig(defaultAvatar)
+      setAvatarName("Bo")
       setQuestions([])
       setAnswers({})
       setCurrentIndex(0)
@@ -208,6 +233,37 @@ export default function SentencePunctuationTestPage() {
       }
 
       setUserId(user.id)
+
+      const { data: savedAvatar, error: avatarError } = await supabase
+        .from("student_avatars")
+        .select("selected_base, avatar_config, avatar_name")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (avatarError) {
+        console.error("Error loading saved avatar:", avatarError)
+      }
+
+      if (savedAvatar) {
+        const savedConfig = (savedAvatar.avatar_config || {}) as Partial<AvatarConfig>
+        const selectedBase = savedAvatar.selected_base
+
+        setAvatarConfig({
+          ...defaultAvatar,
+          ...savedConfig,
+          base:
+            selectedBase === "yan" || selectedBase === "bo"
+              ? selectedBase
+              : savedConfig.base === "yan" || savedConfig.base === "bo"
+                ? savedConfig.base
+                : defaultAvatar.base,
+        })
+
+        setAvatarName(
+          savedAvatar.avatar_name ||
+            (selectedBase === "yan" || savedConfig.base === "yan" ? "Yan" : "Bo")
+        )
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -600,9 +656,16 @@ export default function SentencePunctuationTestPage() {
   }
 
   function getYanBoCoinRewardMessage(coins: number) {
-    if (coins === 1) return "Brilliant work — you earned 1 YanBo Coin!"
-    if (coins === 2) return "Brilliant work — you earned 2 YanBo Coins!"
-    if (coins === 3) return "Brilliant work — you earned 3 YanBo Coins!"
+    if (coins === 1) {
+      return "Not bad — you earned 1 YanBo Coin. Keep practising and you can do even better!"
+    }
+
+    if (coins === 2) {
+      return "Good job — you earned 2 YanBo Coins. Keep practising to get even better!"
+    }
+
+    if (coins >= 3) return "Brilliant work — you earned 3 YanBo Coins!"
+
     return "Score 50% or more next time to earn YanBo Coins."
   }
 
@@ -1071,7 +1134,17 @@ export default function SentencePunctuationTestPage() {
 
                 {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
 
-                {rewardMessage && <p style={styles.rewardMessage}>{rewardMessage}</p>}
+                {!errorMessage && rewardMessage && (
+                  <div style={styles.rewardAvatarBox}>
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarName}
+                      size={92}
+                    />
+
+                    <p style={styles.rewardMessage}>{rewardMessage}</p>
+                  </div>
+                )}
               </div>
 
               <div style={styles.resultButtons}>
@@ -1443,12 +1516,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#111827",
   },
 
+  rewardAvatarBox: {
+    marginTop: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    flexWrap: "wrap",
+  },
+
   rewardMessage: {
-    margin: "12px 0 0 0",
+    flex: 1,
+    minWidth: "220px",
+    margin: 0,
     padding: "12px 14px",
     borderRadius: "12px",
     background: "#ecfdf5",
     color: "#065f46",
+    fontSize: "16px",
     fontWeight: 700,
     lineHeight: 1.5,
   },
