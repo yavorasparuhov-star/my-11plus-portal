@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import {
+  StudentAvatarPortrait,
+  defaultAvatar,
+  normaliseAvatarConfig,
+  normaliseAvatarName,
+  type AvatarConfig,
+} from "../../../components/avatar/StudentAvatarPortrait";
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin";
 
@@ -22,26 +29,6 @@ type ProfileRow = {
   plan: string | null;
 };
 
-type AvatarConfig = {
-  base: "yan" | "bo";
-  skinTone: "light" | "medium" | "dark";
-  eyeColor: "brown" | "blue" | "black";
-  glasses: string;
-  background: string;
-  hat: string;
-  badge: string;
-};
-
-type AvatarSlot = "glasses" | "background" | "hat" | "badge";
-
-type SlotOption = {
-  value: string;
-  label: string;
-  itemKey?: string;
-};
-
-type AvatarImageSources = Record<AvatarSlot | "base" | "eyes", string[]>;
-
 type CoinTransaction = {
   id: string;
   amount: number;
@@ -50,211 +37,6 @@ type CoinTransaction = {
   source_id: string | null;
   created_at: string;
 };
-
-const defaultAvatar: AvatarConfig = {
-  base: "bo",
-  skinTone: "light",
-  eyeColor: "blue",
-  glasses: "none",
-  background: "plain",
-  hat: "none",
-  badge: "none",
-};
-
-const hiddenAvatarItemKeys = new Set<string>([
-  "hat_headphones",
-  "hat_star_headband",
-]);
-
-const avatarLayerFolders: Record<AvatarSlot, string> = {
-  glasses: "glasses",
-  background: "backgrounds",
-  hat: "hats",
-  badge: "badges",
-};
-
-const profileSlotOptions: Record<AvatarSlot, SlotOption[]> = {
-  glasses: [
-    { value: "none", label: "No glasses" },
-    { value: "round", label: "Round Smart Glasses", itemKey: "smart_glasses_round" },
-    { value: "square", label: "Square Smart Glasses", itemKey: "smart_glasses_square" },
-    { value: "blue", label: "Blue Frame Glasses", itemKey: "glasses_blue_frames" },
-    { value: "green", label: "Green Frame Glasses", itemKey: "glasses_green_frames" },
-    { value: "star", label: "Star Frame Glasses", itemKey: "glasses_star_frames" },
-    { value: "silver", label: "Silver Reading Glasses", itemKey: "glasses_reading_silver" },
-    { value: "sport", label: "Sport Goggles", itemKey: "glasses_sport_goggles" },
-    { value: "rainbow", label: "Rainbow Frame Glasses", itemKey: "glasses_rainbow_frames" },
-  ],
-  background: [
-    { value: "plain", label: "Plain" },
-    { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
-    { value: "library", label: "Library", itemKey: "background_library" },
-    { value: "science_lab", label: "Science Lab", itemKey: "background_science_lab" },
-    { value: "reading_corner", label: "Reading Corner", itemKey: "background_reading_corner" },
-    { value: "yanbo_stage", label: "YanBo Stage", itemKey: "background_yanbo_stage" },
-  ],
-  hat: [
-    { value: "none", label: "No hat" },
-    { value: "yanbo_cap", label: "YanBo Cap", itemKey: "hat_yanbo_cap" },
-    { value: "graduation", label: "Graduation Cap", itemKey: "hat_graduation_cap" },
-    { value: "wizard", label: "Wizard Hat", itemKey: "hat_wizard_hat" },
-    { value: "crown", label: "Champion Crown", itemKey: "hat_crown" },
-    { value: "explorer", label: "Explorer Hat", itemKey: "hat_explorer_hat" },
-    { value: "blue_beanie", label: "Blue Beanie", itemKey: "hat_blue_beanie" },
-  ],
-  badge: [
-    { value: "none", label: "No badge" },
-    { value: "english", label: "English Star Badge", itemKey: "badge_english_star" },
-    { value: "maths", label: "Maths Star Badge", itemKey: "badge_maths_star" },
-    { value: "vr", label: "VR Badge", itemKey: "badge_vr_master" },
-    { value: "nvr", label: "NVR Badge", itemKey: "badge_nvr_master" },
-  ],
-};
-
-function normaliseEyeColor(value: unknown): AvatarConfig["eyeColor"] {
-  if (value === "brown" || value === "blue" || value === "black") {
-    return value;
-  }
-
-  return defaultAvatar.eyeColor;
-}
-
-function getSlotOption(slot: AvatarSlot, value: string) {
-  return profileSlotOptions[slot].find((option) => option.value === value);
-}
-
-function getSlotItemKey(slot: AvatarSlot, value: string) {
-  return getSlotOption(slot, value)?.itemKey;
-}
-
-function normaliseSlotValue(slot: AvatarSlot, value: unknown) {
-  if (typeof value !== "string") {
-    return defaultAvatar[slot];
-  }
-
-  const option = getSlotOption(slot, value);
-
-  if (!option) {
-    return defaultAvatar[slot];
-  }
-
-  if (option.itemKey && hiddenAvatarItemKeys.has(option.itemKey)) {
-    return defaultAvatar[slot];
-  }
-
-  return value;
-}
-
-function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null): AvatarConfig {
-  if (!savedConfig) return defaultAvatar;
-
-  const savedBase = savedConfig.base;
-  let base: AvatarConfig["base"] = "bo";
-
-  if (savedBase === "yan" || savedBase === "girl") {
-    base = "yan";
-  }
-
-  if (savedBase === "bo" || savedBase === "boy") {
-    base = "bo";
-  }
-
-  return {
-    base,
-    skinTone:
-      savedConfig.skinTone === "medium" || savedConfig.skinTone === "dark"
-        ? savedConfig.skinTone
-        : defaultAvatar.skinTone,
-    eyeColor: normaliseEyeColor(savedConfig.eyeColor),
-    glasses: normaliseSlotValue("glasses", savedConfig.glasses),
-    background: normaliseSlotValue("background", savedConfig.background),
-    hat: normaliseSlotValue("hat", savedConfig.hat),
-    badge: normaliseSlotValue("badge", savedConfig.badge),
-  };
-}
-
-function itemKeyToAssetFileName(itemKey: string) {
-  return itemKey.replace(/_/g, "-");
-}
-
-function uniqueImageSources(sources: Array<string | null | undefined>) {
-  return sources.filter((source, index, allSources): source is string => {
-    return Boolean(source) && allSources.indexOf(source) === index;
-  });
-}
-
-function getBaseAvatarImageSources(
-  base: AvatarConfig["base"],
-  skinTone: AvatarConfig["skinTone"],
-) {
-  const skinToneSuffix = skinTone === "light" ? "" : `-${skinTone}`;
-
-  return uniqueImageSources([
-    `/avatars/builder/base/${base}-base${skinToneSuffix}.png`,
-    `/avatars/builder/base/${base}-base.png`,
-    `/characters/${base}-main.png`,
-  ]);
-}
-
-function getEyeOverlayImageSources(
-  base: AvatarConfig["base"],
-  eyeColor: AvatarConfig["eyeColor"],
-) {
-  return uniqueImageSources([
-    `/avatars/builder/eyes/${base}/eyes-${eyeColor}.png`,
-    `/avatars/builder/eyes/eyes-${eyeColor}.png`,
-  ]);
-}
-
-function getProfileLayerImageSources(
-  slot: AvatarSlot,
-  value: string,
-  base: AvatarConfig["base"],
-) {
-  const itemKey = getSlotItemKey(slot, value);
-  if (!itemKey) return [];
-
-  const folder = avatarLayerFolders[slot];
-  const fileName = itemKeyToAssetFileName(itemKey);
-
-  if (slot === "background" || slot === "badge") {
-    return uniqueImageSources([
-      `/avatars/builder/${folder}/${fileName}.png`,
-      `/avatars/items/${fileName}.png`,
-    ]);
-  }
-
-  return uniqueImageSources([
-    `/avatars/builder/${folder}/${base}/${fileName}.png`,
-    `/avatars/builder/${folder}/${fileName}.png`,
-    `/avatars/items/${fileName}.png`,
-  ]);
-}
-
-function getProfileAvatarImageSources(config: AvatarConfig): AvatarImageSources {
-  return {
-    base: getBaseAvatarImageSources(config.base, config.skinTone),
-    eyes: getEyeOverlayImageSources(config.base, config.eyeColor),
-    glasses: getProfileLayerImageSources("glasses", config.glasses, config.base),
-    hat: getProfileLayerImageSources("hat", config.hat, config.base),
-    badge: getProfileLayerImageSources("badge", config.badge, config.base),
-    background: getProfileLayerImageSources(
-      "background",
-      config.background,
-      config.base,
-    ),
-  };
-}
-
-function builderOnlySources(sources: string[]) {
-  return sources.filter((source) => source.startsWith("/avatars/builder/"));
-}
-
-function normaliseAvatarName(value: unknown) {
-  if (typeof value !== "string") return "";
-
-  return value.replace(/\s+/g, " ").trim().slice(0, 20);
-}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -537,10 +319,6 @@ export default function ProfilePage() {
           ? "Annual"
           : "Free";
 
-  const avatarPreviewImages = useMemo(
-    () => getProfileAvatarImageSources(avatarConfig),
-    [avatarConfig],
-  );
 
   if (loading) {
     return (
@@ -559,9 +337,10 @@ export default function ProfilePage() {
           <div style={styles.leftColumn}>
             <div style={styles.avatarCard}>
               <div style={styles.avatarBody}>
-                <ProfileAvatarPreview
+                <StudentAvatarPortrait
                   config={avatarConfig}
-                  imageSources={avatarPreviewImages}
+                  size={214}
+                  ariaLabel={`${avatarName || "Saved YanBo"} avatar`}
                 />
 
                 <div style={styles.avatarTextWrap}>
@@ -828,177 +607,6 @@ function badgeDisplay(badge: string) {
       return "";
   }
 }
-
-function ProfileAvatarPreview({
-  config,
-  imageSources,
-}: {
-  config: AvatarConfig;
-  imageSources: AvatarImageSources;
-}) {
-  const builderEyeSources = builderOnlySources(imageSources.eyes);
-  const builderGlassesSources = builderOnlySources(imageSources.glasses);
-  const builderHatSources = builderOnlySources(imageSources.hat);
-  const builderBadgeSources = builderOnlySources(imageSources.badge);
-
-  return (
-    <div style={styles.profileAvatarStage}>
-      {imageSources.background.length > 0 && (
-        <ProfileLayerImage
-          srcs={imageSources.background}
-          alt=""
-          style={styles.profileAvatarBackgroundImage}
-          fallback={null}
-        />
-      )}
-
-      <div
-        style={{
-          ...styles.profileAvatarStageOverlay,
-          background: profileBackgroundOverlay(config.background),
-        }}
-      />
-
-      <div style={styles.profileAvatarGroundShadow} />
-
-      <div style={styles.profileAvatarScaledBody}>
-        <div style={styles.profileAvatarInner}>
-          <ProfileLayerImage
-            srcs={imageSources.base}
-            alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
-            style={styles.profileAvatarBaseImage}
-            fallback={
-              <ProfileCssFallbackAvatar
-                base={config.base}
-                skinTone={config.skinTone}
-              />
-            }
-          />
-
-          <ProfileLayerImage
-            srcs={builderEyeSources}
-            alt={`${config.eyeColor} eyes`}
-            style={styles.profileAvatarEyeLayer}
-            fallback={null}
-          />
-
-          {config.hat !== "none" && (
-            <div style={styles.profileAvatarHatLayer}>
-              <ProfileLayerImage
-                srcs={builderHatSources}
-                alt="Avatar hat"
-                style={styles.profileAvatarHatImage}
-                fallback={
-                  <span style={styles.profileAvatarHatFallback}>
-                    {hatDisplay(config.hat)}
-                  </span>
-                }
-              />
-            </div>
-          )}
-
-          {config.glasses !== "none" && (
-            <div style={styles.profileAvatarGlassesLayer}>
-              <ProfileLayerImage
-                srcs={builderGlassesSources}
-                alt="Avatar glasses"
-                style={styles.profileAvatarGlassesImage}
-                fallback={
-                  <span style={styles.profileAvatarGlassesFallback}>
-                    {glassesDisplay(config.glasses)}
-                  </span>
-                }
-              />
-            </div>
-          )}
-
-          {config.badge !== "none" && (
-            <div style={styles.profileAvatarBadgeLayer}>
-              <ProfileLayerImage
-                srcs={builderBadgeSources}
-                alt="Avatar badge"
-                style={styles.profileAvatarBadgeImage}
-                fallback={
-                  <span style={styles.profileAvatarBadgeFallback}>
-                    {badgeDisplay(config.badge)}
-                  </span>
-                }
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProfileLayerImage({
-  srcs,
-  alt,
-  style,
-  fallback,
-}: {
-  srcs: string[];
-  alt: string;
-  style: React.CSSProperties;
-  fallback: React.ReactNode;
-}) {
-  const sourceKey = srcs.join("|");
-  const [imageIndex, setImageIndex] = useState(0);
-
-  useEffect(() => {
-    setImageIndex(0);
-  }, [sourceKey]);
-
-  const currentSource = srcs[imageIndex];
-
-  if (!currentSource) {
-    return <>{fallback}</>;
-  }
-
-  return (
-    <img
-      src={currentSource}
-      alt={alt}
-      style={style}
-      onError={() => setImageIndex((current) => current + 1)}
-    />
-  );
-}
-
-function ProfileCssFallbackAvatar({
-  base,
-  skinTone,
-}: {
-  base: AvatarConfig["base"];
-  skinTone: AvatarConfig["skinTone"];
-}) {
-  const skinBackground =
-    skinTone === "dark"
-      ? "#8b5a3c"
-      : skinTone === "medium"
-        ? "#d6a06f"
-        : "#f1c9a5";
-
-  return (
-    <div style={styles.profileAvatarFallbackWrap}>
-      <div
-        style={{
-          ...styles.profileAvatarFallbackHead,
-          background: skinBackground,
-        }}
-      >
-        {base === "yan" ? "😊" : "🙂"}
-      </div>
-
-      <div style={styles.profileAvatarFallbackJumper}>
-        <span style={styles.yanboY}>Y</span>an
-        <span style={styles.yanboB}>B</span>o
-      </div>
-    </div>
-  );
-}
-
 
 const styles: Record<string, React.CSSProperties> = {
   page: {

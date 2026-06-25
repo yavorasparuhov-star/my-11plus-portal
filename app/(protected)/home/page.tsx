@@ -13,91 +13,18 @@ import {
   ReviewIcon,
   VRIcon,
 } from "../../../components/icons/PortalIcons"
-
-type AvatarConfig = {
-  base: "yan" | "bo"
-  skinTone: "light" | "medium" | "dark"
-  eyeColor: "brown" | "blue" | "black"
-  glasses: string
-  background: string
-  hat: string
-  badge: string
-}
-
-type AvatarSlot = "glasses" | "background" | "hat" | "badge"
-
-type AvatarImageSources = Record<AvatarSlot | "base" | "eyes", string[]>
-
-type SlotOption = {
-  value: string
-  label: string
-  itemKey?: string
-}
+import {
+  StudentAvatarPortrait,
+  defaultAvatar,
+  normaliseAvatarConfig,
+  normaliseAvatarName,
+  type AvatarConfig,
+} from "../../../components/avatar/StudentAvatarPortrait"
 
 type DailyLoginResult = {
   error?: string
   awarded?: boolean
   amount?: number
-}
-
-const defaultAvatar: AvatarConfig = {
-  base: "bo",
-  skinTone: "light",
-  eyeColor: "blue",
-  glasses: "none",
-  background: "plain",
-  hat: "none",
-  badge: "none",
-}
-
-const hiddenAvatarItemKeys = new Set<string>([
-  "hat_headphones",
-  "hat_star_headband",
-])
-
-const avatarLayerFolders: Record<AvatarSlot, string> = {
-  glasses: "glasses",
-  background: "backgrounds",
-  hat: "hats",
-  badge: "badges",
-}
-
-const homeSlotOptions: Record<AvatarSlot, SlotOption[]> = {
-  glasses: [
-    { value: "none", label: "No glasses" },
-    { value: "round", label: "Round Smart Glasses", itemKey: "smart_glasses_round" },
-    { value: "square", label: "Square Smart Glasses", itemKey: "smart_glasses_square" },
-    { value: "blue", label: "Blue Frame Glasses", itemKey: "glasses_blue_frames" },
-    { value: "green", label: "Green Frame Glasses", itemKey: "glasses_green_frames" },
-    { value: "star", label: "Star Frame Glasses", itemKey: "glasses_star_frames" },
-    { value: "silver", label: "Silver Reading Glasses", itemKey: "glasses_reading_silver" },
-    { value: "sport", label: "Sport Goggles", itemKey: "glasses_sport_goggles" },
-    { value: "rainbow", label: "Rainbow Frame Glasses", itemKey: "glasses_rainbow_frames" },
-  ],
-  background: [
-    { value: "plain", label: "Plain" },
-    { value: "classroom", label: "Classroom", itemKey: "background_classroom" },
-    { value: "library", label: "Library", itemKey: "background_library" },
-    { value: "science_lab", label: "Science Lab", itemKey: "background_science_lab" },
-    { value: "reading_corner", label: "Reading Corner", itemKey: "background_reading_corner" },
-    { value: "yanbo_stage", label: "YanBo Stage", itemKey: "background_yanbo_stage" },
-  ],
-  hat: [
-    { value: "none", label: "No hat" },
-    { value: "yanbo_cap", label: "YanBo Cap", itemKey: "hat_yanbo_cap" },
-    { value: "graduation", label: "Graduation Cap", itemKey: "hat_graduation_cap" },
-    { value: "wizard", label: "Wizard Hat", itemKey: "hat_wizard_hat" },
-    { value: "crown", label: "Champion Crown", itemKey: "hat_crown" },
-    { value: "explorer", label: "Explorer Hat", itemKey: "hat_explorer_hat" },
-    { value: "blue_beanie", label: "Blue Beanie", itemKey: "hat_blue_beanie" },
-  ],
-  badge: [
-    { value: "none", label: "No badge" },
-    { value: "english", label: "English Star Badge", itemKey: "badge_english_star" },
-    { value: "maths", label: "Maths Star Badge", itemKey: "badge_maths_star" },
-    { value: "vr", label: "VR Master Badge", itemKey: "badge_vr_master" },
-    { value: "nvr", label: "NVR Master Badge", itemKey: "badge_nvr_master" },
-  ],
 }
 
 const dailyFunFacts = [
@@ -120,168 +47,6 @@ const dailyFunFacts = [
 const cardHover = {
   transition: "all 0.25s ease",
   cursor: "pointer",
-}
-
-function normaliseEyeColor(value: unknown): AvatarConfig["eyeColor"] {
-  if (value === "brown" || value === "blue" || value === "black") {
-    return value
-  }
-
-  return defaultAvatar.eyeColor
-}
-
-function getSlotOption(slot: AvatarSlot, value: string) {
-  return homeSlotOptions[slot].find((option) => option.value === value)
-}
-
-function normaliseSlotValue(slot: AvatarSlot, value: unknown) {
-  if (typeof value !== "string") {
-    return defaultAvatar[slot]
-  }
-
-  const option = getSlotOption(slot, value)
-
-  if (!option) {
-    return defaultAvatar[slot]
-  }
-
-  if (option.itemKey && hiddenAvatarItemKeys.has(option.itemKey)) {
-    return defaultAvatar[slot]
-  }
-
-  return value
-}
-
-function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null): AvatarConfig {
-  if (!savedConfig) return defaultAvatar
-
-  const savedBase = savedConfig.base
-  let base: AvatarConfig["base"] = "bo"
-
-  if (savedBase === "yan" || savedBase === "girl") {
-    base = "yan"
-  }
-
-  if (savedBase === "bo" || savedBase === "boy") {
-    base = "bo"
-  }
-
-  return {
-    base,
-    skinTone:
-      savedConfig.skinTone === "medium" || savedConfig.skinTone === "dark"
-        ? savedConfig.skinTone
-        : defaultAvatar.skinTone,
-    eyeColor: normaliseEyeColor(savedConfig.eyeColor),
-    glasses: normaliseSlotValue("glasses", savedConfig.glasses),
-    background: normaliseSlotValue("background", savedConfig.background),
-    hat: normaliseSlotValue("hat", savedConfig.hat),
-    badge: normaliseSlotValue("badge", savedConfig.badge),
-  }
-}
-
-function normaliseAvatarName(value: unknown) {
-  if (typeof value !== "string") return ""
-
-  return value.replace(/\s+/g, " ").trim().slice(0, 20)
-}
-
-function itemKeyToAssetFileName(itemKey: string) {
-  return itemKey.replace(/_/g, "-")
-}
-
-function uniqueImageSources(sources: Array<string | null | undefined>) {
-  return sources.filter((source, index, allSources): source is string => {
-    return Boolean(source) && allSources.indexOf(source) === index
-  })
-}
-
-function getSlotItemKey(slot: AvatarSlot, value: string) {
-  return getSlotOption(slot, value)?.itemKey
-}
-
-function getBaseAvatarImageSources(
-  base: AvatarConfig["base"],
-  skinTone: AvatarConfig["skinTone"],
-) {
-  const skinToneSuffix = skinTone === "light" ? "" : `-${skinTone}`
-
-  return uniqueImageSources([
-    `/avatars/builder/base/${base}-base${skinToneSuffix}.png`,
-    `/avatars/builder/base/${base}-base.png`,
-    `/characters/${base}-main.png`,
-  ])
-}
-
-function getEyeOverlayImageSources(
-  base: AvatarConfig["base"],
-  eyeColor: AvatarConfig["eyeColor"],
-) {
-  return uniqueImageSources([
-    `/avatars/builder/eyes/${base}/eyes-${eyeColor}.png`,
-    `/avatars/builder/eyes/eyes-${eyeColor}.png`,
-  ])
-}
-
-function getHomeLayerImageSources(
-  slot: AvatarSlot,
-  value: string,
-  base: AvatarConfig["base"],
-) {
-  const itemKey = getSlotItemKey(slot, value)
-  if (!itemKey) return []
-
-  const folder = avatarLayerFolders[slot]
-  const fileName = itemKeyToAssetFileName(itemKey)
-
-  if (slot === "background" || slot === "badge") {
-    return uniqueImageSources([
-      `/avatars/builder/${folder}/${fileName}.png`,
-      `/avatars/items/${fileName}.png`,
-    ])
-  }
-
-  return uniqueImageSources([
-    `/avatars/builder/${folder}/${base}/${fileName}.png`,
-    `/avatars/builder/${folder}/${fileName}.png`,
-    `/avatars/items/${fileName}.png`,
-  ])
-}
-
-function getHomeAvatarImageSources(config: AvatarConfig): AvatarImageSources {
-  return {
-    base: getBaseAvatarImageSources(config.base, config.skinTone),
-    eyes: getEyeOverlayImageSources(config.base, config.eyeColor),
-    glasses: getHomeLayerImageSources("glasses", config.glasses, config.base),
-    hat: getHomeLayerImageSources("hat", config.hat, config.base),
-    badge: getHomeLayerImageSources("badge", config.badge, config.base),
-    background: getHomeLayerImageSources(
-      "background",
-      config.background,
-      config.base,
-    ),
-  }
-}
-
-function builderOnlySources(sources: string[]) {
-  return sources.filter((source) => source.startsWith("/avatars/builder/"))
-}
-
-function profileBackgroundOverlay(background: string) {
-  switch (background) {
-    case "classroom":
-      return "linear-gradient(180deg, rgba(255, 251, 235, 0.65), rgba(239, 246, 255, 0.45))"
-    case "library":
-      return "linear-gradient(180deg, rgba(224, 242, 254, 0.58), rgba(255, 255, 255, 0.35))"
-    case "science_lab":
-      return "linear-gradient(180deg, rgba(237, 233, 254, 0.55), rgba(207, 250, 254, 0.38))"
-    case "reading_corner":
-      return "linear-gradient(180deg, rgba(255, 237, 213, 0.6), rgba(255, 255, 255, 0.35))"
-    case "yanbo_stage":
-      return "linear-gradient(180deg, rgba(254, 240, 138, 0.55), rgba(219, 234, 254, 0.35))"
-    default:
-      return "linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(239, 246, 255, 0.5))"
-  }
 }
 
 function getDailyFunFact() {
@@ -342,10 +107,6 @@ export default function HomePage() {
     setAvatarLoading(false)
   }
 
-  const avatarImages = useMemo(
-    () => getHomeAvatarImageSources(avatarConfig),
-    [avatarConfig],
-  )
 
   const dailyFunFact = useMemo(() => getDailyFunFact(), [])
 
@@ -486,10 +247,13 @@ export default function HomePage() {
       <section style={styles.hero}>
         <div style={styles.heroGrid}>
           <div style={styles.heroAvatarWrap}>
-            <HomeAvatarPreview
+            <StudentAvatarPortrait
               config={avatarConfig}
-              imageSources={avatarImages}
-              buddyName={avatarName || "My learning buddy"}
+              name={avatarName || "My learning buddy"}
+              showNameArc
+              size={222}
+              borderWidth={7}
+              ariaLabel={`${avatarName || "My learning buddy"} avatar`}
             />
           </div>
 
@@ -728,117 +492,6 @@ function YanBoWord() {
   )
 }
 
-function HomeAvatarPreview({
-  config,
-  imageSources,
-  buddyName,
-}: {
-  config: AvatarConfig
-  imageSources: AvatarImageSources
-  buddyName: string
-}) {
-  const builderEyeSources = builderOnlySources(imageSources.eyes)
-  const builderGlassesSources = builderOnlySources(imageSources.glasses)
-  const builderHatSources = builderOnlySources(imageSources.hat)
-  const builderBadgeSources = builderOnlySources(imageSources.badge)
-
-  return (
-    <div style={styles.homeAvatarStage}>
-      {imageSources.background.length > 0 && (
-        <LayerImage
-          srcs={imageSources.background}
-          alt=""
-          style={styles.homeAvatarBackgroundImage}
-          fallback={null}
-        />
-      )}
-
-      <div
-        style={{
-          ...styles.homeAvatarStageOverlay,
-          background: profileBackgroundOverlay(config.background),
-        }}
-      />
-
-      <div style={styles.homeAvatarGroundShadow} />
-
-      <div style={styles.homeAvatarScaledBody}>
-        <div style={styles.homeAvatarInner}>
-          <LayerImage
-            srcs={imageSources.base}
-            alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
-            style={styles.homeAvatarBaseImage}
-            fallback={<HomeCssFallbackAvatar base={config.base} />}
-          />
-
-          <LayerImage
-            srcs={builderEyeSources}
-            alt={`${config.eyeColor} eyes`}
-            style={styles.homeAvatarEyeLayer}
-            fallback={null}
-          />
-
-          {config.hat !== "none" && (
-            <div style={styles.homeAvatarHatLayer}>
-              <LayerImage
-                srcs={builderHatSources}
-                alt="Avatar hat"
-                style={styles.homeAvatarHatImage}
-                fallback={<span style={styles.homeAvatarHatFallback}>🎩</span>}
-              />
-            </div>
-          )}
-
-          {config.glasses !== "none" && (
-            <div style={styles.homeAvatarGlassesLayer}>
-              <LayerImage
-                srcs={builderGlassesSources}
-                alt="Avatar glasses"
-                style={styles.homeAvatarGlassesImage}
-                fallback={<span style={styles.homeAvatarGlassesFallback}>👓</span>}
-              />
-            </div>
-          )}
-
-          {config.badge !== "none" && (
-            <div style={styles.homeAvatarBadgeLayer}>
-              <LayerImage
-                srcs={builderBadgeSources}
-                alt="Avatar badge"
-                style={styles.homeAvatarBadgeImage}
-                fallback={<span style={styles.homeAvatarBadgeFallback}>★</span>}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <svg
-        viewBox="0 0 222 222"
-        aria-hidden="true"
-        style={styles.avatarNameArcSvg}
-      >
-        <defs>
-          <path
-            id="homeAvatarNameArc"
-            d="M 28 184 Q 111 248 194 184"
-          />
-        </defs>
-
-        <text style={styles.avatarNameArcText}>
-          <textPath
-            href="#homeAvatarNameArc"
-            startOffset="50%"
-            textAnchor="middle"
-          >
-            {buddyName}
-          </textPath>
-        </text>
-      </svg>
-    </div>
-  )
-}
-
 function CoinBagClaimImage({ collected }: { collected: boolean }) {
   return (
     <svg
@@ -942,55 +595,6 @@ function CoinBagClaimImage({ collected }: { collected: boolean }) {
         </g>
       )}
     </svg>
-  )
-}
-
-function LayerImage({
-  srcs,
-  alt,
-  style,
-  fallback,
-}: {
-  srcs: string[]
-  alt: string
-  style: React.CSSProperties
-  fallback: React.ReactNode
-}) {
-  const sourceKey = srcs.join("|")
-  const [imageIndex, setImageIndex] = useState(0)
-
-  useEffect(() => {
-    setImageIndex(0)
-  }, [sourceKey])
-
-  const currentSource = srcs[imageIndex]
-
-  if (!currentSource) {
-    return <>{fallback}</>
-  }
-
-  return (
-    <img
-      src={currentSource}
-      alt={alt}
-      style={style}
-      onError={() => setImageIndex((current) => current + 1)}
-    />
-  )
-}
-
-function HomeCssFallbackAvatar({ base }: { base: AvatarConfig["base"] }) {
-  return (
-    <div style={styles.homeAvatarFallbackWrap}>
-      <div style={styles.homeAvatarFallbackHead}>
-        {base === "yan" ? "😊" : "🙂"}
-      </div>
-
-      <div style={styles.homeAvatarFallbackJumper}>
-        <span style={styles.yanboY}>Y</span>an
-        <span style={styles.yanboB}>B</span>o
-      </div>
-    </div>
   )
 }
 
