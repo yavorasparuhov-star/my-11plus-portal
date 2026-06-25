@@ -372,7 +372,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           >
             <span
               style={{
-                fontSize: "18px",
+                fontSize: "19px",
                 fontWeight: 900,
                 color: "#ffffff",
                 letterSpacing: "-0.02em",
@@ -381,17 +381,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               <span style={{ color: "#ec4899" }}>Y</span>
               an
               <span style={{ color: "#facc15" }}>B</span>
-              o Learning
+              o
             </span>
 
             <span
               style={{
                 fontSize: "12px",
-                color: "rgba(255,255,255,0.82)",
-                fontWeight: 700,
+                color: "rgba(255,255,255,0.86)",
+                fontWeight: 800,
               }}
             >
-              11+ Practice Portal
+              Practice Portal
             </span>
           </div>
         </Link>
@@ -470,7 +470,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   aria-label="Open YanBo Portal menu"
                   title={displayName}
                   style={{
-                    minHeight: "42px",
+                    minHeight: "48px",
                     borderRadius: "999px",
                     border: "2px solid #eab308",
                     background: "#facc15",
@@ -479,7 +479,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "10px",
-                    padding: "4px 5px 4px 16px",
+                    padding: "3px 3px 3px 16px",
                     cursor: "pointer",
                     boxShadow: "0 8px 18px rgba(234,179,8,0.22)",
                     fontWeight: 900,
@@ -498,13 +498,14 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   <StudentAvatarPortrait
                     config={avatarConfig}
                     name={avatarDisplayName}
-                    size={34}
+                    size={42}
                     borderWidth={2}
                     displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
                     style={{
                       outline: "2px solid rgba(255,255,255,0.92)",
                       boxShadow: "0 4px 10px rgba(0,0,0,0.16)",
+                      marginLeft: "2px",
                     }}
                   />
                 </button>
@@ -828,7 +829,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   <StudentAvatarPortrait
                     config={avatarConfig}
                     name={avatarDisplayName}
-                    size={38}
+                    size={40}
                     borderWidth={2}
                     displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
