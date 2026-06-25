@@ -39,7 +39,41 @@ type HeaderProfile = {
   email: string
 }
 
+const HEADER_GREEN = "#064e3b"
 const HEADER_YELLOW = "#facc15"
+
+function HeaderHomeIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+      style={{
+        display: "block",
+        flexShrink: 0,
+      }}
+    >
+      <path
+        d="M3 10.8L12 3.5L21 10.8"
+        stroke={HEADER_YELLOW}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.4 10.4V20H10V14.7H14V20H18.6V10.4"
+        stroke={HEADER_YELLOW}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 function NavText({
   icon,
@@ -285,10 +319,12 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
     borderBottom: isActivePath(path)
-      ? "2px solid #facc15"
+      ? `2px solid ${HEADER_YELLOW}`
       : "2px solid transparent",
     color: HEADER_YELLOW,
     fontWeight: isActivePath(path) ? 800 : 700,
+    fontSize: "16px",
+    lineHeight: 1.15,
     backgroundColor: "transparent",
     padding: "8px 6px",
     borderRadius: "0",
@@ -312,7 +348,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         position: "sticky",
         top: 0,
         zIndex: 1000,
-        background: "#064e3b",
+        background: HEADER_GREEN,
         backdropFilter: "blur(10px)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.16)",
         boxShadow: "0 8px 22px rgba(6, 78, 59, 0.28)",
@@ -382,13 +418,13 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             >
               <span style={{ color: "#ec4899" }}>Y</span>
               an
-              <span style={{ color: "#facc15" }}>B</span>
+              <span style={{ color: HEADER_YELLOW }}>B</span>
               o
             </span>
 
             <span
               style={{
-                fontSize: "12px",
+                fontSize: "16px",
                 color: HEADER_YELLOW,
                 fontWeight: 800,
               }}
@@ -412,7 +448,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           }}
         >
           <Link href={homeHref} style={linkStyle(homeHref)}>
-            <NavText icon={<HomeIcon />} label="Home" />
+            <NavText icon={<HeaderHomeIcon />} label="Home" />
           </Link>
 
           <Link href={englishHref} style={linkStyle(englishHref)}>
@@ -475,7 +511,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     minHeight: "48px",
                     borderRadius: "999px",
                     border: "2px solid #eab308",
-                    background: "#facc15",
+                    background: HEADER_YELLOW,
                     color: "#111827",
                     display: "inline-flex",
                     alignItems: "center",
@@ -485,17 +521,17 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     cursor: "pointer",
                     boxShadow: "0 8px 18px rgba(234,179,8,0.22)",
                     fontWeight: 900,
-                    fontSize: "14px",
+                    fontSize: "16px",
                     lineHeight: 1,
                     whiteSpace: "nowrap",
                   }}
                 >
                   <span>
-                    <span style={{ color: "#064e3b" }}>my</span>
+                    <span style={{ color: HEADER_GREEN }}>my</span>
                     <span style={{ color: "#ec4899" }}>Y</span>
-                    <span style={{ color: "#064e3b" }}>an</span>
+                    <span style={{ color: HEADER_GREEN }}>an</span>
                     <span style={{ color: "#ffffff" }}>B</span>
-                    <span style={{ color: "#064e3b" }}>o Portal</span>
+                    <span style={{ color: HEADER_GREEN }}>o Portal</span>
                   </span>
 
                   <StudentAvatarPortrait
@@ -683,18 +719,20 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
           style={{
             display: "none",
             flexDirection: "column",
-            padding: "0 22px 18px",
+            padding: "12px 22px 18px",
             maxWidth: "1200px",
             margin: "0 auto",
+            background: HEADER_GREEN,
+            borderTop: "1px solid rgba(255,255,255,0.16)",
           }}
         >
           <div
             style={{
-              background: "rgba(255,255,255,0.75)",
-              border: "1px solid rgba(0,0,0,0.05)",
+              background: HEADER_GREEN,
+              border: "1px solid rgba(255,255,255,0.22)",
               borderRadius: "18px",
               padding: "14px",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
             }}
           >
             <div
@@ -710,7 +748,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 style={linkStyle(homeHref)}
                 onClick={() => setMenuOpen(false)}
               >
-                <NavText icon={<HomeIcon />} label="Home" />
+                <NavText icon={<HeaderHomeIcon />} label="Home" />
               </Link>
 
               <Link
@@ -805,7 +843,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             {activeUser && (
               <div
                 style={{
-                  borderTop: "1px solid rgba(0,0,0,0.07)",
+                  borderTop: "1px solid rgba(255,255,255,0.18)",
                   paddingTop: "14px",
                   display: "flex",
                   flexDirection: "column",
@@ -821,7 +859,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     gap: "10px",
                     textDecoration: "none",
                     color: "#1f2937",
-                    background: "#facc15",
+                    background: HEADER_YELLOW,
                     border: "2px solid #eab308",
                     borderRadius: "999px",
                     padding: "5px 12px 5px 5px",
@@ -853,16 +891,16 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   >
                     <span
                       style={{
-                        fontSize: "14px",
+                        fontSize: "16px",
                         fontWeight: 900,
                         whiteSpace: "nowrap",
                       }}
                     >
-                      <span style={{ color: "#064e3b" }}>my</span>
+                      <span style={{ color: HEADER_GREEN }}>my</span>
                       <span style={{ color: "#ec4899" }}>Y</span>
-                      <span style={{ color: "#064e3b" }}>an</span>
+                      <span style={{ color: HEADER_GREEN }}>an</span>
                       <span style={{ color: "#ffffff" }}>B</span>
-                      <span style={{ color: "#064e3b" }}>o Portal</span>
+                      <span style={{ color: HEADER_GREEN }}>o Portal</span>
                     </span>
 
                     <span
