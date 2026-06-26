@@ -551,10 +551,32 @@ function uniqueImageSources(sources: Array<string | null | undefined>) {
   })
 }
 
-function getShopItemImageSources(item: ShopItem) {
-  const localImageFromItemKey = `/avatars/items/${itemKeyToAssetFileName(
-    item.item_key,
-  )}.png`
+function getShopItemImageSources(
+  item: ShopItem,
+  base: AvatarConfig["base"] = "bo",
+) {
+  const fileName = itemKeyToAssetFileName(item.item_key)
+  const localImageFromItemKey = `/avatars/items/${fileName}.png`
+  const slotMatch = getSlotMatchFromItemKey(item.item_key)
+
+  if (slotMatch) {
+    const folder = avatarLayerFolders[slotMatch.slot]
+
+    if (slotMatch.slot === "hat" || slotMatch.slot === "glasses") {
+      return uniqueImageSources([
+        `/avatars/builder/${folder}/${base}/${fileName}.png`,
+        `/avatars/builder/${folder}/${fileName}.png`,
+        item.image_url,
+        localImageFromItemKey,
+      ])
+    }
+
+    return uniqueImageSources([
+      `/avatars/builder/${folder}/${fileName}.png`,
+      item.image_url,
+      localImageFromItemKey,
+    ])
+  }
 
   return uniqueImageSources([item.image_url, localImageFromItemKey])
 }
@@ -1381,6 +1403,7 @@ export default function AvatarPage() {
                 <CompactItemCard
                   key={item.item_key}
                   item={item}
+                  base={avatarConfig.base}
                   unlocked={true}
                   equipped={equipped}
                   primaryAction={
@@ -1453,7 +1476,7 @@ export default function AvatarPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                     {items.map((item) => {
                       const unlocked = isShopItemUnlocked(item.item_key)
                       const canAfford = coins >= item.price
@@ -1464,6 +1487,7 @@ export default function AvatarPage() {
                         <ShopGalleryItemCard
                           key={item.item_key}
                           item={item}
+                          base={avatarConfig.base}
                           unlocked={unlocked}
                           equipped={equipped}
                           canAfford={canAfford}
@@ -1782,6 +1806,7 @@ function StyleChip({
 
 function ShopGalleryItemCard({
   item,
+  base,
   unlocked,
   equipped,
   canAfford,
@@ -1789,6 +1814,7 @@ function ShopGalleryItemCard({
   primaryAction,
 }: {
   item: ShopItem
+  base: AvatarConfig["base"]
   unlocked: boolean
   equipped: boolean
   canAfford: boolean
@@ -1806,7 +1832,7 @@ function ShopGalleryItemCard({
   return (
     <div
       className={cn(
-        "relative flex min-h-[218px] flex-col items-center justify-between rounded-3xl border p-3 text-center transition",
+        "relative flex min-h-[184px] flex-col items-center justify-between rounded-2xl border p-2.5 text-center transition",
         equipped && "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100",
         !equipped && unlocked && "border-emerald-300 bg-white shadow-sm",
         readyToBuy &&
@@ -1832,29 +1858,23 @@ function ShopGalleryItemCard({
         </span>
       )}
 
-      <ShopGalleryItemImage item={item} dimmed={locked} />
+      <ShopGalleryItemImage item={item} base={base} dimmed={locked} />
 
-      <div className="mt-2 w-full min-w-0">
-        <h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-black leading-tight text-slate-900">
+      <div className="mt-1.5 w-full min-w-0">
+        <h3 className="line-clamp-2 min-h-[2rem] text-xs font-black leading-tight text-slate-900">
           {item.name}
         </h3>
 
         {priceLabel && (
           <span
             className={cn(
-              "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-black",
+              "mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black",
               readyToBuy && "bg-emerald-100 text-emerald-800",
               locked && "bg-slate-200 text-slate-500",
             )}
           >
             {priceLabel}
           </span>
-        )}
-
-        {locked && (
-          <p className="mt-2 text-[11px] font-bold text-slate-400">
-            Keep earning coins
-          </p>
         )}
       </div>
 
@@ -1864,7 +1884,7 @@ function ShopGalleryItemCard({
           onClick={primaryAction.onClick}
           disabled={primaryAction.disabled}
           className={cn(
-            "mt-3 w-full rounded-2xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+            "mt-2 w-full rounded-2xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
             primaryAction.variant === "green" &&
               "bg-emerald-600 text-white hover:bg-emerald-700",
             primaryAction.variant === "light" &&
@@ -1881,13 +1901,15 @@ function ShopGalleryItemCard({
 
 function ShopGalleryItemImage({
   item,
+  base,
   dimmed,
 }: {
   item: ShopItem
+  base: AvatarConfig["base"]
   dimmed: boolean
 }) {
   const emoji = getShopItemEmoji(item.item_key, item.category)
-  const imageSources = getShopItemImageSources(item)
+  const imageSources = getShopItemImageSources(item, base)
   const sourceKey = imageSources.join("|")
   const [imageIndex, setImageIndex] = useState(0)
 
@@ -1900,7 +1922,7 @@ function ShopGalleryItemImage({
   return (
     <div
       className={cn(
-        "mt-4 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white shadow-inner ring-1 ring-slate-100",
+        "mt-2 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-inner ring-1 ring-slate-100",
         dimmed && "bg-slate-100",
       )}
     >
@@ -1909,7 +1931,7 @@ function ShopGalleryItemImage({
           src={currentSource}
           alt=""
           className={cn(
-            "h-20 w-20 object-contain drop-shadow-sm transition",
+            "h-[4.5rem] w-[4.5rem] object-contain drop-shadow-sm transition",
             dimmed && "grayscale opacity-35",
           )}
           onError={() => setImageIndex((current) => current + 1)}
@@ -1917,7 +1939,7 @@ function ShopGalleryItemImage({
       ) : (
         <span
           className={cn(
-            "text-5xl drop-shadow-sm",
+            "text-4xl drop-shadow-sm",
             dimmed && "grayscale opacity-35",
           )}
           aria-hidden="true"
@@ -1932,12 +1954,14 @@ function ShopGalleryItemImage({
 
 function CompactItemCard({
   item,
+  base = "bo",
   unlocked,
   equipped,
   priceLabel,
   primaryAction,
 }: {
   item: ShopItem
+  base?: AvatarConfig["base"]
   unlocked: boolean
   equipped: boolean
   priceLabel?: string
@@ -1958,7 +1982,12 @@ function CompactItemCard({
           "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30",
       )}
     >
-      <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
+      <ShopItemThumbnail
+        item={item}
+        base={base}
+        unlocked={unlocked}
+        equipped={equipped}
+      />
 
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-xs font-black leading-tight text-slate-900">
@@ -2006,15 +2035,17 @@ function buttonVariantClass(
 
 function ShopItemThumbnail({
   item,
+  base = "bo",
   unlocked,
   equipped,
 }: {
   item: ShopItem
+  base?: AvatarConfig["base"]
   unlocked: boolean
   equipped: boolean
 }) {
   const emoji = getShopItemEmoji(item.item_key, item.category)
-  const imageSources = getShopItemImageSources(item)
+  const imageSources = getShopItemImageSources(item, base)
   const sourceKey = imageSources.join("|")
   const [imageIndex, setImageIndex] = useState(0)
 
