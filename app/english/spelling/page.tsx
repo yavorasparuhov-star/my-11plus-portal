@@ -98,6 +98,7 @@ function SpellingContent() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [plan, setPlan] = useState<UserPlan>("guest")
+  const [freeAccessExpiresAt, setFreeAccessExpiresAt] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
 
   const [words, setWords] = useState<WordRow[]>([])
@@ -157,7 +158,7 @@ function SpellingContent() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("plan")
+        .select("plan, free_access_expires_at")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -176,6 +177,7 @@ function SpellingContent() {
           : "free"
 
       setPlan(safePlan)
+      setFreeAccessExpiresAt(profile?.free_access_expires_at ?? null)
 
       const { data: savedAvatar, error: avatarError } = await supabase
         .from("student_avatars")
@@ -232,6 +234,21 @@ function SpellingContent() {
   useEffect(() => {
     localStorage.setItem("spelling_voice_enabled", String(voiceEnabled))
   }, [voiceEnabled])
+
+  function isFreeAccessExpired() {
+    if (plan !== "free") return false
+    if (!freeAccessExpiresAt) return false
+
+    const expiryDate = new Date(freeAccessExpiresAt)
+
+    if (Number.isNaN(expiryDate.getTime())) return false
+
+    return expiryDate.getTime() < Date.now()
+  }
+
+  function isFreeSampleMode() {
+    return plan === "free" && !reviewMode
+  }
 
   function getStoredReviewIds() {
     const rawNew = localStorage.getItem(REVIEW_STORAGE_KEY)
@@ -324,10 +341,24 @@ function SpellingContent() {
   }
 
   async function fetchWords() {
-    const { data, error } = await supabase
+    if (isFreeAccessExpired()) {
+      setWords([])
+      setErrorMessage(
+        "Your free sample access has ended. Upgrade to continue practising with the full Spelling word bank."
+      )
+      return
+    }
+
+    let query = supabase
       .from("words")
       .select("id, word, definition, difficulty, wrong_words")
       .order("id", { ascending: true })
+
+    if (plan === "free") {
+      query = query.eq("is_free_spelling_sample", true)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error("Error loading spelling words:", error)
@@ -347,6 +378,8 @@ function SpellingContent() {
 
       setStoredReviewIds(reviewIds)
       selectedWords = allWords.filter((word) => reviewIds.includes(word.id))
+    } else if (isFreeSampleMode()) {
+      selectedWords = allWords
     } else {
       selectedWords = allWords.filter((word) => word.difficulty === difficulty)
     }
@@ -371,9 +404,9 @@ function SpellingContent() {
   }
 
   useEffect(() => {
-    if (!userId) return
+    if (!authChecked || !userId || plan === "guest") return
     void fetchWords()
-  }, [userId, difficulty, reviewMode])
+  }, [authChecked, userId, plan, freeAccessExpiresAt, difficulty, reviewMode])
 
   useEffect(() => {
     if (words.length > 0 && words[currentIndex]) {
@@ -595,11 +628,13 @@ function SpellingContent() {
       test_id: RESULT_TEST_ID,
       test_title: reviewMode
         ? "Spelling Review"
-        : `Spelling ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
+        : isFreeSampleMode()
+          ? "Spelling Free Sample"
+          : `Spelling ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
       total_questions: totalQuestions,
       correct_answers: correctAnswers,
       success_rate: successRate,
-      difficulty: progressDifficulty,
+      difficulty: isFreeSampleMode() ? null : progressDifficulty,
       answers,
       completed_at: completedAt,
       updated_at: completedAt,
@@ -1026,6 +1061,28 @@ function SpellingContent() {
     )
   }
 
+  if (isFreeAccessExpired()) {
+    return (
+      <>
+        <Header />
+        <div style={styles.center}>
+          <div style={styles.card}>
+            <h1 style={{ marginBottom: "12px" }}>Free sample access ended</h1>
+
+            <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
+              Your free sample access has ended. Upgrade to continue practising
+              with the full YanBo Learning Spelling word bank.
+            </p>
+
+            <button onClick={() => router.push("/membership")} style={styles.button}>
+              View Membership
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (!testStarted) {
     return (
       <>
@@ -1034,9 +1091,15 @@ function SpellingContent() {
           <div style={styles.card}>
             <h1>{reviewMode ? "📝 Spelling Review Retry" : "11+ Spelling Test"}</h1>
 
-            <p>{reviewMode ? "Practice your saved review words:" : "Select difficulty:"}</p>
+            <p style={{ lineHeight: 1.6 }}>
+              {reviewMode
+                ? "Practice your saved review words:"
+                : isFreeSampleMode()
+                  ? "Free sample users can try the selected Spelling sample words."
+                  : "Select difficulty:"}
+            </p>
 
-            {!reviewMode && (
+            {!reviewMode && !isFreeSampleMode() && (
               <div style={styles.difficultyRow}>
                 {[1, 2, 3].map((level) => (
                   <button
@@ -1058,7 +1121,9 @@ function SpellingContent() {
             <button onClick={() => setTestStarted(true)} style={styles.button}>
               {reviewMode
                 ? "Start Review Retry"
-                : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
+                : isFreeSampleMode()
+                  ? "Start Free Spelling Sample"
+                  : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
             </button>
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}

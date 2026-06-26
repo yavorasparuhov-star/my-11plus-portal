@@ -7,6 +7,7 @@ import StudentAvatarPortrait from "../../../components/avatar/StudentAvatarPortr
 import { supabase } from "../../../lib/supabaseClient"
 import { useRouter, useSearchParams } from "next/navigation"
 
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
 type AnswerOption = "A" | "B" | "C" | "D"
 
 type WordRow = {
@@ -145,6 +146,8 @@ function VocabularyContent() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [plan, setPlan] = useState<UserPlan>("guest")
+  const [freeAccessExpiresAt, setFreeAccessExpiresAt] = useState<string | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [clearedReviewWordIds, setClearedReviewWordIds] = useState<number[]>([])
   const [errorMessage, setErrorMessage] = useState("")
@@ -171,6 +174,28 @@ function VocabularyContent() {
       }
 
       setUserId(user.id)
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("plan, free_access_expires_at")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error("Error loading profile plan:", profileError)
+      }
+
+      const dbPlan = profile?.plan
+      const safePlan: UserPlan =
+        dbPlan === "monthly" ||
+        dbPlan === "annual" ||
+        dbPlan === "admin" ||
+        dbPlan === "free"
+          ? dbPlan
+          : "free"
+
+      setPlan(safePlan)
+      setFreeAccessExpiresAt(profile?.free_access_expires_at ?? null)
 
       const { data: savedAvatar, error: avatarError } = await supabase
         .from("student_avatars")
@@ -220,11 +245,27 @@ function VocabularyContent() {
   }, [])
 
   useEffect(() => {
+    if (!authChecked || !userId || plan === "guest") return
+
     async function fetchWords() {
-      const { data, error } = await supabase
+      if (isFreeAccessExpired()) {
+        setWords([])
+        setErrorMessage(
+          "Your free sample access has ended. Upgrade to continue practising with the full Vocabulary word bank."
+        )
+        return
+      }
+
+      let query = supabase
         .from("words")
         .select("id, word, definition, difficulty, example_sentence")
         .order("id", { ascending: true })
+
+      if (plan === "free") {
+        query = query.eq("is_free_vocabulary_sample", true)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error("Error loading vocabulary words:", error)
@@ -236,7 +277,22 @@ function VocabularyContent() {
     }
 
     fetchWords()
-  }, [])
+  }, [authChecked, userId, plan, freeAccessExpiresAt])
+
+  function isFreeAccessExpired() {
+    if (plan !== "free") return false
+    if (!freeAccessExpiresAt) return false
+
+    const expiryDate = new Date(freeAccessExpiresAt)
+
+    if (Number.isNaN(expiryDate.getTime())) return false
+
+    return expiryDate.getTime() < Date.now()
+  }
+
+  function isFreeSampleMode() {
+    return plan === "free" && !reviewMode
+  }
 
   function getStoredReviewIds() {
     const rawNew = localStorage.getItem(REVIEW_STORAGE_KEY)
@@ -325,6 +381,8 @@ function VocabularyContent() {
 
         setStoredReviewIds(activeReviewIds)
         selectedWords = words.filter((word) => activeReviewIds.includes(word.id))
+      } else if (isFreeSampleMode()) {
+        selectedWords = words
       } else {
         selectedWords = words.filter((word) => word.difficulty === difficulty)
       }
@@ -357,7 +415,7 @@ function VocabularyContent() {
     return () => {
       cancelled = true
     }
-  }, [difficulty, words, userId, testStarted, reviewMode, timerEnabled])
+  }, [difficulty, words, userId, testStarted, reviewMode, timerEnabled, plan])
 
   function generateOptions(correctWord: WordRow, allWords: WordRow[]) {
     const incorrect = allWords
@@ -625,11 +683,13 @@ function VocabularyContent() {
     test_id: RESULT_TEST_ID,
     test_title: reviewMode
       ? "Vocabulary Review"
-      : `Vocabulary ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
+      : isFreeSampleMode()
+        ? "Vocabulary Free Sample"
+        : `Vocabulary ${["Easy", "Medium", "Hard"][difficulty - 1]} Test`,
     total_questions: totalQuestions,
     correct_answers: correctAnswers,
     success_rate: successRate,
-    difficulty: reviewMode ? null : difficulty,
+    difficulty: reviewMode || isFreeSampleMode() ? null : difficulty,
     answers,
     completed_at: completedAt,
     updated_at: completedAt,
@@ -922,6 +982,33 @@ function VocabularyContent() {
     )
   }
 
+  if (isFreeAccessExpired()) {
+    return (
+      <>
+        <Header />
+
+        <div style={styles.center}>
+          <div style={styles.card}>
+            <h1 style={{ marginBottom: "12px" }}>Free sample access ended</h1>
+
+            <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
+              Your free sample access has ended. Upgrade to continue practising
+              with the full YanBo Learning Vocabulary word bank.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => router.push("/membership")}
+              style={styles.button}
+            >
+              View Membership
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
   if (!testStarted) {
     return (
       <>
@@ -933,11 +1020,15 @@ function VocabularyContent() {
               {reviewMode ? "📚 Vocabulary Review Retry" : "11+ Vocabulary Test"}
             </h1>
 
-            <p style={{ marginBottom: "18px", fontSize: "18px" }}>
-              {reviewMode ? "Practice your saved review words:" : "Select difficulty:"}
+            <p style={{ marginBottom: "18px", fontSize: "18px", lineHeight: 1.6 }}>
+              {reviewMode
+                ? "Practice your saved review words:"
+                : isFreeSampleMode()
+                  ? "Free sample users can try the selected Vocabulary sample words."
+                  : "Select difficulty:"}
             </p>
 
-            {!reviewMode && (
+            {!reviewMode && !isFreeSampleMode() && (
               <div style={styles.difficultyRow}>
                 {[1, 2, 3].map((level) => (
                   <button
@@ -964,7 +1055,9 @@ function VocabularyContent() {
             >
               {reviewMode
                 ? "Start Review Retry"
-                : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
+                : isFreeSampleMode()
+                  ? "Start Free Vocabulary Sample"
+                  : `Start Test (${["Easy", "Medium", "Hard"][difficulty - 1]})`}
             </button>
 
             {errorMessage && <p style={styles.inlineError}>{errorMessage}</p>}
@@ -1022,10 +1115,14 @@ function VocabularyContent() {
                   {testWords.length}
                 </p>
 
-                {!reviewMode && (
+                {!reviewMode && !isFreeSampleMode() && (
                   <p style={styles.metaText}>
                     Difficulty: {["Easy", "Medium", "Hard"][difficulty - 1]}
                   </p>
+                )}
+
+                {isFreeSampleMode() && (
+                  <p style={styles.metaText}>Free Vocabulary sample</p>
                 )}
 
                 {timerEnabled && (
