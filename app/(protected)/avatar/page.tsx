@@ -1453,18 +1453,20 @@ export default function AvatarPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {items.map((item) => {
                       const unlocked = isShopItemUnlocked(item.item_key)
                       const canAfford = coins >= item.price
                       const equipped = isShopItemEquipped(item.item_key)
+                      const isPurchasing = purchasingItemKey === item.item_key
 
                       return (
-                        <CompactItemCard
+                        <ShopGalleryItemCard
                           key={item.item_key}
                           item={item}
                           unlocked={unlocked}
                           equipped={equipped}
+                          canAfford={canAfford}
                           priceLabel={unlocked ? undefined : `${item.price} coins`}
                           primaryAction={
                             unlocked
@@ -1474,20 +1476,14 @@ export default function AvatarPage() {
                                   onClick: () => equipShopItem(item.item_key),
                                   variant: equipped ? "success" : "light",
                                 }
-                              : {
-                                  label:
-                                    purchasingItemKey === item.item_key
-                                      ? "Buying..."
-                                      : canAfford
-                                        ? "Buy"
-                                        : "Not enough",
-                                  disabled:
-                                    purchasingItemKey === item.item_key ||
-                                    !canAfford,
-                                  onClick: () =>
-                                    purchaseAvatarItem(item.item_key),
-                                  variant: canAfford ? "blue" : "muted",
-                                }
+                              : canAfford
+                                ? {
+                                    label: isPurchasing ? "Buying..." : "Buy",
+                                    disabled: isPurchasing,
+                                    onClick: () => purchaseAvatarItem(item.item_key),
+                                    variant: "green",
+                                  }
+                                : undefined
                           }
                         />
                       )
@@ -1781,6 +1777,156 @@ function StyleChip({
       <span className="text-slate-400">{label}:</span>
       <span className="truncate font-black text-slate-800">{value}</span>
     </span>
+  )
+}
+
+function ShopGalleryItemCard({
+  item,
+  unlocked,
+  equipped,
+  canAfford,
+  priceLabel,
+  primaryAction,
+}: {
+  item: ShopItem
+  unlocked: boolean
+  equipped: boolean
+  canAfford: boolean
+  priceLabel?: string
+  primaryAction?: {
+    label: string
+    disabled?: boolean
+    onClick: () => void
+    variant: "green" | "light" | "success"
+  }
+}) {
+  const locked = !unlocked && !canAfford
+  const readyToBuy = !unlocked && canAfford
+
+  return (
+    <div
+      className={cn(
+        "relative flex min-h-[218px] flex-col items-center justify-between rounded-3xl border p-3 text-center transition",
+        equipped && "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100",
+        !equipped && unlocked && "border-emerald-300 bg-white shadow-sm",
+        readyToBuy &&
+          "border-emerald-400 bg-emerald-50 shadow-sm ring-2 ring-emerald-100 hover:bg-emerald-100/70",
+        locked && "border-slate-200 bg-slate-50 opacity-95",
+      )}
+    >
+      {equipped && (
+        <span className="absolute right-3 top-3 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+          ✓ Equipped
+        </span>
+      )}
+
+      {!equipped && unlocked && (
+        <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+          ✓ Owned
+        </span>
+      )}
+
+      {readyToBuy && (
+        <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+          Ready
+        </span>
+      )}
+
+      <ShopGalleryItemImage item={item} dimmed={locked} />
+
+      <div className="mt-2 w-full min-w-0">
+        <h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-black leading-tight text-slate-900">
+          {item.name}
+        </h3>
+
+        {priceLabel && (
+          <span
+            className={cn(
+              "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-black",
+              readyToBuy && "bg-emerald-100 text-emerald-800",
+              locked && "bg-slate-200 text-slate-500",
+            )}
+          >
+            {priceLabel}
+          </span>
+        )}
+
+        {locked && (
+          <p className="mt-2 text-[11px] font-bold text-slate-400">
+            Keep earning coins
+          </p>
+        )}
+      </div>
+
+      {primaryAction && (
+        <button
+          type="button"
+          onClick={primaryAction.onClick}
+          disabled={primaryAction.disabled}
+          className={cn(
+            "mt-3 w-full rounded-2xl px-3 py-2 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+            primaryAction.variant === "green" &&
+              "bg-emerald-600 text-white hover:bg-emerald-700",
+            primaryAction.variant === "light" &&
+              "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50",
+            primaryAction.variant === "success" && "bg-blue-100 text-blue-700",
+          )}
+        >
+          {primaryAction.label}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function ShopGalleryItemImage({
+  item,
+  dimmed,
+}: {
+  item: ShopItem
+  dimmed: boolean
+}) {
+  const emoji = getShopItemEmoji(item.item_key, item.category)
+  const imageSources = getShopItemImageSources(item)
+  const sourceKey = imageSources.join("|")
+  const [imageIndex, setImageIndex] = useState(0)
+
+  useEffect(() => {
+    setImageIndex(0)
+  }, [sourceKey])
+
+  const currentSource = imageSources[imageIndex]
+
+  return (
+    <div
+      className={cn(
+        "mt-4 flex h-24 w-24 items-center justify-center rounded-[1.75rem] bg-white shadow-inner ring-1 ring-slate-100",
+        dimmed && "bg-slate-100",
+      )}
+    >
+      {currentSource ? (
+        <img
+          src={currentSource}
+          alt=""
+          className={cn(
+            "h-20 w-20 object-contain drop-shadow-sm transition",
+            dimmed && "grayscale opacity-35",
+          )}
+          onError={() => setImageIndex((current) => current + 1)}
+        />
+      ) : (
+        <span
+          className={cn(
+            "text-5xl drop-shadow-sm",
+            dimmed && "grayscale opacity-35",
+          )}
+          aria-hidden="true"
+        >
+          {emoji}
+        </span>
+      )}
+      <span className="sr-only">{item.name}</span>
+    </div>
   )
 }
 
