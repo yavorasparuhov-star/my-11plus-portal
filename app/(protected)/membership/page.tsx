@@ -4,9 +4,18 @@ import { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../../lib/supabaseClient"
 
 type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+type SubscriptionStatus = "active" | "trialing" | "past_due" | "cancelled" | "expired"
 
 type MembershipProfile = {
   plan: UserPlan | null
+}
+
+type SubscriptionRow = {
+  plan: UserPlan | null
+  status: SubscriptionStatus | null
+  current_period_start: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean | null
 }
 
 const PLAN_LABELS: Record<UserPlan, string> = {
@@ -15,6 +24,14 @@ const PLAN_LABELS: Record<UserPlan, string> = {
   monthly: "Monthly",
   annual: "Annual",
   admin: "Admin",
+}
+
+const STATUS_LABELS: Record<SubscriptionStatus, string> = {
+  active: "Active",
+  trialing: "Trial",
+  past_due: "Payment attention needed",
+  cancelled: "Cancelled",
+  expired: "Expired",
 }
 
 const PLAN_DESCRIPTIONS: Record<UserPlan, string> = {
@@ -78,14 +95,81 @@ function normalisePlan(plan: string | null | undefined): UserPlan {
   return "free"
 }
 
-function getStatusText(plan: UserPlan) {
+function normaliseStatus(
+  status: string | null | undefined,
+): SubscriptionStatus | null {
+  if (
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due" ||
+    status === "cancelled" ||
+    status === "expired"
+  ) {
+    return status
+  }
+
+  return null
+}
+
+function formatDate(dateValue: string | null | undefined) {
+  if (!dateValue) return "Not recorded"
+
+  const date = new Date(dateValue)
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not recorded"
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date)
+}
+
+function getFallbackStatusText(plan: UserPlan) {
   if (plan === "guest") return "Limited access"
   if (plan === "free") return "Free access"
   if (plan === "admin") return "Admin access"
-  return "Active membership"
+  return "Member access"
 }
 
-function getStatusTone(plan: UserPlan) {
+function getStatusText(
+  plan: UserPlan,
+  subscriptionStatus: SubscriptionStatus | null,
+) {
+  if (subscriptionStatus) return STATUS_LABELS[subscriptionStatus]
+  return getFallbackStatusText(plan)
+}
+
+function getStatusTone(
+  plan: UserPlan,
+  subscriptionStatus: SubscriptionStatus | null,
+) {
+  if (subscriptionStatus === "active" || subscriptionStatus === "trialing") {
+    return {
+      background: "#dcfce7",
+      border: "#86efac",
+      text: "#166534",
+    }
+  }
+
+  if (subscriptionStatus === "past_due") {
+    return {
+      background: "#fef3c7",
+      border: "#fde68a",
+      text: "#92400e",
+    }
+  }
+
+  if (subscriptionStatus === "cancelled" || subscriptionStatus === "expired") {
+    return {
+      background: "#fee2e2",
+      border: "#fecaca",
+      text: "#991b1b",
+    }
+  }
+
   if (plan === "monthly" || plan === "annual" || plan === "admin") {
     return {
       background: "#dcfce7",
@@ -109,10 +193,104 @@ function getStatusTone(plan: UserPlan) {
   }
 }
 
+function isPaidPlan(plan: UserPlan) {
+  return plan === "monthly" || plan === "annual"
+}
+
+function getRenewalLabel(
+  plan: UserPlan,
+  subscription: SubscriptionRow | null,
+  status: SubscriptionStatus | null,
+) {
+  if (!subscription) {
+    if (plan === "free") return "Free plan"
+    if (plan === "admin") return "Admin account"
+    return "Renewal details"
+  }
+
+  if (!isPaidPlan(plan)) {
+    return "Renewal"
+  }
+
+  if (status === "expired") return "Expired on"
+
+  if (status === "cancelled" || subscription.cancel_at_period_end) {
+    return "Access ends on"
+  }
+
+  return "Renews on"
+}
+
+function getRenewalValue(
+  plan: UserPlan,
+  subscription: SubscriptionRow | null,
+) {
+  if (!subscription) {
+    if (plan === "free") return "No expiry"
+    if (plan === "admin") return "No expiry"
+    return "Not recorded yet"
+  }
+
+  if (!isPaidPlan(plan)) {
+    return "Not applicable"
+  }
+
+  return formatDate(subscription.current_period_end)
+}
+
+function getAutoRenewalText(
+  plan: UserPlan,
+  subscription: SubscriptionRow | null,
+  status: SubscriptionStatus | null,
+) {
+  if (!isPaidPlan(plan)) return "Not applicable"
+  if (!subscription) return "Not recorded yet"
+  if (status === "cancelled" || status === "expired") return "Off"
+  return subscription.cancel_at_period_end ? "Off" : "On"
+}
+
+function getRenewalNote(
+  plan: UserPlan,
+  subscription: SubscriptionRow | null,
+  status: SubscriptionStatus | null,
+) {
+  if (!subscription) {
+    if (plan === "free") {
+      return "Your account is currently on the free plan, so there is no renewal date."
+    }
+
+    if (plan === "admin") {
+      return "Admin accounts do not use normal membership renewal dates."
+    }
+
+    return "Your current access is shown from your profile. Detailed renewal information has not been recorded for this account yet."
+  }
+
+  if (status === "past_due") {
+    return "Your membership may need payment attention. Please contact YanBo Learning support if this does not look right."
+  }
+
+  if (status === "cancelled" || status === "expired") {
+    return "If you would like to continue member access, please contact YanBo Learning support."
+  }
+
+  if (subscription.cancel_at_period_end) {
+    return "Auto-renewal is off. Member access should continue until the access end date shown above."
+  }
+
+  if (isPaidPlan(plan)) {
+    return "Auto-renewal is on for this membership record."
+  }
+
+  return "Membership renewals, upgrades and plan changes are managed by YanBo Learning support."
+}
+
 export default function MembershipPage() {
-  const [plan, setPlan] = useState<UserPlan>("free")
+  const [profilePlan, setProfilePlan] = useState<UserPlan>("free")
+  const [subscription, setSubscription] = useState<SubscriptionRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState("")
+  const [renewalWarning, setRenewalWarning] = useState("")
 
   useEffect(() => {
     let isMounted = true
@@ -120,6 +298,7 @@ export default function MembershipPage() {
     async function loadMembership() {
       setLoading(true)
       setErrorMessage("")
+      setRenewalWarning("")
 
       const {
         data: { user },
@@ -129,13 +308,14 @@ export default function MembershipPage() {
       if (!isMounted) return
 
       if (userError || !user) {
-        setPlan("guest")
+        setProfilePlan("guest")
+        setSubscription(null)
         setErrorMessage("We could not load your membership details. Please sign in again.")
         setLoading(false)
         return
       }
 
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("plan")
         .eq("id", user.id)
@@ -143,15 +323,38 @@ export default function MembershipPage() {
 
       if (!isMounted) return
 
-      if (error) {
-        console.error("Could not load membership profile:", error)
-        setPlan("free")
+      if (profileError) {
+        console.error("Could not load membership profile:", profileError)
+        setProfilePlan("free")
+        setSubscription(null)
         setErrorMessage("We could not load your membership details just now.")
         setLoading(false)
         return
       }
 
-      setPlan(normalisePlan(data?.plan))
+      const fallbackPlan = normalisePlan(profileData?.plan)
+
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .select(
+          "plan, status, current_period_start, current_period_end, cancel_at_period_end",
+        )
+        .eq("user_id", user.id)
+        .maybeSingle<SubscriptionRow>()
+
+      if (!isMounted) return
+
+      if (subscriptionError) {
+        console.error("Could not load subscription details:", subscriptionError)
+        setRenewalWarning("Renewal details could not be loaded just now.")
+        setProfilePlan(fallbackPlan)
+        setSubscription(null)
+        setLoading(false)
+        return
+      }
+
+      setProfilePlan(fallbackPlan)
+      setSubscription(subscriptionData ?? null)
       setLoading(false)
     }
 
@@ -162,11 +365,20 @@ export default function MembershipPage() {
     }
   }, [])
 
-  const statusTone = useMemo(() => getStatusTone(plan), [plan])
+  const plan = subscription?.plan ? normalisePlan(subscription.plan) : profilePlan
+  const subscriptionStatus = normaliseStatus(subscription?.status)
+  const statusTone = useMemo(
+    () => getStatusTone(plan, subscriptionStatus),
+    [plan, subscriptionStatus],
+  )
   const planLabel = PLAN_LABELS[plan]
-  const statusText = getStatusText(plan)
+  const statusText = getStatusText(plan, subscriptionStatus)
   const features = PLAN_FEATURES[plan]
   const description = PLAN_DESCRIPTIONS[plan]
+  const renewalLabel = getRenewalLabel(plan, subscription, subscriptionStatus)
+  const renewalValue = getRenewalValue(plan, subscription)
+  const autoRenewalText = getAutoRenewalText(plan, subscription, subscriptionStatus)
+  const renewalNote = getRenewalNote(plan, subscription, subscriptionStatus)
 
   return (
     <main
@@ -221,8 +433,8 @@ export default function MembershipPage() {
               lineHeight: 1.6,
             }}
           >
-            View your current YanBo Learning membership and what access is
-            included with your plan.
+            View your current YanBo Learning membership, renewal details and
+            what access is included with your plan.
           </p>
         </div>
 
@@ -239,6 +451,22 @@ export default function MembershipPage() {
             }}
           >
             {errorMessage}
+          </div>
+        ) : null}
+
+        {renewalWarning ? (
+          <div
+            style={{
+              marginBottom: "18px",
+              border: "1px solid #fde68a",
+              background: "#fffbeb",
+              color: "#92400e",
+              borderRadius: "18px",
+              padding: "14px 16px",
+              fontWeight: 700,
+            }}
+          >
+            {renewalWarning}
           </div>
         ) : null}
 
@@ -405,7 +633,7 @@ export default function MembershipPage() {
             >
               <h2
                 style={{
-                  margin: "0 0 12px",
+                  margin: "0 0 16px",
                   color: "#111827",
                   fontSize: "1.25rem",
                   fontWeight: 900,
@@ -414,39 +642,127 @@ export default function MembershipPage() {
                 Renewal details
               </h2>
 
+              <div
+                style={{
+                  display: "grid",
+                  gap: "12px",
+                  marginBottom: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: "18px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    padding: "14px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      color: "#64748b",
+                      fontSize: "0.78rem",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {renewalLabel}
+                  </p>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#111827",
+                      fontSize: "1rem",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {loading ? "Checking..." : renewalValue}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    borderRadius: "18px",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    padding: "14px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 4px",
+                      color: "#64748b",
+                      fontSize: "0.78rem",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Auto-renewal
+                  </p>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#111827",
+                      fontSize: "1rem",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {loading ? "Checking..." : autoRenewalText}
+                  </p>
+                </div>
+
+                {subscription?.current_period_start ? (
+                  <div
+                    style={{
+                      borderRadius: "18px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      padding: "14px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: "0 0 4px",
+                        color: "#64748b",
+                        fontSize: "0.78rem",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      Current period started
+                    </p>
+
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#111827",
+                        fontSize: "1rem",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {formatDate(subscription.current_period_start)}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
               <p
                 style={{
-                  margin: "0 0 14px",
+                  margin: 0,
                   color: "#475569",
                   fontSize: "0.95rem",
                   lineHeight: 1.6,
                 }}
               >
-                Membership renewals, upgrades and plan changes are managed by
-                YanBo Learning support.
+                {loading
+                  ? "Checking renewal information..."
+                  : renewalNote}
               </p>
-
-              <div
-                style={{
-                  borderRadius: "18px",
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  padding: "14px",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    color: "#334155",
-                    fontSize: "0.9rem",
-                    lineHeight: 1.55,
-                    fontWeight: 700,
-                  }}
-                >
-                  For membership changes, please contact YanBo Learning
-                  support.
-                </p>
-              </div>
             </article>
 
             <article
