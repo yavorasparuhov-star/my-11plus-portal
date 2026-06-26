@@ -1005,11 +1005,6 @@ export default function AvatarPage() {
     return shopItems.filter((item) => isShopItemUnlocked(item.item_key)).length
   }, [shopItems, unlockedItems])
 
-  const shopItemCount = shopItems.length
-  const affordableCount = shopItems.filter(
-    (item) => !isShopItemUnlocked(item.item_key) && coins >= item.price,
-  ).length
-
   const wardrobeItems = useMemo(() => {
     return shopItems.filter(
       (item) =>
@@ -1089,10 +1084,10 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                <span className="text-pink-500">Y</span>an<span className="text-yellow-400">B</span>o Avatar Studio
+                Your <span className="text-pink-500">Y</span>an<span className="text-yellow-400">B</span>o Avatar
               </h1>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                Create, equip and save your learning avatar.
+                Choose your look, unlock fun items and save your favourite avatar.
               </p>
             </div>
 
@@ -1102,27 +1097,21 @@ export default function AvatarPage() {
                 disabled={claimingDailyCoins}
                 className={SMALL_PRIMARY_BUTTON_CLASS}
               >
-                {claimingDailyCoins ? "Checking..." : "Daily coins"}
+                {claimingDailyCoins ? "Checking..." : "Claim +3 coins"}
               </button>
 
               <Link
                 href="/profile"
                 className={LINK_BUTTON_SLATE_CLASS}
               >
-                Profile
+                Back to Profile
               </Link>
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <CompactStat icon="🪙" value={`${coins}`} label="YanBo Coins" />
-            <CompactStat icon="🎒" value={`${unlockedCount}`} label="Unlocked" />
-            <CompactStat icon="🛒" value={`${shopItemCount}`} label="Shop items" />
-            <CompactStat
-              icon="✅"
-              value={`${affordableCount}`}
-              label="Ready to buy"
-            />
+            <CompactStat icon="🎒" value={`${unlockedCount}`} label="Items unlocked" />
           </div>
         </section>
 
@@ -1146,7 +1135,7 @@ export default function AvatarPage() {
                   Your avatar
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Preview the current look before saving.
+                  This is the look that appears around the portal.
                 </p>
               </div>
 
@@ -1243,7 +1232,7 @@ export default function AvatarPage() {
                 </div>
 
                 <div className="mt-4 rounded-2xl bg-yellow-50 px-3 py-3 text-xs font-bold leading-relaxed text-yellow-900 ring-1 ring-yellow-100">
-                  Equip items from the shop, then press Save Avatar to keep the look.
+                  Items you equip are only kept after you press Save Avatar.
                 </div>
               </div>
             </div>
@@ -1252,7 +1241,7 @@ export default function AvatarPage() {
           <section className={cn(CARD_CLASS, "xl:sticky xl:top-5 xl:self-start")}>
             <SectionHeader
               title="Customise"
-              subtitle="Quickly change the avatar settings."
+              subtitle="Change the basic avatar settings."
               icon="✨"
             />
 
@@ -1384,7 +1373,7 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="My Wardrobe"
-              subtitle="Unlocked items. Equip favourites quickly from here."
+              subtitle="Your unlocked items. Choose what to wear from here."
               icon="🎒"
             />
 
@@ -1445,8 +1434,8 @@ export default function AvatarPage() {
         <section className={CARD_CLASS}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
-              title="Avatar Shop"
-              subtitle="Use YanBo Coins to unlock glasses, hats, backgrounds and badges."
+              title="Unlock more items"
+              subtitle="Use YanBo Coins to unlock fun extras for your avatar."
               icon="🛒"
             />
 
@@ -1577,10 +1566,10 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-black text-slate-900">
-                Earn by learning
+                How to earn YanBo Coins
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                YanBo Coins are earned from daily check-ins and good test scores.
+                Keep practising and use your coins to unlock more avatar items.
               </p>
             </div>
 
