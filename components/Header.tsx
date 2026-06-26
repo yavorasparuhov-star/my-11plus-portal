@@ -532,6 +532,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       gap: "8px",
                       padding: "0 2px 0 11px",
                       overflow: "visible",
+                      transform: "translateX(-10px)",
                       boxShadow: "0 6px 14px rgba(234,179,8,0.20)",
                     }}
                   >
@@ -903,6 +904,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       gap: "8px",
                       padding: "0 2px 0 11px",
                       overflow: "visible",
+                      transform: "translateX(-10px)",
                       boxShadow: "0 6px 14px rgba(234,179,8,0.18)",
                     }}
                   >
