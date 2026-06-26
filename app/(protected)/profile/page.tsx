@@ -18,7 +18,6 @@ type ProfileFormData = {
   first_name: string;
   last_name: string;
   phone: string;
-  email: string;
 };
 
 type ProfileRow = {
@@ -40,6 +39,7 @@ export default function ProfilePage() {
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar);
   const [avatarName, setAvatarName] = useState("");
   const [coins, setCoins] = useState(0);
+  const [loginEmail, setLoginEmail] = useState("");
   const [todayCoinSummary, setTodayCoinSummary] = useState({
     earned: 0,
     spent: 0,
@@ -49,7 +49,6 @@ export default function ProfilePage() {
     first_name: "",
     last_name: "",
     phone: "",
-    email: "",
   });
 
   function normalisePlan(value: string | null | undefined): UserPlan {
@@ -85,6 +84,7 @@ export default function ProfilePage() {
       }
 
       setUser(user);
+      setLoginEmail(user.email || "");
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -102,7 +102,6 @@ export default function ProfilePage() {
           first_name: "",
           last_name: "",
           phone: "",
-          email: user.email || "",
         });
 
         setPlan("free");
@@ -140,7 +139,6 @@ export default function ProfilePage() {
             first_name: "",
             last_name: "",
             phone: "",
-            email: user.email || "",
           });
 
           setPlan("free");
@@ -155,9 +153,9 @@ export default function ProfilePage() {
         first_name: safeProfile?.first_name || "",
         last_name: safeProfile?.last_name || "",
         phone: safeProfile?.phone || "",
-        email: safeProfile?.email || user.email || "",
       });
 
+      setLoginEmail(user.email || safeProfile?.email || "");
       setPlan(normalisePlan(safeProfile?.plan));
 
       const { data: avatarData, error: avatarError } = await supabase
@@ -256,6 +254,10 @@ export default function ProfilePage() {
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
 
+    if (name !== "first_name" && name !== "last_name" && name !== "phone") {
+      return;
+    }
+
     setFormData((previous) => ({
       ...previous,
       [name]: value,
@@ -275,7 +277,6 @@ export default function ProfilePage() {
       first_name: formData.first_name.trim(),
       last_name: formData.last_name.trim(),
       phone: formData.phone.trim(),
-      email: formData.email.trim() || user.email || "",
       updated_at: new Date().toISOString(),
     });
 
@@ -283,9 +284,7 @@ export default function ProfilePage() {
       console.error("Error saving profile:", error);
       setMessage("There was a problem saving your profile. Please try again.");
     } else {
-      setMessage(
-        "Profile saved successfully. Refresh the page if the header name has not updated yet.",
-      );
+      setMessage("Profile saved successfully.");
     }
 
     setSaving(false);
@@ -303,7 +302,6 @@ export default function ProfilePage() {
         : plan === "annual"
           ? "Annual"
           : "Free";
-
 
   if (loading) {
     return (
@@ -455,15 +453,18 @@ export default function ProfilePage() {
               </label>
 
               <label style={styles.label}>
-                Email
+                Login email
                 <input
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  style={styles.input}
+                  value={loginEmail}
+                  readOnly
+                  style={styles.readOnlyInput}
                   placeholder="Email address"
                   type="email"
                 />
+                <span style={styles.inputHelpText}>
+                  This is your secure login email. To change it, please contact
+                  YanBo Learning support for now.
+                </span>
               </label>
 
               <label style={styles.label}>
@@ -471,12 +472,7 @@ export default function ProfilePage() {
                 <input
                   value={planLabel}
                   readOnly
-                  style={{
-                    ...styles.input,
-                    background: "#f9fafb",
-                    color: "#6b7280",
-                    cursor: "not-allowed",
-                  }}
+                  style={styles.readOnlyInput}
                 />
               </label>
             </div>
@@ -511,7 +507,6 @@ export default function ProfilePage() {
     </main>
   );
 }
-
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -781,6 +776,25 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#ffffff",
     outline: "none",
     boxSizing: "border-box",
+  },
+  readOnlyInput: {
+    width: "100%",
+    border: "1px solid #d1d5db",
+    borderRadius: 16,
+    padding: "10px 13px",
+    fontSize: "0.92rem",
+    fontWeight: 750,
+    color: "#6b7280",
+    background: "#f9fafb",
+    outline: "none",
+    boxSizing: "border-box",
+    cursor: "not-allowed",
+  },
+  inputHelpText: {
+    color: "#6b7280",
+    fontSize: "0.76rem",
+    fontWeight: 700,
+    lineHeight: 1.35,
   },
   message: {
     margin: "14px 0 0",
