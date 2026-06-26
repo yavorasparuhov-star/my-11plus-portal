@@ -75,6 +75,53 @@ function HeaderHomeIcon() {
   );
 }
 
+
+function MembershipIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+      style={{
+        display: "block",
+        flexShrink: 0,
+      }}
+    >
+      <rect
+        x="3.5"
+        y="5.5"
+        width="17"
+        height="13"
+        rx="3"
+        stroke="#1f2937"
+        strokeWidth="2"
+      />
+      <path
+        d="M3.8 9.5H20.2"
+        stroke="#1f2937"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M7.5 14.5H12"
+        stroke="#1f2937"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M15.5 14.5H16.5"
+        stroke="#facc15"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function NavText({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span
@@ -618,24 +665,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                     </div>
 
                     <Link
-                      href="/profile"
-                      onClick={() => setProfileMenuOpen(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        textDecoration: "none",
-                        color: "#1f2937",
-                        fontWeight: 700,
-                        padding: "10px 12px",
-                        borderRadius: "12px",
-                      }}
-                    >
-                      <ProfileIcon />
-                      <span>Membership & profile</span>
-                    </Link>
-
-                    <Link
                       href="/home"
                       onClick={() => setProfileMenuOpen(false)}
                       style={{
@@ -650,8 +679,52 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       }}
                     >
                       <HomeIcon />
-                      <span>Member home</span>
+                      <span>MyYanBo Home</span>
                     </Link>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        textDecoration: "none",
+                        color: "#1f2937",
+                        fontWeight: 700,
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      <ProfileIcon />
+                      <span>Profile</span>
+                    </Link>
+
+                    <Link
+                      href="/membership"
+                      onClick={() => setProfileMenuOpen(false)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        textDecoration: "none",
+                        color: "#1f2937",
+                        fontWeight: 700,
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      <MembershipIcon />
+                      <span>Membership</span>
+                    </Link>
+
+                    <div
+                      style={{
+                        height: "1px",
+                        background: "#e5e7eb",
+                        margin: "8px 4px",
+                      }}
+                    />
 
                     <button
                       onClick={handleLogoutClick}
