@@ -508,18 +508,18 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   aria-label="Open YanBo Portal menu"
                   title={displayName}
                   style={{
-                    minHeight: "44px",
+                    minHeight: "42px",
                     borderRadius: "999px",
-                    border: "none",
-                    background: "transparent",
+                    border: "2px solid #eab308",
+                    background: HEADER_YELLOW,
                     color: "#111827",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
-                    padding: 0,
+                    padding: "2px 2px 2px 12px",
                     cursor: "pointer",
-                    boxShadow: "none",
+                    boxShadow: "0 6px 14px rgba(234,179,8,0.20)",
                     fontWeight: 900,
                     fontSize: "16px",
                     lineHeight: 1,
@@ -528,15 +528,9 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 >
                   <span
                     style={{
-                      minHeight: "34px",
-                      borderRadius: "999px",
-                      border: "2px solid #eab308",
-                      background: HEADER_YELLOW,
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      padding: "0 11px",
-                      boxShadow: "0 6px 14px rgba(234,179,8,0.20)",
                     }}
                   >
                     <span style={{ color: HEADER_GREEN }}>my</span>
@@ -549,7 +543,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   <StudentAvatarPortrait
                     config={avatarConfig}
                     name={avatarDisplayName}
-                    size={42}
+                    size={38}
                     borderWidth={2}
                     displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
@@ -865,23 +859,43 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   href="/profile"
                   onClick={() => setMenuOpen(false)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    textDecoration: "none",
-                    color: "#ffffff",
-                    background: "transparent",
-                    border: "none",
+                    minHeight: "40px",
                     borderRadius: "999px",
-                    padding: 0,
+                    border: "2px solid #eab308",
+                    background: HEADER_YELLOW,
+                    color: "#111827",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    textDecoration: "none",
+                    padding: "2px 2px 2px 12px",
                     width: "fit-content",
                     maxWidth: "100%",
+                    boxShadow: "0 6px 14px rgba(234,179,8,0.18)",
                   }}
                 >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "16px",
+                      fontWeight: 900,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <span style={{ color: HEADER_GREEN }}>my</span>
+                    <span style={{ color: "#ec4899" }}>Y</span>
+                    <span style={{ color: HEADER_GREEN }}>an</span>
+                    <span style={{ color: "#ffffff" }}>B</span>
+                    <span style={{ color: HEADER_GREEN }}>o Portal</span>
+                  </span>
+
                   <StudentAvatarPortrait
                     config={avatarConfig}
                     name={avatarDisplayName}
-                    size={40}
+                    size={36}
                     borderWidth={2}
                     displayMode="icon"
                     ariaLabel={`${avatarDisplayName} avatar`}
@@ -891,53 +905,6 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                       boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
                     }}
                   />
-
-                  <span
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "3px",
-                      minWidth: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        minHeight: "32px",
-                        borderRadius: "999px",
-                        border: "2px solid #eab308",
-                        background: HEADER_YELLOW,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0 10px",
-                        fontSize: "16px",
-                        fontWeight: 900,
-                        whiteSpace: "nowrap",
-                        boxShadow: "0 6px 14px rgba(234,179,8,0.18)",
-                      }}
-                    >
-                      <span style={{ color: HEADER_GREEN }}>my</span>
-                      <span style={{ color: "#ec4899" }}>Y</span>
-                      <span style={{ color: HEADER_GREEN }}>an</span>
-                      <span style={{ color: "#ffffff" }}>B</span>
-                      <span style={{ color: HEADER_GREEN }}>o Portal</span>
-                    </span>
-
-                    <span
-                      title={displayName}
-                      style={{
-                        fontSize: "12px",
-                        color: "rgba(255,255,255,0.9)",
-                        fontWeight: 800,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "190px",
-                      }}
-                    >
-                      {displayName}
-                    </span>
-                  </span>
                 </Link>
 
                 <button
