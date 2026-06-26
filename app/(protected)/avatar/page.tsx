@@ -687,7 +687,7 @@ export default function AvatarPage() {
   const [shopError, setShopError] = useState<string | null>(null)
   const [activeShopCategory, setActiveShopCategory] = useState<string>("glasses")
   const [activeWardrobeCategory, setActiveWardrobeCategory] =
-    useState<string>("all")
+    useState<string>("glasses")
 
   useEffect(() => {
     loadAvatarPage()
@@ -998,8 +998,6 @@ export default function AvatarPage() {
   }, [shopItems, unlockedItems])
 
   const filteredWardrobeItems = useMemo(() => {
-    if (activeWardrobeCategory === "all") return wardrobeItems
-
     return wardrobeItems.filter(
       (item) => item.category === activeWardrobeCategory,
     )
@@ -1231,7 +1229,7 @@ export default function AvatarPage() {
           <section className={cn(CARD_CLASS, "xl:sticky xl:top-5 xl:self-start")}>
             <SectionHeader
               title="Customise basics"
-              subtitle="Choose the character, nickname and unlocked extras."
+              subtitle="Choose the nickname, character, skin tone and eyes."
               icon="✨"
             />
 
@@ -1329,31 +1327,8 @@ export default function AvatarPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                <SelectBox
-                  label="Glasses"
-                  value={avatarConfig.glasses}
-                  onChange={(value) => updateAvatar("glasses", value)}
-                  options={getSelectOptions("glasses", unlockedItems)}
-                />
-                <SelectBox
-                  label="Hat"
-                  value={avatarConfig.hat}
-                  onChange={(value) => updateAvatar("hat", value)}
-                  options={getSelectOptions("hat", unlockedItems)}
-                />
-                <SelectBox
-                  label="Background"
-                  value={avatarConfig.background}
-                  onChange={(value) => updateAvatar("background", value)}
-                  options={getSelectOptions("background", unlockedItems)}
-                />
-                <SelectBox
-                  label="Badge"
-                  value={avatarConfig.badge}
-                  onChange={(value) => updateAvatar("badge", value)}
-                  options={getSelectOptions("badge", unlockedItems)}
-                />
+              <div className="rounded-2xl bg-green-50 px-3 py-3 text-xs font-bold leading-relaxed text-green-900 ring-1 ring-green-100">
+                Use My Wardrobe below to equip glasses, hats, backgrounds and badges.
               </div>
             </div>
           </section>
@@ -1368,12 +1343,6 @@ export default function AvatarPage() {
             />
 
             <div className="flex flex-wrap gap-2 lg:justify-end">
-              <ShopFilterButton
-                active={activeWardrobeCategory === "all"}
-                label="All"
-                icon="✨"
-                onClick={() => setActiveWardrobeCategory("all")}
-              />
               {shopCategoryOrder.map((category) => (
                 <ShopFilterButton
                   key={category}
@@ -1389,9 +1358,7 @@ export default function AvatarPage() {
           <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filteredWardrobeItems.length === 0 && (
               <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
-                {activeWardrobeCategory === "all"
-                  ? "Your wardrobe is empty for now. Unlock items from the shop to see them here."
-                  : `No ${formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.`}
+                No {formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.
               </div>
             )}
 
@@ -1832,7 +1799,7 @@ function ShopGalleryItemCard({
   return (
     <div
       className={cn(
-        "relative flex min-h-[184px] flex-col items-center justify-between rounded-2xl border p-2.5 text-center transition",
+        "relative flex min-h-[184px] flex-col items-center justify-between overflow-hidden rounded-2xl border p-2.5 text-center transition",
         equipped && "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100",
         !equipped && unlocked && "border-emerald-300 bg-white shadow-sm",
         readyToBuy &&
@@ -1841,26 +1808,26 @@ function ShopGalleryItemCard({
       )}
     >
       {equipped && (
-        <span className="absolute right-3 top-3 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+        <span className="absolute right-3 top-3 z-30 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
           ✓ Equipped
         </span>
       )}
 
       {!equipped && unlocked && (
-        <span className="absolute right-3 top-3 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+        <span className="absolute right-3 top-3 z-30 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-black text-white shadow-sm">
           ✓ Owned
         </span>
       )}
 
       {readyToBuy && (
-        <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+        <span className="absolute right-3 top-3 z-30 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
           Ready
         </span>
       )}
 
       <ShopGalleryItemImage item={item} base={base} dimmed={locked} />
 
-      <div className="mt-1.5 w-full min-w-0">
+      <div className="relative z-20 mt-1.5 w-full min-w-0">
         <h3 className="line-clamp-2 min-h-[2rem] text-xs font-black leading-tight text-slate-900">
           {item.name}
         </h3>
@@ -1884,7 +1851,7 @@ function ShopGalleryItemCard({
           onClick={primaryAction.onClick}
           disabled={primaryAction.disabled}
           className={cn(
-            "mt-2 w-full rounded-2xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+            "relative z-20 mt-2 w-full rounded-2xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
             primaryAction.variant === "green" &&
               "bg-emerald-600 text-white hover:bg-emerald-700",
             primaryAction.variant === "light" &&
@@ -1922,7 +1889,7 @@ function ShopGalleryItemImage({
   return (
     <div
       className={cn(
-        "mt-2 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-inner ring-1 ring-slate-100",
+        "relative z-10 mt-2 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-inner ring-1 ring-slate-100",
         dimmed && "bg-slate-100",
       )}
     >
