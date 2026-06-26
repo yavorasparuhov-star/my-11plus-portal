@@ -16,8 +16,6 @@ type AvatarConfig = {
 
 type AvatarSlot = "glasses" | "background" | "hat" | "badge"
 
-type ShopStatusFilter = "all" | "affordable" | "owned" | "locked"
-
 type ShopItem = {
   item_key: string
   name: string
@@ -102,8 +100,6 @@ const CHOICE_ACTIVE_CLASS = "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-bl
 const CHOICE_IDLE_CLASS = "border-slate-200 bg-white hover:bg-slate-50"
 const FILTER_ACTIVE_CLASS = "bg-blue-600 text-white shadow-sm"
 const FILTER_IDLE_CLASS = "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
-const STATUS_ACTIVE_CLASS = "bg-slate-900 text-white shadow-sm"
-const STATUS_IDLE_CLASS = "bg-slate-100 text-slate-600 hover:bg-slate-200"
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ")
@@ -667,9 +663,7 @@ export default function AvatarPage() {
   const [error, setError] = useState<string | null>(null)
   const [shopMessage, setShopMessage] = useState<string | null>(null)
   const [shopError, setShopError] = useState<string | null>(null)
-  const [activeShopCategory, setActiveShopCategory] = useState<string>("all")
-  const [activeShopStatus, setActiveShopStatus] =
-    useState<ShopStatusFilter>("all")
+  const [activeShopCategory, setActiveShopCategory] = useState<string>("glasses")
   const [activeWardrobeCategory, setActiveWardrobeCategory] =
     useState<string>("all")
 
@@ -946,41 +940,9 @@ export default function AvatarPage() {
     setShopMessage("Item equipped. Remember to save your avatar.")
   }
 
-  const groupedShopItems = useMemo(() => {
-    return shopItems.reduce<Record<string, ShopItem[]>>(
-      (currentGroups, item) => {
-        if (!currentGroups[item.category]) currentGroups[item.category] = []
-        currentGroups[item.category].push(item)
-        return currentGroups
-      },
-      {},
-    )
-  }, [shopItems])
-
-  const sortedShopCategories = useMemo(() => {
-    return Object.keys(groupedShopItems).sort((categoryA, categoryB) => {
-      const indexA = shopCategoryOrder.indexOf(categoryA)
-      const indexB = shopCategoryOrder.indexOf(categoryB)
-      return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB)
-    })
-  }, [groupedShopItems])
-
   const filteredShopItems = useMemo(() => {
-    return shopItems.filter((item) => {
-      const unlocked = isShopItemUnlocked(item.item_key)
-      const affordable = !unlocked && coins >= item.price
-
-      if (activeShopCategory !== "all" && item.category !== activeShopCategory) {
-        return false
-      }
-
-      if (activeShopStatus === "owned") return unlocked
-      if (activeShopStatus === "affordable") return affordable
-      if (activeShopStatus === "locked") return !unlocked
-
-      return true
-    })
-  }, [activeShopCategory, activeShopStatus, coins, shopItems, unlockedItems])
+    return shopItems.filter((item) => item.category === activeShopCategory)
+  }, [activeShopCategory, shopItems])
 
   const groupedFilteredShopItems = useMemo(() => {
     return filteredShopItems.reduce<Record<string, ShopItem[]>>(
@@ -1445,47 +1407,16 @@ export default function AvatarPage() {
               icon="🛒"
             />
 
-            <div className="flex flex-col gap-3 lg:items-end">
-              <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {shopCategoryOrder.map((category) => (
                 <ShopFilterButton
-                  active={activeShopCategory === "all"}
-                  label="All"
-                  icon="✨"
-                  onClick={() => setActiveShopCategory("all")}
+                  key={category}
+                  active={activeShopCategory === category}
+                  label={formatCategoryName(category)}
+                  icon={getShopIcon(category)}
+                  onClick={() => setActiveShopCategory(category)}
                 />
-                {sortedShopCategories.map((category) => (
-                  <ShopFilterButton
-                    key={category}
-                    active={activeShopCategory === category}
-                    label={formatCategoryName(category)}
-                    icon={getShopIcon(category)}
-                    onClick={() => setActiveShopCategory(category)}
-                  />
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <ShopStatusButton
-                  active={activeShopStatus === "all"}
-                  label="All"
-                  onClick={() => setActiveShopStatus("all")}
-                />
-                <ShopStatusButton
-                  active={activeShopStatus === "affordable"}
-                  label="Ready to buy"
-                  onClick={() => setActiveShopStatus("affordable")}
-                />
-                <ShopStatusButton
-                  active={activeShopStatus === "owned"}
-                  label="Unlocked"
-                  onClick={() => setActiveShopStatus("owned")}
-                />
-                <ShopStatusButton
-                  active={activeShopStatus === "locked"}
-                  label="Locked"
-                  onClick={() => setActiveShopStatus("locked")}
-                />
-              </div>
+              ))}
             </div>
           </div>
 
@@ -2116,29 +2047,6 @@ function ShopFilterButton({
       )}
     >
       <span className="mr-1">{icon}</span>
-      {label}
-    </button>
-  )
-}
-
-function ShopStatusButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full px-3.5 py-2 text-xs font-black transition",
-        active ? STATUS_ACTIVE_CLASS : STATUS_IDLE_CLASS,
-      )}
-    >
       {label}
     </button>
   )
