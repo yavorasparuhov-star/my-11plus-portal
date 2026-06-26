@@ -80,20 +80,20 @@ const hiddenAvatarItemKeys = new Set<string>([
 
 const shopCategoryOrder = ["glasses", "hat", "background", "badge"]
 
-const PAGE_CLASS = "min-h-screen bg-slate-50 px-4 py-6"
-const PAGE_INNER_CLASS = "mx-auto max-w-7xl space-y-5"
-const CARD_CLASS = "rounded-3xl bg-white p-5 shadow-sm ring-1 ring-blue-100"
-const PANEL_CLASS = "rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-100"
+const PAGE_CLASS = "min-h-screen bg-gradient-to-b from-blue-50 via-slate-50 to-white px-4 py-6"
+const PAGE_INNER_CLASS = "mx-auto max-w-7xl space-y-6"
+const CARD_CLASS = "rounded-[2rem] bg-white/95 p-5 shadow-sm ring-1 ring-blue-100"
+const PANEL_CLASS = "rounded-[1.75rem] bg-gradient-to-b from-slate-50 to-white p-4 ring-1 ring-slate-100"
 const SECTION_DIVIDER_CLASS =
-  "flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"
+  "flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between"
 const PRIMARY_BUTTON_CLASS =
-  "rounded-full bg-green-600 px-5 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+  "rounded-full bg-green-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-green-200/40 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
 const SMALL_PRIMARY_BUTTON_CLASS =
-  "rounded-full bg-green-600 px-4 py-2 text-sm font-black text-white shadow-sm transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+  "rounded-full bg-green-600 px-4 py-2 text-sm font-black text-white shadow-md shadow-green-200/40 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
 const LINK_BUTTON_BLUE_CLASS =
   "rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
 const LINK_BUTTON_SLATE_CLASS =
-  "rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+  "rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-center text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
 const ALERT_ERROR_CLASS =
   "rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
 const ALERT_SUCCESS_CLASS =
@@ -1080,14 +1080,17 @@ export default function AvatarPage() {
   return (
     <main className={PAGE_CLASS}>
       <div className={PAGE_INNER_CLASS}>
-        <section className={CARD_CLASS}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-white via-blue-50 to-yellow-50 p-5 shadow-sm ring-1 ring-blue-100">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-yellow-200/40 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-pink-200/30 blur-2xl" />
+
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Your <span className="text-pink-500">Y</span>an<span className="text-yellow-400">B</span>o Avatar
               </h1>
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                Choose your look, unlock fun items and save your favourite avatar.
+              <p className="mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
+                Make your learning character feel like yours. Try a look, equip your favourite items and save it for the portal.
               </p>
             </div>
 
@@ -1109,7 +1112,7 @@ export default function AvatarPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="relative mt-5 flex flex-wrap gap-2">
             <CompactStat icon="🪙" value={`${coins}`} label="YanBo Coins" />
             <CompactStat icon="🎒" value={`${unlockedCount}`} label="Items unlocked" />
           </div>
@@ -1127,15 +1130,15 @@ export default function AvatarPage() {
           </div>
         )}
 
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
-          <section className={CARD_CLASS}>
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+          <section className={cn(CARD_CLASS, "overflow-hidden")}>
             <div className={SECTION_DIVIDER_CLASS}>
               <div>
                 <h2 className="text-xl font-black text-slate-900">
-                  Your avatar
+                  Preview your look
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  This is the look that appears around the portal.
+                  Try items on here. Press Save Avatar when you are happy.
                 </p>
               </div>
 
@@ -1148,9 +1151,9 @@ export default function AvatarPage() {
               </button>
             </div>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[440px_minmax(0,1fr)] xl:grid-cols-[460px_minmax(0,1fr)]">
+            <div className="mt-5 grid gap-5 lg:grid-cols-[430px_minmax(0,1fr)] xl:grid-cols-[450px_minmax(0,1fr)]">
               <div
-                className={`relative h-[455px] max-w-[430px] overflow-visible rounded-3xl p-0 shadow-inner ring-1 ${backgroundStyle(
+                className={`relative mx-auto h-[455px] w-full max-w-[430px] overflow-visible rounded-[2rem] p-0 shadow-inner ring-1 ${backgroundStyle(
                   avatarConfig.background,
                 )}`}
               >
@@ -1158,18 +1161,18 @@ export default function AvatarPage() {
                   <PreviewLayerImage
                     srcs={previewImages.background}
                     alt=""
-                    className="absolute inset-0 h-full w-full rounded-3xl object-cover"
+                    className="absolute inset-0 h-full w-full rounded-[2rem] object-cover"
                     fallback={null}
                   />
                 )}
 
                 <div
-                  className={`absolute inset-0 rounded-3xl bg-gradient-to-b ${previewBackgroundOverlay(
+                  className={`absolute inset-0 rounded-[2rem] bg-gradient-to-b ${previewBackgroundOverlay(
                     avatarConfig.background,
                   )}`}
                 />
 
-                <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
+                <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-slate-600 shadow-sm ring-1 ring-slate-100">
                   {backgroundEmoji(avatarConfig.background)} {getSlotLabel("background", avatarConfig.background)}
                 </div>
 
@@ -1183,10 +1186,11 @@ export default function AvatarPage() {
                 </div>
               </div>
 
-              <div className={PANEL_CLASS}>
-                <p className="text-xs font-black uppercase tracking-wide text-blue-700">
-                  Current style
-                </p>
+              <div className={cn(PANEL_CLASS, "flex flex-col justify-between")}>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                    Current look
+                  </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
                   {avatarConfig.base === "yan" ? "Yan" : "Bo"}
                 </p>
@@ -1231,8 +1235,10 @@ export default function AvatarPage() {
                   />
                 </div>
 
-                <div className="mt-4 rounded-2xl bg-yellow-50 px-3 py-3 text-xs font-bold leading-relaxed text-yellow-900 ring-1 ring-yellow-100">
-                  Items you equip are only kept after you press Save Avatar.
+                </div>
+
+                <div className="mt-5 rounded-2xl bg-blue-50 px-3 py-3 text-xs font-bold leading-relaxed text-blue-900 ring-1 ring-blue-100">
+                  ✅ Items you equip are only kept after you press Save Avatar.
                 </div>
               </div>
             </div>
@@ -1240,12 +1246,12 @@ export default function AvatarPage() {
 
           <section className={cn(CARD_CLASS, "xl:sticky xl:top-5 xl:self-start")}>
             <SectionHeader
-              title="Customise"
-              subtitle="Change the basic avatar settings."
+              title="Customise basics"
+              subtitle="Choose the character, nickname and unlocked extras."
               icon="✨"
             />
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-5 space-y-5">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500">
                   Avatar nickname
@@ -1258,7 +1264,7 @@ export default function AvatarPage() {
                   placeholder="e.g. Puzzle Hero"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                 />
-                <span className="mt-1 block text-xs font-semibold text-slate-500">
+                <span className="mt-1.5 block text-xs font-semibold leading-relaxed text-slate-500">
                   Use a fun nickname, not a full real name. 2–20 characters.
                 </span>
               </label>
@@ -1369,11 +1375,11 @@ export default function AvatarPage() {
           </section>
         </section>
 
-        <section className={CARD_CLASS}>
+        <section className={cn(CARD_CLASS, "bg-gradient-to-b from-white to-blue-50/30")}>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="My Wardrobe"
-              subtitle="Your unlocked items. Choose what to wear from here."
+              subtitle="Your unlocked items live here. Equip favourites, then save your avatar."
               icon="🎒"
             />
 
@@ -1396,9 +1402,9 @@ export default function AvatarPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filteredWardrobeItems.length === 0 && (
-              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-3 md:col-span-4 lg:col-span-6 xl:col-span-8">
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
                 {activeWardrobeCategory === "all"
                   ? "Your wardrobe is empty for now. Unlock items from the shop to see them here."
                   : `No ${formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.`}
@@ -1435,7 +1441,7 @@ export default function AvatarPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <SectionHeader
               title="Unlock more items"
-              subtitle="Use YanBo Coins to unlock fun extras for your avatar."
+              subtitle="Spend YanBo Coins on glasses, hats, backgrounds and badges."
               icon="🛒"
             />
 
@@ -1495,7 +1501,7 @@ export default function AvatarPage() {
             </div>
           )}
 
-          <div className="mt-5 space-y-6">
+          <div className="mt-6 space-y-7">
             {filteredShopItems.length === 0 && (
               <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
                 No shop items match this filter yet.
@@ -1516,7 +1522,7 @@ export default function AvatarPage() {
                     </span>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {items.map((item) => {
                       const unlocked = isShopItemUnlocked(item.item_key)
                       const canAfford = coins >= item.price
@@ -1562,7 +1568,7 @@ export default function AvatarPage() {
           </div>
         </section>
 
-        <section className={CARD_CLASS}>
+        <section className="rounded-[2rem] bg-gradient-to-r from-yellow-50 via-white to-blue-50 p-5 shadow-sm ring-1 ring-yellow-100">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-black text-slate-900">
@@ -1804,7 +1810,7 @@ function SectionHeader({
         <h2 className="text-xl font-black text-slate-900">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
       </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl ring-1 ring-blue-100">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl shadow-sm ring-1 ring-blue-100">
         {icon}
       </div>
     </div>
@@ -1821,7 +1827,7 @@ function CompactStat({
   label: string
 }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 ring-1 ring-slate-100">
+    <div className="inline-flex items-center gap-2 rounded-2xl bg-white/90 px-3.5 py-2.5 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-blue-100">
       <span>{icon}</span>
       <span className="font-black text-slate-950">{value}</span>
       <span>{label}</span>
@@ -1839,7 +1845,7 @@ function StyleChip({
   value: string
 }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-2xl bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-100">
       <span>{icon}</span>
       <span className="text-slate-400">{label}:</span>
       <span className="truncate font-black text-slate-800">{value}</span>
@@ -1868,8 +1874,8 @@ function CompactItemCard({
   return (
     <div
       className={cn(
-        "flex min-h-[42px] items-center gap-1.5 rounded-xl border p-1.5 transition",
-        equipped && "border-blue-200 bg-blue-50",
+        "flex min-h-[58px] items-center gap-2 rounded-2xl border p-2 transition",
+        equipped && "border-blue-300 bg-blue-50 shadow-sm",
         !equipped && unlocked && "border-emerald-200 bg-white",
         !equipped && !unlocked &&
           "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30",
@@ -1878,7 +1884,7 @@ function CompactItemCard({
       <ShopItemThumbnail item={item} unlocked={unlocked} equipped={equipped} />
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[11px] font-black leading-tight text-slate-900">
+        <h3 className="truncate text-xs font-black leading-tight text-slate-900">
           {item.name}
         </h3>
         {priceLabel && (
@@ -1893,7 +1899,7 @@ function CompactItemCard({
           type="button"
           onClick={primaryAction.onClick}
           disabled={primaryAction.disabled}
-          className={`flex min-w-[38px] shrink-0 flex-col items-end justify-center rounded-lg px-1.5 py-1 text-right text-[10px] font-black leading-none shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
+          className={`flex min-w-[52px] shrink-0 flex-col items-center justify-center rounded-xl px-2 py-1.5 text-center text-[10px] font-black leading-none shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
             primaryAction.variant,
           )}`}
         >
@@ -1942,12 +1948,12 @@ function ShopItemThumbnail({
   const currentSource = imageSources[imageIndex]
 
   return (
-    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-100">
+    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-100">
       {currentSource ? (
         <img
           src={currentSource}
           alt=""
-          className="h-6 w-6 object-contain drop-shadow-sm"
+          className="h-8 w-8 object-contain drop-shadow-sm"
           onError={() => setImageIndex((current) => current + 1)}
         />
       ) : (
@@ -1996,7 +2002,7 @@ function ChoiceButton({
         active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
       )}
     >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
         {imageSrc ? (
           <img
             src={imageSrc}
@@ -2105,7 +2111,7 @@ function ShopFilterButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-2 text-xs font-black transition",
+        "rounded-full px-3.5 py-2 text-xs font-black transition",
         active ? FILTER_ACTIVE_CLASS : FILTER_IDLE_CLASS,
       )}
     >
@@ -2129,7 +2135,7 @@ function ShopStatusButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-2 text-xs font-black transition",
+        "rounded-full px-3.5 py-2 text-xs font-black transition",
         active ? STATUS_ACTIVE_CLASS : STATUS_IDLE_CLASS,
       )}
     >
@@ -2140,7 +2146,7 @@ function ShopStatusButton({
 
 function RewardRule({ amount, label }: { amount: string; label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-100">
+    <div className="inline-flex items-center gap-2 rounded-2xl bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-yellow-100">
       <span>{label}</span>
       <span className="rounded-full bg-yellow-100 px-2 py-0.5 font-black text-yellow-800">
         +{amount}
