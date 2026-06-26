@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import React, { useEffect, useRef, useState } from "react"
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
 import {
   CustomTestsIcon,
   EnglishIcon,
@@ -15,32 +15,32 @@ import {
   ProgressIcon,
   ReviewIcon,
   VRIcon,
-} from "./icons/PortalIcons"
-import { supabase } from "../lib/supabaseClient"
+} from "./icons/PortalIcons";
+import { supabase } from "../lib/supabaseClient";
 import {
   StudentAvatarPortrait,
   defaultAvatar,
   normaliseAvatarConfig,
   normaliseAvatarName,
   type AvatarConfig,
-} from "./avatar/StudentAvatarPortrait"
+} from "./avatar/StudentAvatarPortrait";
 
 type HeaderProps = {
-  user?: any
-  onLogout?: () => void
-}
+  user?: any;
+  onLogout?: () => void;
+};
 
-type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin"
+type UserPlan = "guest" | "free" | "monthly" | "annual" | "admin";
 
 type HeaderProfile = {
-  plan: UserPlan
-  nickname: string
-  first_name: string
-  email: string
-}
+  plan: UserPlan;
+  nickname: string;
+  first_name: string;
+  email: string;
+};
 
-const HEADER_GREEN = "#064e3b"
-const HEADER_YELLOW = "#facc15"
+const HEADER_GREEN = "#064e3b";
+const HEADER_YELLOW = "#facc15";
 
 function HeaderHomeIcon() {
   return (
@@ -72,16 +72,10 @@ function HeaderHomeIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
 
-function NavText({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode
-  label: string
-}) {
+function NavText({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span
       style={{
@@ -94,31 +88,31 @@ function NavText({
       {icon}
       <span>{label}</span>
     </span>
-  )
+  );
 }
 
 export default function Header({ user: propUser, onLogout }: HeaderProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const dropdownRef = useRef<HTMLDivElement | null>(null)
+  const pathname = usePathname();
+  const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(propUser ?? null)
-  const [loadingUser, setLoadingUser] = useState(!propUser)
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(propUser ?? null);
+  const [loadingUser, setLoadingUser] = useState(!propUser);
   const [profile, setProfile] = useState<HeaderProfile>({
     plan: "guest",
     nickname: "",
     first_name: "",
     email: "",
-  })
-  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
-  const [avatarName, setAvatarName] = useState("")
+  });
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar);
+  const [avatarName, setAvatarName] = useState("");
 
   useEffect(() => {
-    setMenuOpen(false)
-    setProfileMenuOpen(false)
-  }, [pathname])
+    setMenuOpen(false);
+    setProfileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -126,19 +120,19 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        setProfileMenuOpen(false)
+        setProfileMenuOpen(false);
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     function normalisePlan(value: string | null | undefined): UserPlan {
       if (
@@ -147,10 +141,10 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         value === "admin" ||
         value === "free"
       ) {
-        return value
+        return value;
       }
 
-      return "free"
+      return "free";
     }
 
     async function loadProfile(userToLoad: any) {
@@ -166,26 +160,26 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             .select("avatar_config, avatar_name")
             .eq("user_id", userToLoad.id)
             .maybeSingle(),
-        ])
+        ]);
 
       if (error) {
-        console.error("Error loading header profile:", error)
+        console.error("Error loading header profile:", error);
       }
 
       if (avatarError) {
-        console.error("Error loading header avatar:", avatarError)
+        console.error("Error loading header avatar:", avatarError);
       }
 
-      if (!mounted) return
+      if (!mounted) return;
 
-      const safePlan = normalisePlan(data?.plan)
+      const safePlan = normalisePlan(data?.plan);
 
       setProfile({
         plan: safePlan,
         nickname: data?.nickname || "",
         first_name: data?.first_name || "",
         email: data?.email || userToLoad.email || "",
-      })
+      });
 
       setAvatarConfig(
         avatarData?.avatar_config
@@ -193,38 +187,38 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
               avatarData.avatar_config as Record<string, unknown>,
             )
           : defaultAvatar,
-      )
-      setAvatarName(normaliseAvatarName(avatarData?.avatar_name))
+      );
+      setAvatarName(normaliseAvatarName(avatarData?.avatar_name));
     }
 
     async function loadUserAndProfile(sessionUser?: any) {
       try {
-        const userToLoad = propUser ?? sessionUser
+        const userToLoad = propUser ?? sessionUser;
 
         if (userToLoad) {
-          if (!mounted) return
+          if (!mounted) return;
 
-          setCurrentUser(userToLoad)
-          await loadProfile(userToLoad)
+          setCurrentUser(userToLoad);
+          await loadProfile(userToLoad);
 
-          if (!mounted) return
-          setLoadingUser(false)
-          return
+          if (!mounted) return;
+          setLoadingUser(false);
+          return;
         }
 
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession()
+        } = await supabase.auth.getSession();
 
         if (sessionError) {
-          console.error("Error getting auth session:", sessionError)
+          console.error("Error getting auth session:", sessionError);
         }
 
-        if (!mounted) return
+        if (!mounted) return;
 
-        const sessionUserFromClient = session?.user ?? null
-        setCurrentUser(sessionUserFromClient)
+        const sessionUserFromClient = session?.user ?? null;
+        setCurrentUser(sessionUserFromClient);
 
         if (!sessionUserFromClient) {
           setProfile({
@@ -232,89 +226,89 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             nickname: "",
             first_name: "",
             email: "",
-          })
-          setAvatarConfig(defaultAvatar)
-          setAvatarName("")
-          setLoadingUser(false)
-          return
+          });
+          setAvatarConfig(defaultAvatar);
+          setAvatarName("");
+          setLoadingUser(false);
+          return;
         }
 
-        await loadProfile(sessionUserFromClient)
+        await loadProfile(sessionUserFromClient);
 
-        if (!mounted) return
-        setLoadingUser(false)
+        if (!mounted) return;
+        setLoadingUser(false);
       } catch (error) {
-        console.error("Error loading header user:", error)
+        console.error("Error loading header user:", error);
 
-        if (!mounted) return
+        if (!mounted) return;
 
-        setCurrentUser(null)
+        setCurrentUser(null);
         setProfile({
           plan: "guest",
           nickname: "",
           first_name: "",
           email: "",
-        })
-        setAvatarConfig(defaultAvatar)
-        setAvatarName("")
-        setLoadingUser(false)
+        });
+        setAvatarConfig(defaultAvatar);
+        setAvatarName("");
+        setLoadingUser(false);
       }
     }
 
-    loadUserAndProfile()
+    loadUserAndProfile();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return
-      loadUserAndProfile(session?.user ?? null)
-    })
+      if (!mounted) return;
+      loadUserAndProfile(session?.user ?? null);
+    });
 
     return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [propUser])
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [propUser]);
 
-  const activeUser = propUser ?? currentUser
-  const isGuest = !activeUser
+  const activeUser = propUser ?? currentUser;
+  const isGuest = !activeUser;
 
-  const homeHref = isGuest ? "/" : "/home"
-  const englishHref = "/english"
-  const mathHref = "/math"
-  const vrHref = "/vr"
-  const nvrHref = "/nvr"
-  const customTestsHref = "/custom-tests"
+  const homeHref = isGuest ? "/" : "/home";
+  const englishHref = "/english";
+  const mathHref = "/math";
+  const vrHref = "/vr";
+  const nvrHref = "/nvr";
+  const customTestsHref = "/custom-tests";
 
   const handleLogoutClick = async () => {
-    setMenuOpen(false)
-    setProfileMenuOpen(false)
+    setMenuOpen(false);
+    setProfileMenuOpen(false);
 
     if (onLogout) {
-      onLogout()
-      return
+      onLogout();
+      return;
     }
 
-    await supabase.auth.signOut()
+    await supabase.auth.signOut();
 
-    setCurrentUser(null)
+    setCurrentUser(null);
     setProfile({
       plan: "guest",
       nickname: "",
       first_name: "",
       email: "",
-    })
-    setAvatarConfig(defaultAvatar)
-    setAvatarName("")
+    });
+    setAvatarConfig(defaultAvatar);
+    setAvatarName("");
 
-    router.replace("/login")
-    router.refresh()
-  }
+    router.replace("/login");
+    router.refresh();
+  };
 
   const isActivePath = (path: string) => {
-    if (path === "/") return pathname === "/"
-    return pathname === path || pathname.startsWith(path + "/")
-  }
+    if (path === "/") return pathname === "/";
+    return pathname === path || pathname.startsWith(path + "/");
+  };
 
   const linkStyle = (path: string): React.CSSProperties => ({
     textDecoration: "none",
@@ -331,16 +325,16 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
     display: "inline-flex",
     alignItems: "center",
     transition: "all 0.2s ease",
-  })
+  });
 
   const displayName =
     profile.nickname ||
     profile.first_name ||
     profile.email ||
     activeUser?.email ||
-    "Profile"
+    "Profile";
 
-  const avatarDisplayName = avatarName || displayName
+  const avatarDisplayName = avatarName || displayName;
 
   return (
     <div
@@ -418,8 +412,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
             >
               <span style={{ color: "#ec4899" }}>Y</span>
               an
-              <span style={{ color: HEADER_YELLOW }}>B</span>
-              o
+              <span style={{ color: HEADER_YELLOW }}>B</span>o
             </span>
 
             <span
@@ -510,16 +503,15 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   style={{
                     minHeight: "42px",
                     borderRadius: "999px",
-                    border: "2px solid #eab308",
-                    background: HEADER_YELLOW,
+                    border: "none",
+                    background: "transparent",
                     color: "#111827",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: "8px",
-                    padding: "2px 2px 2px 12px",
+                    padding: 0,
                     cursor: "pointer",
-                    boxShadow: "0 6px 14px rgba(234,179,8,0.20)",
+                    boxShadow: "none",
                     fontWeight: 900,
                     fontSize: "16px",
                     lineHeight: 1,
@@ -528,30 +520,53 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 >
                   <span
                     style={{
+                      height: "24px",
+                      minHeight: "24px",
+                      boxSizing: "border-box",
+                      borderRadius: "999px",
+                      border: "2px solid #eab308",
+                      background: HEADER_YELLOW,
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      gap: "8px",
+                      padding: "0 2px 0 11px",
+                      overflow: "visible",
+                      boxShadow: "0 6px 14px rgba(234,179,8,0.20)",
                     }}
                   >
-                    <span style={{ color: HEADER_GREEN }}>my</span>
-                    <span style={{ color: "#ec4899" }}>Y</span>
-                    <span style={{ color: HEADER_GREEN }}>an</span>
-                    <span style={{ color: "#ffffff" }}>B</span>
-                    <span style={{ color: HEADER_GREEN }}>o Portal</span>
-                  </span>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "16px",
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <span style={{ color: HEADER_GREEN }}>my</span>
+                      <span style={{ color: "#ec4899" }}>Y</span>
+                      <span style={{ color: HEADER_GREEN }}>an</span>
+                      <span style={{ color: "#ffffff" }}>B</span>
+                      <span style={{ color: HEADER_GREEN }}>o Portal</span>
+                    </span>
 
-                  <StudentAvatarPortrait
-                    config={avatarConfig}
-                    name={avatarDisplayName}
-                    size={38}
-                    borderWidth={2}
-                    displayMode="icon"
-                    ariaLabel={`${avatarDisplayName} avatar`}
-                    style={{
-                      outline: "2px solid rgba(255,255,255,0.92)",
-                      boxShadow: "0 4px 10px rgba(0,0,0,0.16)",
-                    }}
-                  />
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarDisplayName}
+                      size={38}
+                      borderWidth={2}
+                      displayMode="icon"
+                      ariaLabel={`${avatarDisplayName} avatar`}
+                      style={{
+                        flexShrink: 0,
+                        outline: "2px solid rgba(255,255,255,0.92)",
+                        boxShadow: "0 4px 10px rgba(0,0,0,0.16)",
+                      }}
+                    />
+                  </span>
                 </button>
 
                 {profileMenuOpen && (
@@ -861,50 +876,68 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                   style={{
                     minHeight: "40px",
                     borderRadius: "999px",
-                    border: "2px solid #eab308",
-                    background: HEADER_YELLOW,
+                    border: "none",
+                    background: "transparent",
                     color: "#111827",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: "8px",
                     textDecoration: "none",
-                    padding: "2px 2px 2px 12px",
+                    padding: 0,
                     width: "fit-content",
                     maxWidth: "100%",
-                    boxShadow: "0 6px 14px rgba(234,179,8,0.18)",
+                    boxShadow: "none",
                   }}
                 >
                   <span
                     style={{
+                      height: "24px",
+                      minHeight: "24px",
+                      boxSizing: "border-box",
+                      borderRadius: "999px",
+                      border: "2px solid #eab308",
+                      background: HEADER_YELLOW,
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: "16px",
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
+                      gap: "8px",
+                      padding: "0 2px 0 11px",
+                      overflow: "visible",
+                      boxShadow: "0 6px 14px rgba(234,179,8,0.18)",
                     }}
                   >
-                    <span style={{ color: HEADER_GREEN }}>my</span>
-                    <span style={{ color: "#ec4899" }}>Y</span>
-                    <span style={{ color: HEADER_GREEN }}>an</span>
-                    <span style={{ color: "#ffffff" }}>B</span>
-                    <span style={{ color: HEADER_GREEN }}>o Portal</span>
-                  </span>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "16px",
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <span style={{ color: HEADER_GREEN }}>my</span>
+                      <span style={{ color: "#ec4899" }}>Y</span>
+                      <span style={{ color: HEADER_GREEN }}>an</span>
+                      <span style={{ color: "#ffffff" }}>B</span>
+                      <span style={{ color: HEADER_GREEN }}>o Portal</span>
+                    </span>
 
-                  <StudentAvatarPortrait
-                    config={avatarConfig}
-                    name={avatarDisplayName}
-                    size={36}
-                    borderWidth={2}
-                    displayMode="icon"
-                    ariaLabel={`${avatarDisplayName} avatar`}
-                    style={{
-                      flexShrink: 0,
-                      outline: "2px solid rgba(255,255,255,0.92)",
-                      boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
-                    }}
-                  />
+                    <StudentAvatarPortrait
+                      config={avatarConfig}
+                      name={avatarDisplayName}
+                      size={36}
+                      borderWidth={2}
+                      displayMode="icon"
+                      ariaLabel={`${avatarDisplayName} avatar`}
+                      style={{
+                        flexShrink: 0,
+                        outline: "2px solid rgba(255,255,255,0.92)",
+                        boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+                      }}
+                    />
+                  </span>
                 </Link>
 
                 <button
@@ -956,5 +989,5 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
         }
       `}</style>
     </div>
-  )
+  );
 }
