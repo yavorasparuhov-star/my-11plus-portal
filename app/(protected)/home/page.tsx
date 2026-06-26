@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "../../../lib/supabaseClient"
@@ -27,36 +27,14 @@ type DailyLoginResult = {
   amount?: number
 }
 
-const dailyFunFacts = [
-  "Mistakes help your brain grow stronger.",
-  "A short practice every day beats one long practice once a week.",
-  "Reading the question twice can save lots of marks.",
-  "Your brain remembers more when you explain your answer.",
-  "Checking your work is a superpower.",
-  "Every tricky question is a chance to learn a new strategy.",
-  "Practice builds confidence one question at a time.",
-  "Taking a calm breath can help your brain think clearly.",
-  "Reviewing mistakes turns them into future marks.",
-  "Small steps every day can lead to big 11+ progress.",
-  "Patterns become easier when you slow down and look carefully.",
-  "A neat method helps you spot mistakes faster.",
-  "Learning from one wrong answer can help with many future questions.",
-  "Confidence grows when you keep trying.",
-]
+type DailyHomeMessage = {
+  rotation_order: number
+  message: string
+}
 
 const cardHover = {
   transition: "all 0.25s ease",
   cursor: "pointer",
-}
-
-function getDailyFunFact() {
-  const today = new Date()
-  const startOfYear = new Date(today.getFullYear(), 0, 0)
-  const dayOfYear = Math.floor(
-    (today.getTime() - startOfYear.getTime()) / 86400000,
-  )
-
-  return dailyFunFacts[dayOfYear % dailyFunFacts.length]
 }
 
 export default function HomePage() {
@@ -68,9 +46,13 @@ export default function HomePage() {
   const [dailyCoinsClaimed, setDailyCoinsClaimed] = useState(false)
   const [dailyCoinMessage, setDailyCoinMessage] = useState<React.ReactNode | null>(null)
   const [dailyCoinError, setDailyCoinError] = useState<React.ReactNode | null>(null)
+  const [dailyHomeMessage, setDailyHomeMessage] = useState(
+    "A short practice every day beats one long practice once a week.",
+  )
 
   useEffect(() => {
     loadHomeAvatar()
+    loadDailyHomeMessage()
   }, [])
 
   async function loadHomeAvatar() {
@@ -108,7 +90,49 @@ export default function HomePage() {
   }
 
 
-  const dailyFunFact = useMemo(() => getDailyFunFact(), [])
+
+  function getLondonDateParts() {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date())
+
+    const year = Number(parts.find((part) => part.type === "year")?.value)
+    const month = Number(parts.find((part) => part.type === "month")?.value)
+    const day = Number(parts.find((part) => part.type === "day")?.value)
+
+    return { year, month, day }
+  }
+
+  function getDailyMessageIndex(messageCount: number) {
+    const { year, month, day } = getLondonDateParts()
+
+    const todayUtc = Date.UTC(year, month - 1, day)
+    const startUtc = Date.UTC(2026, 0, 1)
+
+    const daysSinceStart = Math.floor((todayUtc - startUtc) / 86400000)
+
+    return ((daysSinceStart % messageCount) + messageCount) % messageCount
+  }
+
+  async function loadDailyHomeMessage() {
+    const { data, error } = await supabase
+      .from("daily_home_messages")
+      .select("rotation_order, message")
+      .eq("is_active", true)
+      .order("rotation_order", { ascending: true })
+
+    if (error || !data || data.length === 0) {
+      return
+    }
+
+    const messages = data as DailyHomeMessage[]
+    const messageIndex = getDailyMessageIndex(messages.length)
+
+    setDailyHomeMessage(messages[messageIndex].message)
+  }
 
   const cards = [
     {
@@ -267,7 +291,7 @@ export default function HomePage() {
 
               <div style={styles.didYouKnowBlock}>
                 <p style={styles.didYouKnowLabel}>Did you know?</p>
-                <p style={styles.didYouKnowText}>{dailyFunFact}</p>
+                <p style={styles.didYouKnowText}>{dailyHomeMessage}</p>
               </div>
 
               <div style={styles.dailyCoinsBubbleBlock}>
