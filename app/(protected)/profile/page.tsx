@@ -29,15 +29,6 @@ type ProfileRow = {
   plan: string | null;
 };
 
-type CoinTransaction = {
-  id: string;
-  amount: number;
-  reason: string | null;
-  source_type: string | null;
-  source_id: string | null;
-  created_at: string;
-};
-
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -49,9 +40,10 @@ export default function ProfilePage() {
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar);
   const [avatarName, setAvatarName] = useState("");
   const [coins, setCoins] = useState(0);
-  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>(
-    [],
-  );
+  const [todayCoinSummary, setTodayCoinSummary] = useState({
+    earned: 0,
+    spent: 0,
+  });
 
   const [formData, setFormData] = useState<ProfileFormData>({
     first_name: "",
@@ -205,21 +197,50 @@ export default function ProfilePage() {
         setCoins(walletData.balance);
       }
 
-      const { data: transactionsData, error: transactionsError } =
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+      const { data: todayTransactionsData, error: todayTransactionsError } =
         await supabase
           .from("yanbo_token_transactions")
-          .select("id, amount, reason, source_type, source_id, created_at")
+          .select("amount")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(20);
+          .gte("created_at", startOfToday.toISOString())
+          .lt("created_at", startOfTomorrow.toISOString());
 
-      if (transactionsError) {
+      if (todayTransactionsError) {
         console.error(
-          "Error loading recent YanBo Coin activity:",
-          transactionsError,
+          "Error loading today's YanBo Coin summary:",
+          todayTransactionsError,
         );
       } else {
-        setCoinTransactions((transactionsData || []) as CoinTransaction[]);
+        const summary = (todayTransactionsData || []).reduce(
+          (runningSummary, transaction) => {
+            const amount = Number(transaction.amount) || 0;
+
+            if (amount > 0) {
+              return {
+                ...runningSummary,
+                earned: runningSummary.earned + amount,
+              };
+            }
+
+            if (amount < 0) {
+              return {
+                ...runningSummary,
+                spent: runningSummary.spent + Math.abs(amount),
+              };
+            }
+
+            return runningSummary;
+          },
+          { earned: 0, spent: 0 },
+        );
+
+        setTodayCoinSummary(summary);
       }
 
       setLoading(false);
@@ -273,42 +294,6 @@ export default function ProfilePage() {
   function handleChangePassword() {
     router.push("/forgot-password");
   }
-
-  function isTodayTransaction(value: string) {
-    const transactionDate = new Date(value);
-    const today = new Date();
-
-    return (
-      transactionDate.getFullYear() === today.getFullYear() &&
-      transactionDate.getMonth() === today.getMonth() &&
-      transactionDate.getDate() === today.getDate()
-    );
-  }
-
-  const todayCoinSummary = coinTransactions.reduce(
-    (summary, transaction) => {
-      if (!isTodayTransaction(transaction.created_at)) {
-        return summary;
-      }
-
-      if (transaction.amount > 0) {
-        return {
-          ...summary,
-          earned: summary.earned + transaction.amount,
-        };
-      }
-
-      if (transaction.amount < 0) {
-        return {
-          ...summary,
-          spent: summary.spent + Math.abs(transaction.amount),
-        };
-      }
-
-      return summary;
-    },
-    { earned: 0, spent: 0 },
-  );
 
   const planLabel =
     plan === "admin"
@@ -395,12 +380,6 @@ export default function ProfilePage() {
                 </span>
                 <span style={styles.todayCoinSummaryLabel}>Spent</span>
               </div>
-
-              {coinTransactions.length === 0 && (
-                <p style={styles.emptyActivityText}>
-                  No YanBo Coin activity yet.
-                </p>
-              )}
             </div>
 
             <div style={styles.securityCard}>
@@ -534,80 +513,6 @@ export default function ProfilePage() {
 }
 
 
-function profileBackgroundOverlay(background: string) {
-  switch (background) {
-    case "classroom":
-      return "linear-gradient(180deg, rgba(255, 251, 235, 0.65), rgba(239, 246, 255, 0.45))";
-    case "library":
-      return "linear-gradient(180deg, rgba(224, 242, 254, 0.58), rgba(255, 255, 255, 0.35))";
-    case "science_lab":
-      return "linear-gradient(180deg, rgba(237, 233, 254, 0.55), rgba(207, 250, 254, 0.38))";
-    case "reading_corner":
-      return "linear-gradient(180deg, rgba(255, 237, 213, 0.6), rgba(255, 255, 255, 0.35))";
-    case "yanbo_stage":
-      return "linear-gradient(180deg, rgba(254, 240, 138, 0.55), rgba(219, 234, 254, 0.35))";
-    default:
-      return "linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(239, 246, 255, 0.5))";
-  }
-}
-
-function hatDisplay(hat: string) {
-  switch (hat) {
-    case "yanbo_cap":
-      return "🧢";
-    case "graduation":
-      return "🎓";
-    case "wizard":
-      return "🧙‍♂️";
-    case "crown":
-      return "👑";
-    case "explorer":
-      return "🤠";
-    case "blue_beanie":
-      return "💙";
-    default:
-      return "";
-  }
-}
-
-function glassesDisplay(glasses: string) {
-  switch (glasses) {
-    case "round":
-      return "👓";
-    case "square":
-      return "▭▭";
-    case "blue":
-      return "🔵👓";
-    case "green":
-      return "🟢👓";
-    case "star":
-      return "⭐👓";
-    case "silver":
-      return "⚪👓";
-    case "sport":
-      return "🥽";
-    case "rainbow":
-      return "🌈👓";
-    default:
-      return "";
-  }
-}
-
-function badgeDisplay(badge: string) {
-  switch (badge) {
-    case "english":
-      return "E★";
-    case "maths":
-      return "M★";
-    case "vr":
-      return "VR";
-    case "nvr":
-      return "NVR";
-    default:
-      return "";
-  }
-}
-
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
@@ -615,84 +520,21 @@ const styles: Record<string, React.CSSProperties> = {
       "linear-gradient(180deg, #f6f8fb 0%, #eef6f2 45%, #f6f8fb 100%)",
     padding: "32px 16px",
   },
-
   container: {
     maxWidth: 1100,
     margin: "0 auto",
   },
-
-  brandHero: {
-    display: "flex",
-    alignItems: "center",
-    gap: 22,
-    background: "#ffffff",
-    borderRadius: 28,
-    padding: "28px 30px",
-    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.08)",
-    border: "1px solid rgba(226, 232, 240, 0.9)",
-    marginBottom: 24,
-    position: "relative",
-  },
-
-  heroTextWrap: {
-    flex: 1,
-  },
-
-  logoWrap: {
-    width: 104,
-    height: 104,
-    minWidth: 104,
-    borderRadius: 28,
-    background: "linear-gradient(135deg, #ecfdf5, #eff6ff)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "inset 0 0 0 1px rgba(16, 185, 129, 0.12)",
-  },
-
-  logo: {
-    objectFit: "contain",
-    borderRadius: 20,
-  },
-
-  eyebrow: {
-    margin: "0 0 6px",
-    fontSize: "0.85rem",
-    fontWeight: 700,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "#059669",
-  },
-
-  brandTitle: {
-    margin: 0,
-    fontSize: "2.25rem",
-    lineHeight: 1.1,
-    fontWeight: 800,
-    color: "#111827",
-  },
-
-  brandSubtitle: {
-    margin: "10px 0 0",
-    maxWidth: 620,
-    fontSize: "1rem",
-    lineHeight: 1.6,
-    color: "#4b5563",
-  },
-
   contentGrid: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1.35fr) minmax(260px, 320px)",
     gap: 22,
     alignItems: "start",
   },
-
   leftColumn: {
     display: "flex",
     flexDirection: "column",
     gap: 24,
   },
-
   avatarCard: {
     background: "#ffffff",
     borderRadius: 22,
@@ -700,24 +542,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
     border: "1px solid rgba(16, 185, 129, 0.18)",
   },
-
-  avatarHeader: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 14,
-    marginBottom: 18,
-  },
-
-  avatarEyebrow: {
-    margin: "0 0 6px",
-    fontSize: "0.78rem",
-    fontWeight: 800,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "#059669",
-  },
-
   coinBadge: {
     display: "inline-flex",
     alignItems: "center",
@@ -730,244 +554,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     whiteSpace: "nowrap",
   },
-
   coinIcon: {
     fontSize: "1rem",
   },
-
   avatarBody: {
     display: "flex",
     gap: 16,
     alignItems: "center",
   },
-
-  profileAvatarStage: {
-    position: "relative",
-    width: 214,
-    height: 214,
-    minWidth: 214,
-    overflow: "hidden",
-    borderRadius: "9999px",
-    background: "linear-gradient(180deg, #ffffff, #eff6ff)",
-    border: "6px solid #ffffff",
-    outline: "4px solid #d1fae5",
-    boxShadow: "0 14px 30px rgba(15, 23, 42, 0.14)",
-  },
-
-  profileAvatarBackgroundImage: {
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-
-  profileAvatarStageOverlay: {
-    position: "absolute",
-    inset: 0,
-  },
-
-  profileAvatarGroundShadow: {
-    position: "absolute",
-    left: 46,
-    right: 46,
-    bottom: 18,
-    height: 22,
-    borderRadius: "50%",
-    background: "rgba(15, 23, 42, 0.12)",
-    filter: "blur(7px)",
-  },
-
-  profileAvatarScaledBody: {
-    position: "absolute",
-    left: "50%",
-    top: -20,
-    width: 330,
-    height: 520,
-    transform: "translateX(-50%) scale(1.06)",
-    transformOrigin: "top center",
-  },
-
-  profileAvatarInner: {
-    position: "relative",
-    width: 330,
-    height: 520,
-  },
-
-  profileAvatarBaseImage: {
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    objectFit: "contain",
-    filter: "drop-shadow(0 18px 18px rgba(15, 23, 42, 0.26))",
-    zIndex: 20,
-  },
-
-  profileAvatarEyeLayer: {
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    objectFit: "contain",
-    zIndex: 40,
-  },
-
-  profileAvatarHatLayer: {
-    position: "absolute",
-    left: "50%",
-    top: 12,
-    zIndex: 50,
-    transform: "translateX(-50%)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  profileAvatarHatImage: {
-    width: 128,
-    height: 96,
-    objectFit: "contain",
-    filter: "drop-shadow(0 8px 7px rgba(15, 23, 42, 0.24))",
-  },
-
-  profileAvatarHatFallback: {
-    fontSize: "4.5rem",
-    filter: "drop-shadow(0 8px 7px rgba(15, 23, 42, 0.24))",
-  },
-
-  profileAvatarGlassesLayer: {
-    position: "absolute",
-    left: "50%",
-    top: 70,
-    zIndex: 50,
-    transform: "translateX(-50%)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  profileAvatarGlassesImage: {
-    width: 112,
-    height: 56,
-    objectFit: "contain",
-    filter: "drop-shadow(0 4px 4px rgba(15, 23, 42, 0.18))",
-  },
-
-  profileAvatarGlassesFallback: {
-    fontSize: "3rem",
-    filter: "drop-shadow(0 4px 4px rgba(15, 23, 42, 0.18))",
-  },
-
-  profileAvatarBadgeLayer: {
-    position: "absolute",
-    left: 122,
-    top: 164,
-    zIndex: 50,
-    width: 40,
-    height: 40,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  profileAvatarBadgeImage: {
-    width: "100%",
-    height: "100%",
-    objectFit: "contain",
-    filter: "drop-shadow(0 4px 4px rgba(15, 23, 42, 0.2))",
-  },
-
-  profileAvatarBadgeFallback: {
-    color: "#ffffff",
-    fontSize: "0.75rem",
-    fontWeight: 900,
-    textShadow: "0 2px 4px rgba(15, 23, 42, 0.3)",
-  },
-
-  profileAvatarFallbackWrap: {
-    position: "absolute",
-    inset: 0,
-    zIndex: 20,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  profileAvatarFallbackHead: {
-    width: 132,
-    height: 132,
-    borderRadius: "50%",
-    border: "8px solid #ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "4rem",
-    boxShadow: "0 16px 24px rgba(15, 23, 42, 0.18)",
-  },
-
-  profileAvatarFallbackJumper: {
-    marginTop: -8,
-    minWidth: 160,
-    borderRadius: "28px 28px 8px 8px",
-    background: "#1f2937",
-    color: "#ffffff",
-    padding: "16px 18px",
-    textAlign: "center",
-    fontSize: "1.4rem",
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-
-  avatarPreviewCircle: {
-    width: 116,
-    height: 116,
-    minWidth: 116,
-    borderRadius: "50%",
-    border: "6px solid #ffffff",
-    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.12)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    outline: "4px solid #d1fae5",
-  },
-
-  avatarFace: {
-    width: 58,
-    height: 58,
-    borderRadius: "50%",
-    background: "#fed7aa",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "2rem",
-    boxShadow: "0 6px 12px rgba(15, 23, 42, 0.12)",
-  },
-
-  avatarJumper: {
-    marginTop: 4,
-    minWidth: 72,
-    borderRadius: "16px 16px 6px 6px",
-    background: "#1f2937",
-    color: "#ffffff",
-    padding: "8px 10px",
-    textAlign: "center",
-    fontSize: "0.88rem",
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-
-  yanboY: {
-    color: "#f472b6",
-  },
-
-  yanboB: {
-    color: "#facc15",
-  },
-
   avatarTextWrap: {
     flex: 1,
     minWidth: 0,
@@ -980,14 +574,12 @@ const styles: Record<string, React.CSSProperties> = {
     paddingTop: 8,
     paddingBottom: 6,
   },
-
   avatarTextTop: {
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
     gap: 18,
   },
-
   avatarSpeechBubble: {
     position: "relative",
     borderRadius: 22,
@@ -997,7 +589,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 10px 24px rgba(22, 163, 74, 0.12)",
     maxWidth: 225,
   },
-
   avatarSpeechTail: {
     position: "absolute",
     left: -8,
@@ -1009,7 +600,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderLeft: "2px solid #16a34a",
     borderBottom: "2px solid #16a34a",
   },
-
   avatarGreeting: {
     position: "relative",
     zIndex: 1,
@@ -1019,20 +609,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "1rem",
     lineHeight: 1.42,
   },
-
   avatarGreetingName: {
     color: "#16a34a",
     fontWeight: 950,
     wordBreak: "break-word",
   },
-
-  avatarName: {
-    margin: "0 0 6px",
-    color: "#111827",
-    fontWeight: 900,
-    fontSize: "1.05rem",
-  },
-
   avatarButton: {
     marginTop: "auto",
     display: "inline-flex",
@@ -1047,7 +628,6 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: "none",
     boxShadow: "0 10px 22px rgba(22, 163, 74, 0.22)",
   },
-
   coinActivityCard: {
     background: "#ffffff",
     borderRadius: 20,
@@ -1055,7 +635,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
     border: "1px solid rgba(245, 158, 11, 0.2)",
   },
-
   coinActivityHeader: {
     display: "flex",
     alignItems: "center",
@@ -1063,14 +642,6 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     marginBottom: 8,
   },
-
-  todayCoinSummaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 8,
-    marginTop: 8,
-  },
-
   todayInlineRow: {
     display: "flex",
     alignItems: "center",
@@ -1081,24 +652,11 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #e5e7eb",
     padding: "7px 9px",
   },
-
   todayInlineTitle: {
     color: "#374151",
     fontSize: "0.78rem",
     fontWeight: 900,
   },
-
-  todayCoinSummaryBox: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 14,
-    padding: "7px 10px",
-    background: "#f9fafb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-
   todayCoinSummaryLabel: {
     margin: 0,
     color: "#6b7280",
@@ -1106,7 +664,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     whiteSpace: "nowrap",
   },
-
   todayCoinSummaryEarned: {
     margin: 0,
     color: "#047857",
@@ -1114,7 +671,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     lineHeight: 1,
   },
-
   todayCoinSummarySpent: {
     margin: 0,
     color: "#b91c1c",
@@ -1122,105 +678,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     lineHeight: 1,
   },
-
-  compactActivityWrap: {
-    marginTop: 7,
-    borderRadius: 12,
-    padding: "7px 9px",
-    background: "#fffbeb",
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-    flexWrap: "wrap",
-  },
-
-  compactActivityTitle: {
-    margin: 0,
-    color: "#92400e",
-    fontSize: "0.76rem",
-    fontWeight: 900,
-  },
-
-  compactActivityRow: {
-    display: "grid",
-    gridTemplateColumns: "48px 1fr auto",
-    alignItems: "center",
-    gap: 10,
-    padding: "8px 0",
-    borderBottom: "1px solid #f3f4f6",
-  },
-
-  compactActivityAmount: {
-    fontWeight: 900,
-    fontSize: "0.8rem",
-  },
-
-  compactActivityReason: {
-    color: "#111827",
-    fontWeight: 750,
-    fontSize: "0.78rem",
-    minWidth: 0,
-  },
-
-  compactActivityDate: {
-    color: "#6b7280",
-    fontSize: "0.72rem",
-    fontWeight: 650,
-    whiteSpace: "nowrap",
-  },
-
-  emptyActivityText: {
-    margin: "8px 0 0",
-    color: "#6b7280",
-    lineHeight: 1.4,
-    fontSize: "0.82rem",
-  },
-
-  activityList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-    marginTop: 18,
-  },
-
-  activityRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    border: "1px solid #e5e7eb",
-    borderRadius: 16,
-    padding: "12px 14px",
-    background: "#ffffff",
-  },
-
-  activityAmount: {
-    minWidth: 48,
-    borderRadius: 999,
-    padding: "7px 10px",
-    textAlign: "center",
-    fontWeight: 900,
-    fontSize: "0.95rem",
-  },
-
-  activityDetails: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  activityReason: {
-    margin: 0,
-    color: "#111827",
-    fontWeight: 800,
-    fontSize: "0.95rem",
-  },
-
-  activityDate: {
-    margin: "3px 0 0",
-    color: "#6b7280",
-    fontSize: "0.82rem",
-    fontWeight: 600,
-  },
-
   securityCard: {
     background: "#ffffff",
     borderRadius: 24,
@@ -1228,14 +685,12 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
     border: "1px solid rgba(226, 232, 240, 0.9)",
   },
-
   securityHeader: {
     display: "flex",
     alignItems: "center",
     gap: 12,
     marginBottom: 12,
   },
-
   securityIcon: {
     width: 42,
     height: 42,
@@ -1248,7 +703,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "22px",
     flexShrink: 0,
   },
-
   securityActionRow: {
     marginTop: 16,
     display: "flex",
@@ -1256,14 +710,12 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     flexWrap: "wrap",
   },
-
   securityNote: {
     margin: 0,
     color: "#6b7280",
     fontSize: "0.85rem",
     lineHeight: 1.4,
   },
-
   passwordButton: {
     marginTop: 0,
     border: "none",
@@ -1276,7 +728,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
   },
-
   formCard: {
     background: "#ffffff",
     borderRadius: 24,
@@ -1288,34 +739,29 @@ const styles: Record<string, React.CSSProperties> = {
     justifySelf: "end",
     alignSelf: "start",
   },
-
   formHeader: {
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     marginBottom: 18,
   },
-
   cardTitle: {
     margin: 0,
     fontSize: "1.35rem",
     fontWeight: 900,
     color: "#111827",
   },
-
   cardText: {
     margin: "8px 0 0",
     color: "#6b7280",
     lineHeight: 1.45,
     fontSize: "0.88rem",
   },
-
   formGrid: {
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: 12,
   },
-
   label: {
     display: "flex",
     flexDirection: "column",
@@ -1324,11 +770,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#111827",
     fontSize: "0.84rem",
   },
-
-  fullWidth: {
-    gridColumn: "1 / -1",
-  },
-
   input: {
     width: "100%",
     border: "1px solid #d1d5db",
@@ -1341,7 +782,6 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
     boxSizing: "border-box",
   },
-
   message: {
     margin: "14px 0 0",
     border: "1px solid",
@@ -1350,13 +790,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     fontSize: "0.86rem",
   },
-
   actions: {
     marginTop: 16,
     display: "flex",
     justifyContent: "flex-start",
   },
-
   saveButton: {
     border: "none",
     borderRadius: 999,
@@ -1368,7 +806,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(22, 163, 74, 0.25)",
   },
-
   loadingCard: {
     maxWidth: 520,
     margin: "80px auto",
@@ -1378,7 +815,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 14px 35px rgba(15, 23, 42, 0.07)",
     textAlign: "center",
   },
-
   loadingText: {
     margin: 0,
     color: "#4b5563",
