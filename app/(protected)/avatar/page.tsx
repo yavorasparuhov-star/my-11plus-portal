@@ -25,12 +25,6 @@ type ShopItem = {
   is_active: boolean
 }
 
-type SelectOption = {
-  value: string
-  label: string
-  disabled?: boolean
-}
-
 type SlotOption = {
   value: string
   label: string
@@ -88,8 +82,6 @@ const PRIMARY_BUTTON_CLASS =
   "rounded-full bg-green-600 px-5 py-2.5 text-sm font-black text-white shadow-md shadow-green-200/40 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
 const SMALL_PRIMARY_BUTTON_CLASS =
   "rounded-full bg-green-600 px-4 py-2 text-sm font-black text-white shadow-md shadow-green-200/40 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
-const LINK_BUTTON_BLUE_CLASS =
-  "rounded-2xl border border-blue-200 bg-white px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50"
 const LINK_BUTTON_SLATE_CLASS =
   "rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-center text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
 const ALERT_ERROR_CLASS =
@@ -283,26 +275,6 @@ function makeAvatarConfigSafe(
   })
 
   return safeConfig
-}
-
-function getSelectOptions(
-  slot: AvatarSlot,
-  unlockedItemKeys: string[],
-): SelectOption[] {
-  return slotOptions[slot].map((option) => {
-    const unlocked = isItemKeyUnlocked(option.itemKey, unlockedItemKeys)
-    const suffix = option.itemKey
-      ? unlocked
-        ? " — unlocked"
-        : " — locked"
-      : ""
-
-    return {
-      value: option.value,
-      label: `${option.label}${suffix}`,
-      disabled: !unlocked,
-    }
-  })
 }
 
 function getShopIcon(category: string) {
@@ -668,6 +640,54 @@ function previewBackgroundOverlay(background: string) {
   }
 }
 
+
+type WardrobeResetOption = {
+  slot: AvatarSlot
+  value: string
+  name: string
+  icon: string
+}
+
+function getWardrobeResetOption(category: string): WardrobeResetOption | null {
+  if (category === "glasses") {
+    return {
+      slot: "glasses",
+      value: "none",
+      name: "No glasses",
+      icon: "👓",
+    }
+  }
+
+  if (category === "hat") {
+    return {
+      slot: "hat",
+      value: "none",
+      name: "No hat",
+      icon: "🧢",
+    }
+  }
+
+  if (category === "background") {
+    return {
+      slot: "background",
+      value: "plain",
+      name: "Plain background",
+      icon: "✨",
+    }
+  }
+
+  if (category === "badge") {
+    return {
+      slot: "badge",
+      value: "none",
+      name: "No badge",
+      icon: "🏅",
+    }
+  }
+
+  return null
+}
+
 export default function AvatarPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(defaultAvatar)
@@ -1003,6 +1023,8 @@ export default function AvatarPage() {
     )
   }, [activeWardrobeCategory, wardrobeItems])
 
+  const wardrobeResetOption = getWardrobeResetOption(activeWardrobeCategory)
+
   const previewImages = useMemo<PreviewImageSources>(
     () => ({
       base: getBaseAvatarImageSources(
@@ -1326,10 +1348,6 @@ export default function AvatarPage() {
                   </div>
                 </div>
               </div>
-
-              <div className="rounded-2xl bg-green-50 px-3 py-3 text-xs font-bold leading-relaxed text-green-900 ring-1 ring-green-100">
-                Use My Wardrobe below to equip glasses, hats, backgrounds and badges.
-              </div>
             </div>
           </section>
         </section>
@@ -1356,10 +1374,14 @@ export default function AvatarPage() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {filteredWardrobeItems.length === 0 && (
-              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-3 md:col-span-4 lg:col-span-5 xl:col-span-6">
-                No {formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.
-              </div>
+            {wardrobeResetOption && (
+              <WardrobeResetCard
+                option={wardrobeResetOption}
+                active={avatarConfig[wardrobeResetOption.slot] === wardrobeResetOption.value}
+                onClick={() =>
+                  updateAvatar(wardrobeResetOption.slot, wardrobeResetOption.value)
+                }
+              />
             )}
 
             {filteredWardrobeItems.map((item) => {
@@ -1772,6 +1794,58 @@ function StyleChip({
   )
 }
 
+function WardrobeResetCard({
+  option,
+  active,
+  onClick,
+}: {
+  option: WardrobeResetOption
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <div
+      className={cn(
+        "relative flex min-h-[184px] flex-col items-center justify-between overflow-hidden rounded-2xl border p-2.5 text-center transition",
+        active && "border-blue-400 bg-blue-50 shadow-sm ring-2 ring-blue-100",
+        !active && "border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:bg-blue-50/30",
+      )}
+    >
+      {active && (
+        <span className="absolute right-3 top-3 z-30 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black text-white shadow-sm">
+          ✓ Selected
+        </span>
+      )}
+
+      <div className="relative z-10 mt-2 flex h-20 w-20 items-center justify-center rounded-2xl bg-white text-4xl shadow-inner ring-1 ring-slate-100">
+        <span aria-hidden="true">{option.icon}</span>
+      </div>
+
+      <div className="relative z-20 mt-1.5 w-full min-w-0">
+        <h3 className="line-clamp-2 min-h-[2rem] text-xs font-black leading-tight text-slate-900">
+          {option.name}
+        </h3>
+        <span className="mt-1.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-600">
+          Free
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={active}
+        className={cn(
+          "relative z-20 mt-2 w-full rounded-2xl px-3 py-1.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60",
+          active && "bg-blue-100 text-blue-700",
+          !active && "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50",
+        )}
+      >
+        {active ? "Selected" : "Use"}
+      </button>
+    </div>
+  )
+}
+
 function ShopGalleryItemCard({
   item,
   base,
@@ -1916,140 +1990,6 @@ function ShopGalleryItemImage({
         </span>
       )}
       <span className="sr-only">{item.name}</span>
-    </div>
-  )
-}
-
-function CompactItemCard({
-  item,
-  base = "bo",
-  unlocked,
-  equipped,
-  priceLabel,
-  primaryAction,
-}: {
-  item: ShopItem
-  base?: AvatarConfig["base"]
-  unlocked: boolean
-  equipped: boolean
-  priceLabel?: string
-  primaryAction?: {
-    label: string
-    disabled?: boolean
-    onClick: () => void
-    variant: "blue" | "dark" | "light" | "success" | "muted"
-  }
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-[58px] items-center gap-2 rounded-2xl border p-2 transition",
-        equipped && "border-blue-300 bg-blue-50 shadow-sm",
-        !equipped && unlocked && "border-emerald-200 bg-white",
-        !equipped && !unlocked &&
-          "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30",
-      )}
-    >
-      <ShopItemThumbnail
-        item={item}
-        base={base}
-        unlocked={unlocked}
-        equipped={equipped}
-      />
-
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-xs font-black leading-tight text-slate-900">
-          {item.name}
-        </h3>
-        {priceLabel && (
-          <span className="mt-0.5 inline-block rounded-full bg-yellow-100 px-1.5 py-0.5 text-[9px] font-black text-yellow-800">
-            {priceLabel}
-          </span>
-        )}
-      </div>
-
-      {primaryAction && (
-        <button
-          type="button"
-          onClick={primaryAction.onClick}
-          disabled={primaryAction.disabled}
-          className={`flex min-w-[52px] shrink-0 flex-col items-center justify-center rounded-xl px-2 py-1.5 text-center text-[10px] font-black leading-none shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariantClass(
-            primaryAction.variant,
-          )}`}
-        >
-          {primaryAction.label === "Not enough" ? (
-            <>
-              <span>Not</span>
-              <span className="mt-0.5">enough</span>
-            </>
-          ) : (
-            primaryAction.label
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
-
-function buttonVariantClass(
-  variant: "blue" | "dark" | "light" | "success" | "muted",
-) {
-  if (variant === "blue") return "bg-blue-600 text-white hover:bg-blue-700"
-  if (variant === "dark") return "bg-slate-900 text-white hover:bg-blue-700"
-  if (variant === "light") return "bg-white text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
-  if (variant === "success") return "bg-emerald-100 text-emerald-700"
-  return "bg-slate-200 text-slate-500"
-}
-
-function ShopItemThumbnail({
-  item,
-  base = "bo",
-  unlocked,
-  equipped,
-}: {
-  item: ShopItem
-  base?: AvatarConfig["base"]
-  unlocked: boolean
-  equipped: boolean
-}) {
-  const emoji = getShopItemEmoji(item.item_key, item.category)
-  const imageSources = getShopItemImageSources(item, base)
-  const sourceKey = imageSources.join("|")
-  const [imageIndex, setImageIndex] = useState(0)
-
-  useEffect(() => {
-    setImageIndex(0)
-  }, [sourceKey])
-
-  const currentSource = imageSources[imageIndex]
-
-  return (
-    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-100">
-      {currentSource ? (
-        <img
-          src={currentSource}
-          alt=""
-          className="h-8 w-8 object-contain drop-shadow-sm"
-          onError={() => setImageIndex((current) => current + 1)}
-        />
-      ) : (
-        <span className="text-xl drop-shadow-sm" aria-hidden="true">
-          {emoji}
-        </span>
-      )}
-      <span className="sr-only">{item.name}</span>
-
-      {equipped && (
-        <span className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[8px] font-black text-white shadow-sm">
-          ✓
-        </span>
-      )}
-
-      {!equipped && unlocked && (
-        <span className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-black text-white shadow-sm">
-          ✓
-        </span>
-      )}
     </div>
   )
 }
@@ -2205,40 +2145,5 @@ function RewardRule({ amount, label }: { amount: string; label: string }) {
         +{amount}
       </span>
     </div>
-  )
-}
-
-function SelectBox({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: SelectOption[]
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-      >
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }
