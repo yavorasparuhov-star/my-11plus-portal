@@ -1355,9 +1355,9 @@ export default function AvatarPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mt-5 grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {filteredWardrobeItems.length === 0 && (
-              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-2 md:col-span-3 lg:col-span-4 xl:col-span-5">
+              <div className="rounded-2xl bg-slate-50 p-5 text-center text-sm font-semibold text-slate-500 ring-1 ring-slate-100 sm:col-span-3 md:col-span-4 lg:col-span-5 xl:col-span-6">
                 No {formatCategoryName(activeWardrobeCategory).toLowerCase()} items unlocked yet.
               </div>
             )}
@@ -1367,19 +1367,20 @@ export default function AvatarPage() {
               const canEquip = Boolean(getSlotMatchFromItemKey(item.item_key))
 
               return (
-                <CompactItemCard
+                <ShopGalleryItemCard
                   key={item.item_key}
                   item={item}
                   base={avatarConfig.base}
                   unlocked={true}
                   equipped={equipped}
+                  canAfford={true}
                   primaryAction={
                     canEquip
                       ? {
                           label: equipped ? "Equipped" : "Equip",
                           disabled: equipped,
                           onClick: () => equipShopItem(item.item_key),
-                          variant: equipped ? "success" : "dark",
+                          variant: equipped ? "success" : "light",
                         }
                       : undefined
                   }
