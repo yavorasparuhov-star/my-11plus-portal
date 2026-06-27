@@ -1,4 +1,5 @@
 import type {
+  AvatarBase,
   AvatarConfig,
   AvatarSlot,
   ShopItem,
@@ -6,6 +7,7 @@ import type {
 } from "./avatarTypes"
 import {
   AVATAR_NAME_MAX_LENGTH,
+  avatarBaseOptions,
   defaultAvatar,
   freeStarterItemKeys,
   shopCategoryOrder,
@@ -48,22 +50,28 @@ function normaliseEyeColor(value: unknown): AvatarConfig["eyeColor"] {
   return defaultAvatar.eyeColor
 }
 
+function normaliseAvatarBase(value: unknown): AvatarBase {
+  if (value === "yan" || value === "girl") return "yan"
+  if (value === "bo" || value === "boy") return "bo"
+  if (value === "ken") return "ken"
+  if (value === "kiko") return "kiko"
+
+  return defaultAvatar.base
+}
+
+export function getAvatarBaseLabel(base: AvatarBase) {
+  return avatarBaseOptions.find((option) => option.value === base)?.label || "Bo"
+}
+
+export function getAvatarBaseEmoji(base: AvatarBase) {
+  return avatarBaseOptions.find((option) => option.value === base)?.emoji || "🙂"
+}
+
 export function normaliseAvatarConfig(savedConfig: Record<string, unknown> | null) {
   if (!savedConfig) return defaultAvatar
 
-  const savedBase = savedConfig.base
-  let base: AvatarConfig["base"] = "bo"
-
-  if (savedBase === "yan" || savedBase === "girl") {
-    base = "yan"
-  }
-
-  if (savedBase === "bo" || savedBase === "boy") {
-    base = "bo"
-  }
-
   return {
-    base,
+    base: normaliseAvatarBase(savedConfig.base),
     skinTone:
       savedConfig.skinTone === "medium" || savedConfig.skinTone === "dark"
         ? savedConfig.skinTone

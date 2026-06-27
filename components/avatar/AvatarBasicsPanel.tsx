@@ -1,5 +1,5 @@
 import type { AvatarConfig, UpdateAvatarFn } from "./avatarTypes"
-import { AVATAR_NAME_MAX_LENGTH } from "./avatarOptions"
+import { AVATAR_NAME_MAX_LENGTH, avatarBaseOptions } from "./avatarOptions"
 import { CARD_CLASS, CHOICE_ACTIVE_CLASS, CHOICE_IDLE_CLASS } from "./avatarStyles"
 import { cn } from "./avatarUtils"
 import { SectionHeader } from "./AvatarCommon"
@@ -42,22 +42,18 @@ export function AvatarBasicsPanel({
         </label>
 
         <div>
-          <p className="mb-2 text-sm font-black text-slate-700">Base avatar</p>
+          <p className="mb-2 text-sm font-black text-slate-700">Choose your character</p>
           <div className="grid grid-cols-2 gap-2">
-            <ChoiceButton
-              active={avatarConfig.base === "yan"}
-              title="Yan"
-              imageSrc="/avatars/builder/base/yan-icon.png"
-              emoji="😊"
-              onClick={() => onUpdateAvatar("base", "yan")}
-            />
-            <ChoiceButton
-              active={avatarConfig.base === "bo"}
-              title="Bo"
-              imageSrc="/avatars/builder/base/bo-icon.png"
-              emoji="🙂"
-              onClick={() => onUpdateAvatar("base", "bo")}
-            />
+            {avatarBaseOptions.map((option) => (
+              <ChoiceButton
+                key={option.value}
+                active={avatarConfig.base === option.value}
+                title={option.label}
+                imageSrc={option.imageSrc}
+                emoji={option.emoji}
+                onClick={() => onUpdateAvatar("base", option.value)}
+              />
+            ))}
           </div>
         </div>
 
@@ -139,11 +135,17 @@ function ChoiceButton({
         active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
       )}
     >
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-        {imageSrc ? (
-          <img src={imageSrc} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-2xl">{emoji}</span>
+      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+        <span className="text-2xl" aria-hidden="true">{emoji}</span>
+        {imageSrc && (
+          <img
+            src={imageSrc}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = "none"
+            }}
+          />
         )}
       </div>
       <div>

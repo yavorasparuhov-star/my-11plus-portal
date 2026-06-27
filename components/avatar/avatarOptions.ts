@@ -1,4 +1,4 @@
-import type { AvatarConfig, AvatarSlot, SlotOption } from "./avatarTypes"
+import type { AvatarBaseOption, AvatarConfig, AvatarSlot, SlotOption } from "./avatarTypes"
 
 export const defaultAvatar: AvatarConfig = {
   base: "bo",
@@ -11,6 +11,33 @@ export const defaultAvatar: AvatarConfig = {
 }
 
 export const AVATAR_NAME_MAX_LENGTH = 20
+
+export const avatarBaseOptions: AvatarBaseOption[] = [
+  {
+    value: "yan",
+    label: "Yan",
+    imageSrc: "/avatars/builder/base/yan-icon.png",
+    emoji: "😊",
+  },
+  {
+    value: "bo",
+    label: "Bo",
+    imageSrc: "/avatars/builder/base/bo-icon.png",
+    emoji: "🙂",
+  },
+  {
+    value: "ken",
+    label: "Ken",
+    imageSrc: "/avatars/builder/base/ken-icon.png",
+    emoji: "😄",
+  },
+  {
+    value: "kiko",
+    label: "Kiko",
+    imageSrc: "/avatars/builder/base/kiko-icon.png",
+    emoji: "😊",
+  },
+]
 
 export const freeStarterItemKeys = new Set<string>()
 

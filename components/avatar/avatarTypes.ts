@@ -1,5 +1,7 @@
+export type AvatarBase = "yan" | "bo" | "ken" | "kiko"
+
 export type AvatarConfig = {
-  base: "yan" | "bo"
+  base: AvatarBase
   skinTone: "light" | "medium" | "dark"
   eyeColor: "brown" | "blue" | "black"
   glasses: string
@@ -23,6 +25,13 @@ export type SlotOption = {
   value: string
   label: string
   itemKey?: string
+}
+
+export type AvatarBaseOption = {
+  value: AvatarBase
+  label: string
+  imageSrc: string
+  emoji: string
 }
 
 export type PreviewImageSources = Record<AvatarSlot | "base" | "eyes", string[]>

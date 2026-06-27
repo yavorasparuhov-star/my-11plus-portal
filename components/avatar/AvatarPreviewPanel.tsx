@@ -18,6 +18,8 @@ import {
   eyeColourClass,
   formatEyeColourLabel,
   formatSkinToneLabel,
+  getAvatarBaseEmoji,
+  getAvatarBaseLabel,
   getSlotLabel,
   glassesDisplay,
   hatDisplay,
@@ -91,7 +93,7 @@ export function AvatarPreviewPanel({
               Current look
             </p>
             <p className="mt-2 text-2xl font-black text-slate-900">
-              {avatarConfig.base === "yan" ? "Yan" : "Bo"}
+              {getAvatarBaseLabel(avatarConfig.base)}
             </p>
             <p className="mt-1 text-xs font-bold capitalize text-slate-500">
               {avatarConfig.skinTone} skin • {avatarConfig.eyeColor} eyes
@@ -137,7 +139,7 @@ function AvatarPreviewBody({
       <div className="relative h-[520px] w-[330px] sm:h-[560px] sm:w-[360px]">
         <PreviewLayerImage
           srcs={imageSources.base}
-          alt={`${config.base === "yan" ? "Yan" : "Bo"} avatar`}
+          alt={`${getAvatarBaseLabel(config.base)} avatar`}
           className="absolute inset-0 z-20 h-full w-full object-contain drop-shadow-2xl"
           fallback={<CssAvatarPreviewBody config={config} imageSources={imageSources} />}
         />
@@ -224,7 +226,7 @@ function CssAvatarPreviewBody({
             config.skinTone,
           )}`}
         >
-          <span className="mt-4">{config.base === "yan" ? "😊" : "🙂"}</span>
+          <span className="mt-4">{getAvatarBaseEmoji(config.base)}</span>
         </div>
 
         <div className="absolute left-1/2 top-[6.2rem] z-30 flex -translate-x-1/2 gap-9">
