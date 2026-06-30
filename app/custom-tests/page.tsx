@@ -135,7 +135,7 @@ export default function PublicCustomTestsPage() {
                   margin: "0 0 14px",
                 }}
               >
-                Build Your Own 11+ Test
+                Build a Test
               </h1>
 
               <p
@@ -432,16 +432,18 @@ real exam.
                         )}
                       </div>
 
-                      <h3
-                        style={{
-                          fontSize: "1.3rem",
-                          fontWeight: 900,
-                          color: "#111827",
-                          margin: "0 0 10px",
-                        }}
-                      >
-Build a {category.label} Test
-                      </h3>
+                 <h3
+  style={{
+    fontSize: "1.3rem",
+    fontWeight: 900,
+    color: "#111827",
+    margin: "0 0 10px",
+  }}
+>
+  {category.key === "english"
+    ? "Build an English Test"
+    : `Build a ${category.label} Test`}
+</h3>
 
                       <p
                         style={{

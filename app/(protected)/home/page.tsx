@@ -163,10 +163,10 @@ export default function HomePage() {
 
   const learningTools = [
     {
-      title: "Custom Tests",
+      title: "Build a Test",
       icon: <CustomTestsIcon size={42} />,
       text: "Create focused tests by subject, topic, difficulty and time limit to match your child’s current goals.",
-      button: "Build test",
+      button: "Build a test",
       path: "/custom-tests",
     },
     {
@@ -451,9 +451,9 @@ export default function HomePage() {
       <footer style={styles.footer}>
         <div style={styles.footerGrid}>
           <div style={styles.footerBrandColumn}>
-            <h2 style={styles.footerBrand}>
-              <YanBoWord /> Learning
-            </h2>
+<h2 style={styles.footerBrand}>
+  <YanBoWord /> Practice Portal
+</h2>
             <p style={styles.footerDescription}>
               11+ practice for English, Maths, Verbal Reasoning and Non-Verbal
               Reasoning.
@@ -474,9 +474,9 @@ export default function HomePage() {
             <Link href="/nvr" style={styles.footerLink}>
               Non-Verbal Reasoning
             </Link>
-            <Link href="/custom-tests" style={styles.footerLink}>
-              Custom Tests
-            </Link>
+<Link href="/custom-tests" style={styles.footerLink}>
+  Build a Test
+</Link>
           </div>
 
           <div style={styles.footerColumn}>
@@ -500,7 +500,7 @@ export default function HomePage() {
         </div>
 
         <div style={styles.footerBottom}>
-          © 2026 <YanBoWord /> Learning. All rights reserved.
+          © 2026 <YanBoWord /> Practice Portal. All rights reserved.
         </div>
       </footer>
     </div>

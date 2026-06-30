@@ -296,8 +296,20 @@ function LoginContent() {
 
           <div style={{ textAlign: "center", marginBottom: "8px" }}>
             <span style={{ color: "#374151", fontSize: "16px" }}>
-              By clicking continue, you agree to our Terms &amp; Conditions
+              By clicking continue, you agree to our{" "}
             </span>
+
+            <Link
+              href="/terms"
+              style={{
+                color: "#065f46",
+                textDecoration: "underline",
+                fontSize: "16px",
+                fontWeight: 700,
+              }}
+            >
+              Terms &amp; Conditions
+            </Link>
           </div>
 
           <div style={{ textAlign: "center" }}>

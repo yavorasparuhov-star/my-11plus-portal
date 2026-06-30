@@ -46,7 +46,7 @@ export default function AboutPage() {
                 marginBottom: 18,
               }}
             >
-              About YanBo Learning
+              About YanBo Practice Portal
             </div>
 
             <h1
@@ -70,10 +70,10 @@ export default function AboutPage() {
                 margin: "0 auto",
               }}
             >
-              YanBo Learning is an online 11+ practice portal designed to help
-              children practise little and often, review mistakes, and build
-              confidence across English, Maths, Verbal Reasoning and Non-Verbal
-              Reasoning.
+              YanBo Practice Portal is an online 11+ practice portal designed to
+              help children practise little and often, review mistakes, and
+              build confidence across English, Maths, Verbal Reasoning and
+              Non-Verbal Reasoning.
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export default function AboutPage() {
             <InfoCard
               icon="🎯"
               title="Why it was created"
-              text="11+ preparation can feel overwhelming when practice is scattered across books, worksheets and different websites. YanBo Learning brings key practice areas together in one clear place."
+              text="11+ preparation can feel overwhelming when practice is scattered across books, worksheets and different websites. YanBo Practice Portal brings key practice areas together in one clear place."
             />
 
             <InfoCard
@@ -134,9 +134,9 @@ export default function AboutPage() {
                 maxWidth: 860,
               }}
             >
-              YanBo Learning is being developed with feedback and advice from
-              children preparing for the 11+, parents supporting practice at
-              home, and teachers who understand what pupils need to build
+              YanBo Practice Portal is being developed with feedback and advice
+              from children preparing for the 11+, parents supporting practice
+              at home, and teachers who understand what pupils need to build
               confidence and improve. The goal is to focus on real learning
               needs: clear practice, useful explanations, progress tracking and
               targeted review.

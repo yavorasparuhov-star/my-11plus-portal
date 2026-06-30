@@ -58,7 +58,9 @@ export default function SignupPage() {
       const lowerMessage = error.message.toLowerCase()
 
       if (lowerMessage.includes("already")) {
-        setError("An account with this email may already exist. Try logging in instead.")
+        setError(
+          "An account with this email may already exist. Try logging in instead."
+        )
       } else {
         setError(error.message)
       }
@@ -66,7 +68,9 @@ export default function SignupPage() {
       return
     }
 
-    setSuccess("Account created! Please check your email if confirmation is required, then log in.")
+    setSuccess(
+      "Account created! Please check your email if confirmation is required, then log in."
+    )
 
     setTimeout(() => {
       router.replace("/login")
@@ -114,7 +118,7 @@ export default function SignupPage() {
                 margin: 0,
               }}
             >
-              Register for your 11+ learning account
+              Register for your 11+ practice account
             </p>
           </div>
 
@@ -259,11 +263,45 @@ export default function SignupPage() {
               fontSize: "28px",
               fontWeight: "500",
               cursor: loading ? "not-allowed" : "pointer",
-              marginBottom: "22px",
+              marginBottom: "18px",
             }}
           >
             {loading ? "Creating..." : "Register"}
           </button>
+
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "18px",
+              color: "#374151",
+              fontSize: "16px",
+              lineHeight: 1.6,
+            }}
+          >
+            By creating an account, you agree to our{" "}
+            <Link
+              href="/terms"
+              style={{
+                color: "#065f46",
+                textDecoration: "underline",
+                fontWeight: 700,
+              }}
+            >
+              Terms &amp; Conditions
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/privacy-policy"
+              style={{
+                color: "#065f46",
+                textDecoration: "underline",
+                fontWeight: 700,
+              }}
+            >
+              Privacy Policy
+            </Link>
+            .
+          </div>
 
           <div style={{ textAlign: "center" }}>
             <span style={{ color: "#111827", fontSize: "18px" }}>

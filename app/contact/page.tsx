@@ -46,7 +46,7 @@ export default function ContactPage() {
                 marginBottom: 18,
               }}
             >
-              Contact YanBo Learning
+              Contact YanBo Practice Portal
             </div>
 
             <h1
@@ -70,9 +70,9 @@ export default function ContactPage() {
                 margin: "0 auto",
               }}
             >
-              If you have a question about YanBo Learning, need help with your
-              account, or would like to share feedback about the portal, please
-              get in touch.
+              If you have a question about YanBo Practice Portal, need help with
+              your account, or would like to share feedback about the portal,
+              please get in touch.
             </p>
           </div>
 
@@ -87,7 +87,7 @@ export default function ContactPage() {
             <InfoCard
               icon="💬"
               title="General questions"
-              text="Ask about the portal, available subjects, custom tests, subscriptions or how the practice areas work."
+              text="Ask about the portal, available subjects, Build a Test, subscriptions or how the practice areas work."
             />
 
             <InfoCard
@@ -133,8 +133,8 @@ export default function ContactPage() {
                 maxWidth: 820,
               }}
             >
-              Please use the email address below for support,
-              questions and feedback.
+              Please use the email address below for support, questions and
+              feedback.
             </p>
 
             <a
@@ -183,8 +183,8 @@ export default function ContactPage() {
               }}
             >
               To help us respond clearly, please include your name, the email
-              address used for your account, and a short description of the
-              issue or question.
+              address used for your account, and a short description of the issue
+              or question.
             </p>
 
             <div

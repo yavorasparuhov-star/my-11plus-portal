@@ -545,7 +545,7 @@ export default function Header({ user: propUser, onLogout }: HeaderProps) {
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  aria-label="Open YanBo Portal menu"
+                  aria-label="Open myYanBo menu"
                   title={displayName}
                   style={{
                     minHeight: "42px",

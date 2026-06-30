@@ -58,7 +58,7 @@ export default function TermsPage() {
                 fontWeight: 900,
               }}
             >
-              Using YanBo Learning
+              Using YanBo Practice Portal
             </h1>
 
             <p
@@ -70,17 +70,18 @@ export default function TermsPage() {
                 margin: "0 auto",
               }}
             >
-              These Terms explain the basic rules for using YanBo Learning, an
-              online 11+ practice portal for English, Maths, Verbal Reasoning
-              and Non-Verbal Reasoning.
+              These Terms explain the basic rules for using YanBo Practice
+              Portal, an online 11+ practice portal for English, Maths, Verbal
+              Reasoning and Non-Verbal Reasoning.
             </p>
           </div>
 
-          <TermsCard title="1. About YanBo Learning">
+          <TermsCard title="1. About YanBo Practice Portal">
             <p style={paragraphStyle}>
-              YanBo Learning provides online 11+ practice materials, including
-              practice tests, explanations, progress tracking, review tools and
-              custom tests for eligible members.
+              YanBo Practice Portal is provided by YanBo Learning. The portal
+              provides online 11+ practice materials, including practice tests,
+              explanations, progress tracking, review tools and Build a Test
+              features for eligible members.
             </p>
 
             <p style={paragraphStyle}>
@@ -91,8 +92,9 @@ export default function TermsPage() {
 
           <TermsCard title="2. Who can use the portal">
             <p style={paragraphStyle}>
-              YanBo Learning is intended for pupils preparing for the 11+, with
-              support from parents, guardians, carers or teachers where needed.
+              YanBo Practice Portal is intended for pupils preparing for the
+              11+, with support from parents, guardians, carers or teachers
+              where needed.
             </p>
 
             <p style={paragraphStyle}>
@@ -117,36 +119,63 @@ export default function TermsPage() {
 
           <TermsCard title="4. Membership plans">
             <p style={paragraphStyle}>
-              YanBo Learning may offer free, monthly and annual membership
-              options. Access to features may depend on the user’s current plan.
+              YanBo Practice Portal offers free, monthly and annual membership
+              options. Access to features depends on the user’s current plan.
             </p>
 
             <ul style={listStyle}>
-              <li>Free users may access selected practice areas.</li>
+              <li>Free users can access selected practice areas.</li>
               <li>
-                Monthly and annual members may access wider practice features.
+                Monthly members can access the wider practice features included
+                in the monthly plan.
               </li>
               <li>
-                Custom tests may be limited to eligible paid members and admin
-                users.
+                Annual members can access the wider practice features included
+                in the annual plan.
+              </li>
+              <li>
+                Build a Test features are available to eligible paid members and
+                admin users.
               </li>
             </ul>
 
             <p style={paragraphStyle}>
-              Prices, features and availability may be updated as the portal
-              develops. Any major changes should be made clear on the website.
+              Current prices and included features are shown on the Pricing page
+              before purchase. We may update prices, features or membership
+              options in the future, but important changes will be made clear on
+              the website.
             </p>
           </TermsCard>
 
-          <TermsCard title="5. Payments and subscriptions">
+          <TermsCard title="5. Payments, renewals and cancellation">
             <p style={paragraphStyle}>
-              If paid subscriptions are available, payment terms, renewal rules
-              and cancellation options should be shown clearly before purchase.
+              Paid memberships renew automatically unless cancelled before the
+              next renewal date. Monthly memberships renew each month. Annual
+              memberships renew each year.
             </p>
 
             <p style={paragraphStyle}>
-              Users should review the plan details before subscribing. If you
-              have a question about a payment or subscription, please contact:
+              The price, renewal period and included features are shown before
+              purchase. Users should review the plan details before subscribing.
+            </p>
+
+            <p style={paragraphStyle}>
+              You can ask to cancel a paid membership by contacting
+              support@yanbolearning.co.uk. Cancellation stops future renewals,
+              but it does not automatically refund time already used.
+            </p>
+
+            <p style={paragraphStyle}>
+              Refunds and cancellation rights will be handled in line with
+              applicable UK consumer law. Where a legal cancellation right
+              applies, YanBo Learning will honour it. The refund position may
+              depend on when cancellation is requested, whether membership access
+              has started, and what service has already been supplied.
+            </p>
+
+            <p style={paragraphStyle}>
+              If you have a question about a payment, subscription, renewal or
+              cancellation, please contact:
             </p>
 
             <p style={highlightStyle}>support@yanbolearning.co.uk</p>
@@ -167,12 +196,14 @@ export default function TermsPage() {
 
           <TermsCard title="7. Fair use">
             <p style={paragraphStyle}>
-              Users should use YanBo Learning fairly and only for personal,
-              family or educational practice.
+              Users should use YanBo Practice Portal fairly and only for
+              personal, family or educational practice.
             </p>
 
             <ul style={listStyle}>
-              <li>Do not try to damage, overload or interfere with the portal.</li>
+              <li>
+                Do not try to damage, overload or interfere with the portal.
+              </li>
               <li>Do not attempt to access another user’s account.</li>
               <li>
                 Do not copy, resell or redistribute large amounts of content from
@@ -188,7 +219,8 @@ export default function TermsPage() {
           <TermsCard title="8. Intellectual property">
             <p style={paragraphStyle}>
               The content, layout, branding, questions, explanations and design
-              of YanBo Learning belong to YanBo Learning unless otherwise stated.
+              of YanBo Practice Portal belong to YanBo Learning unless otherwise
+              stated.
             </p>
 
             <p style={paragraphStyle}>
@@ -211,9 +243,9 @@ export default function TermsPage() {
 
           <TermsCard title="10. Limitation of responsibility">
             <p style={paragraphStyle}>
-              YanBo Learning is provided as an educational practice tool. It is
-              the responsibility of parents, guardians, carers, teachers and
-              pupils to decide how to use the materials as part of wider 11+
+              YanBo Practice Portal is provided as an educational practice tool.
+              It is the responsibility of parents, guardians, carers, teachers
+              and pupils to decide how to use the materials as part of wider 11+
               preparation.
             </p>
 
@@ -249,7 +281,7 @@ export default function TermsPage() {
 
           <TermsCard title="12. Changes to these terms">
             <p style={paragraphStyle}>
-              These Terms may be updated as YanBo Learning develops. When
+              These Terms may be updated as YanBo Practice Portal develops. When
               changes are made, the updated version will be published on this
               page.
             </p>
@@ -265,24 +297,6 @@ export default function TermsPage() {
 
             <p style={highlightStyle}>support@yanbolearning.co.uk</p>
           </TermsCard>
-
-          <div
-            style={{
-              background: "#fff7ed",
-              border: "1px solid #fed7aa",
-              color: "#7c2d12",
-              borderRadius: 20,
-              padding: 20,
-              lineHeight: 1.7,
-              fontSize: 15.5,
-            }}
-          >
-            <strong>Important:</strong> This Terms page is a practical starting
-            point for a new education portal. It is not legal advice. Before
-            taking payments at scale, the Terms should be reviewed and updated
-            to match your exact subscription, cancellation, refund, payment and
-            data-processing setup.
-          </div>
         </section>
       </main>
 

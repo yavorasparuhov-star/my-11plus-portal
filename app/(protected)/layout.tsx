@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabaseClient"
 import Header from "../../components/Header"
 
+
 export default function ProtectedLayout({
   children,
 }: {

@@ -58,7 +58,7 @@ export default function PrivacyPolicyPage() {
                 fontWeight: 900,
               }}
             >
-              How YanBo Learning uses information
+              How YanBo Practice Portal uses information
             </h1>
 
             <p
@@ -70,16 +70,17 @@ export default function PrivacyPolicyPage() {
                 margin: "0 auto",
               }}
             >
-              This Privacy Policy explains what information YanBo Learning may
-              collect, why it is used, and how it helps provide 11+ practice,
-              progress tracking and account access.
+              This Privacy Policy explains what information YanBo Practice
+              Portal may collect, why it is used, and how it helps provide 11+
+              practice, progress tracking and account access.
             </p>
           </div>
 
           <PolicyCard title="1. Who we are">
             <p style={paragraphStyle}>
-              YanBo Learning is an online 11+ practice portal for English,
-              Maths, Verbal Reasoning and Non-Verbal Reasoning.
+              YanBo Practice Portal is an online 11+ practice portal for
+              English, Maths, Verbal Reasoning and Non-Verbal Reasoning. It is
+              provided by YanBo Learning.
             </p>
 
             <p style={paragraphStyle}>
@@ -100,8 +101,11 @@ export default function PrivacyPolicyPage() {
               <li>Email address used to create or access an account</li>
               <li>Account plan, such as free, monthly or annual</li>
               <li>Practice results, scores, answers and progress information</li>
-              <li>Review items and custom test attempts</li>
-              <li>Basic technical information needed for security and service operation</li>
+              <li>Review items and test attempts</li>
+              <li>
+                Basic technical information needed for security and service
+                operation
+              </li>
             </ul>
           </PolicyCard>
 
@@ -114,7 +118,7 @@ export default function PrivacyPolicyPage() {
               <li>Creating and managing user accounts</li>
               <li>Allowing pupils to complete practice tests</li>
               <li>Saving scores, progress and review items</li>
-              <li>Providing custom tests for eligible members</li>
+              <li>Providing Build a Test features for eligible members</li>
               <li>Helping parents and pupils understand learning progress</li>
               <li>Improving the quality and reliability of the portal</li>
               <li>Responding to support requests or feedback</li>
@@ -123,8 +127,8 @@ export default function PrivacyPolicyPage() {
 
           <PolicyCard title="4. Children’s information">
             <p style={paragraphStyle}>
-              YanBo Learning is designed for 11+ preparation and may be used by
-              children with support from a parent, guardian or teacher.
+              YanBo Practice Portal is designed for 11+ preparation and may be
+              used by children with support from a parent, guardian or teacher.
             </p>
 
             <p style={paragraphStyle}>
@@ -142,8 +146,8 @@ export default function PrivacyPolicyPage() {
             </p>
 
             <p style={paragraphStyle}>
-              We take reasonable steps to protect information and only use it for
-              the purposes described in this policy.
+              We take reasonable steps to protect information and only use it
+              for the purposes described in this policy.
             </p>
           </PolicyCard>
 
@@ -156,7 +160,7 @@ export default function PrivacyPolicyPage() {
               Information may be processed by service providers used to run the
               portal, such as hosting, database, authentication or payment
               services. These services are used only to help provide and manage
-              YanBo Learning.
+              YanBo Practice Portal.
             </p>
           </PolicyCard>
 
@@ -185,48 +189,52 @@ export default function PrivacyPolicyPage() {
             <p style={highlightStyle}>support@yanbolearning.co.uk</p>
           </PolicyCard>
 
-          <PolicyCard title="9. Cookies and similar technologies">
+          <PolicyCard title="9. Lawful basis for using information">
             <p style={paragraphStyle}>
-              YanBo Learning may use cookies or similar technologies needed for
-              login, security, remembering sessions and improving the operation
-              of the portal.
+              We use personal information where it is needed to provide YanBo
+              Practice Portal, manage accounts, support learning progress,
+              respond to support requests, keep the portal secure, and meet
+              legal or administrative obligations.
+            </p>
+          </PolicyCard>
+
+          <PolicyCard title="10. Complaints">
+            <p style={paragraphStyle}>
+              If you have a concern about how your personal information is used,
+              please contact us first so we can try to help.
+            </p>
+
+            <p style={highlightStyle}>support@yanbolearning.co.uk</p>
+
+            <p style={paragraphStyle}>
+              You also have the right to raise a complaint with the UK
+              Information Commissioner’s Office if you are unhappy with how your
+              personal information has been handled.
+            </p>
+          </PolicyCard>
+
+          <PolicyCard title="11. Cookies and similar technologies">
+            <p style={paragraphStyle}>
+              YanBo Practice Portal may use cookies or similar technologies
+              needed for login, security, remembering sessions and improving the
+              operation of the portal.
             </p>
 
             <p style={paragraphStyle}>
               If optional analytics or marketing cookies are added in the
-              future, this policy should be updated to explain how they are used.
+              future, this policy will be updated to explain how they are used.
             </p>
           </PolicyCard>
 
-          <PolicyCard title="10. Updates to this policy">
+          <PolicyCard title="12. Updates to this policy">
             <p style={paragraphStyle}>
-              This Privacy Policy may be updated as YanBo Learning develops.
-              When changes are made, the updated version will be published on
-              this page.
+              This Privacy Policy may be updated as YanBo Practice Portal
+              develops. When changes are made, the updated version will be
+              published on this page.
             </p>
 
-            <p style={paragraphStyle}>
-              Last updated: June 2026
-            </p>
+            <p style={paragraphStyle}>Last updated: June 2026</p>
           </PolicyCard>
-
-          <div
-            style={{
-              background: "#fff7ed",
-              border: "1px solid #fed7aa",
-              color: "#7c2d12",
-              borderRadius: 20,
-              padding: 20,
-              lineHeight: 1.7,
-              fontSize: 15.5,
-            }}
-          >
-            <strong>Important:</strong> This page is a practical starting point
-            for transparency. It is not legal advice. As the portal grows,
-            especially when paid subscriptions, analytics, email systems or
-            payment processors are added, the policy should be reviewed and
-            updated.
-          </div>
         </section>
       </main>
 

@@ -47,7 +47,7 @@ export default function LandingPage() {
       badge: "Start here",
       icon: "🌱",
       price: "£0 / month",
-      text: "A great starting point for trying YanBo Learning before upgrading.",
+      text: "A great starting point for trying YanBo Practice Portal before upgrading.",
       features: [
         "Register for free",
         "Try selected free tests",
@@ -68,7 +68,7 @@ export default function LandingPage() {
         "Full practice access",
         "Progress tracking",
         "Review mistakes",
-        "Custom test builder",
+        "Build a Test",
       ],
       button: "Choose monthly",
       path: "/signup",
@@ -94,9 +94,9 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      question: "What is YanBo Learning?",
-      answer:
-        "YanBo Learning is an online 11+ practice platform covering English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
+     question: "What is YanBo Practice Portal?",
+answer:
+  "YanBo Practice Portal is an online 11+ practice platform covering English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
     },
     {
       question: "Can I start for free?",
@@ -106,7 +106,7 @@ export default function LandingPage() {
     {
       question: "What is included in a paid membership?",
       answer:
-        "Paid members get wider access to practice tests, progress tracking, review pages and the custom test builder.",
+        "Paid members get wider access to practice tests, progress tracking, review pages and Build a Test features.",
     },
     {
       question: "Can my child review mistakes?",
@@ -114,14 +114,14 @@ export default function LandingPage() {
         "Yes. Review pages help students practise previous mistakes and strengthen weaker topics.",
     },
     {
-      question: "Does YanBo Learning track progress?",
+      question: "Does YanBo Practice Portal track progress?",
       answer:
         "Yes. Progress pages help show recent scores, success rates, strengths and areas that need more practice.",
     },
     {
       question: "Is this suitable for regular weekly practice?",
       answer:
-        "Yes. YanBo Learning is designed for short regular practice sessions as well as longer custom tests.",
+        "Yes. YanBo Practice Portal is designed for short regular practice sessions as well as longer custom tests.",
     },
   ]
 
@@ -144,9 +144,9 @@ export default function LandingPage() {
           <h1 style={styles.heroTitle}>Build confidence for the 11+</h1>
 
           <p style={styles.heroText}>
-            YanBo Learning helps students practise English, Maths, Verbal
-            Reasoning and Non-Verbal Reasoning with focused tests, review tools,
-            progress tracking and custom practice.
+YanBo Practice Portal helps students practise English, Maths, Verbal
+Reasoning and Non-Verbal Reasoning with focused tests, review tools,
+progress tracking and Build a Test practice.
           </p>
 
           <div style={styles.heroActions}>
@@ -215,12 +215,12 @@ export default function LandingPage() {
         <section style={styles.whySection}>
           <div style={styles.whyCard}>
             <div style={styles.whyContent}>
-              <h2 style={styles.whyTitle}>Why use YanBo Learning?</h2>
+              <h2 style={styles.whyTitle}>Why use YanBo Practice Portal?</h2>
               <p style={styles.whyText}>
                 11+ preparation works best when practice is regular, focused and
-                easy to review. YanBo Learning is designed to help students see
-                what they know, spot weaker areas and practise again with more
-                confidence.
+                easy to review. YanBo Practice Portal is designed to help students see
+what they know, spot weaker areas and practise again with more
+confidence.
               </p>
             </div>
 
@@ -350,10 +350,10 @@ export default function LandingPage() {
             </h2>
 
             <p style={styles.trustText}>
-              YanBo Learning is being developed with feedback and advice from
-              children preparing for the 11+, parents supporting practice at
-              home, and teachers who understand what pupils need to build
-              confidence and improve.
+YanBo Practice Portal is being developed with feedback and advice from
+children preparing for the 11+, parents supporting practice at
+home, and teachers who understand what pupils need to build
+confidence and improve.
             </p>
 
             <div style={styles.trustPlaceholder}>
@@ -368,7 +368,7 @@ export default function LandingPage() {
             <h2 style={styles.sectionTitle}>Frequently Asked Questions</h2>
             <p style={styles.sectionSubtitle}>
               Simple answers for parents and students getting started with YanBo
-              Learning.
+Practice Portal.
             </p>
           </div>
 

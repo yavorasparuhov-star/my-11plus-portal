@@ -30,7 +30,7 @@ export default function Footer() {
               margin: "0 0 10px",
             }}
           >
-            YanBo Learning
+            YanBo Practice Portal
           </h2>
 
           <p
@@ -54,7 +54,7 @@ export default function Footer() {
             <FooterLink href="/math" label="Maths" />
             <FooterLink href="/vr" label="Verbal Reasoning" />
             <FooterLink href="/nvr" label="Non-Verbal Reasoning" />
-            <FooterLink href="/custom-tests" label="Custom Tests" />
+            <FooterLink href="/custom-tests" label="Build a Test" />
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function Footer() {
           textAlign: "center",
         }}
       >
-        © {currentYear} YanBo Learning. All rights reserved.
+        © {currentYear} YanBo Practice Portal. All rights reserved.
       </div>
     </footer>
   )
