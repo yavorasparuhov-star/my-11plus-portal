@@ -43,7 +43,7 @@ export function AvatarBasicsPanel({
 
         <div>
           <p className="mb-2 text-sm font-black text-slate-700">Choose your character</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {avatarBaseOptions.map((option) => (
               <ChoiceButton
                 key={option.value}
@@ -130,27 +130,28 @@ function ChoiceButton({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`Choose ${title}`}
+      title={title}
       className={cn(
-        "flex items-center gap-3 rounded-2xl border p-2.5 text-left transition",
+        "flex items-center justify-center rounded-2xl border p-3 transition hover:-translate-y-0.5",
         active ? CHOICE_ACTIVE_CLASS : CHOICE_IDLE_CLASS,
       )}
     >
-      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-        <span className="text-2xl" aria-hidden="true">{emoji}</span>
+      <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+        <span className="text-5xl" aria-hidden="true">
+          {emoji}
+        </span>
+
         {imageSrc && (
           <img
             src={imageSrc}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-contain"
             onError={(event) => {
               event.currentTarget.style.display = "none"
             }}
           />
         )}
-      </div>
-      <div>
-        <p className="font-black text-slate-900">{title}</p>
-        {subtitle && <p className="text-xs font-semibold text-slate-500">{subtitle}</p>}
       </div>
     </button>
   )
