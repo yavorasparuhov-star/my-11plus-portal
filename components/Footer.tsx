@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { openCookieSettings } from "../lib/cookieConsent"
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -66,6 +69,27 @@ export default function Footer() {
             <FooterLink href="/about" label="About" />
             <FooterLink href="/contact" label="Contact" />
             <FooterLink href="/privacy-policy" label="Privacy Policy" />
+            <FooterLink href="/cookies" label="Cookie Policy" />
+
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              style={{
+                color: "#ecfdf5",
+                textDecoration: "none",
+                fontSize: "15px",
+                lineHeight: 1.6,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                textAlign: "left",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Cookie Settings
+            </button>
+
             <FooterLink href="/terms" label="Terms" />
           </div>
         </div>
