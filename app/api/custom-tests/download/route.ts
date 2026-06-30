@@ -888,7 +888,7 @@ function getAuthenticatedSupabaseClient(request: NextRequest) {
   if (!authorization) {
     return {
       supabase: null,
-      error: "Please sign in to use custom tests.",
+      error: "Please sign in to use Build a test.",
     };
   }
 
@@ -2143,7 +2143,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return jsonError("Please sign in to use custom tests.", 401);
+      return jsonError("Please sign in to use Build a Test.", 401);
     }
 
     const { data: hasPaidAccess, error: accessError } =

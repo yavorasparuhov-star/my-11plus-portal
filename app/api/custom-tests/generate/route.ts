@@ -875,7 +875,7 @@ function getAuthenticatedSupabaseClient(request: NextRequest) {
   if (!authorization) {
     return {
       supabase: null,
-      error: "Please sign in to use custom tests.",
+      error: "Please sign in to use Build a Test.",
     };
   }
 
@@ -2169,7 +2169,7 @@ export async function POST(request: NextRequest) {
 
     if (!hasPaidAccess) {
       return jsonError(
-        "Custom tests are available for monthly and annual members only.",
+        "Build your own test is available for monthly and annual members only.",
         403,
       );
     }
@@ -2204,7 +2204,7 @@ export async function POST(request: NextRequest) {
         uniqueTopicKeys.includes("comprehension")
       ) {
         return jsonError(
-          "Adaptive custom tests do not include English comprehension yet. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice.",
+          "Adaptive custom tests do not include English comprehension. Please choose vocabulary, spelling, grammar, or punctuation for adaptive English practice.",
           400,
         );
       }

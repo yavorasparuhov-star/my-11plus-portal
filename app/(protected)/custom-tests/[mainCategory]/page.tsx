@@ -222,8 +222,8 @@ function buildPrintableHtml(
   const printableTitle = escapeHtml(
     downloadData.metadata?.title ??
       (testNumber
-        ? `YanBo Learning ${categoryLabel} Test ${testNumber}`
-        : "YanBo Learning Printable Test")
+? `YanBo Practice Portal ${categoryLabel} Test ${testNumber}`
+: "YanBo Practice Portal Printable Test")
   )
   const footerTestLabel = escapeCssContent(
     testNumber ? `YanBo ${categoryLabel} Test ${testNumber}` : "YanBo Printable Test"
@@ -899,7 +899,7 @@ function buildPrintableHtml(
       <div><strong>YanBo attempt ID:</strong> ${escapeHtml(downloadData.attemptId)}</div>
     </div>
     <div class="watermark">
-      YanBo Learning | Licensed to ${safeUserEmail} | For personal family use only. Please do not copy, resell, upload, or share this test.
+      YanBo Practice Portal | Licensed to ${safeUserEmail} | For personal family use only. Please do not copy, resell, upload, or share this test.
     </div>
   </header>
 

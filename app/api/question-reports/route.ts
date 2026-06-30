@@ -156,7 +156,7 @@ export async function POST(request: Request) {
           duplicate: true,
           adminEmailSent: false,
           message:
-            "Thank you. You have already reported this question and the YanBo Learning support team will review it.",
+            "Thank you. You have already reported this question and the YanBo Practice Portal support team will review it.",
         },
         { status: 200 }
       )
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
         duplicate: false,
         adminEmailSent,
         message:
-          "Thank you for your feedback. The YanBo Learning support team will review this question as soon as possible.",
+          "Thank you for your feedback. The YanBo Practice Portal support team will review this question as soon as possible.",
       },
       { status: 201 }
     )

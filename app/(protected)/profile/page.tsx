@@ -463,7 +463,7 @@ export default function ProfilePage() {
                 />
                 <span style={styles.inputHelpText}>
                   This is your secure login email. To change it, please contact
-                  YanBo Learning support.
+                  YanBo Practice Portal support.
                 </span>
               </label>
 

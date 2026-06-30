@@ -1035,7 +1035,7 @@ function SpellingContent() {
             <h1>Sign in to start spelling practice</h1>
 
             <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
-              Please sign in or create a free account to access YanBo Learning
+              Please sign in or create a free account to access YanBo Practice Portal
               spelling tests.
             </p>
 
@@ -1071,7 +1071,7 @@ function SpellingContent() {
 
             <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
               Your free sample access has ended. Upgrade to continue practising
-              with the full YanBo Learning Spelling word bank.
+              with the full YanBo Practice Portal Spelling word bank.
             </p>
 
             <button onClick={() => router.push("/membership")} style={styles.button}>

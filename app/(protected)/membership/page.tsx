@@ -267,11 +267,11 @@ function getRenewalNote(
   }
 
   if (status === "past_due") {
-    return "Your membership may need payment attention. Please contact YanBo Learning support if this does not look right."
+    return "Your membership may need payment attention. Please contact YanBo Practice Portal support if this does not look right."
   }
 
   if (status === "cancelled" || status === "expired") {
-    return "If you would like to continue member access, please contact YanBo Learning support."
+    return "If you would like to continue member access, please contact YanBo Practice Portal support."
   }
 
   if (subscription.cancel_at_period_end) {
@@ -282,7 +282,7 @@ function getRenewalNote(
     return "Auto-renewal is on for this membership record."
   }
 
-  return "Membership renewals, upgrades and plan changes are managed by YanBo Learning support."
+  return "Membership renewals, upgrades and plan changes are managed by YanBo Practice Portal support."
 }
 
 export default function MembershipPage() {
@@ -433,7 +433,7 @@ export default function MembershipPage() {
               lineHeight: 1.6,
             }}
           >
-            View your current YanBo Learning membership, renewal details and
+            View your current Practice Portal membership, renewal details and
             what access is included with your plan.
           </p>
         </div>
@@ -794,7 +794,7 @@ export default function MembershipPage() {
                 }}
               >
                 If your membership information does not look right, please
-                contact YanBo Learning support and we will check your account.
+                contact YanBo Practice Portal support and we will check your account.
               </p>
             </article>
           </aside>

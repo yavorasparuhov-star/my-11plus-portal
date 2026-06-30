@@ -993,7 +993,7 @@ function VocabularyContent() {
 
             <p style={{ marginBottom: "20px", fontSize: "18px", lineHeight: 1.6 }}>
               Your free sample access has ended. Upgrade to continue practising
-              with the full YanBo Learning Vocabulary word bank.
+              with the full YanBo Practice Portal Vocabulary word bank.
             </p>
 
             <button

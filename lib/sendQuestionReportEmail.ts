@@ -26,7 +26,7 @@ export async function sendQuestionReportEmail(report: QuestionReportEmailInput) 
   const resendApiKey = process.env.RESEND_API_KEY
   const adminEmail = process.env.REPORT_ADMIN_EMAIL
   const fromEmail =
-    process.env.REPORT_FROM_EMAIL || "YanBo Learning <onboarding@resend.dev>"
+    process.env.REPORT_FROM_EMAIL || "YanBo Practice Portal <onboarding@resend.dev>"
 
   if (!resendApiKey) {
     throw new Error("Missing RESEND_API_KEY")

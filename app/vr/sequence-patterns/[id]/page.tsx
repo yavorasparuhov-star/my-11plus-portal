@@ -918,7 +918,7 @@ export default function VRSequencePatternsTestPage() {
               <h2 style={styles.cardTitle}>Sign in to start this test</h2>
 
               <p style={styles.subtitle}>
-                Please sign in or create a free account to access YanBo Learning
+                Please sign in or create a free account to access YanBo Practice Portal
                 VR tests and save progress.
               </p>
 
@@ -953,7 +953,7 @@ export default function VRSequencePatternsTestPage() {
 
               <p style={styles.subtitle}>
                 Free members can access free tests only. Monthly and annual members
-                can access all YanBo Learning VR tests.
+                can access all YanBo Practice Portal VR tests.
               </p>
 
               <div style={styles.finishButtons}>

@@ -620,7 +620,7 @@ export default function CustomTestRunPage() {
                   fontWeight: 600,
                 }}
               >
-                Back to Custom Tests
+                Back to Build a Test
               </Link>
 
               {mainCategoryParam && isMainCategory(mainCategoryParam) ? (
@@ -1401,7 +1401,7 @@ export default function CustomTestRunPage() {
                       fontWeight: 600,
                     }}
                   >
-                    Back to Custom Tests
+                    Back to Build a Test
                   </Link>
                 </div>
               </>

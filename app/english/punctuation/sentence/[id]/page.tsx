@@ -998,7 +998,7 @@ export default function SentencePunctuationTestPage() {
             <h1 style={styles.title}>Sign in to start this test</h1>
 
             <p style={styles.subtitle}>
-              Please sign in or create a free account to access YanBo Learning
+              Please sign in or create a free account to access YanBo Practice Portal
               tests.
             </p>
 
@@ -1031,7 +1031,7 @@ export default function SentencePunctuationTestPage() {
 
             <p style={styles.subtitle}>
               Free members can access free tests only. Monthly and annual members
-              can access all YanBo Learning tests.
+              can access all YanBo Practice Portal tests.
             </p>
 
             <div style={styles.accessButtonRow}>
