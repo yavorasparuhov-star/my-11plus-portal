@@ -4,7 +4,12 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import Header from "../components/Header"
 import Footer from "../components/Footer"
-import { EnglishIcon, MathsIcon, NVRIcon, VRIcon } from "../components/icons/PortalIcons"
+import {
+  EnglishIcon,
+  MathsIcon,
+  NVRIcon,
+  VRIcon,
+} from "../components/icons/PortalIcons"
 
 const hoverCardStyle = {
   transition: "all 0.25s ease",
@@ -47,14 +52,14 @@ export default function LandingPage() {
       badge: "Start here",
       icon: "🌱",
       price: "£0 / month",
-      text: "A great starting point for trying YanBo Practice Portal before upgrading.",
+      text: "A simple way to try YanBo Practice Portal and explore selected 11+ practice before upgrading.",
       features: [
-        "Register for free",
-        "Try selected free tests",
-        "Explore the learning areas",
-        "Good for first-time users",
+        "Create a free account",
+        "Try selected free practice tests",
+        "Explore English, Maths, VR and NVR",
+        "Upgrade whenever you are ready",
       ],
-      button: "Get started",
+      button: "Start free",
       path: "/signup",
       featured: false,
     },
@@ -62,13 +67,13 @@ export default function LandingPage() {
       title: "Monthly",
       badge: "Flexible option",
       icon: "⭐",
-      price: "£7.99 / month",
-      text: "Flexible monthly access for regular 11+ practice and progress building.",
+      price: "£8.99 / month",
+      text: "Flexible access for families who want regular 11+ practice, review tools and progress support.",
       features: [
-        "Full practice access",
-        "Progress tracking",
-        "Review mistakes",
-        "Build a Test",
+        "Full subject practice access",
+        "Progress and review pages",
+        "Build a Test features",
+        "Flexible monthly membership",
       ],
       button: "Choose monthly",
       path: "/signup",
@@ -76,15 +81,15 @@ export default function LandingPage() {
     },
     {
       title: "Yearly",
-      badge: "Preferred choice",
+      badge: "Best value",
       icon: "🏆",
-      price: "£79 / year",
-      text: "Best value for families who want long-term preparation and steady practice.",
+      price: "£89 / year",
+      text: "Best value for families planning steady preparation across the school year.",
       features: [
         "Everything in Monthly",
-        "Better value overall",
-        "Ideal for long-term learning",
-        "Full 11+ preparation access",
+        "Lower cost than paying monthly",
+        "Ideal for long-term preparation",
+        "Full 11+ practice access for the year",
       ],
       button: "Choose yearly",
       path: "/signup",
@@ -92,11 +97,34 @@ export default function LandingPage() {
     },
   ]
 
+  const paidHighlights = [
+    {
+      icon: "📚",
+      title: "Full subject access",
+      text: "Practise across English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
+    },
+    {
+      icon: "🔁",
+      title: "Review weaker areas",
+      text: "Use review pages to return to mistakes and practise the questions that need more attention.",
+    },
+    {
+      icon: "📈",
+      title: "Progress tracking",
+      text: "See recent scores, success rates and topic performance more clearly.",
+    },
+    {
+      icon: "🧩",
+      title: "Build a Test",
+      text: "Create focused tests by subject, topic, difficulty and question count.",
+    },
+  ]
+
   const faqs = [
     {
-     question: "What is YanBo Practice Portal?",
-answer:
-  "YanBo Practice Portal is an online 11+ practice platform covering English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
+      question: "What is YanBo Practice Portal?",
+      answer:
+        "YanBo Practice Portal is an online 11+ practice platform covering English, Maths, Verbal Reasoning and Non-Verbal Reasoning.",
     },
     {
       question: "Can I start for free?",
@@ -121,7 +149,7 @@ answer:
     {
       question: "Is this suitable for regular weekly practice?",
       answer:
-        "Yes. YanBo Practice Portal is designed for short regular practice sessions as well as longer custom tests.",
+        "Yes. YanBo Practice Portal is designed for short regular practice sessions as well as longer tests built by subject, topic and difficulty.",
     },
   ]
 
@@ -144,9 +172,9 @@ answer:
           <h1 style={styles.heroTitle}>Build confidence for the 11+</h1>
 
           <p style={styles.heroText}>
-YanBo Practice Portal helps students practise English, Maths, Verbal
-Reasoning and Non-Verbal Reasoning with focused tests, review tools,
-progress tracking and Build a Test practice.
+            YanBo Practice Portal helps students practise English, Maths, Verbal
+            Reasoning and Non-Verbal Reasoning with focused tests, review tools,
+            progress tracking and Build a Test practice.
           </p>
 
           <div style={styles.heroActions}>
@@ -218,9 +246,9 @@ progress tracking and Build a Test practice.
               <h2 style={styles.whyTitle}>Why use YanBo Practice Portal?</h2>
               <p style={styles.whyText}>
                 11+ preparation works best when practice is regular, focused and
-                easy to review. YanBo Practice Portal is designed to help students see
-what they know, spot weaker areas and practise again with more
-confidence.
+                easy to review. YanBo Practice Portal is designed to help
+                students see what they know, spot weaker areas and practise again
+                with more confidence.
               </p>
             </div>
 
@@ -236,10 +264,10 @@ confidence.
         {/* SUBSCRIPTION CARDS */}
         <section id="pricing" style={styles.subscriptionSection}>
           <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Choose your plan</h2>
+            <h2 style={styles.sectionTitle}>Choose the plan that fits your family</h2>
             <p style={styles.sectionSubtitle}>
-              Start free and upgrade when you are ready for more practice,
-              tracking and progress tools.
+              Start free, then upgrade when you are ready for wider practice,
+              review tools, progress tracking and Build a Test features.
             </p>
           </div>
 
@@ -340,6 +368,40 @@ confidence.
               </div>
             ))}
           </div>
+
+          <div style={styles.paidHighlightsCard}>
+            <div style={styles.paidHighlightsHeader}>
+              <h3 style={styles.paidHighlightsTitle}>
+                What paid members can use
+              </h3>
+
+              <p style={styles.paidHighlightsText}>
+                Monthly and yearly members get wider access across the portal,
+                helping families practise more consistently and review progress
+                more clearly.
+              </p>
+            </div>
+
+            <div style={styles.paidHighlightsGrid}>
+              {paidHighlights.map((item) => (
+                <div key={item.title} style={styles.paidHighlightItem}>
+                  <div style={styles.paidHighlightIcon}>{item.icon}</div>
+
+                  <div>
+                    <h4 style={styles.paidHighlightTitle}>{item.title}</h4>
+                    <p style={styles.paidHighlightText}>{item.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p style={styles.pricingNote}>
+            Prices and included features are shown before purchase. Paid
+            memberships renew automatically unless cancelled before the next
+            renewal date. If you have a question about membership, please contact
+            support@yanbolearning.co.uk.
+          </p>
         </section>
 
         {/* TRUST SECTION */}
@@ -350,10 +412,10 @@ confidence.
             </h2>
 
             <p style={styles.trustText}>
-YanBo Practice Portal is being developed with feedback and advice from
-children preparing for the 11+, parents supporting practice at
-home, and teachers who understand what pupils need to build
-confidence and improve.
+              YanBo Practice Portal is being developed with feedback and advice
+              from children preparing for the 11+, parents supporting practice
+              at home, and teachers who understand what pupils need to build
+              confidence and improve.
             </p>
 
             <div style={styles.trustPlaceholder}>
@@ -368,7 +430,7 @@ confidence and improve.
             <h2 style={styles.sectionTitle}>Frequently Asked Questions</h2>
             <p style={styles.sectionSubtitle}>
               Simple answers for parents and students getting started with YanBo
-Practice Portal.
+              Practice Portal.
             </p>
           </div>
 
@@ -735,6 +797,86 @@ const styles: { [key: string]: React.CSSProperties } = {
   featuredButton: {
     background: "white",
     color: "#064e3b",
+  },
+
+  paidHighlightsCard: {
+    marginTop: "26px",
+    background: "#ffffff",
+    border: "1px solid #d1fae5",
+    borderRadius: "24px",
+    padding: "26px",
+    boxShadow: "0 10px 25px rgba(6,78,59,0.08)",
+    textAlign: "left",
+  },
+
+  paidHighlightsHeader: {
+    textAlign: "center",
+    marginBottom: "22px",
+  },
+
+  paidHighlightsTitle: {
+    fontSize: "clamp(24px, 5vw, 30px)",
+    color: "#064e3b",
+    margin: "0 0 8px",
+    fontWeight: 900,
+  },
+
+  paidHighlightsText: {
+    color: "#4b5563",
+    fontSize: "16px",
+    lineHeight: 1.65,
+    maxWidth: "780px",
+    margin: "0 auto",
+  },
+
+  paidHighlightsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+    gap: "14px",
+  },
+
+  paidHighlightItem: {
+    display: "grid",
+    gridTemplateColumns: "46px 1fr",
+    gap: "12px",
+    alignItems: "start",
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    borderRadius: "18px",
+    padding: "16px",
+  },
+
+  paidHighlightIcon: {
+    width: "46px",
+    height: "46px",
+    borderRadius: "16px",
+    background: "#ecfdf5",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+  },
+
+  paidHighlightTitle: {
+    color: "#064e3b",
+    fontSize: "17px",
+    fontWeight: 900,
+    margin: "0 0 5px",
+  },
+
+  paidHighlightText: {
+    color: "#4b5563",
+    fontSize: "14.5px",
+    lineHeight: 1.55,
+    margin: 0,
+  },
+
+  pricingNote: {
+    margin: "18px auto 0",
+    maxWidth: "850px",
+    color: "#4b5563",
+    fontSize: "14.5px",
+    lineHeight: 1.65,
   },
 
   trustSection: {
