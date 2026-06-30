@@ -380,7 +380,7 @@ function uniqueImageSources(sources: Array<string | null | undefined>) {
 
 export function getShopItemImageSources(
   item: ShopItem,
-  base: AvatarConfig["base"] = "bo",
+  _base: AvatarConfig["base"] = "bo",
 ) {
   const fileName = itemKeyToAssetFileName(item.item_key)
   const localImageFromItemKey = `/avatars/items/${fileName}.png`
@@ -388,15 +388,6 @@ export function getShopItemImageSources(
 
   if (slotMatch) {
     const folder = avatarLayerFolders[slotMatch.slot]
-
-    if (slotMatch.slot === "hat" || slotMatch.slot === "glasses") {
-      return uniqueImageSources([
-        `/avatars/builder/${folder}/${base}/${fileName}.png`,
-        `/avatars/builder/${folder}/${fileName}.png`,
-        item.image_url,
-        localImageFromItemKey,
-      ])
-    }
 
     return uniqueImageSources([
       `/avatars/builder/${folder}/${fileName}.png`,
@@ -435,7 +426,7 @@ export function getPreviewLayerImageSources(
   shopItems: ShopItem[],
   slot: AvatarSlot,
   value: string,
-  base: AvatarConfig["base"],
+  _base: AvatarConfig["base"],
 ) {
   const itemKey = getSlotItemKey(slot, value)
   if (!itemKey) return []
@@ -444,24 +435,7 @@ export function getPreviewLayerImageSources(
   const folder = avatarLayerFolders[slot]
   const fileName = itemKeyToAssetFileName(itemKey)
 
-  if (slot === "background") {
-    return uniqueImageSources([
-      `/avatars/builder/${folder}/${fileName}.png`,
-      item?.image_url,
-      `/avatars/items/${fileName}.png`,
-    ])
-  }
-
-  if (slot === "badge") {
-    return uniqueImageSources([
-      `/avatars/builder/${folder}/${fileName}.png`,
-      item?.image_url,
-      `/avatars/items/${fileName}.png`,
-    ])
-  }
-
   return uniqueImageSources([
-    `/avatars/builder/${folder}/${base}/${fileName}.png`,
     `/avatars/builder/${folder}/${fileName}.png`,
     item?.image_url,
     `/avatars/items/${fileName}.png`,
