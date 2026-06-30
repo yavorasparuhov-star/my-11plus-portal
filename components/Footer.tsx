@@ -31,9 +31,10 @@ export default function Footer() {
               fontSize: "22px",
               fontWeight: 800,
               margin: "0 0 10px",
+              color: "#ffffff",
             }}
           >
-            YanBo Practice Portal
+            <FooterYanBoWord /> Practice Portal
           </h2>
 
           <p
@@ -106,9 +107,28 @@ export default function Footer() {
           textAlign: "center",
         }}
       >
-        © {currentYear} YanBo Practice Portal. All rights reserved.
+        © {currentYear} <FooterYanBoWord /> Practice Portal. All rights
+        reserved.
       </div>
     </footer>
+  )
+}
+
+function FooterYanBoWord() {
+  return (
+    <span
+      aria-label="YanBo"
+      style={{
+        fontWeight: 900,
+        letterSpacing: "-0.02em",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ color: "#ff4fa3" }}>Y</span>
+      <span style={{ color: "#ffffff" }}>an</span>
+      <span style={{ color: "#facc15" }}>B</span>
+      <span style={{ color: "#ffffff" }}>o</span>
+    </span>
   )
 }
 

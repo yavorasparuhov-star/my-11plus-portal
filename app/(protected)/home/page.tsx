@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "../../../lib/supabaseClient"
+import Footer from "../../../components/Footer"
 import {
   CustomTestsIcon,
   EnglishIcon,
@@ -448,61 +449,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer style={styles.footer}>
-        <div style={styles.footerGrid}>
-          <div style={styles.footerBrandColumn}>
-<h2 style={styles.footerBrand}>
-  <YanBoWord /> Practice Portal
-</h2>
-            <p style={styles.footerDescription}>
-              11+ practice for English, Maths, Verbal Reasoning and Non-Verbal
-              Reasoning.
-            </p>
-          </div>
-
-          <div style={styles.footerColumn}>
-            <h3 style={styles.footerColumnTitle}>Practice</h3>
-            <Link href="/english" style={styles.footerLink}>
-              English
-            </Link>
-            <Link href="/math" style={styles.footerLink}>
-              Maths
-            </Link>
-            <Link href="/vr" style={styles.footerLink}>
-              Verbal Reasoning
-            </Link>
-            <Link href="/nvr" style={styles.footerLink}>
-              Non-Verbal Reasoning
-            </Link>
-<Link href="/custom-tests" style={styles.footerLink}>
-  Build a Test
-</Link>
-          </div>
-
-          <div style={styles.footerColumn}>
-            <h3 style={styles.footerColumnTitle}>Support</h3>
-            <Link href="/#pricing" style={styles.footerLink}>
-              Pricing
-            </Link>
-            <Link href="/about" style={styles.footerLink}>
-              About
-            </Link>
-            <Link href="/contact" style={styles.footerLink}>
-              Contact
-            </Link>
-            <Link href="/privacy-policy" style={styles.footerLink}>
-              Privacy Policy
-            </Link>
-            <Link href="/terms" style={styles.footerLink}>
-              Terms
-            </Link>
-          </div>
-        </div>
-
-        <div style={styles.footerBottom}>
-          © 2026 <YanBoWord /> Practice Portal. All rights reserved.
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
