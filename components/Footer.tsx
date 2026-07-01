@@ -67,6 +67,10 @@ export default function Footer() {
 
           <div style={linkColumnStyle}>
             <FooterLink href="/#pricing" label="Pricing" />
+            <FooterLink
+              href="/see-yanbo-in-action"
+              label="See YanBo in Action"
+            />
             <FooterLink href="/about" label="About" />
             <FooterLink href="/contact" label="Contact" />
             <FooterLink href="/privacy-policy" label="Privacy Policy" />
