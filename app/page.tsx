@@ -186,6 +186,13 @@ export default function LandingPage() {
             </button>
 
             <button
+              style={styles.previewButton}
+              onClick={() => router.push("/see-yanbo-in-action")}
+            >
+              See YanBo in Action
+            </button>
+
+            <button
               style={styles.secondaryButton}
               onClick={() => router.push("/login")}
             >
@@ -264,7 +271,9 @@ export default function LandingPage() {
         {/* SUBSCRIPTION CARDS */}
         <section id="pricing" style={styles.subscriptionSection}>
           <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Choose the plan that fits your family</h2>
+            <h2 style={styles.sectionTitle}>
+              Choose the plan that fits your family
+            </h2>
             <p style={styles.sectionSubtitle}>
               Start free, then upgrade when you are ready for wider practice,
               review tools, progress tracking and Build a Test features.
@@ -518,6 +527,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 800,
     fontSize: "16px",
     boxShadow: "0 10px 24px rgba(22,163,74,0.25)",
+  },
+
+  previewButton: {
+    padding: "14px 24px",
+    borderRadius: "14px",
+    border: "1px solid #fde68a",
+    background: "#fef3c7",
+    color: "#92400e",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: "16px",
+    boxShadow: "0 10px 24px rgba(146,64,14,0.12)",
   },
 
   secondaryButton: {
@@ -892,13 +913,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     border: "1px solid #e5e7eb",
     boxSizing: "border-box",
-  },
-
-  stars: {
-    color: "#16a34a",
-    fontSize: "26px",
-    letterSpacing: "3px",
-    marginBottom: "12px",
   },
 
   trustTitle: {
