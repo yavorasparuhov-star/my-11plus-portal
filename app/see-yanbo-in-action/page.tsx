@@ -11,54 +11,11 @@ import {
   VRIcon,
 } from "../../components/icons/PortalIcons"
 
-const featureCards = [
-  {
-    icon: "📝",
-    title: "Practice Tests",
-    text: "Students can practise English, Maths, Verbal Reasoning and Non-Verbal Reasoning with clear 11+ style questions.",
-  },
-  {
-    icon: "🧩",
-    title: "Build a Test",
-    text: "Members can create focused tests by choosing subject, topic, difficulty and number of questions.",
-  },
-  {
-    icon: "🖨️",
-    title: "Online or Printable",
-    text: "Some tests can be completed online, while printable custom tests can be downloaded and marked later.",
-  },
-  {
-    icon: "📈",
-    title: "Progress Tracking",
-    text: "Progress pages help families see scores, recent practice and topic performance more clearly.",
-  },
-  {
-    icon: "🔁",
-    title: "Review Mistakes",
-    text: "Wrong or unanswered questions can be saved for review so students can practise weaker areas again.",
-  },
-  {
-    icon: "🪙",
-    title: "YanBo Coins",
-    text: "Students can earn YanBo Coins from practice and use them to unlock avatar items.",
-  },
-  {
-    icon: "🎒",
-    title: "Avatar Studio",
-    text: "Students can choose and customise their avatar, making practice feel more personal and fun.",
-  },
-  {
-    icon: "🌱",
-    title: "Free and Member Access",
-    text: "Free accounts can try selected practice, while paid members unlock wider portal features.",
-  },
-]
-
 const subjects = [
   {
     title: "English",
     icon: <EnglishIcon size={42} />,
-    text: "Vocabulary, spelling, grammar, punctuation and comprehension.",
+    text: "Vocabulary, spelling, grammar, punctuation and comprehension practice.",
   },
   {
     title: "Maths",
@@ -77,21 +34,84 @@ const subjects = [
   },
 ]
 
-const steps = [
+const walkthroughSections = [
   {
-    number: "1",
-    title: "Choose what to practise",
-    text: "Pick a subject, topic or test type depending on what your child needs.",
+    eyebrow: "Student home",
+    title: "A clear learning dashboard",
+    text: "Students start from a friendly home page with subject choices, daily messages, YanBo Coins and quick access to practice tools.",
+    image: "/preview/home.png",
+    imageAlt: "YanBo Practice Portal protected home page preview",
+    points: [
+      "Four main 11+ subject areas",
+      "Daily learning message",
+      "YanBo Coins reward area",
+      "Quick access to Build a Test, progress and review",
+    ],
   },
   {
-    number: "2",
-    title: "Complete focused questions",
-    text: "Practise in short sessions online, or use printable tests for offline work.",
+    eyebrow: "Practice tests",
+    title: "Focused 11+ style questions",
+    text: "Practice tests show one question at a time with clear answer options. Students can work through questions online and check their answers.",
+    image: "/preview/practice-test.png",
+    imageAlt: "YanBo Practice Portal practice test question preview",
+    points: [
+      "Online practice questions",
+      "A, B, C and D answer choices",
+      "Optional timer support",
+      "Report question button for feedback",
+    ],
   },
   {
-    number: "3",
-    title: "Review and improve",
-    text: "Use results, progress and review pages to focus on weaker areas.",
+    eyebrow: "Build a Test",
+    title: "Create focused practice",
+    text: "Members can build their own tests by choosing topics, difficulty, length and format. This helps families focus on the areas that need attention.",
+    image: "/preview/build-a-test.png",
+    imageAlt: "YanBo Practice Portal Build a Test page preview",
+    points: [
+      "Choose one or more topics",
+      "Select question count and time",
+      "Choose difficulty level",
+      "Start online or download printable practice",
+    ],
+  },
+  {
+    eyebrow: "Progress tracking",
+    title: "See improvement more clearly",
+    text: "Progress pages help parents and students understand recent performance, success rates and topic strengths or weaknesses.",
+    image: "/preview/progress.png",
+    imageAlt: "YanBo Practice Portal progress page preview",
+    points: [
+      "Tests completed",
+      "Questions practised",
+      "Average success",
+      "Performance trend and quick insights",
+    ],
+  },
+  {
+    eyebrow: "Review mistakes",
+    title: "Turn mistakes into revision",
+    text: "Review pages collect questions that need more practice, showing the student's answer, correct answer and explanation.",
+    image: "/preview/review.png",
+    imageAlt: "YanBo Practice Portal review page preview",
+    points: [
+      "Review weaker questions",
+      "See correct answers",
+      "Read explanations",
+      "Retry filtered review items",
+    ],
+  },
+  {
+    eyebrow: "Avatar Studio",
+    title: "Make practice more personal",
+    text: "Students can customise their YanBo avatar and unlock items using YanBo Coins, adding a fun reward layer to regular practice.",
+    image: "/preview/avatar-studio.png",
+    imageAlt: "YanBo Practice Portal Avatar Studio preview",
+    points: [
+      "Choose a character",
+      "Customise appearance",
+      "Unlock wardrobe items",
+      "Save a personal avatar",
+    ],
   },
 ]
 
@@ -105,30 +125,46 @@ export default function SeeYanBoInActionPage() {
       <main style={styles.page}>
         {/* HERO */}
         <section style={styles.hero}>
-          <div style={styles.heroBadge}>Portal preview</div>
+          <div style={styles.heroTextBlock}>
+            <div style={styles.heroBadge}>Portal preview</div>
 
-          <h1 style={styles.heroTitle}>See YanBo in Action</h1>
+            <h1 style={styles.heroTitle}>See YanBo in Action</h1>
 
-          <p style={styles.heroText}>
-            YanBo Practice Portal helps children build 11+ confidence with
-            subject practice, Build a Test tools, progress tracking, review
-            pages, YanBo Coins and avatar rewards.
-          </p>
+            <p style={styles.heroText}>
+              Take a look inside YanBo Practice Portal and see how students can
+              practise 11+ English, Maths, Verbal Reasoning and Non-Verbal
+              Reasoning with progress tracking, review tools, Build a Test
+              features, YanBo Coins and avatar rewards.
+            </p>
 
-          <div style={styles.heroActions}>
-            <button
-              style={styles.primaryButton}
-              onClick={() => router.push("/signup")}
-            >
-              Start free
-            </button>
+            <div style={styles.heroActions}>
+              <button
+                style={styles.primaryButton}
+                onClick={() => router.push("/signup")}
+              >
+                Create free account
+              </button>
 
-            <button
-              style={styles.secondaryButton}
-              onClick={() => router.push("/")}
-            >
-              Back to home
-            </button>
+              <button
+                style={styles.secondaryButton}
+                onClick={() => router.push("/")}
+              >
+                Back to home
+              </button>
+            </div>
+
+            <p style={styles.heroNote}>
+              Guests can preview the portal here. To experience the tests,
+              progress and review features, please create a free account.
+            </p>
+          </div>
+
+          <div style={styles.heroImageWrap}>
+            <img
+              src="/preview/home.png"
+              alt="YanBo Practice Portal home page preview"
+              style={styles.heroImage}
+            />
           </div>
         </section>
 
@@ -153,187 +189,132 @@ export default function SeeYanBoInActionPage() {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section style={styles.howSection}>
+        {/* WALKTHROUGH */}
+        <section style={styles.walkthrough}>
           <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>How the portal helps</h2>
+            <h2 style={styles.sectionTitle}>What families can use inside</h2>
             <p style={styles.sectionSubtitle}>
-              Practice is designed to be focused, easy to repeat and simple for
-              parents to understand.
+              These previews show the main areas of the portal. Guests can view
+              the walkthrough, while students need a free account to start using
+              the tools.
             </p>
           </div>
 
-          <div style={styles.stepsGrid}>
-            {steps.map((step) => (
-              <div key={step.number} style={styles.stepCard}>
-                <div style={styles.stepNumber}>{step.number}</div>
-                <h3 style={styles.stepTitle}>{step.title}</h3>
-                <p style={styles.stepText}>{step.text}</p>
-              </div>
-            ))}
+          <div style={styles.walkthroughList}>
+            {walkthroughSections.map((item, index) => {
+              const reverse = index % 2 === 1
+
+              return (
+                <article
+                  key={item.title}
+                  style={{
+                    ...styles.walkthroughCard,
+                    gridTemplateAreas: reverse
+                      ? `"image content"`
+                      : `"content image"`,
+                  }}
+                >
+                  <div style={styles.walkthroughContent}>
+                    <div style={styles.eyebrow}>{item.eyebrow}</div>
+
+                    <h3 style={styles.walkthroughTitle}>{item.title}</h3>
+
+                    <p style={styles.walkthroughText}>{item.text}</p>
+
+                    <div style={styles.pointGrid}>
+                      {item.points.map((point) => (
+                        <div key={point} style={styles.pointItem}>
+                          <span style={styles.tick}>✓</span>
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      style={styles.smallCtaButton}
+                      onClick={() => router.push("/signup")}
+                    >
+                      Create a free account to try this
+                    </button>
+                  </div>
+
+                  <div style={styles.screenshotShell}>
+                    <img
+                      src={item.image}
+                      alt={item.imageAlt}
+                      style={styles.screenshot}
+                    />
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
 
-        {/* FEATURE CARDS */}
-        <section style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>What members can use</h2>
-            <p style={styles.sectionSubtitle}>
-              Here is a simple overview of the main features available inside
-              YanBo Practice Portal.
+        {/* VALUE SECTION */}
+        <section style={styles.valueSection}>
+          <div style={styles.valueCard}>
+            <h2 style={styles.valueTitle}>Why this helps with 11+ practice</h2>
+
+            <p style={styles.valueText}>
+              YanBo Practice Portal is designed to make preparation more
+              structured. Students can practise by topic, review mistakes, track
+              progress and build confidence over time.
             </p>
-          </div>
 
-          <div style={styles.featureGrid}>
-            {featureCards.map((feature) => (
-              <div key={feature.title} style={styles.featureCard}>
-                <div style={styles.featureIcon}>{feature.icon}</div>
-                <h3 style={styles.featureTitle}>{feature.title}</h3>
-                <p style={styles.featureText}>{feature.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* MOCK PREVIEW */}
-        <section style={styles.previewSection}>
-          <div style={styles.previewIntro}>
-            <h2 style={styles.previewTitle}>A simple look inside</h2>
-            <p style={styles.previewText}>
-              This preview shows the type of experience families can expect.
-              The real portal includes live questions, saved results and
-              personalised progress.
-            </p>
-          </div>
-
-          <div style={styles.previewGrid}>
-            <div style={styles.mockCard}>
-              <div style={styles.mockHeader}>
-                <span style={styles.mockBadge}>Practice Test</span>
-                <span style={styles.mockSmallText}>Question 1 of 10</span>
+            <div style={styles.valueGrid}>
+              <div style={styles.valueItem}>
+                <div style={styles.valueIcon}>🎯</div>
+                <h3 style={styles.valueItemTitle}>Focused practice</h3>
+                <p style={styles.valueItemText}>
+                  Choose subjects and topics instead of practising randomly.
+                </p>
               </div>
 
-              <h3 style={styles.mockQuestion}>
-                Which number is 100 more than 2,450?
-              </h3>
-
-              <div style={styles.answerGrid}>
-                <div style={styles.answerOption}>A&nbsp;&nbsp;2,350</div>
-                <div style={styles.answerOption}>B&nbsp;&nbsp;2,450</div>
-                <div style={styles.answerOption}>C&nbsp;&nbsp;2,550</div>
-                <div style={styles.answerOption}>D&nbsp;&nbsp;3,450</div>
+              <div style={styles.valueItem}>
+                <div style={styles.valueIcon}>🔁</div>
+                <h3 style={styles.valueItemTitle}>Review and repeat</h3>
+                <p style={styles.valueItemText}>
+                  Mistakes become useful revision instead of being forgotten.
+                </p>
               </div>
 
-              <div style={styles.mockFooter}>
-                <span>Clear questions</span>
-                <span>Instant result after completion</span>
-              </div>
-            </div>
-
-            <div style={styles.mockCard}>
-              <div style={styles.mockHeader}>
-                <span style={styles.mockBadge}>Build a Test</span>
-                <span style={styles.mockSmallText}>Focused practice</span>
+              <div style={styles.valueItem}>
+                <div style={styles.valueIcon}>📈</div>
+                <h3 style={styles.valueItemTitle}>Track progress</h3>
+                <p style={styles.valueItemText}>
+                  Parents can see where practice is improving and where more
+                  work is needed.
+                </p>
               </div>
 
-              <div style={styles.selectorBox}>
-                <div style={styles.selectorRow}>
-                  <span>Subject</span>
-                  <strong>Maths</strong>
-                </div>
-                <div style={styles.selectorRow}>
-                  <span>Topic</span>
-                  <strong>Fractions</strong>
-                </div>
-                <div style={styles.selectorRow}>
-                  <span>Difficulty</span>
-                  <strong>Medium</strong>
-                </div>
-                <div style={styles.selectorRow}>
-                  <span>Questions</span>
-                  <strong>20</strong>
-                </div>
-              </div>
-
-              <button style={styles.mockButton}>Create practice test</button>
-            </div>
-
-            <div style={styles.mockCard}>
-              <div style={styles.mockHeader}>
-                <span style={styles.mockBadge}>Progress</span>
-                <span style={styles.mockSmallText}>Track improvement</span>
-              </div>
-
-              <div style={styles.progressList}>
-                <div>
-                  <div style={styles.progressLabel}>
-                    <span>Vocabulary</span>
-                    <strong>82%</strong>
-                  </div>
-                  <div style={styles.progressBarOuter}>
-                    <div style={{ ...styles.progressBarInner, width: "82%" }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={styles.progressLabel}>
-                    <span>Fractions</span>
-                    <strong>68%</strong>
-                  </div>
-                  <div style={styles.progressBarOuter}>
-                    <div style={{ ...styles.progressBarInner, width: "68%" }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={styles.progressLabel}>
-                    <span>Shape Patterns</span>
-                    <strong>74%</strong>
-                  </div>
-                  <div style={styles.progressBarOuter}>
-                    <div style={{ ...styles.progressBarInner, width: "74%" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.mockCard}>
-              <div style={styles.mockHeader}>
-                <span style={styles.mockBadge}>Review + Rewards</span>
-                <span style={styles.mockSmallText}>Keep practising</span>
-              </div>
-
-              <div style={styles.rewardBox}>
-                <div style={styles.avatarCircle}>😊</div>
-                <div>
-                  <h3 style={styles.rewardTitle}>Good job!</h3>
-                  <p style={styles.rewardText}>
-                    Review mistakes, earn YanBo Coins and unlock avatar items as
-                    practice improves.
-                  </p>
-                </div>
-              </div>
-
-              <div style={styles.coinRow}>
-                <span>YanBo Coins earned</span>
-                <strong>+3 🪙</strong>
+              <div style={styles.valueItem}>
+                <div style={styles.valueIcon}>🪙</div>
+                <h3 style={styles.valueItemTitle}>Keep motivation high</h3>
+                <p style={styles.valueItemText}>
+                  YanBo Coins and avatar rewards make regular practice feel more
+                  engaging.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ACCESS SECTION */}
-        <section style={styles.accessSection}>
-          <div style={styles.accessCard}>
-            <h2 style={styles.accessTitle}>Start free, upgrade when ready</h2>
+        {/* FINAL CTA */}
+        <section style={styles.finalCtaSection}>
+          <div style={styles.finalCtaCard}>
+            <div>
+              <h2 style={styles.finalCtaTitle}>
+                Ready to experience the portal?
+              </h2>
 
-            <p style={styles.accessText}>
-              Guests can explore the public pages, free accounts can try
-              selected practice, and paid members can unlock wider practice,
-              progress, review and Build a Test features.
-            </p>
+              <p style={styles.finalCtaText}>
+                Create a free account to try selected practice and see how
+                YanBo Practice Portal can support your child’s 11+ preparation.
+              </p>
+            </div>
 
-            <div style={styles.accessActions}>
+            <div style={styles.finalCtaActions}>
               <button
                 style={styles.primaryButton}
                 onClick={() => router.push("/signup")}
@@ -368,16 +349,23 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   hero: {
-    maxWidth: "1100px",
-    margin: "0 auto 56px",
-    textAlign: "center",
+    maxWidth: "1180px",
+    margin: "0 auto 58px",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 0.95fr) minmax(320px, 1.05fr)",
+    gap: "28px",
+    alignItems: "center",
     background:
       "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 45%, #ffffff 100%)",
     borderRadius: "30px",
-    padding: "56px 24px",
+    padding: "34px",
     boxShadow: "0 14px 36px rgba(0,0,0,0.07)",
     border: "1px solid #d1fae5",
     boxSizing: "border-box",
+  },
+
+  heroTextBlock: {
+    minWidth: 0,
   },
 
   heroBadge: {
@@ -387,13 +375,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "8px 14px",
     borderRadius: "999px",
     fontSize: "14px",
-    fontWeight: 800,
+    fontWeight: 900,
     marginBottom: "18px",
   },
 
   heroTitle: {
-    fontSize: "clamp(34px, 8vw, 48px)",
-    lineHeight: 1.08,
+    fontSize: "clamp(36px, 7vw, 52px)",
+    lineHeight: 1.05,
     margin: "0 0 16px",
     color: "#064e3b",
     fontWeight: 900,
@@ -402,17 +390,39 @@ const styles: { [key: string]: React.CSSProperties } = {
   heroText: {
     fontSize: "18px",
     color: "#4b5563",
-    maxWidth: "820px",
-    margin: "0 auto",
+    margin: 0,
     lineHeight: 1.7,
   },
 
   heroActions: {
     display: "flex",
-    justifyContent: "center",
     gap: "14px",
     flexWrap: "wrap",
-    marginTop: "30px",
+    marginTop: "28px",
+  },
+
+  heroNote: {
+    margin: "18px 0 0",
+    color: "#166534",
+    fontSize: "14.5px",
+    lineHeight: 1.6,
+    fontWeight: 700,
+  },
+
+  heroImageWrap: {
+    background: "white",
+    borderRadius: "24px",
+    padding: "12px",
+    boxShadow: "0 14px 34px rgba(6,78,59,0.16)",
+    border: "1px solid #bbf7d0",
+    maxHeight: "520px",
+    overflow: "hidden",
+  },
+
+  heroImage: {
+    width: "100%",
+    display: "block",
+    borderRadius: "18px",
   },
 
   primaryButton: {
@@ -422,7 +432,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#16a34a",
     color: "white",
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: 900,
     fontSize: "16px",
     boxShadow: "0 10px 24px rgba(22,163,74,0.25)",
   },
@@ -434,7 +444,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "white",
     color: "#065f46",
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: 900,
     fontSize: "16px",
   },
 
@@ -445,13 +455,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#ecfdf5",
     color: "#065f46",
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: 900,
     fontSize: "16px",
   },
 
   section: {
     maxWidth: "1100px",
-    margin: "0 auto 56px",
+    margin: "0 auto 58px",
   },
 
   sectionHeader: {
@@ -460,7 +470,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   sectionTitle: {
-    fontSize: "clamp(28px, 6vw, 34px)",
+    fontSize: "clamp(28px, 6vw, 36px)",
     margin: "0 0 10px",
     color: "#1f3b2d",
     fontWeight: 900,
@@ -469,7 +479,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   sectionSubtitle: {
     fontSize: "17px",
     color: "#355244",
-    maxWidth: "760px",
+    maxWidth: "780px",
     margin: "0 auto",
     lineHeight: 1.7,
   },
@@ -517,329 +527,218 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.6,
   },
 
-  howSection: {
-    maxWidth: "1100px",
-    margin: "0 auto 56px",
+  walkthrough: {
+    maxWidth: "1180px",
+    margin: "0 auto 58px",
   },
 
-  stepsGrid: {
+  walkthroughList: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "18px",
+    gap: "26px",
   },
 
-  stepCard: {
+  walkthroughCard: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 0.82fr) minmax(360px, 1.18fr)",
+    gap: "26px",
+    alignItems: "center",
     background: "white",
-    borderRadius: "22px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    border: "1px solid #e5e7eb",
+    border: "1px solid #d1fae5",
+    borderRadius: "28px",
+    padding: "26px",
+    boxShadow: "0 14px 34px rgba(6,78,59,0.1)",
     boxSizing: "border-box",
   },
 
-  stepNumber: {
-    width: "42px",
-    height: "42px",
+  walkthroughContent: {
+    gridArea: "content",
+    minWidth: 0,
+  },
+
+  eyebrow: {
+    display: "inline-block",
+    background: "#dcfce7",
+    color: "#166534",
+    padding: "7px 12px",
     borderRadius: "999px",
-    background: "#16a34a",
-    color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    fontSize: "13px",
     fontWeight: 900,
-    fontSize: "20px",
     marginBottom: "14px",
   },
 
-  stepTitle: {
-    margin: "0 0 8px",
-    color: "#064e3b",
-    fontSize: "21px",
-    fontWeight: 900,
-  },
-
-  stepText: {
-    margin: 0,
-    color: "#4b5563",
-    fontSize: "16px",
-    lineHeight: 1.65,
-  },
-
-  featureGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: "18px",
-  },
-
-  featureCard: {
-    background: "white",
-    borderRadius: "22px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    border: "1px solid #e5e7eb",
-    boxSizing: "border-box",
-  },
-
-  featureIcon: {
-    width: "52px",
-    height: "52px",
-    borderRadius: "18px",
-    background: "#ecfdf5",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "27px",
-    marginBottom: "14px",
-  },
-
-  featureTitle: {
-    margin: "0 0 8px",
-    color: "#064e3b",
-    fontSize: "20px",
-    fontWeight: 900,
-  },
-
-  featureText: {
-    margin: 0,
-    color: "#4b5563",
-    fontSize: "15.5px",
-    lineHeight: 1.65,
-  },
-
-  previewSection: {
-    maxWidth: "1100px",
-    margin: "0 auto 56px",
-    background: "#064e3b",
-    borderRadius: "30px",
-    padding: "34px",
-    boxSizing: "border-box",
-    boxShadow: "0 18px 42px rgba(6,78,59,0.22)",
-  },
-
-  previewIntro: {
-    textAlign: "center",
-    marginBottom: "26px",
-  },
-
-  previewTitle: {
+  walkthroughTitle: {
     margin: "0 0 10px",
-    color: "white",
-    fontSize: "clamp(28px, 6vw, 34px)",
+    color: "#064e3b",
+    fontSize: "clamp(25px, 5vw, 32px)",
+    lineHeight: 1.15,
     fontWeight: 900,
   },
 
-  previewText: {
-    margin: "0 auto",
-    maxWidth: "780px",
-    color: "#d1fae5",
-    fontSize: "17px",
+  walkthroughText: {
+    margin: "0 0 18px",
+    color: "#4b5563",
+    fontSize: "16.5px",
     lineHeight: 1.7,
   },
 
-  previewGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "18px",
-  },
-
-  mockCard: {
-    background: "white",
-    borderRadius: "22px",
-    padding: "22px",
-    boxSizing: "border-box",
-    boxShadow: "0 10px 26px rgba(0,0,0,0.15)",
-  },
-
-  mockHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "10px",
-    alignItems: "center",
-    marginBottom: "16px",
-  },
-
-  mockBadge: {
-    background: "#dcfce7",
-    color: "#166534",
-    padding: "7px 10px",
-    borderRadius: "999px",
-    fontSize: "13px",
-    fontWeight: 900,
-  },
-
-  mockSmallText: {
-    color: "#6b7280",
-    fontSize: "13px",
-    fontWeight: 700,
-  },
-
-  mockQuestion: {
-    margin: "0 0 16px",
-    color: "#111827",
-    fontSize: "20px",
-    lineHeight: 1.35,
-    fontWeight: 900,
-  },
-
-  answerGrid: {
+  pointGrid: {
     display: "grid",
     gap: "10px",
+    marginBottom: "20px",
   },
 
-  answerOption: {
-    border: "1px solid #d1d5db",
-    borderRadius: "12px",
-    padding: "11px 12px",
+  pointItem: {
+    display: "grid",
+    gridTemplateColumns: "24px 1fr",
+    gap: "8px",
+    alignItems: "start",
     color: "#374151",
+    fontSize: "15.5px",
+    lineHeight: 1.5,
     fontWeight: 700,
-    background: "#f9fafb",
   },
 
-  mockFooter: {
-    display: "grid",
-    gap: "6px",
-    marginTop: "16px",
-    color: "#166534",
-    fontSize: "13.5px",
-    fontWeight: 800,
+  tick: {
+    color: "#16a34a",
+    fontWeight: 900,
   },
 
-  selectorBox: {
-    display: "grid",
-    gap: "10px",
-    marginBottom: "16px",
-  },
-
-  selectorRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "14px",
-    padding: "11px 12px",
-    borderRadius: "12px",
-    background: "#f9fafb",
-    color: "#4b5563",
-  },
-
-  mockButton: {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: "13px",
+  smallCtaButton: {
+    padding: "13px 18px",
+    borderRadius: "14px",
     border: "none",
     background: "#16a34a",
     color: "white",
+    cursor: "pointer",
     fontWeight: 900,
     fontSize: "15px",
+    boxShadow: "0 10px 22px rgba(22,163,74,0.2)",
   },
 
-  progressList: {
-    display: "grid",
-    gap: "16px",
-  },
-
-  progressLabel: {
-    display: "flex",
-    justifyContent: "space-between",
-    color: "#374151",
-    fontSize: "15px",
-    marginBottom: "7px",
-  },
-
-  progressBarOuter: {
-    height: "12px",
-    borderRadius: "999px",
-    background: "#e5e7eb",
+  screenshotShell: {
+    gridArea: "image",
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    borderRadius: "22px",
+    padding: "10px",
+    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.7)",
+    maxHeight: "560px",
     overflow: "hidden",
   },
 
-  progressBarInner: {
-    height: "100%",
-    borderRadius: "999px",
-    background: "#16a34a",
+  screenshot: {
+    width: "100%",
+    display: "block",
+    borderRadius: "16px",
   },
 
-  rewardBox: {
+  valueSection: {
+    maxWidth: "1100px",
+    margin: "0 auto 58px",
+  },
+
+  valueCard: {
+    background: "#064e3b",
+    borderRadius: "30px",
+    padding: "34px",
+    color: "white",
+    boxShadow: "0 18px 42px rgba(6,78,59,0.22)",
+    boxSizing: "border-box",
+  },
+
+  valueTitle: {
+    margin: "0 0 10px",
+    fontSize: "clamp(28px, 6vw, 36px)",
+    fontWeight: 900,
+    textAlign: "center",
+  },
+
+  valueText: {
+    margin: "0 auto 26px",
+    maxWidth: "820px",
+    color: "#d1fae5",
+    fontSize: "17px",
+    lineHeight: 1.7,
+    textAlign: "center",
+  },
+
+  valueGrid: {
     display: "grid",
-    gridTemplateColumns: "58px 1fr",
-    gap: "14px",
-    alignItems: "center",
-    background: "#f0fdf4",
-    borderRadius: "18px",
-    padding: "16px",
-    marginBottom: "16px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
   },
 
-  avatarCircle: {
-    width: "58px",
-    height: "58px",
-    borderRadius: "999px",
-    background: "white",
+  valueItem: {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: "22px",
+    padding: "20px",
+    boxSizing: "border-box",
+  },
+
+  valueIcon: {
+    width: "48px",
+    height: "48px",
+    borderRadius: "16px",
+    background: "rgba(255,255,255,0.12)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "30px",
-    boxShadow: "inset 0 0 0 1px #bbf7d0",
+    fontSize: "25px",
+    marginBottom: "12px",
   },
 
-  rewardTitle: {
-    margin: "0 0 4px",
-    color: "#064e3b",
-    fontSize: "20px",
+  valueItemTitle: {
+    margin: "0 0 8px",
+    fontSize: "19px",
     fontWeight: 900,
+    color: "white",
   },
 
-  rewardText: {
+  valueItemText: {
     margin: 0,
-    color: "#4b5563",
-    fontSize: "14.5px",
-    lineHeight: 1.55,
+    color: "#d1fae5",
+    fontSize: "15px",
+    lineHeight: 1.6,
   },
 
-  coinRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "12px",
-    padding: "13px 14px",
-    borderRadius: "14px",
-    background: "#fef3c7",
-    color: "#92400e",
-    fontWeight: 900,
-  },
-
-  accessSection: {
+  finalCtaSection: {
     maxWidth: "1100px",
     margin: "0 auto",
   },
 
-  accessCard: {
+  finalCtaCard: {
     background:
       "linear-gradient(135deg, #ffffff 0%, #ecfdf5 55%, #dcfce7 100%)",
     border: "1px solid #bbf7d0",
     borderRadius: "28px",
-    padding: "34px 24px",
-    textAlign: "center",
+    padding: "30px",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "22px",
+    alignItems: "center",
     boxShadow: "0 14px 34px rgba(6,78,59,0.12)",
+    boxSizing: "border-box",
   },
 
-  accessTitle: {
-    margin: "0 0 12px",
+  finalCtaTitle: {
+    margin: "0 0 8px",
     color: "#064e3b",
-    fontSize: "clamp(28px, 6vw, 34px)",
+    fontSize: "clamp(26px, 6vw, 34px)",
     fontWeight: 900,
   },
 
-  accessText: {
-    margin: "0 auto",
-    maxWidth: "780px",
+  finalCtaText: {
+    margin: 0,
     color: "#4b5563",
     fontSize: "17px",
-    lineHeight: 1.7,
+    lineHeight: 1.65,
   },
 
-  accessActions: {
+  finalCtaActions: {
     display: "flex",
-    justifyContent: "center",
-    gap: "14px",
+    gap: "12px",
     flexWrap: "wrap",
-    marginTop: "24px",
+    justifyContent: "flex-end",
   },
 }
