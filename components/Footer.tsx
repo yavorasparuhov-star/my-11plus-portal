@@ -20,7 +20,7 @@ export default function Footer() {
           maxWidth: 1150,
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
           gap: 28,
           alignItems: "start",
         }}
@@ -63,16 +63,23 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 style={footerHeadingStyle}>Support</h3>
+          <h3 style={footerHeadingStyle}>Explore</h3>
 
           <div style={linkColumnStyle}>
-            <FooterLink href="/#pricing" label="Pricing" />
             <FooterLink
               href="/see-yanbo-in-action"
               label="See YanBo in Action"
             />
+            <FooterLink href="/#pricing" label="Pricing" />
             <FooterLink href="/about" label="About" />
             <FooterLink href="/contact" label="Contact" />
+          </div>
+        </div>
+
+        <div>
+          <h3 style={footerHeadingStyle}>Support & Legal</h3>
+
+          <div style={linkColumnStyle}>
             <FooterLink href="/privacy-policy" label="Privacy Policy" />
             <FooterLink href="/cookies" label="Cookie Policy" />
 
