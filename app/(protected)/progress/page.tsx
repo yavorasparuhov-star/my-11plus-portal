@@ -1,7 +1,6 @@
 "use client"
 
-import Link from "next/link"
-import React from "react"
+import type { CSSProperties } from "react"
 import {
   EnglishIcon,
   MathsIcon,
@@ -9,6 +8,7 @@ import {
   ProgressIcon,
   VRIcon,
 } from "../../../components/icons/PortalIcons"
+import { SubjectLandingCard } from "../_components/SubjectLandingCard"
 
 export default function ProgressPage() {
   const subjects = [
@@ -73,31 +73,11 @@ export default function ProgressPage() {
 
         <div style={styles.grid}>
           {subjects.map((subject) => (
-            <Link
+            <SubjectLandingCard
               key={subject.title}
-              href={subject.href}
-              style={styles.card}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)"
-                e.currentTarget.style.boxShadow =
-                  "0 20px 40px rgba(0,0,0,0.12)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)"
-                e.currentTarget.style.boxShadow =
-                  "0 10px 25px rgba(0,0,0,0.08)"
-              }}
-            >
-              <div style={styles.cardHeader}>
-                <div style={styles.iconWrap}>{subject.icon}</div>
-
-                <h3 style={styles.cardTitle}>{subject.shortTitle}</h3>
-              </div>
-
-              <p style={styles.cardText}>{subject.text}</p>
-
-              <span style={styles.cardButton}>View progress →</span>
-            </Link>
+              {...subject}
+              cta="View progress →"
+            />
           ))}
         </div>
       </section>
@@ -105,7 +85,7 @@ export default function ProgressPage() {
   )
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const styles: Record<string, CSSProperties> = {
   page: {
     padding: "28px 20px 60px",
     maxWidth: "1180px",
@@ -187,68 +167,5 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
     gap: "18px",
-  },
-
-  card: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "22px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "left",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "stretch",
-    border: "1px solid #e5e7eb",
-    textDecoration: "none",
-    color: "inherit",
-    transition: "all 0.25s ease",
-  },
-
-  cardHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    marginBottom: "12px",
-  },
-
-  iconWrap: {
-    width: "54px",
-    height: "54px",
-    borderRadius: "18px",
-    background: "#f8fafc",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "inset 0 0 0 1px #e5e7eb",
-    flexShrink: 0,
-  },
-
-  cardTitle: {
-    fontSize: "24px",
-    margin: 0,
-    color: "#111827",
-    fontWeight: 800,
-  },
-
-  cardText: {
-    fontSize: "15.5px",
-    color: "#4b5563",
-    lineHeight: 1.55,
-    margin: "0 0 18px",
-    minHeight: "76px",
-  },
-
-  cardButton: {
-    marginTop: "auto",
-    padding: "11px 16px",
-    borderRadius: "12px",
-    background: "#d4f5d0",
-    color: "#065f46",
-    fontWeight: 800,
-    fontSize: "15.5px",
-    minWidth: "145px",
-    display: "inline-block",
-    textAlign: "center",
-    alignSelf: "flex-start",
   },
 }
