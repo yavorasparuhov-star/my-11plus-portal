@@ -1,5 +1,6 @@
 "use client"
 
+import type { CSSProperties, ReactNode } from "react"
 import Header from "../../components/Header"
 import Footer from "../../components/Footer"
 
@@ -8,68 +9,18 @@ export default function PrivacyPolicyPage() {
     <>
       <Header />
 
-      <main
-        style={{
-          minHeight: "100vh",
-          background:
-            "linear-gradient(180deg, #f4fbf4 0%, #f8fafc 50%, #ffffff 100%)",
-          padding: "40px 20px 64px",
-          boxSizing: "border-box",
-        }}
-      >
-        <section
-          style={{
-            maxWidth: 980,
-            margin: "0 auto",
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: 28,
-              padding: "42px 28px",
-              border: "1px solid #d1fae5",
-              boxShadow: "0 14px 34px rgba(6, 78, 59, 0.08)",
-              textAlign: "center",
-              marginBottom: 30,
-            }}
-          >
-            <div
-              style={{
-                display: "inline-block",
-                background: "#dcfce7",
-                color: "#166534",
-                padding: "8px 14px",
-                borderRadius: 999,
-                fontSize: 14,
-                fontWeight: 800,
-                marginBottom: 18,
-              }}
-            >
+      <main style={pageStyle}>
+        <section style={contentStyle}>
+          <div style={heroCardStyle}>
+            <div style={heroBadgeStyle}>
               Privacy Policy
             </div>
 
-            <h1
-              style={{
-                fontSize: "clamp(34px, 7vw, 48px)",
-                lineHeight: 1.1,
-                margin: "0 0 18px",
-                color: "#064e3b",
-                fontWeight: 900,
-              }}
-            >
+            <h1 style={heroTitleStyle}>
               How YanBo Practice Portal uses information
             </h1>
 
-            <p
-              style={{
-                fontSize: 18,
-                lineHeight: 1.75,
-                color: "#374151",
-                maxWidth: 760,
-                margin: "0 auto",
-              }}
-            >
+            <p style={heroTextStyle}>
               This Privacy Policy explains what information YanBo Practice
               Portal may collect, why it is used, and how it helps provide 11+
               practice, progress tracking and account access.
@@ -248,27 +199,11 @@ function PolicyCard({
   children,
 }: {
   title: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
-    <section
-      style={{
-        background: "#ffffff",
-        borderRadius: 22,
-        padding: "26px 24px",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 10px 26px rgba(0, 0, 0, 0.06)",
-        marginBottom: 20,
-      }}
-    >
-      <h2
-        style={{
-          fontSize: "clamp(22px, 5vw, 28px)",
-          color: "#064e3b",
-          margin: "0 0 12px",
-          fontWeight: 900,
-        }}
-      >
+    <section style={cardStyle}>
+      <h2 style={cardTitleStyle}>
         {title}
       </h2>
 
@@ -277,14 +212,80 @@ function PolicyCard({
   )
 }
 
-const paragraphStyle: React.CSSProperties = {
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  background:
+    "linear-gradient(180deg, #f4fbf4 0%, #f8fafc 50%, #ffffff 100%)",
+  padding: "40px 20px 64px",
+  boxSizing: "border-box",
+}
+
+const contentStyle: CSSProperties = {
+  maxWidth: 980,
+  margin: "0 auto",
+}
+
+const heroCardStyle: CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 28,
+  padding: "42px 28px",
+  border: "1px solid #d1fae5",
+  boxShadow: "0 14px 34px rgba(6, 78, 59, 0.08)",
+  textAlign: "center",
+  marginBottom: 30,
+}
+
+const heroBadgeStyle: CSSProperties = {
+  display: "inline-block",
+  background: "#dcfce7",
+  color: "#166534",
+  padding: "8px 14px",
+  borderRadius: 999,
+  fontSize: 14,
+  fontWeight: 800,
+  marginBottom: 18,
+}
+
+const heroTitleStyle: CSSProperties = {
+  fontSize: "clamp(34px, 7vw, 48px)",
+  lineHeight: 1.1,
+  margin: "0 0 18px",
+  color: "#064e3b",
+  fontWeight: 900,
+}
+
+const heroTextStyle: CSSProperties = {
+  fontSize: 18,
+  lineHeight: 1.75,
+  color: "#374151",
+  maxWidth: 760,
+  margin: "0 auto",
+}
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 22,
+  padding: "26px 24px",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 10px 26px rgba(0, 0, 0, 0.06)",
+  marginBottom: 20,
+}
+
+const cardTitleStyle: CSSProperties = {
+  fontSize: "clamp(22px, 5vw, 28px)",
+  color: "#064e3b",
+  margin: "0 0 12px",
+  fontWeight: 900,
+}
+
+const paragraphStyle: CSSProperties = {
   fontSize: 16.5,
   lineHeight: 1.75,
   color: "#4b5563",
   margin: "0 0 14px",
 }
 
-const listStyle: React.CSSProperties = {
+const listStyle: CSSProperties = {
   fontSize: 16,
   lineHeight: 1.8,
   color: "#4b5563",
@@ -292,7 +293,7 @@ const listStyle: React.CSSProperties = {
   margin: "0 0 8px",
 }
 
-const highlightStyle: React.CSSProperties = {
+const highlightStyle: CSSProperties = {
   display: "inline-block",
   background: "#f0fdf4",
   border: "1px solid #bbf7d0",
