@@ -169,6 +169,25 @@ function getCutoffDate(filter: TimeFilter) {
   return now;
 }
 
+function getBenchmarkDays(filter: TimeFilter) {
+  if (filter === "all") return null;
+
+  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+  };
+
+  return daysMap[filter];
+}
+
+function getBenchmarkPeriodLabel(filter: TimeFilter) {
+  if (filter === "7d") return "last 7 days";
+  if (filter === "30d") return "last 30 days";
+  if (filter === "90d") return "last 90 days";
+  return "all time";
+}
+
 function normaliseMathCategory(
   value: string | null | undefined,
 ): MathCategory | null {
@@ -401,10 +420,10 @@ function StatCard({
       style={{
         background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
         border: "1px solid #d9f99d",
-        borderRadius: "24px",
-        padding: "22px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        minHeight: "132px",
+        borderRadius: "20px",
+        padding: "16px 18px",
+        boxShadow: "0 8px 22px rgba(15, 23, 42, 0.05)",
+        minHeight: "104px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -416,10 +435,10 @@ function StatCard({
     >
       <div
         style={{
-          fontSize: "14px",
+          fontSize: "13px",
           color: "#64748b",
-          fontWeight: 600,
-          marginBottom: "10px",
+          fontWeight: 700,
+          marginBottom: "8px",
         }}
       >
         {title}
@@ -427,8 +446,8 @@ function StatCard({
 
       <div
         style={{
-          fontSize: value.length > 18 ? "22px" : "34px",
-          fontWeight: 800,
+          fontSize: value.length > 18 ? "19px" : "28px",
+          fontWeight: 850,
           color: "#0f172a",
           lineHeight: 1.15,
           overflowWrap: "break-word",
@@ -443,10 +462,10 @@ function StatCard({
       {subtitle ? (
         <div
           style={{
-            fontSize: "13px",
+            fontSize: "12px",
             color: "#64748b",
-            marginTop: "8px",
-            lineHeight: 1.45,
+            marginTop: "6px",
+            lineHeight: 1.35,
             overflowWrap: "break-word",
           }}
         >
@@ -883,12 +902,23 @@ export default function MathProgressPage() {
     });
   }, [rows, timeFilter, difficultyFilter, categoryFilter]);
 
+  const benchmarkPeriodDays = getBenchmarkDays(timeFilter);
+  const benchmarkPeriodLabel = getBenchmarkPeriodLabel(timeFilter);
+
+  const benchmarkSourceRows = useMemo(() => {
+    const cutoff = getCutoffDate(timeFilter);
+
+    return rows.filter((row) =>
+      cutoff ? new Date(row.created_at) >= cutoff : true,
+    );
+  }, [rows, timeFilter]);
+
   const benchmarkDifficulty = useMemo(() => {
     if (difficultyFilter !== "all") {
       return Number(difficultyFilter);
     }
 
-    const latestRowWithDifficulty = [...rows]
+    const latestRowWithDifficulty = [...benchmarkSourceRows]
       .filter((row) => typeof row.difficulty === "number")
       .sort(
         (a, b) =>
@@ -898,7 +928,7 @@ export default function MathProgressPage() {
     return typeof latestRowWithDifficulty?.difficulty === "number"
       ? latestRowWithDifficulty.difficulty
       : null;
-  }, [rows, difficultyFilter]);
+  }, [benchmarkSourceRows, difficultyFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -917,6 +947,7 @@ export default function MathProgressPage() {
         {
           p_difficulty: benchmarkDifficulty,
           p_min_attempts: MIN_BENCHMARK_ATTEMPTS,
+          p_days: benchmarkPeriodDays,
         },
       );
 
@@ -938,12 +969,12 @@ export default function MathProgressPage() {
     return () => {
       mounted = false;
     };
-  }, [benchmarkDifficulty]);
+  }, [benchmarkDifficulty, benchmarkPeriodDays]);
 
   const studentBenchmarkStats = useMemo(() => {
     if (benchmarkDifficulty === null) return null;
 
-    const recentRowsAtDifficulty = [...rows]
+    const recentRowsAtDifficulty = [...benchmarkSourceRows]
       .filter((row) => row.difficulty === benchmarkDifficulty)
       .sort(
         (a, b) =>
@@ -970,7 +1001,7 @@ export default function MathProgressPage() {
       attempts: recentRowsAtDifficulty.length,
       accuracy,
     };
-  }, [rows, benchmarkDifficulty]);
+  }, [benchmarkSourceRows, benchmarkDifficulty]);
 
   const benchmarkDifficultyLabel = getLevelLabel(benchmarkDifficulty);
 
@@ -1306,9 +1337,9 @@ export default function MathProgressPage() {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-            gap: "18px",
-            marginBottom: "24px",
+              "repeat(auto-fit, minmax(min(100%, 175px), 1fr))",
+            gap: "12px",
+            marginBottom: "18px",
             minWidth: 0,
           }}
         >
@@ -1365,26 +1396,26 @@ export default function MathProgressPage() {
           />
         </div>
 
-        <div style={{ marginTop: "20px" }}>
+        <div style={{ marginTop: "16px" }}>
           <SectionCard
             title="How am I doing?"
             subtitle={
               benchmarkDifficulty === null
-                ? "Your Maths benchmark will appear here once there is a result with a difficulty level."
-                : `This compares your recent ${benchmarkDifficultyLabel} Maths work with anonymous YanBo attempts at the same difficulty level.`
+                ? "Your Maths benchmark will appear here once there is a result with a difficulty level in the selected time period."
+                : `This compares your recent ${benchmarkDifficultyLabel} Maths work from ${benchmarkPeriodLabel} with anonymous YanBo attempts at the same difficulty level and time period.`
             }
           >
             {benchmarkDifficulty === null ? (
               <div style={emptyStateStyle}>
                 Your Maths benchmark will appear here once there is a result
-                with a difficulty level.
+                with a difficulty level in the selected time period.
               </div>
             ) : benchmarkLoading ? (
               <div style={emptyStateStyle}>Loading benchmark...</div>
             ) : !studentBenchmarkStats ? (
               <div style={emptyStateStyle}>
                 Your Maths benchmark will appear here once there is a recent
-                result at this difficulty level.
+                result at this difficulty level in the selected time period.
               </div>
             ) : !benchmarkData ? (
               <div style={emptyStateStyle}>
@@ -1402,8 +1433,7 @@ export default function MathProgressPage() {
                     </div>
                     <div style={benchmarkMetricHintStyle}>
                       Last {studentBenchmarkStats.attempts} attempt
-                      {studentBenchmarkStats.attempts === 1 ? "" : "s"} at this
-                      difficulty
+                      {studentBenchmarkStats.attempts === 1 ? "" : "s"} in {benchmarkPeriodLabel}
                     </div>
                   </div>
 
@@ -1415,7 +1445,7 @@ export default function MathProgressPage() {
                       {Number(benchmarkData.average_success).toFixed(1)}%
                     </div>
                     <div style={benchmarkMetricHintStyle}>
-                      Anonymous average at this difficulty
+                      Anonymous average in {benchmarkPeriodLabel}
                     </div>
                   </div>
 
@@ -1799,45 +1829,45 @@ export default function MathProgressPage() {
 
 const benchmarkMetricGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "14px",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "12px",
 };
 
 const benchmarkMetricStyle: React.CSSProperties = {
   background: "#f8fafc",
   border: "1px solid #dcfce7",
-  borderRadius: "20px",
-  padding: "18px",
+  borderRadius: "18px",
+  padding: "14px 16px",
   minWidth: 0,
 };
 
 const benchmarkMetricLabelStyle: React.CSSProperties = {
   color: "#475569",
-  fontSize: "14px",
+  fontSize: "13px",
   fontWeight: 700,
-  lineHeight: 1.4,
-  marginBottom: "8px",
+  lineHeight: 1.35,
+  marginBottom: "6px",
 };
 
 const benchmarkMetricValueStyle: React.CSSProperties = {
   color: "#0f172a",
-  fontSize: "32px",
+  fontSize: "28px",
   fontWeight: 900,
-  lineHeight: 1.1,
+  lineHeight: 1.05,
 };
 
 const benchmarkMetricHintStyle: React.CSSProperties = {
   color: "#64748b",
-  fontSize: "13px",
+  fontSize: "12px",
   fontWeight: 600,
-  lineHeight: 1.4,
-  marginTop: "8px",
+  lineHeight: 1.35,
+  marginTop: "6px",
 };
 
 const benchmarkMessageStyle: React.CSSProperties = {
-  marginTop: "16px",
-  padding: "14px 16px",
-  borderRadius: "18px",
+  marginTop: "12px",
+  padding: "12px 14px",
+  borderRadius: "16px",
   background: "#ecfdf5",
   border: "1px solid #bbf7d0",
   color: "#166534",
