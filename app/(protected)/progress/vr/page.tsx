@@ -1,7 +1,8 @@
 // app/(protected)/progress/vr/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import type { CSSProperties, ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import { VRIcon } from "../../../../components/icons/PortalIcons"
@@ -105,32 +106,24 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
 
 const MIN_BENCHMARK_ATTEMPTS = 30
 const STRONG_TARGET_PERCENT = 80
+const TIME_FILTER_DAYS: Record<Exclude<TimeFilter, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+}
 
 function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
 
-  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  }
-
-  now.setDate(now.getDate() - daysMap[filter])
+  now.setDate(now.getDate() - TIME_FILTER_DAYS[filter])
   return now
 }
 
 function getBenchmarkDays(filter: TimeFilter) {
   if (filter === "all") return null
-
-  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  }
-
-  return daysMap[filter]
+  return TIME_FILTER_DAYS[filter]
 }
 
 function getBenchmarkPeriodLabel(filter: TimeFilter) {
@@ -402,29 +395,31 @@ function toNumericValue(value: ValueType | undefined) {
   return 0
 }
 
-function successTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [string, string] {
-  const numericValue = toNumericValue(value)
-  return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Success"]
+function createTooltipFormatter(
+  label: string,
+  formatValue: (value: number) => string
+) {
+  return (
+    value: ValueType | undefined,
+    _name: NameType | undefined
+  ): [string, string] => {
+    const numericValue = toNumericValue(value)
+    return [formatValue(toSafeNumber(numericValue)), label]
+  }
 }
 
-function averageSuccessTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [string, string] {
-  const numericValue = toNumericValue(value)
-  return [`${toSafeNumber(numericValue).toFixed(1)}%`, "Average Success"]
-}
-
-function attemptsTooltipFormatter(
-  value: ValueType | undefined,
-  _name: NameType | undefined
-): [string, string] {
-  const numericValue = toNumericValue(value)
-  return [`${toSafeNumber(numericValue)}`, "Attempts"]
-}
+const successTooltipFormatter = createTooltipFormatter(
+  "Success",
+  (value) => `${value.toFixed(1)}%`
+)
+const averageSuccessTooltipFormatter = createTooltipFormatter(
+  "Average Success",
+  (value) => `${value.toFixed(1)}%`
+)
+const attemptsTooltipFormatter = createTooltipFormatter(
+  "Attempts",
+  (value) => `${value}`
+)
 
 function StatCard({
   title,
@@ -503,7 +498,7 @@ function SectionCard({
 }: {
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <section
@@ -556,10 +551,10 @@ function ChartBox({
   children,
   height = 340,
 }: {
-  children: (size: { width: number; height: number }) => React.ReactNode
+  children: (size: { width: number; height: number }) => ReactNode
   height?: number
 }) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 0, height })
 
   useEffect(() => {
@@ -1738,13 +1733,13 @@ VR Progress
   )
 }
 
-const benchmarkMetricGridStyle: React.CSSProperties = {
+const benchmarkMetricGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: "12px",
 }
 
-const benchmarkMetricStyle: React.CSSProperties = {
+const benchmarkMetricStyle: CSSProperties = {
   background: "#f8fafc",
   border: "1px solid #dcfce7",
   borderRadius: "18px",
@@ -1752,7 +1747,7 @@ const benchmarkMetricStyle: React.CSSProperties = {
   minWidth: 0,
 }
 
-const benchmarkMetricLabelStyle: React.CSSProperties = {
+const benchmarkMetricLabelStyle: CSSProperties = {
   color: "#475569",
   fontSize: "13px",
   fontWeight: 700,
@@ -1760,14 +1755,14 @@ const benchmarkMetricLabelStyle: React.CSSProperties = {
   marginBottom: "6px",
 }
 
-const benchmarkMetricValueStyle: React.CSSProperties = {
+const benchmarkMetricValueStyle: CSSProperties = {
   color: "#0f172a",
   fontSize: "28px",
   fontWeight: 900,
   lineHeight: 1.05,
 }
 
-const benchmarkMetricHintStyle: React.CSSProperties = {
+const benchmarkMetricHintStyle: CSSProperties = {
   color: "#64748b",
   fontSize: "12px",
   fontWeight: 600,
@@ -1775,7 +1770,7 @@ const benchmarkMetricHintStyle: React.CSSProperties = {
   marginTop: "6px",
 }
 
-const benchmarkMessageStyle: React.CSSProperties = {
+const benchmarkMessageStyle: CSSProperties = {
   marginTop: "12px",
   padding: "12px 14px",
   borderRadius: "16px",
@@ -1786,7 +1781,7 @@ const benchmarkMessageStyle: React.CSSProperties = {
   lineHeight: 1.5,
 }
 
-const responsiveTwoColumnGridStyle: React.CSSProperties = {
+const responsiveTwoColumnGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
   gap: "20px",
@@ -1797,7 +1792,7 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const selectStyle: React.CSSProperties = {
+const selectStyle: CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
   border: "1px solid #bbf7d0",
@@ -1812,7 +1807,7 @@ const selectStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-const emptyStateStyle: React.CSSProperties = {
+const emptyStateStyle: CSSProperties = {
   height: "100%",
   minHeight: "180px",
   display: "flex",
@@ -1823,7 +1818,7 @@ const emptyStateStyle: React.CSSProperties = {
   textAlign: "center",
 }
 
-const thStyle: React.CSSProperties = {
+const thStyle: CSSProperties = {
   textAlign: "left",
   padding: "14px 12px",
   fontSize: "13px",
@@ -1832,7 +1827,7 @@ const thStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 }
 
-const tdStyle: React.CSSProperties = {
+const tdStyle: CSSProperties = {
   padding: "16px 12px",
   fontSize: "14px",
   color: "#0f172a",
