@@ -248,6 +248,16 @@ function isOptionKey(value: unknown): value is OptionKey {
   return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
+function formatLabel(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
 
@@ -313,13 +323,7 @@ function formatTopicKey(topicKey: string, mainCategory?: MainCategory) {
     }
   }
 
-  return topicKey
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  return formatLabel(topicKey);
 }
 
 function formatTopics(config: AttemptConfig) {
@@ -344,13 +348,7 @@ function formatTopicLabel(
     }
   }
 
-  return value
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  return formatLabel(value);
 }
 
 function parseAttemptConfig(value: unknown): AttemptConfig {
@@ -472,13 +470,7 @@ function formatAttemptStatus(value: string | null | undefined) {
   if (normalized === "started") return "Started";
   if (!value) return "—";
 
-  return value
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  return formatLabel(value);
 }
 
 function getOptionText(option: QuestionSnapshotOption) {
