@@ -230,15 +230,6 @@ function formatDateTime(value: string | null | undefined) {
   })
 }
 
-function truncateText(text: string | null | undefined, maxLength = 120) {
-  if (!text) return "—"
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
-}
-
-function formatAnswer(answer: string | null | undefined) {
-  return answer && answer.trim() ? answer : "No answer"
-}
-
 function getOptionText(item: ReviewItem, answer: string | null | undefined) {
   if (!answer) return null
 
