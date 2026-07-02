@@ -1,6 +1,7 @@
 "use client"
 
-import React, { Suspense, useEffect, useState } from "react"
+import type { CSSProperties } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Header from "../../../components/Header"
 import ReportQuestionButton from "../../../components/ReportQuestionButton"
 import StudentAvatarPortrait from "../../../components/avatar/StudentAvatarPortrait"
@@ -1010,6 +1011,17 @@ function SpellingContent() {
     return "Not set"
   }
 
+  function getPressedButtonStyle(isPressed: boolean): CSSProperties {
+    return {
+      transform: isPressed
+        ? "translateY(2px) scale(0.98)"
+        : "translateY(0) scale(1)",
+      boxShadow: isPressed
+        ? "inset 0 2px 6px rgba(0,0,0,0.25)"
+        : "0 2px 6px rgba(0,0,0,0.15)",
+    }
+  }
+
   const correctCount = spellingResults.filter((result) => result.isCorrect).length
   const wrongCount = spellingResults.filter((result) => !result.isCorrect).length
   const successRate =
@@ -1363,10 +1375,7 @@ function SpellingContent() {
                 ...styles.controlButton,
                 backgroundColor: voiceEnabled ? "#374151" : "#d1d5db",
                 color: voiceEnabled ? "white" : "black",
-                transform: hearPressed ? "translateY(2px) scale(0.98)" : "translateY(0) scale(1)",
-                boxShadow: hearPressed
-                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                  : "0 2px 6px rgba(0,0,0,0.15)",
+                ...getPressedButtonStyle(hearPressed),
               }}
             >
               🔊 Hear: {voiceEnabled ? "ON" : "OFF"}
@@ -1376,12 +1385,7 @@ function SpellingContent() {
               onClick={() => handleRepeatPress(correctAnswer)}
               style={{
                 ...styles.controlButton,
-                transform: repeatPressed
-                  ? "translateY(2px) scale(0.98)"
-                  : "translateY(0) scale(1)",
-                boxShadow: repeatPressed
-                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                  : "0 2px 6px rgba(0,0,0,0.15)",
+                ...getPressedButtonStyle(repeatPressed),
               }}
             >
               Repeat
@@ -1394,12 +1398,7 @@ function SpellingContent() {
               }}
               style={{
                 ...styles.controlButton,
-                transform: hintPressed
-                  ? "translateY(2px) scale(0.98)"
-                  : "translateY(0) scale(1)",
-                boxShadow: hintPressed
-                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                  : "0 2px 6px rgba(0,0,0,0.15)",
+                ...getPressedButtonStyle(hintPressed),
               }}
             >
               💡 Hint
@@ -1414,12 +1413,7 @@ function SpellingContent() {
                 ...styles.controlButton,
                 backgroundColor: timerEnabled ? "#374151" : "#d1d5db",
                 color: timerEnabled ? "white" : "black",
-                transform: timerPressed
-                  ? "translateY(2px) scale(0.98)"
-                  : "translateY(0) scale(1)",
-                boxShadow: timerPressed
-                  ? "inset 0 2px 6px rgba(0,0,0,0.25)"
-                  : "0 2px 6px rgba(0,0,0,0.15)",
+                ...getPressedButtonStyle(timerPressed),
               }}
             >
               Timer: {timerEnabled ? "ON" : "OFF"}
@@ -1537,7 +1531,7 @@ function SpellingContent() {
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   page: {
     padding: "20px",
     maxWidth: "900px",
