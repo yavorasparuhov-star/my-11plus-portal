@@ -77,6 +77,13 @@ type MathQuestionLookupRow = {
   difficulty: number | null;
 };
 
+type MathBenchmarkRpcRow = {
+  difficulty: number;
+  typical_low: number;
+  typical_high: number;
+  average_success: number;
+};
+
 type ProgressSource = "normal" | "custom";
 
 type MathProgressRow = {
@@ -96,6 +103,9 @@ type MathProgressRow = {
 type TimeFilter = "7d" | "30d" | "90d" | "all";
 type DifficultyFilter = "all" | "1" | "2" | "3";
 type CategoryFilter = "all" | MathCategory;
+
+const MIN_BENCHMARK_ATTEMPTS = 30;
+const STRONG_TARGET_PERCENT = 80;
 
 const CATEGORY_LABELS: Record<MathCategory, string> = {
   number_place_value: "Number & Place Value",
@@ -212,6 +222,26 @@ function getLevelLabel(level: number | null | undefined) {
   if (level === 2) return "Medium";
   if (level === 3) return "Hard";
   return "Not set";
+}
+
+function getBenchmarkStatus(accuracy: number) {
+  if (accuracy >= 90) {
+    return "Excellent — you are doing really well at this level.";
+  }
+
+  if (accuracy >= STRONG_TARGET_PERCENT) {
+    return "Strong progress — you are above the strong target for this level.";
+  }
+
+  if (accuracy >= 65) {
+    return "You are on track. Keep practising to reach the strong target.";
+  }
+
+  if (accuracy >= 50) {
+    return "You are building confidence. A little more practice will help.";
+  }
+
+  return "This level needs more practice. Keep going — every attempt helps.";
 }
 
 function formatDateTime(value: string) {
@@ -538,6 +568,9 @@ export default function MathProgressPage() {
   const [difficultyFilter, setDifficultyFilter] =
     useState<DifficultyFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [benchmarkData, setBenchmarkData] =
+    useState<MathBenchmarkRpcRow | null>(null);
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -851,6 +884,97 @@ export default function MathProgressPage() {
       return matchesTime && matchesDifficulty && matchesCategory;
     });
   }, [rows, timeFilter, difficultyFilter, categoryFilter]);
+
+  const benchmarkDifficulty = useMemo(() => {
+    if (difficultyFilter !== "all") {
+      return Number(difficultyFilter);
+    }
+
+    const latestRowWithDifficulty = [...rows]
+      .filter((row) => typeof row.difficulty === "number")
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )[0];
+
+    return typeof latestRowWithDifficulty?.difficulty === "number"
+      ? latestRowWithDifficulty.difficulty
+      : null;
+  }, [rows, difficultyFilter]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadBenchmark() {
+      if (benchmarkDifficulty === null) {
+        setBenchmarkData(null);
+        setBenchmarkLoading(false);
+        return;
+      }
+
+      setBenchmarkLoading(true);
+
+      const { data, error } = await supabase.rpc(
+        "get_math_difficulty_benchmark",
+        {
+          p_difficulty: benchmarkDifficulty,
+          p_min_attempts: MIN_BENCHMARK_ATTEMPTS,
+        },
+      );
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error("Error loading maths benchmark:", error);
+        setBenchmarkData(null);
+      } else {
+        const benchmarkRows = (data ?? []) as MathBenchmarkRpcRow[];
+        setBenchmarkData(benchmarkRows[0] ?? null);
+      }
+
+      setBenchmarkLoading(false);
+    }
+
+    void loadBenchmark();
+
+    return () => {
+      mounted = false;
+    };
+  }, [benchmarkDifficulty]);
+
+  const studentBenchmarkStats = useMemo(() => {
+    if (benchmarkDifficulty === null) return null;
+
+    const recentRowsAtDifficulty = [...rows]
+      .filter((row) => row.difficulty === benchmarkDifficulty)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+      .slice(0, 10);
+
+    if (!recentRowsAtDifficulty.length) return null;
+
+    const totalQuestions = recentRowsAtDifficulty.reduce(
+      (sum, row) => sum + row.total_questions,
+      0,
+    );
+
+    const totalCorrect = recentRowsAtDifficulty.reduce(
+      (sum, row) => sum + row.correct_answers,
+      0,
+    );
+
+    const accuracy =
+      totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
+
+    return {
+      attempts: recentRowsAtDifficulty.length,
+      accuracy,
+    };
+  }, [rows, benchmarkDifficulty]);
+
+  const benchmarkDifficultyLabel = getLevelLabel(benchmarkDifficulty);
 
   const overallStats = useMemo(() => {
     const attemptsCompleted = filteredRows.length;
@@ -1243,6 +1367,80 @@ export default function MathProgressPage() {
           />
         </div>
 
+        <div style={{ marginTop: "20px" }}>
+          <SectionCard
+            title="How am I doing?"
+            subtitle={
+              benchmarkDifficulty === null
+                ? "Your Maths benchmark will appear here once there is a result with a difficulty level."
+                : `This compares your recent ${benchmarkDifficultyLabel} Maths work with anonymous YanBo attempts at the same difficulty level.`
+            }
+          >
+            {benchmarkDifficulty === null ? (
+              <div style={emptyStateStyle}>
+                Your Maths benchmark will appear here once there is a result
+                with a difficulty level.
+              </div>
+            ) : benchmarkLoading ? (
+              <div style={emptyStateStyle}>Loading benchmark...</div>
+            ) : !studentBenchmarkStats ? (
+              <div style={emptyStateStyle}>
+                Your Maths benchmark will appear here once there is a recent
+                result at this difficulty level.
+              </div>
+            ) : !benchmarkData ? (
+              <div style={emptyStateStyle}>
+                We are still collecting enough data for this benchmark.
+              </div>
+            ) : (
+              <div>
+                <div style={benchmarkMetricGridStyle}>
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>
+                      Your recent {benchmarkDifficultyLabel} Maths accuracy
+                    </div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {studentBenchmarkStats.accuracy.toFixed(1)}%
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      Last {studentBenchmarkStats.attempts} attempt
+                      {studentBenchmarkStats.attempts === 1 ? "" : "s"} at this
+                      difficulty
+                    </div>
+                  </div>
+
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>
+                      Typical {benchmarkDifficultyLabel} Maths range
+                    </div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {Number(benchmarkData.typical_low).toFixed(0)}–
+                      {Number(benchmarkData.typical_high).toFixed(0)}%
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      Anonymous YanBo benchmark
+                    </div>
+                  </div>
+
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>Strong target</div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {STRONG_TARGET_PERCENT}%+
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      YanBo recommended target
+                    </div>
+                  </div>
+                </div>
+
+                <div style={benchmarkMessageStyle}>
+                  {getBenchmarkStatus(studentBenchmarkStats.accuracy)}
+                </div>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
         <div style={responsiveTwoColumnGridStyle}>
           <SectionCard
             title="Performance Trend"
@@ -1601,6 +1799,54 @@ export default function MathProgressPage() {
   );
 
 }
+
+const benchmarkMetricGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "14px",
+};
+
+const benchmarkMetricStyle: React.CSSProperties = {
+  background: "#f8fafc",
+  border: "1px solid #dcfce7",
+  borderRadius: "20px",
+  padding: "18px",
+  minWidth: 0,
+};
+
+const benchmarkMetricLabelStyle: React.CSSProperties = {
+  color: "#475569",
+  fontSize: "14px",
+  fontWeight: 700,
+  lineHeight: 1.4,
+  marginBottom: "8px",
+};
+
+const benchmarkMetricValueStyle: React.CSSProperties = {
+  color: "#0f172a",
+  fontSize: "32px",
+  fontWeight: 900,
+  lineHeight: 1.1,
+};
+
+const benchmarkMetricHintStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: "13px",
+  fontWeight: 600,
+  lineHeight: 1.4,
+  marginTop: "8px",
+};
+
+const benchmarkMessageStyle: React.CSSProperties = {
+  marginTop: "16px",
+  padding: "14px 16px",
+  borderRadius: "18px",
+  background: "#ecfdf5",
+  border: "1px solid #bbf7d0",
+  color: "#166534",
+  fontWeight: 800,
+  lineHeight: 1.5,
+};
 
 const responsiveTwoColumnGridStyle: React.CSSProperties = {
   display: "grid",
