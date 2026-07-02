@@ -79,8 +79,6 @@ type MathQuestionLookupRow = {
 
 type MathBenchmarkRpcRow = {
   difficulty: number;
-  typical_low: number;
-  typical_high: number;
   average_success: number;
 };
 
@@ -226,11 +224,11 @@ function getLevelLabel(level: number | null | undefined) {
 
 function getBenchmarkStatus(accuracy: number) {
   if (accuracy >= 90) {
-    return "Excellent — you are doing really well at this level.";
+    return "Excellent work — keep challenging yourself.";
   }
 
   if (accuracy >= STRONG_TARGET_PERCENT) {
-    return "Strong progress — you are above the strong target for this level.";
+    return "Strong progress — keep going.";
   }
 
   if (accuracy >= 65) {
@@ -241,7 +239,7 @@ function getBenchmarkStatus(accuracy: number) {
     return "You are building confidence. A little more practice will help.";
   }
 
-  return "This level needs more practice. Keep going — every attempt helps.";
+  return "This topic needs more practice. Keep going step by step.";
 }
 
 function formatDateTime(value: string) {
@@ -1411,14 +1409,13 @@ export default function MathProgressPage() {
 
                   <div style={benchmarkMetricStyle}>
                     <div style={benchmarkMetricLabelStyle}>
-                      Typical {benchmarkDifficultyLabel} Maths range
+                      YanBo average for {benchmarkDifficultyLabel} Maths
                     </div>
                     <div style={benchmarkMetricValueStyle}>
-                      {Number(benchmarkData.typical_low).toFixed(0)}–
-                      {Number(benchmarkData.typical_high).toFixed(0)}%
+                      {Number(benchmarkData.average_success).toFixed(1)}%
                     </div>
                     <div style={benchmarkMetricHintStyle}>
-                      Anonymous YanBo benchmark
+                      Anonymous average at this difficulty
                     </div>
                   </div>
 
