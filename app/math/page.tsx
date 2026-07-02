@@ -3,11 +3,7 @@
 import type { CSSProperties } from "react"
 import { useRouter } from "next/navigation"
 import Header from "../../components/Header"
-
-const hoverCardStyle: CSSProperties = {
-  transition: "all 0.25s ease",
-  cursor: "pointer",
-}
+import PublicLandingCard from "../../components/cards/PublicLandingCard"
 
 export default function MathPage() {
   const router = useRouter()
@@ -103,49 +99,19 @@ export default function MathPage() {
 
         <div style={styles.grid}>
           {topics.map((topic) => (
-            <div
+            <PublicLandingCard
               key={topic.title}
-              style={{ ...styles.card, ...hoverCardStyle }}
-              onClick={() => openCategory(topic.path)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-6px)"
-                e.currentTarget.style.boxShadow =
-                  "0 20px 40px rgba(0,0,0,0.12)"
+              title={topic.title}
+              description={topic.description}
+              buttonText={topic.buttonText}
+              icon={topic.icon}
+              iconStyle={{
+                background: topic.iconBackground,
+                color: topic.iconColor,
+                letterSpacing: "1px",
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)"
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-              }}
-            >
-              <div
-                style={{
-                  ...styles.icon,
-                  background: topic.iconBackground,
-                  color: topic.iconColor,
-                }}
-              >
-                {topic.icon}
-              </div>
-
-              <h2 style={styles.cardTitle}>{topic.title}</h2>
-              <p style={styles.cardText}>{topic.description}</p>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  openCategory(topic.path)
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#bbf7d0"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#d4f5d0"
-                }}
-                style={styles.button}
-              >
-                {topic.buttonText}
-              </button>
-            </div>
+              onOpen={() => openCategory(topic.path)}
+            />
           ))}
         </div>
       </div>
@@ -179,51 +145,5 @@ const styles: { [key: string]: CSSProperties } = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "20px",
-  },
-  card: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "26px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  icon: {
-    width: "76px",
-    height: "76px",
-    borderRadius: "22px",
-    marginBottom: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "30px",
-    fontWeight: 900,
-    letterSpacing: "1px",
-    boxShadow: "inset 0 -4px 0 rgba(0,0,0,0.08)",
-  },
-  cardTitle: {
-    fontSize: "24px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
-  cardText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-    marginBottom: "18px",
-    minHeight: "96px",
-  },
-  button: {
-    padding: "12px 18px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
   },
 }
