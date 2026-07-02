@@ -37,6 +37,22 @@ type TimeFilter = "all" | "7d" | "30d" | "90d"
 type CategoryFilter = "all" | MainCategory
 type AttemptTypeFilter = "all" | "online" | "downloaded"
 
+const TIME_FILTER_DAYS: Record<Exclude<TimeFilter, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+}
+
+function formatLabel(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—"
 
@@ -126,13 +142,7 @@ function formatTopicKey(topicKey: string, mainCategory?: MainCategory) {
     }
   }
 
-  return topicKey
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+  return formatLabel(topicKey)
 }
 
 function formatTopics(config: AttemptConfig) {
@@ -198,13 +208,7 @@ function formatAttemptStatus(value: string | null | undefined) {
   if (normalized === "started") return "Started"
   if (!value) return "—"
 
-  return value
-    .replaceAll("_", " ")
-    .replaceAll("-", " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+  return formatLabel(value)
 }
 
 function getAttemptScorePercent(attempt: CustomTestAttemptRow) {
@@ -279,10 +283,8 @@ function matchesTimeFilter(
   if (Number.isNaN(attemptDate.getTime())) return false
 
   const now = new Date()
-  const days = timeFilter === "7d" ? 7 : timeFilter === "30d" ? 30 : 90
-
   const fromDate = new Date()
-  fromDate.setDate(now.getDate() - days)
+  fromDate.setDate(now.getDate() - TIME_FILTER_DAYS[timeFilter])
 
   return attemptDate >= fromDate
 }
