@@ -1,7 +1,8 @@
 // app/(protected)/review/nvr/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import type { CSSProperties, ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import { NVRIcon } from "../../../../components/icons/PortalIcons"
@@ -119,18 +120,17 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
 const CATEGORY_COLORS = ["#22c55e", "#16a34a", "#15803d", "#0f766e"]
 const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
 
+const TIME_FILTER_DAYS: Record<Exclude<TimeFilter, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+}
+
 function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
-
-  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  }
-
-  now.setDate(now.getDate() - daysMap[filter])
+  now.setDate(now.getDate() - TIME_FILTER_DAYS[filter])
   return now
 }
 
@@ -199,11 +199,6 @@ function formatDateTime(value: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   })
-}
-
-function truncateText(text: string | null | undefined, maxLength = 160) {
-  if (!text) return "—"
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
 }
 
 function cleanText(value: string | number | null | undefined) {
@@ -366,7 +361,7 @@ function SectionCard({
 }: {
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <section
@@ -509,9 +504,9 @@ function AnswerBox({
 function MeasuredChartContainer({
   children,
 }: {
-  children: (dimensions: { width: number; height: number }) => React.ReactNode
+  children: (dimensions: { width: number; height: number }) => ReactNode
 }) {
-  const wrapperRef = React.useRef<HTMLDivElement | null>(null)
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
@@ -1559,7 +1554,7 @@ export default function NVRReviewPage() {
   )
 }
 
-const responsiveTwoColumnGridStyle: React.CSSProperties = {
+const responsiveTwoColumnGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
   gap: "20px",
@@ -1570,7 +1565,7 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const chartWrapperStyle: React.CSSProperties = {
+const chartWrapperStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100%",
   height: "clamp(260px, 38vw, 340px)",
@@ -1579,7 +1574,7 @@ const chartWrapperStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const selectStyle: React.CSSProperties = {
+const selectStyle: CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
   border: "1px solid #bbf7d0",
@@ -1594,7 +1589,7 @@ const selectStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-const actionButtonStyle: React.CSSProperties = {
+const actionButtonStyle: CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
@@ -1609,7 +1604,7 @@ const actionButtonStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-const removeButtonStyle: React.CSSProperties = {
+const removeButtonStyle: CSSProperties = {
   padding: "9px 12px",
   borderRadius: "12px",
   border: "1px solid #fecaca",
@@ -1621,7 +1616,7 @@ const removeButtonStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 }
 
-const emptyStateStyle: React.CSSProperties = {
+const emptyStateStyle: CSSProperties = {
   height: "100%",
   minHeight: "180px",
   display: "flex",
