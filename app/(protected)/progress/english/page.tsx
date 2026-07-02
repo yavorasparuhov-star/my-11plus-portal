@@ -76,6 +76,11 @@ type CustomEnglishAttemptItemRow = {
   question_snapshot: unknown
 }
 
+type EnglishBenchmarkRpcRow = {
+  difficulty: number
+  average_success: number
+}
+
 type EnglishProgressCategory =
   | "vocabulary"
   | "spelling"
@@ -113,6 +118,9 @@ type CategoryFilter =
   | "comma"
   | "direct_speech_punctuation"
   | "sentence_punctuation"
+
+const MIN_BENCHMARK_ATTEMPTS = 30
+const STRONG_TARGET_PERCENT = 80
 
 const timeOptions: { value: TimeFilter; label: string }[] = [
   { value: "7d", label: "Last 7 days" },
@@ -157,6 +165,25 @@ function getCutoffDate(filter: TimeFilter) {
   return now
 }
 
+function getBenchmarkDays(filter: TimeFilter) {
+  if (filter === "all") return null
+
+  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+  }
+
+  return daysMap[filter]
+}
+
+function getBenchmarkPeriodLabel(filter: TimeFilter) {
+  if (filter === "7d") return "last 7 days"
+  if (filter === "30d") return "last 30 days"
+  if (filter === "90d") return "last 90 days"
+  return "all time"
+}
+
 function getLevelLabel(level: number | null | undefined) {
   if (level === 1) return "Easy"
   if (level === 2) return "Medium"
@@ -176,6 +203,26 @@ function getCategoryLabel(category: string) {
   if (category === "direct_speech_punctuation") return "Direct Speech Punctuation"
   if (category === "sentence_punctuation") return "Sentence Punctuation"
   return "Not set"
+}
+
+function getBenchmarkStatus(accuracy: number) {
+  if (accuracy >= 90) {
+    return "Excellent work — keep challenging yourself."
+  }
+
+  if (accuracy >= STRONG_TARGET_PERCENT) {
+    return "Strong progress — keep going."
+  }
+
+  if (accuracy >= 65) {
+    return "You are on track. Keep practising to reach the strong target."
+  }
+
+  if (accuracy >= 50) {
+    return "You are building confidence. A little more practice will help."
+  }
+
+  return "This area needs more practice. Keep going step by step."
 }
 
 function formatDateTime(value: string) {
@@ -472,23 +519,24 @@ function StatCard({
       style={{
         background: "linear-gradient(180deg, #ffffff 0%, #f7fff8 100%)",
         border: "1px solid #d9f99d",
-        borderRadius: "24px",
-        padding: "22px",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        minHeight: "132px",
+        borderRadius: "20px",
+        padding: "16px 18px",
+        boxShadow: "0 8px 22px rgba(15, 23, 42, 0.05)",
+        minHeight: "104px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         minWidth: 0,
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <div
         style={{
-          fontSize: "14px",
+          fontSize: "13px",
           color: "#64748b",
-          fontWeight: 600,
-          marginBottom: "10px",
+          fontWeight: 700,
+          marginBottom: "8px",
         }}
       >
         {title}
@@ -496,8 +544,8 @@ function StatCard({
 
       <div
         style={{
-          fontSize: value.length > 18 ? "22px" : "34px",
-          fontWeight: 800,
+          fontSize: value.length > 18 ? "19px" : "28px",
+          fontWeight: 850,
           color: "#0f172a",
           lineHeight: 1.15,
           overflowWrap: "break-word",
@@ -635,6 +683,9 @@ export default function EnglishProgressPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all")
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
+  const [benchmarkData, setBenchmarkData] =
+    useState<EnglishBenchmarkRpcRow | null>(null)
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -821,6 +872,109 @@ export default function EnglishProgressPage() {
       return matchesTime && matchesDifficulty && matchesCategory
     })
   }, [rows, timeFilter, difficultyFilter, categoryFilter])
+
+  const benchmarkPeriodDays = getBenchmarkDays(timeFilter)
+  const benchmarkPeriodLabel = getBenchmarkPeriodLabel(timeFilter)
+
+  const benchmarkSourceRows = useMemo(() => {
+    const cutoff = getCutoffDate(timeFilter)
+
+    return rows.filter((row) =>
+      cutoff ? new Date(row.created_at) >= cutoff : true
+    )
+  }, [rows, timeFilter])
+
+  const benchmarkDifficulty = useMemo(() => {
+    if (difficultyFilter !== "all") {
+      return Number(difficultyFilter)
+    }
+
+    const latestRowWithDifficulty = [...benchmarkSourceRows]
+      .filter((row) => typeof row.difficulty === "number")
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0]
+
+    return typeof latestRowWithDifficulty?.difficulty === "number"
+      ? latestRowWithDifficulty.difficulty
+      : null
+  }, [benchmarkSourceRows, difficultyFilter])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadBenchmark() {
+      if (benchmarkDifficulty === null) {
+        setBenchmarkData(null)
+        setBenchmarkLoading(false)
+        return
+      }
+
+      setBenchmarkLoading(true)
+
+      const { data, error } = await supabase.rpc(
+        "get_english_difficulty_benchmark",
+        {
+          p_difficulty: benchmarkDifficulty,
+          p_min_attempts: MIN_BENCHMARK_ATTEMPTS,
+          p_days: benchmarkPeriodDays,
+        }
+      )
+
+      if (!mounted) return
+
+      if (error) {
+        console.error("Error loading English benchmark:", error)
+        setBenchmarkData(null)
+      } else {
+        const benchmarkRows = (data ?? []) as EnglishBenchmarkRpcRow[]
+        setBenchmarkData(benchmarkRows[0] ?? null)
+      }
+
+      setBenchmarkLoading(false)
+    }
+
+    void loadBenchmark()
+
+    return () => {
+      mounted = false
+    }
+  }, [benchmarkDifficulty, benchmarkPeriodDays])
+
+  const studentBenchmarkStats = useMemo(() => {
+    if (benchmarkDifficulty === null) return null
+
+    const recentRowsAtDifficulty = [...benchmarkSourceRows]
+      .filter((row) => row.difficulty === benchmarkDifficulty)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, 10)
+
+    if (!recentRowsAtDifficulty.length) return null
+
+    const totalQuestions = recentRowsAtDifficulty.reduce(
+      (sum, row) => sum + row.total_questions,
+      0
+    )
+
+    const totalCorrect = recentRowsAtDifficulty.reduce(
+      (sum, row) => sum + row.correct_answers,
+      0
+    )
+
+    const accuracy =
+      totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0
+
+    return {
+      attempts: recentRowsAtDifficulty.length,
+      accuracy,
+    }
+  }, [benchmarkSourceRows, benchmarkDifficulty])
+
+  const benchmarkDifficultyLabel = getLevelLabel(benchmarkDifficulty)
 
   const overallStats = useMemo(() => {
     const testsCompleted = filteredRows.length
@@ -1146,9 +1300,11 @@ export default function EnglishProgressPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "18px",
-            marginBottom: "24px",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 175px), 1fr))",
+            gap: "12px",
+            marginBottom: "18px",
+            minWidth: 0,
           }}
         >
           <StatCard
@@ -1193,6 +1349,78 @@ export default function EnglishProgressPage() {
                 : undefined
             }
           />
+        </div>
+
+        <div style={{ marginTop: "16px" }}>
+          <SectionCard
+            title="How am I doing?"
+            subtitle={
+              benchmarkDifficulty === null
+                ? "Your English benchmark will appear here once there is a result with a difficulty level in the selected time period."
+                : `This compares your recent ${benchmarkDifficultyLabel} English work from ${benchmarkPeriodLabel} with anonymous YanBo attempts at the same difficulty level and time period.`
+            }
+          >
+            {benchmarkDifficulty === null ? (
+              <div style={emptyStateStyle}>
+                Your English benchmark will appear here once there is a result
+                with a difficulty level in the selected time period.
+              </div>
+            ) : benchmarkLoading ? (
+              <div style={emptyStateStyle}>Loading benchmark...</div>
+            ) : !studentBenchmarkStats ? (
+              <div style={emptyStateStyle}>
+                Your English benchmark will appear here once there is a recent
+                result at this difficulty level in the selected time period.
+              </div>
+            ) : !benchmarkData ? (
+              <div style={emptyStateStyle}>
+                We are still collecting enough data for this benchmark.
+              </div>
+            ) : (
+              <div>
+                <div style={benchmarkMetricGridStyle}>
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>
+                      Your recent {benchmarkDifficultyLabel} English accuracy
+                    </div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {studentBenchmarkStats.accuracy.toFixed(1)}%
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      Last {studentBenchmarkStats.attempts} attempt
+                      {studentBenchmarkStats.attempts === 1 ? "" : "s"} in {benchmarkPeriodLabel}
+                    </div>
+                  </div>
+
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>
+                      YanBo average for {benchmarkDifficultyLabel} English
+                    </div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {Number(benchmarkData.average_success).toFixed(1)}%
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      Anonymous average in {benchmarkPeriodLabel}
+                    </div>
+                  </div>
+
+                  <div style={benchmarkMetricStyle}>
+                    <div style={benchmarkMetricLabelStyle}>Strong target</div>
+                    <div style={benchmarkMetricValueStyle}>
+                      {STRONG_TARGET_PERCENT}%+
+                    </div>
+                    <div style={benchmarkMetricHintStyle}>
+                      YanBo recommended target
+                    </div>
+                  </div>
+                </div>
+
+                <div style={benchmarkMessageStyle}>
+                  {getBenchmarkStatus(studentBenchmarkStats.accuracy)}
+                </div>
+              </div>
+            )}
+          </SectionCard>
         </div>
 
         <div style={responsiveTwoColumnGridStyle}>
@@ -1538,11 +1766,63 @@ export default function EnglishProgressPage() {
   )
 }
 
+const benchmarkMetricGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "12px",
+}
+
+const benchmarkMetricStyle: React.CSSProperties = {
+  background: "#f8fafc",
+  border: "1px solid #dcfce7",
+  borderRadius: "18px",
+  padding: "14px 16px",
+  minWidth: 0,
+}
+
+const benchmarkMetricLabelStyle: React.CSSProperties = {
+  color: "#475569",
+  fontSize: "13px",
+  fontWeight: 700,
+  lineHeight: 1.35,
+  marginBottom: "6px",
+}
+
+const benchmarkMetricValueStyle: React.CSSProperties = {
+  color: "#0f172a",
+  fontSize: "28px",
+  fontWeight: 900,
+  lineHeight: 1.05,
+}
+
+const benchmarkMetricHintStyle: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: "12px",
+  fontWeight: 600,
+  lineHeight: 1.35,
+  marginTop: "6px",
+}
+
+const benchmarkMessageStyle: React.CSSProperties = {
+  marginTop: "12px",
+  padding: "12px 14px",
+  borderRadius: "16px",
+  background: "#ecfdf5",
+  border: "1px solid #bbf7d0",
+  color: "#166534",
+  fontWeight: 800,
+  lineHeight: 1.5,
+}
+
 const responsiveTwoColumnGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
   gap: "20px",
   marginBottom: "20px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
 }
 
 const selectStyle: React.CSSProperties = {
@@ -1553,8 +1833,11 @@ const selectStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   color: "#0f172a",
-  minWidth: "180px",
+  width: "100%",
+  maxWidth: "260px",
+  flex: "1 1 220px",
   boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  boxSizing: "border-box",
 }
 
 const emptyStateStyle: React.CSSProperties = {
@@ -1574,6 +1857,7 @@ const thStyle: React.CSSProperties = {
   fontSize: "13px",
   color: "#64748b",
   fontWeight: 700,
+  whiteSpace: "nowrap",
 }
 
 const tdStyle: React.CSSProperties = {
@@ -1581,4 +1865,5 @@ const tdStyle: React.CSSProperties = {
   fontSize: "14px",
   color: "#0f172a",
   fontWeight: 500,
+  whiteSpace: "nowrap",
 }
