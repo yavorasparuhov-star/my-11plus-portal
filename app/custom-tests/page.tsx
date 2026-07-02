@@ -104,39 +104,71 @@ export default function PublicCustomTestsPage() {
             }}
           >
             <div style={{ flex: "1 1 640px" }}>
+              {(loadingPlan || !canUseCustomTests) && (
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 14px",
+                    borderRadius: 999,
+                    background: "#ecfccb",
+                    color: "#365314",
+                    border: "1px solid #d9f99d",
+                    fontWeight: 800,
+                    fontSize: "0.9rem",
+                    marginBottom: 16,
+                  }}
+                >
+                  {loadingPlan
+                    ? "Checking membership..."
+                    : isGuest
+                      ? "Sign up or log in to build your own tests"
+                      : "Build a Test is a member feature"}
+                </div>
+              )}
+
               <div
                 style={{
-                  display: "inline-block",
-                  padding: "8px 14px",
-                  borderRadius: 999,
-                  background: "#ecfccb",
-                  color: "#365314",
-                  border: "1px solid #d9f99d",
-                  fontWeight: 800,
-                  fontSize: "0.9rem",
-                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  flexWrap: "wrap",
+                  marginBottom: 14,
                 }}
               >
-{loadingPlan
-  ? "Checking membership..."
-  : canUseCustomTests
-    ? "Build a Test unlocked"
-    : isGuest
-      ? "Sign up or log in to build your own tests"
-      : "Build a Test is a member feature"}
-              </div>
+                <h1
+                  style={{
+                    fontSize: "clamp(2rem, 5vw, 3rem)",
+                    lineHeight: 1.1,
+                    fontWeight: 900,
+                    color: "#064e3b",
+                    margin: 0,
+                  }}
+                >
+                  Build a Test
+                </h1>
 
-              <h1
-                style={{
-                  fontSize: "clamp(2rem, 5vw, 3rem)",
-                  lineHeight: 1.1,
-                  fontWeight: 900,
-                  color: "#064e3b",
-                  margin: "0 0 14px",
-                }}
-              >
-                Build a Test
-              </h1>
+                {canUseCustomTests && (
+                  <Link
+                    href="/custom-tests/history"
+                    style={{
+                      display: "inline-block",
+                      textAlign: "center",
+                      padding: "12px 18px",
+                      borderRadius: 12,
+                      fontWeight: 800,
+                      textDecoration: "none",
+                      background: "#ffffff",
+                      color: "#14532d",
+                      border: "1px solid #bbf7d0",
+                      boxShadow: "0 8px 18px rgba(0, 0, 0, 0.04)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    View History
+                  </Link>
+                )}
+              </div>
 
               <p
                 style={{
@@ -190,36 +222,18 @@ results to guide the next step.
               )}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-                alignItems: "center",
-              }}
-            >
-              {canUseCustomTests ? (
-                <Link
-                  href="/custom-tests/history"
-                  style={{
-                    display: "inline-block",
-                    textAlign: "center",
-                    padding: "12px 18px",
-                    borderRadius: 12,
-                    fontWeight: 800,
-                    textDecoration: "none",
-                    background: "#ffffff",
-                    color: "#14532d",
-                    border: "1px solid #bbf7d0",
-                    boxShadow: "0 8px 18px rgba(0, 0, 0, 0.04)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  View History
-                </Link>
-              ) : isGuest ? (
-                <>
+            {!canUseCustomTests && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                }}
+              >
+                {isGuest ? (
+                  <>
                   <Link
                     href="/signup"
                     style={{
@@ -277,8 +291,9 @@ results to guide the next step.
                 >
                   Upgrade Membership
                 </Link>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </section>
 
           <section style={{ marginBottom: 38 }}>
@@ -380,57 +395,59 @@ real exam.
                     style={{
                       background: "#ffffff",
                       borderRadius: 22,
-                      padding: 22,
+                      padding: 20,
                       border: "1px solid #e5e7eb",
                       boxShadow: "0 10px 26px rgba(0, 0, 0, 0.06)",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
-                      minHeight: 285,
+                      minHeight: 250,
                     }}
                   >
                     <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: 10,
-                          marginBottom: 16,
-                        }}
-                      >
-                        <span
+                      {(!isEnabled || (!canUseCustomTests && isEnabled)) && (
+                        <div
                           style={{
-                            display: "inline-block",
-                            padding: "6px 10px",
-                            borderRadius: 999,
-                            background: "#ecfdf5",
-                            color: "#047857",
-                            fontWeight: 800,
-                            fontSize: "0.8rem",
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
+                            gap: 10,
+                            marginBottom: 12,
                           }}
                         >
-                          {isEnabled
-                            ? `${category.topics.length} topics`
-                            : "Coming soon"}
-                        </span>
+                          {!isEnabled && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "6px 10px",
+                                borderRadius: 999,
+                                background: "#ecfdf5",
+                                color: "#047857",
+                                fontWeight: 800,
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              Coming soon
+                            </span>
+                          )}
 
-                        {!canUseCustomTests && isEnabled && (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "6px 10px",
-                              borderRadius: 999,
-                              background: "#fff7ed",
-                              color: "#9a3412",
-                              fontWeight: 800,
-                              fontSize: "0.8rem",
-                            }}
-                          >
-                            Locked
-                          </span>
-                        )}
-                      </div>
+                          {!canUseCustomTests && isEnabled && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "6px 10px",
+                                borderRadius: 999,
+                                background: "#fff7ed",
+                                color: "#9a3412",
+                                fontWeight: 800,
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              Locked
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                  <h3
   style={{
@@ -450,7 +467,7 @@ real exam.
                           fontSize: "0.96rem",
                           color: "#4b5563",
                           lineHeight: 1.65,
-                          margin: "0 0 22px",
+                          margin: "0 0 18px",
                         }}
                       >
                         {category.key === "english" &&
@@ -565,25 +582,48 @@ function InfoCard({
       style={{
         background: "#ffffff",
         borderRadius: 20,
-        padding: 22,
+        padding: 20,
         border: "1px solid #e5e7eb",
         boxShadow: "0 10px 24px rgba(0, 0, 0, 0.05)",
       }}
     >
-      <div style={{ fontSize: "1.8rem", marginBottom: 12 }}>{icon}</div>
-
-      <h3
+      <div
         style={{
-          fontSize: "1.15rem",
-          fontWeight: 800,
-          color: "#064e3b",
-          margin: "0 0 8px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 10,
         }}
       >
-        {title}
-      </h3>
+        <div
+          style={{
+            fontSize: "1.55rem",
+            width: 38,
+            height: 38,
+            borderRadius: 14,
+            background: "#f8fafc",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </div>
 
-      <p style={{ margin: 0, color: "#4b5563", lineHeight: 1.65 }}>{text}</p>
+        <h3
+          style={{
+            fontSize: "1.15rem",
+            fontWeight: 800,
+            color: "#064e3b",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h3>
+      </div>
+
+      <p style={{ margin: 0, color: "#4b5563", lineHeight: 1.6 }}>{text}</p>
     </div>
   )
 }

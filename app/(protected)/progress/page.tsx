@@ -15,28 +15,28 @@ export default function ProgressPage() {
     {
       title: "English Progress",
       shortTitle: "English",
-      icon: <EnglishIcon size={46} />,
+      icon: <EnglishIcon size={38} />,
       text: "Track your latest English scores across vocabulary, spelling, grammar, punctuation and comprehension.",
       href: "/progress/english",
     },
     {
       title: "Maths Progress",
       shortTitle: "Maths",
-      icon: <MathsIcon size={46} />,
+      icon: <MathsIcon size={38} />,
       text: "Review your Maths performance across number, operations, fractions, shape, measurement and reasoning.",
       href: "/progress/math",
     },
     {
       title: "VR Progress",
       shortTitle: "VR",
-      icon: <VRIcon size={46} />,
+      icon: <VRIcon size={38} />,
       text: "Follow your verbal reasoning progress across word relationships, code logic and sequence patterns.",
       href: "/progress/vr",
     },
     {
       title: "NVR Progress",
       shortTitle: "NVR",
-      icon: <NVRIcon size={46} />,
+      icon: <NVRIcon size={38} />,
       text: "Monitor your non-verbal reasoning progress across visual patterns, rotations, reflections and spatial logic.",
       href: "/progress/nvr",
     },
@@ -88,9 +88,11 @@ export default function ProgressPage() {
                   "0 10px 25px rgba(0,0,0,0.08)"
               }}
             >
-              <div style={styles.iconWrap}>{subject.icon}</div>
+              <div style={styles.cardHeader}>
+                <div style={styles.iconWrap}>{subject.icon}</div>
 
-              <h3 style={styles.cardTitle}>{subject.shortTitle}</h3>
+                <h3 style={styles.cardTitle}>{subject.shortTitle}</h3>
+              </div>
 
               <p style={styles.cardText}>{subject.text}</p>
 
@@ -111,11 +113,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   hero: {
-    marginBottom: "34px",
+    marginBottom: "30px",
     background:
       "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 45%, #ffffff 100%)",
     borderRadius: "22px",
-    padding: "24px 28px",
+    padding: "22px 26px",
     boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
     border: "1px solid #d1fae5",
   },
@@ -163,12 +165,12 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   sectionHeader: {
     textAlign: "center",
-    marginBottom: "26px",
+    marginBottom: "24px",
   },
 
   sectionTitle: {
     fontSize: "32px",
-    margin: "0 0 10px",
+    margin: "0 0 8px",
     color: "#111827",
     fontWeight: 800,
   },
@@ -178,66 +180,75 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "#4b5563",
     maxWidth: "760px",
     margin: "0 auto",
-    lineHeight: 1.7,
+    lineHeight: 1.6,
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: "20px",
+    gap: "18px",
   },
 
   card: {
     background: "white",
     borderRadius: "20px",
-    padding: "26px",
+    padding: "22px",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
+    textAlign: "left",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
+    alignItems: "stretch",
     border: "1px solid #e5e7eb",
     textDecoration: "none",
     color: "inherit",
     transition: "all 0.25s ease",
   },
 
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    marginBottom: "12px",
+  },
+
   iconWrap: {
-    width: "70px",
-    height: "70px",
-    borderRadius: "22px",
+    width: "54px",
+    height: "54px",
+    borderRadius: "18px",
     background: "#f8fafc",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: "16px",
     boxShadow: "inset 0 0 0 1px #e5e7eb",
+    flexShrink: 0,
   },
 
   cardTitle: {
     fontSize: "24px",
-    margin: "0 0 10px",
+    margin: 0,
     color: "#111827",
     fontWeight: 800,
   },
 
   cardText: {
-    fontSize: "16px",
+    fontSize: "15.5px",
     color: "#4b5563",
-    lineHeight: 1.6,
-    margin: "0 0 20px",
-    minHeight: "104px",
+    lineHeight: 1.55,
+    margin: "0 0 18px",
+    minHeight: "76px",
   },
 
   cardButton: {
     marginTop: "auto",
-    padding: "12px 18px",
+    padding: "11px 16px",
     borderRadius: "12px",
     background: "#d4f5d0",
     color: "#065f46",
     fontWeight: 800,
-    fontSize: "16px",
-    minWidth: "150px",
+    fontSize: "15.5px",
+    minWidth: "145px",
     display: "inline-block",
+    textAlign: "center",
+    alignSelf: "flex-start",
   },
 }

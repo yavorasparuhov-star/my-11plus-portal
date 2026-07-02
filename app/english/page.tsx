@@ -1,43 +1,43 @@
-"use client"
+"use client";
 
-import type { CSSProperties } from "react"
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import Header from "../../components/Header"
-import { useRouter } from "next/navigation"
-import { supabase } from "../../lib/supabaseClient"
+import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Header from "../../components/Header";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabaseClient";
 
 const hoverCardStyle: CSSProperties = {
   transition: "all 0.25s ease",
   cursor: "pointer",
-}
+};
 
 export default function EnglishPage() {
-  const router = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function checkUser() {
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
       if (mounted) {
-        setIsLoggedIn(!!user)
+        setIsLoggedIn(!!user);
       }
     }
 
-    checkUser()
+    checkUser();
 
     return () => {
-      mounted = false
-    }
-  }, [])
+      mounted = false;
+    };
+  }, []);
 
   function openCategory(path: string) {
-    router.push(path)
+    router.push(path);
   }
 
   return (
@@ -48,8 +48,8 @@ export default function EnglishPage() {
         <div style={styles.hero}>
           <h1 style={styles.title}>English</h1>
           <p style={styles.subtitle}>
-            Practise core English skills to build confidence for 11+
-            entrance exams.
+            Practise core English skills to build confidence for 11+ entrance
+            exams.
           </p>
         </div>
 
@@ -58,16 +58,14 @@ export default function EnglishPage() {
             style={{ ...styles.card, ...hoverCardStyle }}
             onClick={() => openCategory("/english/vocabulary")}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              e.currentTarget.style.transform = "translateY(-6px)";
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
             }}
           >
-            <div style={styles.icon}>📘</div>
-
             <h2 style={styles.cardTitle}>Vocabulary</h2>
 
             <p style={styles.cardText}>
@@ -97,14 +95,14 @@ export default function EnglishPage() {
 
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/vocabulary")
+                e.stopPropagation();
+                openCategory("/english/vocabulary");
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.background = "#bbf7d0";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.background = "#d4f5d0";
               }}
               style={styles.button}
             >
@@ -116,16 +114,14 @@ export default function EnglishPage() {
             style={{ ...styles.card, ...hoverCardStyle }}
             onClick={() => openCategory("/english/spelling")}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              e.currentTarget.style.transform = "translateY(-6px)";
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
             }}
           >
-            <div style={styles.icon}>✍️</div>
-
             <h2 style={styles.cardTitle}>Spelling</h2>
 
             <p style={styles.cardText}>
@@ -155,14 +151,14 @@ export default function EnglishPage() {
 
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/spelling")
+                e.stopPropagation();
+                openCategory("/english/spelling");
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.background = "#bbf7d0";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.background = "#d4f5d0";
               }}
               style={styles.button}
             >
@@ -174,16 +170,14 @@ export default function EnglishPage() {
             style={{ ...styles.card, ...hoverCardStyle }}
             onClick={() => openCategory("/english/comprehension")}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              e.currentTarget.style.transform = "translateY(-6px)";
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
             }}
           >
-            <div style={styles.icon}>📖</div>
-
             <h2 style={styles.cardTitle}>Comprehension</h2>
 
             <p style={styles.cardText}>
@@ -200,14 +194,14 @@ export default function EnglishPage() {
 
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/comprehension")
+                e.stopPropagation();
+                openCategory("/english/comprehension");
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.background = "#bbf7d0";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.background = "#d4f5d0";
               }}
               style={styles.button}
             >
@@ -219,16 +213,14 @@ export default function EnglishPage() {
             style={{ ...styles.card, ...hoverCardStyle }}
             onClick={() => openCategory("/english/grammar")}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              e.currentTarget.style.transform = "translateY(-6px)";
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
             }}
           >
-            <div style={styles.icon}>📝</div>
-
             <h2 style={styles.cardTitle}>Grammar</h2>
 
             <p style={styles.cardText}>
@@ -245,14 +237,14 @@ export default function EnglishPage() {
 
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/grammar")
+                e.stopPropagation();
+                openCategory("/english/grammar");
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.background = "#bbf7d0";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.background = "#d4f5d0";
               }}
               style={styles.button}
             >
@@ -264,16 +256,14 @@ export default function EnglishPage() {
             style={{ ...styles.card, ...hoverCardStyle }}
             onClick={() => openCategory("/english/punctuation")}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
+              e.currentTarget.style.transform = "translateY(-6px)";
+              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
             }}
           >
-            <div style={styles.icon}>✒️</div>
-
             <h2 style={styles.cardTitle}>Punctuation</h2>
 
             <p style={styles.cardText}>
@@ -290,14 +280,14 @@ export default function EnglishPage() {
 
             <button
               onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation")
+                e.stopPropagation();
+                openCategory("/english/punctuation");
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
+                e.currentTarget.style.background = "#bbf7d0";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
+                e.currentTarget.style.background = "#d4f5d0";
               }}
               style={styles.button}
             >
@@ -307,32 +297,32 @@ export default function EnglishPage() {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: "#f4fbf4",
-    padding: "40px 20px 60px",
+    padding: "28px 20px 48px",
   },
 
   hero: {
     maxWidth: "1000px",
-    margin: "0 auto 40px",
+    margin: "0 auto 28px",
     textAlign: "center",
   },
 
   title: {
-    fontSize: "48px",
+    fontSize: "42px",
     fontWeight: 800,
     color: "#064e3b",
-    margin: "0 0 14px",
+    margin: "0 0 10px",
   },
 
   subtitle: {
-    fontSize: "20px",
-    lineHeight: 1.6,
+    fontSize: "18px",
+    lineHeight: 1.5,
     color: "#374151",
     maxWidth: "820px",
     margin: "0 auto",
@@ -343,47 +333,42 @@ const styles: Record<string, CSSProperties> = {
     margin: "0 auto",
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "24px",
+    gap: "18px",
   },
 
   card: {
     background: "#ffffff",
-    borderRadius: "18px",
-    padding: "28px",
+    borderRadius: "16px",
+    padding: "20px",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     border: "1px solid #e5e7eb",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    minHeight: "360px",
-  },
-
-  icon: {
-    fontSize: "42px",
-    marginBottom: "14px",
+    minHeight: "270px",
   },
 
   cardTitle: {
-    fontSize: "28px",
+    fontSize: "24px",
     fontWeight: 800,
     color: "#111827",
-    margin: "0 0 12px",
+    margin: "0 0 8px",
   },
 
   cardText: {
     fontSize: "16px",
-    lineHeight: 1.6,
+    lineHeight: 1.5,
     color: "#4b5563",
-    margin: "0 0 20px",
+    margin: "0 0 14px",
   },
 
   infoBox: {
     background: "#f0fdf4",
     border: "1px solid #bbf7d0",
     borderRadius: "12px",
-    padding: "14px",
+    padding: "10px 12px",
     marginTop: "auto",
-    marginBottom: "20px",
+    marginBottom: "14px",
   },
 
   infoRow: {
@@ -392,7 +377,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: "12px",
     fontSize: "15px",
-    marginBottom: "6px",
+    marginBottom: "4px",
   },
 
   infoLabel: {
@@ -413,13 +398,13 @@ const styles: Record<string, CSSProperties> = {
 
   button: {
     width: "100%",
-    padding: "14px 18px",
+    padding: "11px 14px",
     borderRadius: "12px",
     border: "none",
     background: "#d4f5d0",
     color: "#065f46",
-    fontSize: "17px",
+    fontSize: "16px",
     fontWeight: 700,
     cursor: "pointer",
   },
-}
+};
