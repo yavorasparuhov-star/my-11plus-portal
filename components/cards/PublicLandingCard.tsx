@@ -10,7 +10,7 @@ type PublicLandingCardProps = {
   icon?: ReactNode
   iconStyle?: CSSProperties
   footer?: ReactNode
-  variant?: "plain" | "icon"
+  variant?: "plain" | "icon" | "centeredIcon"
 }
 
 const restShadow = "0 10px 25px rgba(0,0,0,0.08)"
@@ -45,7 +45,16 @@ export default function PublicLandingCard({
       onMouseEnter={liftCard}
       onMouseLeave={settleCard}
     >
-      {icon ? (
+      {icon && variant === "centeredIcon" ? (
+        <>
+          <div style={{ ...styles.icon, ...styles.centeredIcon, ...iconStyle }}>
+            {icon}
+          </div>
+          <h2 style={{ ...styles.cardTitle, ...styles.centeredIconCardTitle }}>
+            {title}
+          </h2>
+        </>
+      ) : icon ? (
         <div style={styles.cardHeader}>
           <div style={{ ...styles.icon, ...iconStyle }}>{icon}</div>
           <h2 style={{ ...styles.cardTitle, ...styles.iconCardTitle }}>
@@ -106,6 +115,13 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "left",
   },
 
+  centeredIconCard: {
+    borderRadius: "20px",
+    padding: "26px",
+    alignItems: "center",
+    textAlign: "center",
+  },
+
   cardHeader: {
     display: "flex",
     alignItems: "center",
@@ -127,6 +143,15 @@ const styles: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
 
+  centeredIcon: {
+    width: "76px",
+    height: "76px",
+    borderRadius: "22px",
+    fontSize: "42px",
+    marginBottom: "16px",
+    boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
+  },
+
   cardTitle: {
     fontSize: "24px",
     fontWeight: 800,
@@ -136,6 +161,10 @@ const styles: Record<string, CSSProperties> = {
 
   iconCardTitle: {
     margin: 0,
+  },
+
+  centeredIconCardTitle: {
+    margin: "0 0 10px",
   },
 
   cardText: {
@@ -150,6 +179,12 @@ const styles: Record<string, CSSProperties> = {
 
   iconCardText: {
     lineHeight: 1.55,
+    margin: "0 0 18px",
+    minHeight: "78px",
+  },
+
+  centeredIconCardText: {
+    lineHeight: 1.6,
     margin: "0 0 18px",
     minHeight: "78px",
   },
@@ -178,5 +213,9 @@ const styles: Record<string, CSSProperties> = {
 
   iconButton: {
     alignSelf: "flex-start",
+  },
+
+  centeredIconButton: {
+    alignSelf: "center",
   },
 }

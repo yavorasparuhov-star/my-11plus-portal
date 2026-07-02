@@ -1,13 +1,78 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import Header from "../../../components/Header"
 import { useRouter } from "next/navigation"
+import Header from "../../../components/Header"
+import PublicLandingCard from "../../../components/cards/PublicLandingCard"
 
-const hoverCardStyle: CSSProperties = {
-  transition: "all 0.25s ease",
-  cursor: "pointer",
-}
+const punctuationTopics = [
+  {
+    title: "Sentence",
+    path: "/english/punctuation/sentence",
+    icon: "!",
+    iconStyle: {
+      background: "linear-gradient(135deg, #f97316, #facc15)",
+      color: "#ffffff",
+    },
+    description:
+      "Practise full stops, capital letters, question marks, exclamation marks, and accurate sentence punctuation.",
+    buttonText: "Open Sentence",
+  },
+  {
+    title: "Comma",
+    path: "/english/punctuation/comma",
+    icon: "，",
+    iconStyle: {
+      background: "linear-gradient(135deg, #38bdf8, #2563eb)",
+      color: "#ffffff",
+      fontSize: "50px",
+    },
+    description:
+      "Learn how commas are used in lists, clauses, sentence openings, and other common 11+ punctuation situations.",
+    buttonText: "Open Comma",
+  },
+  {
+    title: "Apostrophes",
+    path: "/english/punctuation/apostrophes",
+    icon: "’",
+    iconStyle: {
+      background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+      color: "#ffffff",
+      fontSize: "54px",
+    },
+    description:
+      "Practise apostrophes for contraction and possession, including singular and plural ownership rules.",
+    buttonText: "Open Apostrophes",
+  },
+  {
+    title: "Advanced Punctuation",
+    path: "/english/punctuation/advanced-punctuation",
+    icon: ";:",
+    iconStyle: {
+      background: "linear-gradient(135deg, #fb7185, #db2777)",
+      color: "#ffffff",
+      fontSize: "34px",
+      letterSpacing: "-3px",
+    },
+    description:
+      "Explore colons, semicolons, brackets, dashes, and other advanced punctuation often used in stronger 11+ English answers.",
+    buttonText: "Open Advanced Punctuation",
+  },
+  {
+    title: "Direct Speech Punctuation",
+    path: "/english/punctuation/direct-speech-punctuation",
+    icon: "“ ”",
+    iconStyle: {
+      background: "linear-gradient(135deg, #34d399, #059669)",
+      color: "#ffffff",
+      fontSize: "30px",
+      letterSpacing: "-2px",
+    },
+    description:
+      "Practise speech marks, commas, capital letters, and punctuation placement when writing or correcting direct speech.",
+    buttonText: "Open Direct Speech",
+  },
+]
 
 export default function PunctuationPage() {
   const router = useRouter()
@@ -30,189 +95,18 @@ export default function PunctuationPage() {
         </div>
 
         <div style={styles.grid}>
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/punctuation/sentence")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.sentenceIcon }}>!</div>
-            <h2 style={styles.cardTitle}>Sentence</h2>
-            <p style={styles.cardText}>
-              Practise full stops, capital letters, question marks,
-              exclamation marks, and accurate sentence punctuation.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation/sentence")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Sentence
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/punctuation/comma")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.commaIcon }}>，</div>
-            <h2 style={styles.cardTitle}>Comma</h2>
-            <p style={styles.cardText}>
-              Learn how commas are used in lists, clauses, sentence openings,
-              and other common 11+ punctuation situations.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation/comma")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Comma
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/punctuation/apostrophes")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.apostropheIcon }}>’</div>
-            <h2 style={styles.cardTitle}>Apostrophes</h2>
-            <p style={styles.cardText}>
-              Practise apostrophes for contraction and possession, including
-              singular and plural ownership rules.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation/apostrophes")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Apostrophes
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() =>
-              openCategory("/english/punctuation/advanced-punctuation")
-            }
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.advancedIcon }}>;:</div>
-            <h2 style={styles.cardTitle}>Advanced Punctuation</h2>
-            <p style={styles.cardText}>
-              Explore colons, semicolons, brackets, dashes, and other advanced
-              punctuation often used in stronger 11+ English answers.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation/advanced-punctuation")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Advanced Punctuation
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() =>
-              openCategory("/english/punctuation/direct-speech-punctuation")
-            }
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.speechIcon }}>“ ”</div>
-            <h2 style={styles.cardTitle}>Direct Speech Punctuation</h2>
-            <p style={styles.cardText}>
-              Practise speech marks, commas, capital letters, and punctuation
-              placement when writing or correcting direct speech.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/punctuation/direct-speech-punctuation")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Direct Speech
-            </button>
-          </div>
+          {punctuationTopics.map((topic) => (
+            <PublicLandingCard
+              key={topic.title}
+              variant="centeredIcon"
+              title={topic.title}
+              description={topic.description}
+              buttonText={topic.buttonText}
+              icon={topic.icon}
+              iconStyle={topic.iconStyle}
+              onOpen={() => openCategory(topic.path)}
+            />
+          ))}
         </div>
       </div>
     </>
@@ -245,77 +139,5 @@ const styles: { [key: string]: CSSProperties } = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "20px",
-  },
-  card: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "26px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  icon: {
-    width: "76px",
-    height: "76px",
-    borderRadius: "22px",
-    marginBottom: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "42px",
-    fontWeight: 900,
-    lineHeight: 1,
-    boxShadow: "0 12px 24px rgba(0,0,0,0.14)",
-  },
-  sentenceIcon: {
-    background: "linear-gradient(135deg, #f97316, #facc15)",
-    color: "#ffffff",
-  },
-  commaIcon: {
-    background: "linear-gradient(135deg, #38bdf8, #2563eb)",
-    color: "#ffffff",
-    fontSize: "50px",
-  },
-  apostropheIcon: {
-    background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-    color: "#ffffff",
-    fontSize: "54px",
-  },
-  advancedIcon: {
-    background: "linear-gradient(135deg, #fb7185, #db2777)",
-    color: "#ffffff",
-    fontSize: "34px",
-    letterSpacing: "-3px",
-  },
-  speechIcon: {
-    background: "linear-gradient(135deg, #34d399, #059669)",
-    color: "#ffffff",
-    fontSize: "30px",
-    letterSpacing: "-2px",
-  },
-  cardTitle: {
-    fontSize: "24px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
-  cardText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-    marginBottom: "18px",
-    minHeight: "78px",
-  },
-  button: {
-    padding: "12px 18px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
   },
 }

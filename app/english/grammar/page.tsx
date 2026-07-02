@@ -1,13 +1,42 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import Header from "../../../components/Header"
 import { useRouter } from "next/navigation"
+import Header from "../../../components/Header"
+import PublicLandingCard from "../../../components/cards/PublicLandingCard"
 
-const hoverCardStyle: CSSProperties = {
-  transition: "all 0.25s ease",
-  cursor: "pointer",
-}
+const grammarTopics = [
+  {
+    title: "Primary Word Classes",
+    path: "/english/grammar/primary-word-classes",
+    icon: "ABC",
+    iconStyle: {
+      background: "linear-gradient(135deg, #fef3c7, #fb923c)",
+      color: "#7c2d12",
+      fontSize: "30px",
+      letterSpacing: "0.5px",
+      boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+    },
+    description:
+      "Practise nouns, verbs, adjectives, adverbs, pronouns, prepositions, conjunctions, and other essential grammar building blocks.",
+    buttonText: "Open Word Classes",
+  },
+  {
+    title: "Sentence Structure & Syntax",
+    path: "/english/grammar/sentence-structure-syntax",
+    icon: "S→S",
+    iconStyle: {
+      background: "linear-gradient(135deg, #dbeafe, #818cf8)",
+      color: "#1e1b4b",
+      fontSize: "30px",
+      letterSpacing: "0.5px",
+      boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
+    },
+    description:
+      "Improve sentence construction, word order, clauses, phrase use, and the structure needed for accurate 11+ English answers.",
+    buttonText: "Open Sentence Structure",
+  },
+]
 
 export default function GrammarPage() {
   const router = useRouter()
@@ -30,80 +59,18 @@ export default function GrammarPage() {
         </div>
 
         <div style={styles.grid}>
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() => openCategory("/english/grammar/primary-word-classes")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.wordClassesIcon }}>ABC</div>
-            <h2 style={styles.cardTitle}>Primary Word Classes</h2>
-            <p style={styles.cardText}>
-              Practise nouns, verbs, adjectives, adverbs, pronouns,
-              prepositions, conjunctions, and other essential grammar building
-              blocks.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/grammar/primary-word-classes")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Word Classes
-            </button>
-          </div>
-
-          <div
-            style={{ ...styles.card, ...hoverCardStyle }}
-            onClick={() =>
-              openCategory("/english/grammar/sentence-structure-syntax")
-            }
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)"
-              e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)"
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)"
-            }}
-          >
-            <div style={{ ...styles.icon, ...styles.sentenceIcon }}>S→S</div>
-            <h2 style={styles.cardTitle}>Sentence Structure & Syntax</h2>
-            <p style={styles.cardText}>
-              Improve sentence construction, word order, clauses, phrase use,
-              and the structure needed for accurate 11+ English answers.
-            </p>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                openCategory("/english/grammar/sentence-structure-syntax")
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#bbf7d0"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#d4f5d0"
-              }}
-              style={styles.button}
-            >
-              Open Sentence Structure
-            </button>
-          </div>
+          {grammarTopics.map((topic) => (
+            <PublicLandingCard
+              key={topic.title}
+              variant="centeredIcon"
+              title={topic.title}
+              description={topic.description}
+              buttonText={topic.buttonText}
+              icon={topic.icon}
+              iconStyle={topic.iconStyle}
+              onOpen={() => openCategory(topic.path)}
+            />
+          ))}
         </div>
       </div>
     </>
@@ -136,60 +103,5 @@ const styles: { [key: string]: CSSProperties } = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "20px",
-  },
-  card: {
-    background: "white",
-    borderRadius: "20px",
-    padding: "26px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    textAlign: "center",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  icon: {
-    width: "76px",
-    height: "76px",
-    borderRadius: "22px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "30px",
-    fontWeight: 900,
-    marginBottom: "16px",
-    boxShadow: "0 10px 22px rgba(0,0,0,0.12)",
-    letterSpacing: "0.5px",
-  },
-  wordClassesIcon: {
-    background: "linear-gradient(135deg, #fef3c7, #fb923c)",
-    color: "#7c2d12",
-  },
-  sentenceIcon: {
-    background: "linear-gradient(135deg, #dbeafe, #818cf8)",
-    color: "#1e1b4b",
-  },
-  cardTitle: {
-    fontSize: "24px",
-    marginBottom: "10px",
-    color: "#111827",
-  },
-  cardText: {
-    fontSize: "16px",
-    color: "#4b5563",
-    lineHeight: 1.6,
-    marginBottom: "22px",
-    minHeight: "78px",
-  },
-  button: {
-    padding: "12px 18px",
-    borderRadius: "12px",
-    border: "none",
-    background: "#d4f5d0",
-    color: "#065f46",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "16px",
-    minWidth: "180px",
-    marginTop: "auto",
   },
 }
