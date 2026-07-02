@@ -103,7 +103,7 @@ const categoryOptions: { value: CategoryFilter; label: string }[] = [
   { value: "codes-spatial-logic", label: "Codes & Spatial Logic" },
 ]
 
-const MIN_BENCHMARK_ATTEMPTS = 30
+const MIN_BENCHMARK_ATTEMPTS = 1
 const STRONG_TARGET_PERCENT = 80
 
 function getCutoffDate(filter: TimeFilter) {
