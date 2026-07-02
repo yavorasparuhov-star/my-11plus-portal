@@ -108,27 +108,23 @@ type CustomTestQuestion = GeneratedCustomTest["questions"][number];
 type AdaptiveDifficultyLevel = 1 | 2 | 3;
 type AdaptivePoolKey = "easy" | "medium" | "hard";
 
+type AdaptiveMode = {
+  enabled?: boolean;
+  startingDifficulty?: AdaptiveDifficultyLevel;
+  currentDifficulty?: AdaptiveDifficultyLevel;
+  questionCount?: number;
+  pools?: Partial<Record<AdaptivePoolKey, CustomTestQuestion[]>>;
+};
+
 type RuntimeGeneratedCustomTest = Omit<GeneratedCustomTest, "config"> & {
   config: Omit<GeneratedCustomTest["config"], "selectedDifficulty"> & {
     selectedDifficulty: DifficultyFilter | "adaptive";
   };
-  adaptiveMode?: {
-    enabled?: boolean;
-    startingDifficulty?: AdaptiveDifficultyLevel;
-    currentDifficulty?: AdaptiveDifficultyLevel;
-    questionCount?: number;
-    pools?: Partial<Record<AdaptivePoolKey, CustomTestQuestion[]>>;
-  };
+  adaptiveMode?: AdaptiveMode;
 };
 
 type AdaptiveGeneratedCustomTest = RuntimeGeneratedCustomTest & {
-  adaptiveMode?: {
-    enabled?: boolean;
-    startingDifficulty?: AdaptiveDifficultyLevel;
-    currentDifficulty?: AdaptiveDifficultyLevel;
-    questionCount?: number;
-    pools?: Partial<Record<AdaptivePoolKey, CustomTestQuestion[]>>;
-  };
+  adaptiveMode?: AdaptiveMode;
 };
 
 const ADAPTIVE_DIFFICULTY_LABELS: Record<AdaptiveDifficultyLevel, string> = {
@@ -152,14 +148,6 @@ function getAdaptivePoolKey(difficulty: AdaptiveDifficultyLevel): AdaptivePoolKe
   if (difficulty === 1) return "easy";
   if (difficulty === 2) return "medium";
   return "hard";
-}
-
-function getAdaptiveDifficultyFromPoolKey(
-  poolKey: AdaptivePoolKey,
-): AdaptiveDifficultyLevel {
-  if (poolKey === "easy") return 1;
-  if (poolKey === "medium") return 2;
-  return 3;
 }
 
 function getAdaptiveSearchOrder(
