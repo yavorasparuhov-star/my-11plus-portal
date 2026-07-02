@@ -1,7 +1,8 @@
 // app/(protected)/review/math/page.tsx
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import type { CSSProperties, ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../../lib/supabaseClient"
 import {
@@ -128,19 +129,18 @@ const CATEGORY_COLORS = [
 ]
 
 const DIFFICULTY_COLORS = ["#f97316", "#ea580c", "#c2410c", "#9a3412"]
+const TIME_FILTER_DAYS: Record<Exclude<TimeFilter, "all">, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+}
 
 function getCutoffDate(filter: TimeFilter) {
   if (filter === "all") return null
 
   const now = new Date()
 
-  const daysMap: Record<Exclude<TimeFilter, "all">, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-  }
-
-  now.setDate(now.getDate() - daysMap[filter])
+  now.setDate(now.getDate() - TIME_FILTER_DAYS[filter])
   return now
 }
 
@@ -331,7 +331,7 @@ type ChartSize = {
 function MeasuredChartContainer({
   children,
 }: {
-  children: (size: ChartSize) => React.ReactNode
+  children: (size: ChartSize) => ReactNode
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState<ChartSize | null>(null)
@@ -559,7 +559,7 @@ function SectionCard({
 }: {
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <section
@@ -1593,7 +1593,7 @@ export default function MathReviewPage() {
   )
 }
 
-const responsiveTwoColumnGridStyle: React.CSSProperties = {
+const responsiveTwoColumnGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
   gap: "20px",
@@ -1604,7 +1604,7 @@ const responsiveTwoColumnGridStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const chartWrapperStyle: React.CSSProperties = {
+const chartWrapperStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100%",
   height: "clamp(260px, 38vw, 340px)",
@@ -1613,7 +1613,7 @@ const chartWrapperStyle: React.CSSProperties = {
   overflow: "hidden",
 }
 
-const selectStyle: React.CSSProperties = {
+const selectStyle: CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
   border: "1px solid #bbf7d0",
@@ -1628,7 +1628,7 @@ const selectStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-const actionButtonStyle: React.CSSProperties = {
+const actionButtonStyle: CSSProperties = {
   padding: "12px 16px",
   borderRadius: "14px",
   border: "none",
@@ -1643,7 +1643,7 @@ const actionButtonStyle: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
-const removeButtonStyle: React.CSSProperties = {
+const removeButtonStyle: CSSProperties = {
   padding: "9px 12px",
   borderRadius: "12px",
   border: "1px solid #fecaca",
@@ -1655,7 +1655,7 @@ const removeButtonStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 }
 
-const emptyStateStyle: React.CSSProperties = {
+const emptyStateStyle: CSSProperties = {
   height: "100%",
   minHeight: "180px",
   display: "flex",
