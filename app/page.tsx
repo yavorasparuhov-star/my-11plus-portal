@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import type { CSSProperties, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import Header from "../components/Header"
 import Footer from "../components/Footer"
@@ -15,6 +15,9 @@ const hoverCardStyle = {
   transition: "all 0.25s ease",
   cursor: "pointer",
 }
+
+const restShadow = "0 10px 25px rgba(0,0,0,0.08)"
+const hoverShadow = "0 20px 40px rgba(0,0,0,0.12)"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -153,11 +156,28 @@ export default function LandingPage() {
     },
   ]
 
-  function handleCardHover(e: React.MouseEvent<HTMLDivElement>, active: boolean) {
-    e.currentTarget.style.transform = active ? "translateY(-6px)" : "translateY(0)"
-    e.currentTarget.style.boxShadow = active
-      ? "0 20px 40px rgba(0,0,0,0.12)"
-      : "0 10px 25px rgba(0,0,0,0.08)"
+  function liftCard(event: MouseEvent<HTMLDivElement>) {
+    event.currentTarget.style.transform = "translateY(-6px)"
+    event.currentTarget.style.boxShadow = hoverShadow
+  }
+
+  function settleCard(event: MouseEvent<HTMLDivElement>) {
+    event.currentTarget.style.transform = "translateY(0)"
+    event.currentTarget.style.boxShadow = restShadow
+  }
+
+  function handlePlanButtonHover(
+    event: MouseEvent<HTMLButtonElement>,
+    featured: boolean,
+    active: boolean
+  ) {
+    event.currentTarget.style.background = active
+      ? featured
+        ? "#f0fdf4"
+        : "#bbf7d0"
+      : featured
+        ? "white"
+        : "#d4f5d0"
   }
 
   return (
@@ -220,8 +240,8 @@ export default function LandingPage() {
                   ...hoverCardStyle,
                 }}
                 onClick={() => router.push(subject.path)}
-                onMouseEnter={(e) => handleCardHover(e, true)}
-                onMouseLeave={(e) => handleCardHover(e, false)}
+                onMouseEnter={liftCard}
+                onMouseLeave={settleCard}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -290,8 +310,8 @@ export default function LandingPage() {
                   ...hoverCardStyle,
                 }}
                 onClick={() => router.push(plan.path)}
-                onMouseEnter={(e) => handleCardHover(e, true)}
-                onMouseLeave={(e) => handleCardHover(e, false)}
+                onMouseEnter={liftCard}
+                onMouseLeave={settleCard}
               >
                 <div
                   style={{
@@ -361,16 +381,12 @@ export default function LandingPage() {
                     e.stopPropagation()
                     router.push(plan.path)
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = plan.featured
-                      ? "#f0fdf4"
-                      : "#bbf7d0"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = plan.featured
-                      ? "white"
-                      : "#d4f5d0"
-                  }}
+                  onMouseEnter={(e) =>
+                    handlePlanButtonHover(e, plan.featured, true)
+                  }
+                  onMouseLeave={(e) =>
+                    handlePlanButtonHover(e, plan.featured, false)
+                  }
                 >
                   {plan.button}
                 </button>
@@ -459,7 +475,7 @@ export default function LandingPage() {
   )
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const styles: { [key: string]: CSSProperties } = {
   page: {
     minHeight: "100vh",
     background:
