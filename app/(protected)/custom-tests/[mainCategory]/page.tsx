@@ -65,6 +65,18 @@ function renderDifficultyLabel(value: CustomDifficultySelection) {
   return "Hard"
 }
 
+function isCustomDifficultySelection(
+  value: unknown
+): value is CustomDifficultySelection {
+  return (
+    value === 1 ||
+    value === 2 ||
+    value === 3 ||
+    value === "all" ||
+    value === "adaptive"
+  )
+}
+
 type PrintableOption = {
   key: string
   text: string | null
@@ -1033,11 +1045,7 @@ export default function CustomTestBuilderPage() {
         typeof parsed.totalTimeMinutes === "number" ? parsed.totalTimeMinutes : 15
       )
       setSelectedDifficulty(
-        parsed.selectedDifficulty === 1 ||
-          parsed.selectedDifficulty === 2 ||
-          parsed.selectedDifficulty === 3 ||
-          parsed.selectedDifficulty === "all" ||
-          parsed.selectedDifficulty === "adaptive"
+        isCustomDifficultySelection(parsed.selectedDifficulty)
           ? parsed.selectedDifficulty
           : "all"
       )
