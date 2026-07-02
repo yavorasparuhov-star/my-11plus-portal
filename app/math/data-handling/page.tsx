@@ -1,9 +1,15 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import type { CSSProperties, MouseEvent } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Header from "../../../components/Header"
 import { supabase } from "../../../lib/supabaseClient"
+
+type DifficultyFilter = "all" | 1 | 2 | 3
+
+const restShadow = "0 10px 30px rgba(0,0,0,0.08)"
+const hoverShadow = "0 20px 40px rgba(0,0,0,0.12)"
 
 const hoverCardStyle = {
   transition: "all 0.25s ease",
@@ -62,8 +68,7 @@ function sortFreeTestsFirst(items: TestWithProgress[]) {
 export default function DataHandlingPage() {
   const [tests, setTests] = useState<TestWithProgress[]>([])
   const [loading, setLoading] = useState(true)
-  const [difficultyFilter, setDifficultyFilter] = useState<"all" | 1 | 2 | 3>("all")
-  const [userId, setUserId] = useState<string | null>(null)
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [plan, setPlan] = useState<UserPlan>("guest")
 
   useEffect(() => {
@@ -119,7 +124,6 @@ export default function DataHandlingPage() {
     setLoading(true)
 
     const currentAccess = await loadCurrentUserAndPlan()
-    setUserId(currentAccess.userId)
     setPlan(currentAccess.plan)
 
     const { data: testsData, error: testsError } = await supabase
@@ -220,10 +224,10 @@ export default function DataHandlingPage() {
     return Math.round((completedCount / items.length) * 100)
   }
 
-function getScorePercentage(score: number, isCompleted: boolean) {
-  if (!isCompleted) return 0
-  return Math.max(0, Math.min(100, Math.round(score)))
-}
+  function getScorePercentage(score: number, isCompleted: boolean) {
+    if (!isCompleted) return 0
+    return Math.max(0, Math.min(100, Math.round(score)))
+  }
 
   function getScoreText(test: TestWithProgress) {
     return `${getScorePercentage(test.score, test.isCompleted)}%`
@@ -321,6 +325,26 @@ function getScorePercentage(score: number, isCompleted: boolean) {
       ? tests
       : tests.filter((test) => test.difficulty === difficultyFilter)
 
+  function getFilterButtonStyle(value: DifficultyFilter): CSSProperties {
+    const selected = difficultyFilter === value
+
+    return {
+      ...styles.filterButton,
+      backgroundColor: selected ? "#4f46e5" : "#e5e7eb",
+      color: selected ? "white" : "black",
+    }
+  }
+
+  function liftCard(event: MouseEvent<HTMLDivElement>) {
+    event.currentTarget.style.transform = "translateY(-6px)"
+    event.currentTarget.style.boxShadow = hoverShadow
+  }
+
+  function settleCard(event: MouseEvent<HTMLDivElement>) {
+    event.currentTarget.style.transform = "translateY(0)"
+    event.currentTarget.style.boxShadow = restShadow
+  }
+
   if (loading) {
     return (
       <>
@@ -358,44 +382,28 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                 <div style={styles.filterRow}>
                   <button
                     onClick={() => setDifficultyFilter("all")}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === "all" ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === "all" ? "white" : "black",
-                    }}
+                    style={getFilterButtonStyle("all")}
                   >
                     All ({allCompletedPercent}% Completed)
                   </button>
 
                   <button
                     onClick={() => setDifficultyFilter(1)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 1 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 1 ? "white" : "black",
-                    }}
+                    style={getFilterButtonStyle(1)}
                   >
                     Easy ({easyCompletedPercent}% Completed)
                   </button>
 
                   <button
                     onClick={() => setDifficultyFilter(2)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 2 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 2 ? "white" : "black",
-                    }}
+                    style={getFilterButtonStyle(2)}
                   >
                     Medium ({mediumCompletedPercent}% Completed)
                   </button>
 
                   <button
                     onClick={() => setDifficultyFilter(3)}
-                    style={{
-                      ...styles.filterButton,
-                      backgroundColor: difficultyFilter === 3 ? "#4f46e5" : "#e5e7eb",
-                      color: difficultyFilter === 3 ? "white" : "black",
-                    }}
+                    style={getFilterButtonStyle(3)}
                   >
                     Hard ({hardCompletedPercent}% Completed)
                   </button>
@@ -413,14 +421,8 @@ function getScorePercentage(score: number, isCompleted: boolean) {
                     <div
                       key={test.id}
                       style={{ ...styles.card, ...hoverCardStyle }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-6px)"
-                        e.currentTarget.style.boxShadow = "0 20px 40px rgba(0,0,0,0.12)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)"
-                        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.08)"
-                      }}
+                      onMouseEnter={liftCard}
+                      onMouseLeave={settleCard}
                     >
                       <div style={styles.cardTop}>
                         <h2 style={styles.cardTitle}>{test.title}</h2>
@@ -471,7 +473,7 @@ function getScorePercentage(score: number, isCompleted: boolean) {
   )
 }
 
-const styles: { [key: string]: React.CSSProperties } = {
+const styles: { [key: string]: CSSProperties } = {
   page: {
     padding: "24px",
   },
